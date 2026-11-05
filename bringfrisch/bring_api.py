@@ -13,6 +13,13 @@ from typing import Dict, List, Any, Optional
 
 BRING_API_BASE = "https://api.getbring.com/rest/v2"
 
+DEFAULT_PANTRY_STAPLES = [
+    "salz", "pfeffer", "olivenöl", "rapsöl", "sonnenblumenöl", "bratöl", "speiseöl",
+    "essig", "balsamico", "apfelessig", "zucker", "mehl", "gemüsebouillon", "bouillon",
+    "muskatnuss", "muskatnuss & lorbeerblatt", "wasser", "backpulver", "paprikapulver",
+    "currypulver", "schweizer salatsauce / rapsöl & essig"
+]
+
 class BringClient:
     def __init__(self, email: Optional[str] = None, password: Optional[str] = None):
         self.email = email
@@ -84,6 +91,106 @@ class BringClient:
                 return res_data.get("lists", [])
         except Exception:
             return [{"listUuid": self.default_list_uuid or "default", "name": "Hauptliste", "theme": "default"}]
+
+    def get_list_items(self, list_uuid: Optional[str] = None) -> Dict[str, Any]:
+        """Liest die aktuellen Artikel einer Bring!-Liste ein (purchase & recently)."""
+        target_list = list_uuid or self.default_list_uuid or "mock-wg-list-uuid"
+
+        if not self.access_token or self.access_token.startswith("mock-"):
+            # Demo-Daten für den Abgleich im Mock-Modus
+            return {
+                "success": True,
+                "is_mock": True,
+                "list_uuid": target_list,
+                "purchase": [
+                    {"name": "Schweizer Festkochende Kartoffeln", "specification": "1 kg"},
+                    {"name": "Magronen / Teigwaren", "specification": "500 g"}
+                ],
+                "recently": [
+                    {"name": "Rüebli", "specification": "1 Beutel"}
+                ]
+            }
+
+        url = f"{BRING_API_BASE}/bringlists/{target_list}"
+        req = urllib.request.Request(url, method="GET")
+        req.add_header("Authorization", f"Bearer {self.access_token}")
+
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                return {
+                    "success": True,
+                    "is_mock": False,
+                    "list_uuid": target_list,
+                    "purchase": res_data.get("purchase", []),
+                    "recently": res_data.get("recently", [])
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "is_mock": False,
+                "error": str(e),
+                "purchase": [],
+                "recently": []
+            }
+
+    def compare_and_filter_list(
+        self,
+        shopping_list: List[Dict[str, Any]],
+        list_uuid: Optional[str] = None,
+        custom_pantry_staples: Optional[List[str]] = None,
+        exclude_staples: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Gleicht die Einkaufsliste mit der aktuellen Bring!-Liste ab und filtert Grundzutaten.
+        Klassifiziert Zutaten in:
+        - to_sync: Neu auf die Bring!-Liste zu setzen
+        - already_on_bring: Steht bereits auf Bring!
+        - pantry_staple: Grundzutat zuhause (Salz, Pfeffer, Öl, Bouillon etc.)
+        """
+        current_data = self.get_list_items(list_uuid)
+        existing_bring_names = {
+            item.get("name", "").strip().lower() for item in current_data.get("purchase", [])
+        }
+        
+        staples_set = set(custom_pantry_staples or DEFAULT_PANTRY_STAPLES)
+
+        to_sync = []
+        already_on_bring = []
+        pantry_items = []
+
+        for item in shopping_list:
+            name_lower = item.get("name", "").strip().lower()
+            
+            # 1. Ist es eine Grundzutat (Salz, Pfeffer, Öl)?
+            is_staple = any(st in name_lower for st in staples_set)
+            
+            # 2. Steht es bereits auf der Bring!-Liste?
+            is_on_bring = any(ex in name_lower or name_lower in ex for ex in existing_bring_names)
+
+            item_copy = dict(item)
+            if is_staple and exclude_staples:
+                item_copy["status"] = "pantry_staple"
+                item_copy["status_text"] = "🧂 Grundzutat zuhause"
+                pantry_items.append(item_copy)
+            elif is_on_bring:
+                item_copy["status"] = "already_on_bring"
+                item_copy["status_text"] = "✅ Bereits auf Bring!"
+                already_on_bring.append(item_copy)
+            else:
+                item_copy["status"] = "to_sync"
+                item_copy["status_text"] = "🛒 Muss gekauft werden"
+                to_sync.append(item_copy)
+
+        return {
+            "total_items": len(shopping_list),
+            "to_sync_count": len(to_sync),
+            "already_on_bring_count": len(already_on_bring),
+            "pantry_staple_count": len(pantry_items),
+            "to_sync": to_sync,
+            "already_on_bring": already_on_bring,
+            "pantry_items": pantry_items
+        }
 
     def push_items_to_list(
         self,

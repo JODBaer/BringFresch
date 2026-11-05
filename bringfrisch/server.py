@@ -121,6 +121,12 @@ class BringFrischServer(SimpleHTTPRequestHandler):
             self.send_json({"lists": lists})
             return
 
+        elif path == "/api/bring/current":
+            list_uuid = params.get("list_uuid", [None])[0]
+            items = self.bring_client.get_list_items(list_uuid)
+            self.send_json(items)
+            return
+
         # Statische Dateien (PWA Frontend)
         if path == "/":
             file_path = STATIC_DIR / "index.html"
@@ -181,6 +187,20 @@ class BringFrischServer(SimpleHTTPRequestHandler):
             items = body.get("items", [])
             list_uuid = body.get("list_uuid")
             res = self.bring_client.push_items_to_list(items, list_uuid)
+            self.send_json(res)
+            return
+
+        elif path == "/api/bring/compare":
+            shopping_list = body.get("shopping_list", [])
+            list_uuid = body.get("list_uuid")
+            exclude_staples = body.get("exclude_staples", True)
+            custom_staples = body.get("custom_staples")
+            res = self.bring_client.compare_and_filter_list(
+                shopping_list=shopping_list,
+                list_uuid=list_uuid,
+                custom_pantry_staples=custom_staples,
+                exclude_staples=exclude_staples
+            )
             self.send_json(res)
             return
 

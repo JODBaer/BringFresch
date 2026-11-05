@@ -13,3 +13,4 @@ for m in range(1, 13):
     print(f"Monat {m:02d} ({month_name:<9}): {len(items_in_m):2d} Gemuese | News: {news['headline']}")
 
 print("SUCCESS: ALL 12 MONTHS VERIFIED!")
+

@@ -90,3 +90,4 @@ class PantryTracker {
 }
 
 window.pantryTracker = new PantryTracker();
+

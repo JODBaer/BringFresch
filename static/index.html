@@ -204,21 +204,49 @@
               <p class="text-[11px] text-slate-400" id="bringListName">Liste: WG-Einkauf</p>
             </div>
           </div>
-          <button id="bringSettingsBtn" class="text-xs text-slate-400 hover:text-white p-1">
-            <i data-lucide="settings" class="w-4 h-4"></i>
+          <button id="compareBringBtn" class="text-xs bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-lg flex items-center space-x-1 transition" title="Aktuelle Bring!-Liste einlesen & Duplikate vermeiden">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>Abgleichen</span>
           </button>
         </div>
         
         <div class="grid grid-cols-2 gap-2">
           <button id="syncToBringBtn" class="py-2.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs shadow-lg shadow-red-950/50 flex items-center justify-center space-x-1.5 transition">
             <i data-lucide="upload-cloud" class="w-4 h-4"></i>
-            <span id="syncBtnText">Nach Bring!</span>
+            <span id="syncBtnText">Nach Bring! (Nur Fehlendes)</span>
           </button>
           <button id="copyListBtn" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 active:scale-95 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center justify-center space-x-1.5 transition">
             <i data-lucide="copy" class="w-4 h-4 text-emerald-400"></i>
             <span>Als Text kopieren</span>
           </button>
         </div>
+      </div>
+
+      <!-- Grundvorrat Zuhause Filter (Salz, Pfeffer, Öl, Mehl, Bouillon) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input type="checkbox" id="excludeStaplesToggle" checked class="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-emerald-500">
+            <span class="text-xs font-bold text-slate-200">Grundzutaten zuhause ausblenden</span>
+          </label>
+          <span class="text-[10px] text-emerald-400 font-mono font-semibold" id="staplesCounterBadge">8 ausgeblendet</span>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-tight">
+          Standardmässig vorhanden: Salz, Pfeffer, Speiseöl, Essig, Mehl, Bouillon, Muskatnuss etc. werden nicht nach Bring! exportiert.
+        </p>
+      </div>
+
+      <!-- Live Filter Tabs für Einkaufsliste -->
+      <div class="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-xl p-1 text-[11px]">
+        <button id="filterTabToBuy" class="flex-1 py-1 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition">
+          🛒 Zu kaufen (<span id="countToBuy">0</span>)
+        </button>
+        <button id="filterTabOnBring" class="flex-1 py-1 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition">
+          ✅ Auf Bring! (<span id="countOnBring">0</span>)
+        </button>
+        <button id="filterTabStaples" class="flex-1 py-1 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition">
+          🧂 Zuhause (<span id="countStaples">0</span>)
+        </button>
       </div>
 
       <!-- Aggregierte Zutatenliste nach Kategorien -->

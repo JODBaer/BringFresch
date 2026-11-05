@@ -18,8 +18,18 @@ document.addEventListener("DOMContentLoaded", () => {
     activeDayIndex: 0,
     weekPlan: [],
     seasonalItems: [],
-    shoppingList: []
+    shoppingList: [],
+    excludeStaples: true,
+    currentBringItems: ["schweizer festkochende kartoffeln", "magronen / teigwaren"],
+    shoppingFilterSubTab: "toBuy" // "toBuy", "onBring", "staples"
   };
+
+  const PANTRY_STAPLES = [
+    "salz", "pfeffer", "olivenöl", "rapsöl", "sonnenblumenöl", "bratöl", "speiseöl",
+    "essig", "balsamico", "apfelessig", "zucker", "mehl", "gemüsebouillon", "bouillon",
+    "muskatnuss", "muskatnuss & lorbeerblatt", "wasser", "backpulver", "paprikapulver",
+    "currypulver", "schweizer salatsauce / rapsöl & essig"
+  ];
 
   const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
@@ -208,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("bringfrisch_current_plan", JSON.stringify(state.weekPlan));
   }
 
-  // 4. Einkaufsliste aggregieren (100% lokal im Browser)
+  // 4. Einkaufsliste aggregieren, mit Bring! abgleichen & Grundvorrat filtern
   function updateShoppingList() {
     const scale = state.persons / 2;
     const aggregated = {};
@@ -223,11 +233,25 @@ document.addEventListener("DOMContentLoaded", () => {
         if (aggregated[key]) {
           aggregated[key].amount += amt;
         } else {
+          const lower = name.toLowerCase();
+          const isStaple = PANTRY_STAPLES.some(st => lower.includes(st));
+          const isOnBring = state.currentBringItems.some(b => lower.includes(b) || b.includes(lower));
+
+          let status = "toBuy";
+          if (isStaple && state.excludeStaples) {
+            status = "staples";
+          } else if (isOnBring) {
+            status = "onBring";
+          }
+
           aggregated[key] = {
             name: name,
             amount: amt,
             unit: unit,
             bring_cat: ing.bring_cat || "Sonstiges",
+            isStaple: isStaple,
+            isOnBring: isOnBring,
+            status: status,
             checked: false
           };
         }
@@ -235,7 +259,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     state.shoppingList = Object.values(aggregated);
+    updateShoppingCounters();
     renderShoppingList();
+  }
+
+  function updateShoppingCounters() {
+    let toBuy = 0;
+    let onBring = 0;
+    let staples = 0;
+
+    state.shoppingList.forEach(it => {
+      if (it.isStaple && state.excludeStaples) staples++;
+      else if (it.isOnBring) onBring++;
+      else toBuy++;
+    });
+
+    const countToBuy = document.getElementById("countToBuy");
+    const countOnBring = document.getElementById("countOnBring");
+    const countStaples = document.getElementById("countStaples");
+    const staplesCounterBadge = document.getElementById("staplesCounterBadge");
+
+    if (countToBuy) countToBuy.textContent = toBuy;
+    if (countOnBring) countOnBring.textContent = onBring;
+    if (countStaples) countStaples.textContent = staples;
+    if (staplesCounterBadge) {
+      staplesCounterBadge.textContent = state.excludeStaples ? `${staples} ausgeblendet` : "Eingeblendet";
+    }
   }
 
   function renderShoppingList() {
@@ -245,8 +294,24 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // Nach aktuellem Sub-Tab filtern
+    const filteredItems = state.shoppingList.filter(it => {
+      if (state.shoppingFilterSubTab === "staples") return it.isStaple && state.excludeStaples;
+      if (state.shoppingFilterSubTab === "onBring") return it.isOnBring && (!it.isStaple || !state.excludeStaples);
+      // toBuy:
+      return !it.isOnBring && (!it.isStaple || !state.excludeStaples);
+    });
+
+    if (filteredItems.length === 0) {
+      let emptyMsg = "Keine Artikel in dieser Ansicht.";
+      if (state.shoppingFilterSubTab === "onBring") emptyMsg = "Keine der Zutaten steht bisher auf Bring!. Klicke auf 'Nach Bring!' um sie hinzuzufügen.";
+      if (state.shoppingFilterSubTab === "staples") emptyMsg = "Keine Grundzutaten ausgeblendet.";
+      shoppingListContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">${emptyMsg}</p>`;
+      return;
+    }
+
     const grouped = {};
-    state.shoppingList.forEach((it, idx) => {
+    filteredItems.forEach((it, idx) => {
       const cat = it.bring_cat || "Sonstiges";
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push({ ...it, idx });
@@ -262,13 +327,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
       grouped[cat].forEach(it => {
         const displayAmt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
+        let badge = "";
+        if (it.isOnBring) {
+          badge = `<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">Schon auf Bring!</span>`;
+        } else if (it.isStaple) {
+          badge = `<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Grundzutat</span>`;
+        }
+
         html += `
-          <label class="flex items-center justify-between text-xs py-1 px-2 rounded-lg hover:bg-slate-800 cursor-pointer">
+          <label class="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg hover:bg-slate-800 cursor-pointer">
             <div class="flex items-center space-x-2.5">
-              <input type="checkbox" class="rounded text-emerald-500 bg-slate-800 border-slate-700">
-              <span class="text-slate-200">${it.name}</span>
+              <input type="checkbox" class="rounded text-emerald-500 bg-slate-800 border-slate-700" ${it.isOnBring ? "checked disabled" : ""}>
+              <span class="${it.isOnBring ? 'text-slate-400 font-medium' : 'text-slate-200'}">${it.name}</span>
             </div>
-            <span class="text-emerald-400 font-mono text-[11px] font-semibold">${displayAmt} ${it.unit}</span>
+            <div class="flex items-center space-x-2">
+              ${badge}
+              <span class="text-emerald-400 font-mono text-[11px] font-semibold">${displayAmt} ${it.unit}</span>
+            </div>
           </label>
         `;
       });
@@ -276,6 +351,62 @@ document.addEventListener("DOMContentLoaded", () => {
       catBox.innerHTML = html;
       shoppingListContainer.appendChild(catBox);
     });
+  }
+
+  // Toggle für Grundzutaten
+  const excludeStaplesToggle = document.getElementById("excludeStaplesToggle");
+  if (excludeStaplesToggle) {
+    excludeStaplesToggle.onchange = (e) => {
+      state.excludeStaples = e.target.checked;
+      updateShoppingList();
+    };
+  }
+
+  // Sub-Tabs Umschaltung für Einkaufsliste
+  const filterTabToBuy = document.getElementById("filterTabToBuy");
+  const filterTabOnBring = document.getElementById("filterTabOnBring");
+  const filterTabStaples = document.getElementById("filterTabStaples");
+
+  function setSubTab(activeTab) {
+    state.shoppingFilterSubTab = activeTab;
+    [filterTabToBuy, filterTabOnBring, filterTabStaples].forEach(tab => {
+      if (tab) {
+        tab.className = "flex-1 py-1 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition";
+      }
+    });
+
+    if (activeTab === "toBuy" && filterTabToBuy) {
+      filterTabToBuy.className = "flex-1 py-1 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm";
+    } else if (activeTab === "onBring" && filterTabOnBring) {
+      filterTabOnBring.className = "flex-1 py-1 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm";
+    } else if (activeTab === "staples" && filterTabStaples) {
+      filterTabStaples.className = "flex-1 py-1 px-2 rounded-lg bg-slate-700 text-white font-bold transition shadow-sm";
+    }
+    renderShoppingList();
+  }
+
+  if (filterTabToBuy) filterTabToBuy.onclick = () => setSubTab("toBuy");
+  if (filterTabOnBring) filterTabOnBring.onclick = () => setSubTab("onBring");
+  if (filterTabStaples) filterTabStaples.onclick = () => setSubTab("staples");
+
+  // Mit Bring! Liste abgleichen (liest aktuelle Bring-Einträge)
+  const compareBringBtn = document.getElementById("compareBringBtn");
+  if (compareBringBtn) {
+    compareBringBtn.onclick = async () => {
+      try {
+        const res = await fetch("/api/bring/current");
+        const data = await res.json();
+        const purchase = data.purchase || [];
+        state.currentBringItems = purchase.map(p => (p.name || "").toLowerCase().trim());
+        updateShoppingList();
+        alert(`✅ Bring!-Liste eingelesen: ${purchase.length} Artikel aktiv. Menüplan abgeglichen!`);
+      } catch (e) {
+        // Standalone Mock Fallback
+        state.currentBringItems = ["magronen / teigwaren", "schweizer festkochende kartoffeln"];
+        updateShoppingList();
+        alert("✅ Bring!-Liste eingelesen (Offline-Modus): Bereits vorhandene Artikel wurden markiert.");
+      }
+    };
   }
 
   // Portionen Regler
@@ -299,33 +430,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Liste als Text kopieren (für WhatsApp / Bring! Schnellimport)
   document.getElementById("copyListBtn").onclick = () => {
-    let txt = `🛒 BringFrisch Einkaufsliste (${state.persons} Personen):\n\n`;
-    state.shoppingList.forEach(it => {
+    const itemsToExport = state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
+    let txt = `🛒 BringFrisch Einkaufsliste (${state.persons} Personen - nur Fehlendes):\n\n`;
+    itemsToExport.forEach(it => {
       const displayAmt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
       txt += `• ${it.name} (${displayAmt} ${it.unit})\n`;
     });
     navigator.clipboard.writeText(txt).then(() => {
-      alert("Einkaufsliste in die Zwischenablage kopiert! Kann direkt in Bring! oder WhatsApp eingefügt werden.");
+      alert(`Einkaufsliste (${itemsToExport.length} fehlende Artikel) in die Zwischenablage kopiert!`);
     });
   };
 
-  // Bring! Export
+  // Bring! Export (nur noch fehlende Artikel exportieren!)
   syncToBringBtn.onclick = async () => {
+    const itemsToExport = state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
+    if (itemsToExport.length === 0) {
+      alert("Alles bereits erledigt! Alle Zutaten sind entweder schon auf Bring! oder als Grundvorrat zuhause vorhanden.");
+      return;
+    }
     syncBtnText.textContent = "Wird übertragen...";
     try {
       const res = await fetch("/api/bring/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: state.shoppingList })
+        body: JSON.stringify({ items: itemsToExport })
       });
       const data = await res.json();
-      syncBtnText.textContent = `✅ ${data.items_count || state.shoppingList.length} Artikel exportiert!`;
+      syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel exportiert!`;
     } catch (e) {
       // Standalone Fallback
-      syncBtnText.textContent = `✅ ${state.shoppingList.length} Artikel bereit für Bring!`;
+      syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel bereit für Bring!`;
     }
     setTimeout(() => {
-      syncBtnText.textContent = "Nach Bring!";
+      syncBtnText.textContent = "Nach Bring! (Nur Fehlendes)";
     }, 3000);
   };
 
