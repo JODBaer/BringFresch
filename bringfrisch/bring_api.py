@@ -57,6 +57,8 @@ class BringClient:
     def __init__(self):
         self.email: Optional[str] = None
         self.password: Optional[str] = None
+        self.access_token: Optional[str] = None
+        self.user_uuid: Optional[str] = None
         self.default_list_uuid: Optional[str] = None
         self.default_list_name: Optional[str] = None
         self.bring_instance: Optional[Any] = None
@@ -70,6 +72,8 @@ class BringClient:
                     cfg = json.load(f)
                     self.email = cfg.get("email")
                     self.password = cfg.get("password")
+                    self.access_token = cfg.get("access_token")
+                    self.user_uuid = cfg.get("user_uuid")
                     self.default_list_uuid = cfg.get("list_uuid")
                     self.default_list_name = cfg.get("list_name")
                     if self.email and self.password and HAS_BRING_LIB:
@@ -83,30 +87,54 @@ class BringClient:
             json.dump({
                 "email": self.email,
                 "password": self.password,
+                "access_token": self.access_token,
+                "user_uuid": self.user_uuid,
                 "list_uuid": self.default_list_uuid,
                 "list_name": self.default_list_name
             }, f, indent=2)
 
     def get_status(self) -> Dict[str, Any]:
         """Gibt den aktuellen Verbindungsstatus zurück."""
-        has_creds = bool(self.email and self.password)
+        has_auth = bool((self.email and self.password) or self.access_token)
         return {
-            "is_connected": has_creds,
-            "email": self.email if has_creds else None,
+            "is_connected": has_auth,
+            "email": self.email if has_auth else None,
             "list_uuid": self.default_list_uuid,
             "list_name": self.default_list_name or "Hauptliste",
-            "is_mock": not has_creds
+            "is_mock": not has_auth
         }
 
-    def login(self, email: Optional[str] = None, password: Optional[str] = None, list_uuid: Optional[str] = None) -> Dict[str, Any]:
-        """Authentifiziert den Nutzer bei Bring!."""
+    def login(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        list_uuid: Optional[str] = None,
+        token: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Authentifiziert den Nutzer bei Bring! (entweder via E-Mail/Passwort oder direkt via Web-Token)."""
+        # 1. Direkter Token-Login (aus Bring! Web)
+        if token and token.strip():
+            self.access_token = token.strip()
+            self.email = email or "Bring! Web User"
+            if list_uuid:
+                self.default_list_uuid = list_uuid
+            self._save_config()
+            return {
+                "success": True,
+                "email": self.email,
+                "list_uuid": self.default_list_uuid,
+                "list_name": self.default_list_name or "Bring! Web Liste",
+                "message": "Erfolgreich via Bring! Web Token verknüpft!"
+            }
+
+        # 2. Regulärer Login via E-Mail & Passwort
         user_email = (email or self.email or "").strip()
         user_pw = (password or self.password or "").strip()
 
         if not user_email or not user_pw:
             return {
                 "success": False,
-                "error": "Bitte E-Mail und Passwort für Bring! eingeben"
+                "error": "Bitte E-Mail und Passwort (oder Bring! Web Token) eingeben"
             }
 
         if not HAS_BRING_LIB:

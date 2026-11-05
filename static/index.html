@@ -237,6 +237,10 @@
             <span>Als Text kopieren</span>
           </button>
         </div>
+        <a href="https://web.getbring.com/app/lists/0" target="_blank" rel="noopener noreferrer" class="w-full py-2 px-3 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-semibold flex items-center justify-center space-x-1.5 transition">
+          <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+          <span>In Bring! Web öffnen (web.getbring.com) ↗</span>
+        </a>
       </div>
 
       <!-- Grundvorrat Zuhause Filter (Salz, Pfeffer, Öl, Mehl, Bouillon) -->
@@ -627,6 +631,20 @@
           <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
           <span id="bringLoginBtnText">Jetzt mit Bring! verbinden</span>
         </button>
+
+        <!-- Alternativer Token Login für Google/Apple Nutzer -->
+        <details class="text-[11px] text-slate-400 pt-1 cursor-pointer">
+          <summary class="hover:text-slate-200">Alternativ: Mit Bring! Web Token verbinden</summary>
+          <div class="mt-2 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-2">
+            <p class="text-[10px] text-slate-300">
+              Wenn du in <a href="https://web.getbring.com/app/lists/0" target="_blank" class="text-red-400 underline">web.getbring.com</a> eingeloggt bist, kannst du auch direkt deinen Access-Token einfügen:
+            </p>
+            <input type="text" id="bringTokenInput" placeholder="Bearer Token (aus LocalStorage)" class="w-full bg-slate-900 border border-slate-700 text-[10px] text-white rounded-lg px-2.5 py-1.5 font-mono">
+            <button id="bringTokenLoginBtn" class="w-full py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold text-xs rounded-lg transition">
+              Mit Token verbinden
+            </button>
+          </div>
+        </details>
       </div>
 
       <!-- Listen-Auswahl Dropdown (nach Login) -->

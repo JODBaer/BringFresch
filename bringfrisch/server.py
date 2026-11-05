@@ -185,7 +185,8 @@ class BringFrischServer(SimpleHTTPRequestHandler):
             email = body.get("email")
             password = body.get("password")
             list_uuid = body.get("list_uuid")
-            res = self.bring_client.login(email, password, list_uuid)
+            token = body.get("token")
+            res = self.bring_client.login(email, password, list_uuid, token)
             self.send_json(res)
             return
 
