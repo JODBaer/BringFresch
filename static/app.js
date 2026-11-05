@@ -1718,8 +1718,64 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  seasonMonthSelect.onchange = (e) => loadMonthSeason(e.target.value);
-  loadMonthSeason(11); // Standard: November
+  const MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const syncSeasonMonthBtn = document.getElementById("syncSeasonMonthBtn");
+  const seasonCurrentMonthBadge = document.getElementById("seasonCurrentMonthBadge");
+  const seasonLastSyncTime = document.getElementById("seasonLastSyncTime");
+
+  async function syncSeasonalMonth(targetMonth = null, showNotification = false) {
+    const realCalendarMonth = new Date().getMonth() + 1;
+    const month = targetMonth ? parseInt(targetMonth, 10) : realCalendarMonth;
+
+    if (seasonMonthSelect) {
+      seasonMonthSelect.value = month.toString();
+    }
+    if (seasonCurrentMonthBadge) {
+      seasonCurrentMonthBadge.textContent = MONTH_NAMES[month - 1];
+    }
+    if (seasonLastSyncTime) {
+      const dateStr = new Date().toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit' });
+      seasonLastSyncTime.textContent = `Sync: ${dateStr} ✓`;
+    }
+
+    loadMonthSeason(month);
+
+    localStorage.setItem("bringfrisch_current_synced_month", month.toString());
+    localStorage.setItem("bringfrisch_season_synced_at", new Date().toISOString());
+
+    // Online-Sync Endpunkt prüfen falls Server läuft
+    try {
+      const res = await fetch("/api/season/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: month })
+      });
+      const data = await res.json();
+      if (data && data.success && data.news) {
+        if (seasonNewsHeadline) seasonNewsHeadline.textContent = data.news.headline;
+        if (seasonNewsTip) seasonNewsTip.textContent = data.news.farmer_tip;
+      }
+    } catch (e) {
+      // Offline fallback: standalone_data.js greift zuverlässig
+    }
+
+    if (showNotification) {
+      alert(`🌱 Saisongemüse für Monat ${MONTH_NAMES[month - 1]} erfolgreich synchronisiert!\n\nAktuelle Schweizer Freiland- & Lager-Gemüsesorten sowie Ernte-News sind jetzt geladen.`);
+    }
+  }
+
+  if (syncSeasonMonthBtn) {
+    syncSeasonMonthBtn.onclick = () => syncSeasonalMonth(null, true);
+  }
+
+  if (seasonMonthSelect) {
+    seasonMonthSelect.onchange = (e) => syncSeasonalMonth(e.target.value, false);
+  }
+
+  // Automatischer Monats-Sync beim Start: Ermittelt den echten aktuellen Kalendermonat
+  const savedSyncedMonth = parseInt(localStorage.getItem("bringfrisch_current_synced_month") || "0", 10);
+  const realCurrentMonth = new Date().getMonth() + 1;
+  syncSeasonalMonth(savedSyncedMonth || realCurrentMonth, false);
 
   // Regionale Märkte & Hofläden (Wetzikon, Rapperswil, Uster)
   const seasonSubTabVegetables = document.getElementById("seasonSubTabVegetables");

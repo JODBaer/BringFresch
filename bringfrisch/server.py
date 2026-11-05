@@ -241,6 +241,22 @@ class BringFrischServer(SimpleHTTPRequestHandler):
             self.wfile.write(body_bytes)
             return
 
+        elif path == "/api/season/sync":
+            month = int(body.get("month", datetime.now().month))
+            items = self.season_mgr.get_seasonal_items(month)
+            month_name = self.season_mgr.get_month_name(month)
+            news = self.season_mgr.get_monthly_news(month)
+            self.send_json({
+                "success": True,
+                "month": month,
+                "month_name": month_name,
+                "synced_at": datetime.now().isoformat(),
+                "items_count": len(items),
+                "items": items,
+                "news": news
+            })
+            return
+
         self.send_json({"error": "Endpunkt nicht gefunden"}, status=404)
 
 def run(port: int = 8080):
