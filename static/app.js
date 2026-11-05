@@ -22,8 +22,37 @@ document.addEventListener("DOMContentLoaded", () => {
     excludeStaples: true,
     currentBringItems: ["schweizer festkochende kartoffeln", "magronen / teigwaren"],
     shoppingFilterSubTab: "toBuy", // "toBuy", "onBring", "staples"
-    pantryStaples: loadUserStaples()
+    pantryStaples: loadUserStaples(),
+    members: loadMembers()
   };
+
+  function loadMembers() {
+    const saved = localStorage.getItem("bringfrisch_members");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [
+      { id: "m1", name: "Jonas", diet: "vegi" },
+      { id: "m2", name: "Anna", diet: "vegan" },
+      { id: "m3", name: "Lukas", diet: "fleisch" }
+    ];
+  }
+
+  function saveMembers() {
+    localStorage.setItem("bringfrisch_members", JSON.stringify(state.members));
+  }
+
+  function calculateEffectiveDiet(eaterIds) {
+    if (!eaterIds || eaterIds.length === 0) return "vegi";
+    const diets = eaterIds.map(id => {
+      const m = state.members.find(mem => mem.id === id);
+      return m ? m.diet : "vegi";
+    });
+    if (diets.includes("vegan")) return "vegan";
+    if (diets.includes("vegi")) return "vegi";
+    if (diets.includes("schweizerisch")) return "schweizerisch";
+    return "fleisch";
+  }
 
   function loadUserStaples() {
     const saved = localStorage.getItem("bringfrisch_user_staples");
@@ -82,35 +111,44 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Standalone Recipe Generator (Runs 100% in Browser)
-  function getRecipesPool() {
+  function getRecipesPool(dietOverride = null) {
+    const targetDiet = dietOverride || state.diet;
     const defaultRecipes = (window.BRINGFRISCH_DATA && window.BRINGFRISCH_DATA.recipes) || [];
     const customRecipes = (window.recipeImporter && window.recipeImporter.customRecipes) || [];
     const all = [...defaultRecipes, ...customRecipes];
     
     // Filter nach Diät
-    if (state.diet === "vegi") {
-      return all.filter(r => r.diet === "vegi" || r.diet === "vegan");
-    } else if (state.diet === "vegan") {
-      return all.filter(r => r.diet === "vegan");
-    } else if (state.diet === "schweizerisch") {
-      return all.filter(r => r.category === "schweizerisch");
+    if (targetDiet === "vegan") {
+      const veganList = all.filter(r => r.diet === "vegan");
+      return veganList.length > 0 ? veganList : all;
+    } else if (targetDiet === "vegi") {
+      const vegiList = all.filter(r => r.diet === "vegi" || r.diet === "vegan");
+      return vegiList.length > 0 ? vegiList : all;
+    } else if (targetDiet === "schweizerisch") {
+      const swissList = all.filter(r => r.category === "schweizerisch");
+      return swissList.length > 0 ? swissList : all;
     }
     return all;
   }
 
   function generateStandalonePlan() {
-    const pool = getRecipesPool();
     const plan = [];
-    const available = [...pool];
-    
+    const allMemberIds = state.members.map(m => m.id);
+
     DAYS.forEach((day) => {
-      if (available.length === 0) available.push(...pool);
-      const idx = Math.floor(Math.random() * available.length);
-      const recipe = available.splice(idx, 1)[0];
+      const effectiveDiet = calculateEffectiveDiet(allMemberIds);
+      const pool = getRecipesPool(effectiveDiet);
+      const recipe = pool[Math.floor(Math.random() * pool.length)];
+      const personCount = allMemberIds.length || 3;
+
       plan.push({
         ...recipe,
         day: day,
-        scaled_cost_chf: ((recipe.cost_per_person_chf || 2.80) * state.persons).toFixed(2),
+        eaters: [...allMemberIds],
+        extra_guests: 0,
+        effective_diet: effectiveDiet,
+        person_count: personCount,
+        scaled_cost_chf: ((recipe.cost_per_person_chf || 2.80) * personCount).toFixed(2),
         cook_assigned: null
       });
     });
@@ -135,6 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateShoppingList();
     checkPantryAlerts();
     renderPantryItems();
+    renderMembersManager();
   }
 
   function renderActiveCard() {
@@ -142,21 +181,82 @@ document.addEventListener("DOMContentLoaded", () => {
     const current = state.weekPlan[state.activeDayIndex];
     if (!current) return;
 
+    // Standard-Esser initialisieren falls noch nicht gesetzt
+    if (!current.eaters) {
+      current.eaters = state.members.map(m => m.id);
+    }
+    if (current.extra_guests === undefined) {
+      current.extra_guests = 0;
+    }
+
+    const dayPersons = current.eaters.length + current.extra_guests || 1;
+    current.person_count = dayPersons;
+    current.effective_diet = calculateEffectiveDiet(current.eaters);
+
     cardDayBadge.textContent = current.day || DAYS[state.activeDayIndex];
-    cardDietBadge.textContent = (current.diet || "vegi").toUpperCase();
+    cardDietBadge.textContent = (current.diet || current.effective_diet).toUpperCase();
+    
     const costPerP = current.cost_per_person_chf || 2.80;
-    cardCostBadge.textContent = `CHF ${(costPerP * (state.persons / 2)).toFixed(2)} für ${state.persons} P.`;
+    cardCostBadge.textContent = `CHF ${(costPerP * dayPersons).toFixed(2)} für ${dayPersons} P.`;
     cardTitle.textContent = current.title;
     cardPrepTime.textContent = `${current.prep_time_min || 30} Min.`;
     cardSeasonFokus.textContent = (current.primary_vegetables || []).join(", ") || "Schweizer Saisongemüse";
     cardCookName.textContent = current.cook_assigned ? `Koch: ${current.cook_assigned}` : "Koch: Offen / WG";
     cardHealthTip.textContent = current.health_tip || "Ausgewogenes Rezept mit Schweizer Gemüse.";
 
+    // Wer isst mit heute? UI rendern
+    const dayEaterSummary = document.getElementById("dayEaterSummary");
+    if (dayEaterSummary) {
+      dayEaterSummary.textContent = `${dayPersons} ${dayPersons === 1 ? 'Person' : 'Personen'} • ${current.effective_diet.toUpperCase()}`;
+    }
+
+    const dayEatersList = document.getElementById("dayEatersList");
+    if (dayEatersList) {
+      dayEatersList.innerHTML = "";
+      state.members.forEach(mem => {
+        const isAttending = current.eaters.includes(mem.id);
+        const btn = document.createElement("button");
+        btn.className = `text-[11px] px-2.5 py-1 rounded-xl border transition flex items-center space-x-1.5 ${
+          isAttending
+            ? "bg-emerald-950/50 text-emerald-300 border-emerald-500/50 shadow-sm"
+            : "bg-slate-800/80 text-slate-400 border-slate-700/60 line-through opacity-60"
+        }`;
+        btn.innerHTML = `<span>${isAttending ? '✓' : '✗'} ${mem.name}</span> <span class="text-[9px] px-1 py-0.2 rounded bg-slate-900 font-mono text-slate-400 uppercase">${mem.diet}</span>`;
+        btn.onclick = () => {
+          if (isAttending) {
+            current.eaters = current.eaters.filter(id => id !== mem.id);
+          } else {
+            current.eaters.push(mem.id);
+          }
+          current.effective_diet = calculateEffectiveDiet(current.eaters);
+          savePlan();
+          renderActiveCard();
+          updateShoppingList();
+        };
+        dayEatersList.appendChild(btn);
+      });
+
+      // Gast-Button (+1 / -1)
+      const guestBtn = document.createElement("button");
+      guestBtn.className = "text-[11px] px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 transition flex items-center space-x-1";
+      guestBtn.innerHTML = `<span>+ Gast (${current.extra_guests})</span>`;
+      guestBtn.onclick = () => {
+        current.extra_guests = (current.extra_guests + 1) % 5;
+        savePlan();
+        renderActiveCard();
+        updateShoppingList();
+      };
+      dayEatersList.appendChild(guestBtn);
+    }
+
     cardIngredients.innerHTML = "";
+    const scale = dayPersons / 2;
     (current.ingredients || []).forEach(ing => {
       const li = document.createElement("li");
       li.className = "flex items-center justify-between py-0.5 border-b border-slate-800/40";
-      li.innerHTML = `<span>${ing.name}</span> <span class="text-slate-400 font-mono text-[11px]">${ing.amount} ${ing.unit}</span>`;
+      const scaledAmt = (parseFloat(ing.amount || "1") * scale);
+      const displayAmt = scaledAmt === parseInt(scaledAmt) ? scaledAmt : scaledAmt.toFixed(1);
+      li.innerHTML = `<span>${ing.name}</span> <span class="text-slate-400 font-mono text-[11px]">${displayAmt} ${ing.unit}</span>`;
       cardIngredients.appendChild(li);
     });
 
@@ -186,15 +286,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, { passive: true });
 
-  // Anderes Rezept für diesen Tag würfeln
+  // Anderes Rezept für diesen Tag würfeln (beachtet Diät aller heutigen Esser!)
   document.getElementById("shuffleDayBtn").onclick = () => {
-    const pool = getRecipesPool();
+    const current = state.weekPlan[state.activeDayIndex];
+    const targetDiet = current.effective_diet || state.diet;
+    const pool = getRecipesPool(targetDiet);
     if (pool.length > 0) {
       const randomRecipe = pool[Math.floor(Math.random() * pool.length)];
       state.weekPlan[state.activeDayIndex] = {
         ...randomRecipe,
         day: DAYS[state.activeDayIndex],
-        cook_assigned: state.weekPlan[state.activeDayIndex].cook_assigned
+        eaters: current.eaters,
+        extra_guests: current.extra_guests,
+        effective_diet: current.effective_diet,
+        person_count: current.person_count,
+        cook_assigned: current.cook_assigned
       };
       savePlan();
       renderActiveCard();
@@ -224,9 +330,8 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("bringfrisch_current_plan", JSON.stringify(state.weekPlan));
   }
 
-  // 4. Einkaufsliste aggregieren, mit Bring! abgleichen & Grundvorrat filtern
+  // 4. Einkaufsliste aggregieren, mit Bring! abgleichen & Grundvorrat filtern (Tag-genau skaliert!)
   function updateShoppingList() {
-    const scale = state.persons / 2;
     const aggregated = {};
 
     // Aktive Grundzutaten-Keywords ermitteln
@@ -238,11 +343,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     state.weekPlan.forEach(day => {
+      // Skalierung genau nach Esser-Anzahl dieses einzelnen Tages!
+      const dayPersons = (day.eaters ? day.eaters.length : 0) + (day.extra_guests || 0) || state.persons;
+      const dayScale = dayPersons / 2;
+
       (day.ingredients || []).forEach(ing => {
         const name = ing.name.trim();
         const unit = (ing.unit || "").trim();
         const key = `${name.toLowerCase()}___${unit.toLowerCase()}`;
-        const amt = parseFloat(ing.amount || "1") * scale;
+        const amt = parseFloat(ing.amount || "1") * dayScale;
 
         if (aggregated[key]) {
           aggregated[key].amount += amt;
@@ -782,6 +891,91 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (window.lucide) lucide.createIcons();
+  }
+
+  // Mitbewohner & Diäten verwalten UI (Tab 6)
+  const membersListContainer = document.getElementById("membersListContainer");
+  const addMemberBtn = document.getElementById("addMemberBtn");
+
+  function renderMembersManager() {
+    if (!membersListContainer) return;
+    membersListContainer.innerHTML = "";
+
+    state.members.forEach((mem, idx) => {
+      const card = document.createElement("div");
+      card.className = "flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60";
+      
+      let dietBadgeColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+      if (mem.diet === "vegan") dietBadgeColor = "text-cyan-400 bg-cyan-500/10 border-cyan-500/20";
+      if (mem.diet === "fleisch") dietBadgeColor = "text-amber-400 bg-amber-500/10 border-amber-500/20";
+
+      card.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+            ${mem.name.charAt(0)}
+          </div>
+          <span class="text-xs font-bold text-white">${mem.name}</span>
+          <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${dietBadgeColor}">${mem.diet}</span>
+        </div>
+        <div class="flex items-center space-x-1.5">
+          <select class="diet-select bg-slate-900 border border-slate-700 text-[11px] text-slate-300 rounded-lg px-2 py-1 focus:outline-none" data-idx="${idx}">
+            <option value="vegi" ${mem.diet === "vegi" ? "selected" : ""}>Vegi</option>
+            <option value="vegan" ${mem.diet === "vegan" ? "selected" : ""}>Vegan</option>
+            <option value="fleisch" ${mem.diet === "fleisch" ? "selected" : ""}>Mit Fleisch</option>
+            <option value="schweizerisch" ${mem.diet === "schweizerisch" ? "selected" : ""}>Schweizerisch</option>
+          </select>
+          <button class="delete-member-btn text-slate-500 hover:text-red-400 p-1" data-idx="${idx}">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      `;
+      membersListContainer.appendChild(card);
+    });
+
+    membersListContainer.querySelectorAll(".diet-select").forEach(sel => {
+      sel.onchange = (e) => {
+        const idx = parseInt(e.target.getAttribute("data-idx"), 10);
+        state.members[idx].diet = e.target.value;
+        saveMembers();
+        renderMembersManager();
+        renderActiveCard();
+        updateShoppingList();
+      };
+    });
+
+    membersListContainer.querySelectorAll(".delete-member-btn").forEach(btn => {
+      btn.onclick = (e) => {
+        const idx = parseInt(btn.getAttribute("data-idx"), 10);
+        if (state.members.length <= 1) {
+          alert("Mindestens ein Mitbewohner muss vorhanden sein!");
+          return;
+        }
+        state.members.splice(idx, 1);
+        saveMembers();
+        renderMembersManager();
+        renderActiveCard();
+        updateShoppingList();
+      };
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  if (addMemberBtn) {
+    addMemberBtn.onclick = () => {
+      const name = prompt("Name des Mitbewohners:", "Sarah");
+      if (!name) return;
+      const diet = prompt("Ernährungsform (vegi, vegan, fleisch, schweizerisch):", "vegi") || "vegi";
+      state.members.push({
+        id: "m-" + Date.now(),
+        name: name.trim(),
+        diet: diet.toLowerCase().trim()
+      });
+      saveMembers();
+      renderMembersManager();
+      renderActiveCard();
+      updateShoppingList();
+    };
   }
 
   // Navigation Tab Switching

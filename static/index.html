@@ -114,8 +114,25 @@
             </span>
           </div>
 
+          <!-- Wer isst mit heute? (Tages-Esser & Diät-Anpassung) -->
+          <div class="mt-3.5 p-3 rounded-2xl bg-slate-800/70 border border-slate-700/70 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
+                <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>Wer isst heute mit?</span>
+              </span>
+              <span id="dayEaterSummary" class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-mono">
+                3 Personen • VEGI
+              </span>
+            </div>
+            <!-- Mitbewohner Check-Chips für diesen Tag -->
+            <div id="dayEatersList" class="flex flex-wrap gap-1.5 pt-0.5">
+              <!-- Dynamisch: [x] Jonas (Vegi) [x] Anna (Vegan) [ ] Lukas (Fleisch) -->
+            </div>
+          </div>
+
           <!-- Koch-Zuweisung WG -->
-          <div class="mt-4 p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
+          <div class="mt-2.5 p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
             <div class="flex items-center space-x-2">
               <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
                 👨‍🍳
@@ -417,6 +434,25 @@
           </button>
         </div>
         <p class="text-[11px] text-slate-400">Alle Mitbewohner mit diesem WG-Code sehen denselben Wochenplan und können Gerichte mitentscheiden.</p>
+      </div>
+
+      <!-- WG-Mitbewohner & persönliche Diäten -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+            <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Mitbewohner & persönliche Diät</span>
+          </h3>
+          <button id="addMemberBtn" class="text-[10px] text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg font-semibold transition">
+            + Mitbewohner
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400">
+          Wähle für jeden Wochentag aus, wer mitisst. Das Menü passt sich automatisch an die Diät aller anwesenden Esser an!
+        </p>
+        <div id="membersListContainer" class="space-y-2">
+          <!-- Dynamische Liste der WG-Mitglieder -->
+        </div>
       </div>
 
       <!-- Ernährungsform -->
