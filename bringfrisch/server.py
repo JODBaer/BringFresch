@@ -259,7 +259,9 @@ class BringFrischServer(SimpleHTTPRequestHandler):
 
         self.send_json({"error": "Endpunkt nicht gefunden"}, status=404)
 
-def run(port: int = 8080):
+def run(port: Optional[int] = None):
+    if port is None:
+        port = int(os.environ.get("PORT", 8080))
     server_address = ("", port)
     httpd = HTTPServer(server_address, BringFrischServer)
     print(f"🚀 BringFrisch Server läuft auf http://localhost:{port}")
