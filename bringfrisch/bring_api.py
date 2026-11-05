@@ -76,8 +76,7 @@ class BringClient:
                     self.user_uuid = cfg.get("user_uuid")
                     self.default_list_uuid = cfg.get("list_uuid")
                     self.default_list_name = cfg.get("list_name")
-                    if self.email and self.password and HAS_BRING_LIB:
-                        self.bring_instance = Bring(self.email, self.password)
+                    self._ensure_authenticated()
             except Exception as e:
                 print("Bring Config Load Error:", e)
 
@@ -93,9 +92,52 @@ class BringClient:
                 "list_name": self.default_list_name
             }, f, indent=2)
 
+    def _ensure_authenticated(self) -> bool:
+        """Stellt sicher, dass die Bring-Instanz existiert und angemeldet ist."""
+        if not HAS_BRING_LIB:
+            return False
+
+        # 1. Wenn bereits angemeldet mit uuid
+        if self.bring_instance and getattr(self.bring_instance, "uuid", None):
+            return True
+
+        # 2. Wenn E-Mail & Passwort vorhanden sind -> Direkter API Login
+        if self.email and self.password:
+            try:
+                bring = Bring(self.email, self.password)
+                auth_data = bring.login()
+                self.bring_instance = bring
+                if isinstance(auth_data, dict):
+                    self.access_token = auth_data.get("access_token")
+                    self.user_uuid = auth_data.get("uuid")
+                elif hasattr(auth_data, "access_token"):
+                    self.access_token = getattr(auth_data, "access_token", None)
+                    self.user_uuid = getattr(auth_data, "uuid", None)
+                return True
+            except Exception as e:
+                print("Bring re-auth error:", e)
+                return False
+
+        # 3. Wenn access_token & user_uuid vorhanden sind (z.B. aus Web)
+        if self.access_token and self.user_uuid:
+            try:
+                bring = Bring(self.email or "user@example.com", "dummy")
+                bring.uuid = self.user_uuid
+                bring.headers['X-BRING-USER-UUID'] = self.user_uuid
+                bring.headers['Authorization'] = f'Bearer {self.access_token}'
+                bring.putHeaders = {**bring.headers, 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+                bring.postHeaders = {**bring.headers, 'Content-Type': 'application/json; charset=UTF-8'}
+                self.bring_instance = bring
+                return True
+            except Exception as e:
+                print("Bring token instance error:", e)
+                return False
+
+        return False
+
     def get_status(self) -> Dict[str, Any]:
         """Gibt den aktuellen Verbindungsstatus zurück."""
-        has_auth = bool((self.email and self.password) or self.access_token)
+        has_auth = self._ensure_authenticated()
         return {
             "is_connected": has_auth,
             "email": self.email if has_auth else None,
@@ -111,55 +153,83 @@ class BringClient:
         list_uuid: Optional[str] = None,
         token: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Authentifiziert den Nutzer bei Bring! (entweder via E-Mail/Passwort oder direkt via Web-Token)."""
+        """Authentifiziert den Nutzer bei Bring! (persönlicher Login mit E-Mail & Passwort oder Bearer-Token)."""
         # 1. Direkter Token-Login (aus Bring! Web)
         if token and token.strip():
             self.access_token = token.strip()
             self.email = email or "Bring! Web User"
+
+            # Versuche UUID aus JWT zu extrahieren falls vorhanden
+            try:
+                import base64
+                parts = self.access_token.split(".")
+                if len(parts) >= 2:
+                    padded = parts[1] + "=" * (-len(parts[1]) % 4)
+                    payload = json.loads(base64.urlsafe_b64decode(padded.encode()).decode("utf-8"))
+                    self.user_uuid = payload.get("sub") or payload.get("uuid") or payload.get("userUuid")
+            except Exception:
+                pass
+
             if list_uuid:
                 self.default_list_uuid = list_uuid
+            self._ensure_authenticated()
             self._save_config()
+
+            lists = self.get_lists()
             return {
                 "success": True,
                 "email": self.email,
                 "list_uuid": self.default_list_uuid,
                 "list_name": self.default_list_name or "Bring! Web Liste",
+                "lists": lists,
                 "message": "Erfolgreich via Bring! Web Token verknüpft!"
             }
 
-        # 2. Regulärer Login via E-Mail & Passwort
+        # 2. Regulärer persönlicher Login via E-Mail & Passwort (Empfohlen!)
         user_email = (email or self.email or "").strip()
         user_pw = (password or self.password or "").strip()
 
         if not user_email or not user_pw:
             return {
                 "success": False,
-                "error": "Bitte E-Mail und Passwort (oder Bring! Web Token) eingeben"
+                "error": "Bitte deine Bring! E-Mail und dein Passwort eingeben."
             }
 
         if not HAS_BRING_LIB:
             return {
                 "success": False,
-                "error": "python-bring-api Bibliothek ist nicht installiert"
+                "error": "python-bring-api Bibliothek ist nicht installiert."
             }
 
         try:
             bring = Bring(user_email, user_pw)
-            bring.login()
+            auth_data = bring.login()
             self.email = user_email
             self.password = user_pw
             self.bring_instance = bring
 
-            # Listen laden
+            if isinstance(auth_data, dict):
+                self.access_token = auth_data.get("access_token")
+                self.user_uuid = auth_data.get("uuid")
+            elif hasattr(auth_data, "access_token"):
+                self.access_token = getattr(auth_data, "access_token", None)
+                self.user_uuid = getattr(auth_data, "uuid", None)
+
+            # Echte Listen aus dem persönlichen Bring!-Account laden
             lists_data = bring.loadLists()
-            lists = lists_data.get("lists", [])
+            lists = lists_data.get("lists", []) if isinstance(lists_data, dict) else getattr(lists_data, "lists", [])
 
             # Standardliste setzen
             if list_uuid:
                 self.default_list_uuid = list_uuid
+                for l in lists:
+                    l_uuid = l.get("listUuid") if isinstance(l, dict) else getattr(l, "listUuid", None)
+                    if l_uuid == list_uuid:
+                        self.default_list_name = l.get("name") if isinstance(l, dict) else getattr(l, "name", None)
             elif lists:
-                self.default_list_uuid = lists[0].get("listUuid")
-                self.default_list_name = lists[0].get("name")
+                first = lists[0]
+                self.default_list_uuid = first.get("listUuid") if isinstance(first, dict) else getattr(first, "listUuid", None)
+                self.default_list_name = first.get("name") if isinstance(first, dict) else getattr(first, "name", None)
 
             self._save_config()
 
@@ -167,9 +237,9 @@ class BringClient:
                 "success": True,
                 "email": self.email,
                 "list_uuid": self.default_list_uuid,
-                "list_name": self.default_list_name,
+                "list_name": self.default_list_name or "Hauptliste",
                 "lists": lists,
-                "message": f"Erfolgreich mit Bring! verbunden ({self.email})"
+                "message": f"Erfolgreich mit Bring! als {self.email} verbunden!"
             }
         except Exception as e:
             return {
@@ -179,53 +249,44 @@ class BringClient:
 
     def get_lists(self) -> List[Dict[str, Any]]:
         """Gibt alle verfügbaren Bring!-Listen des Nutzers zurück."""
-        if not self.bring_instance:
-            if self.email and self.password and HAS_BRING_LIB:
-                try:
-                    self.bring_instance = Bring(self.email, self.password)
-                    self.bring_instance.login()
-                except Exception:
-                    pass
-
-        if not self.bring_instance:
-            return [{"listUuid": "mock-wg", "name": "WG Einkauf (Demo / Nicht verknüpft)"}]
+        if not self._ensure_authenticated():
+            return [{"listUuid": "mock-wg", "name": "WG Einkauf (Nicht verbunden)"}]
 
         try:
             lists_data = self.bring_instance.loadLists()
-            return lists_data.get("lists", [])
+            raw_lists = lists_data.get("lists", []) if isinstance(lists_data, dict) else getattr(lists_data, "lists", [])
+            formatted = []
+            for l in raw_lists:
+                if isinstance(l, dict):
+                    formatted.append({"listUuid": l.get("listUuid"), "name": l.get("name")})
+                else:
+                    formatted.append({"listUuid": getattr(l, "listUuid", ""), "name": getattr(l, "name", "")})
+            return formatted if formatted else [{"listUuid": self.default_list_uuid or "default", "name": self.default_list_name or "Hauptliste"}]
         except Exception as e:
             print("Bring loadLists error:", e)
             return [{"listUuid": self.default_list_uuid or "default", "name": self.default_list_name or "Hauptliste"}]
 
     def get_list_items(self, list_uuid: Optional[str] = None) -> Dict[str, Any]:
         """Liest aktive Artikel aus der Bring!-Liste ein."""
-        target_list = list_uuid or self.default_list_uuid
-
-        if not self.bring_instance and self.email and self.password and HAS_BRING_LIB:
-            try:
-                self.bring_instance = Bring(self.email, self.password)
-                self.bring_instance.login()
-            except Exception:
-                pass
-
-        if not self.bring_instance or not target_list:
+        if not self._ensure_authenticated():
             return {
-                "success": True,
+                "success": False,
                 "is_mock": True,
-                "purchase": [
-                    {"name": "Schweizer Festkochende Kartoffeln", "specification": "1 kg"},
-                    {"name": "Magronen / Teigwaren", "specification": "500 g"}
-                ],
+                "purchase": [],
                 "recently": []
             }
 
+        target_list = list_uuid or self.default_list_uuid
+        if not target_list:
+            lists = self.get_lists()
+            if lists:
+                target_list = lists[0].get("listUuid")
+
         try:
             items_data = self.bring_instance.getItems(target_list)
-            # getItems returns BringItemsResponse with .purchase and .recently
-            purchase = items_data.purchase if hasattr(items_data, "purchase") else items_data.get("purchase", [])
-            recently = items_data.recently if hasattr(items_data, "recently") else items_data.get("recently", [])
-            
-            # Formatieren in standard dicts
+            purchase = items_data.purchase if hasattr(items_data, "purchase") else (items_data.get("purchase", []) if isinstance(items_data, dict) else [])
+            recently = items_data.recently if hasattr(items_data, "recently") else (items_data.get("recently", []) if isinstance(items_data, dict) else [])
+
             def serialize_item(item):
                 if hasattr(item, "name"):
                     return {"name": item.name, "specification": getattr(item, "specification", "")}
@@ -251,22 +312,28 @@ class BringClient:
         items: List[Dict[str, Any]],
         list_uuid: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Pusht eine Liste von Zutaten in die angegebene Bring!-Liste."""
-        target_list = list_uuid or self.default_list_uuid
-
-        if not self.bring_instance and self.email and self.password and HAS_BRING_LIB:
-            try:
-                self.bring_instance = Bring(self.email, self.password)
-                self.bring_instance.login()
-            except Exception:
-                pass
-
-        if not self.bring_instance or not target_list:
+        """Pusht eine Liste von Zutaten via API in die angegebene Bring!-Liste."""
+        if not self._ensure_authenticated():
             return {
-                "success": True,
-                "is_mock": True,
-                "items_count": len(items),
-                "message": f"{len(items)} Artikel virtuell exportiert (Verknüpfe Bring! in den Einstellungen für echten Sync)"
+                "success": False,
+                "is_mock": False,
+                "items_count": 0,
+                "error": "Nicht mit Bring! verbunden. Bitte melde dich in der App mit deinem persönlichen Bring!-Login an."
+            }
+
+        target_list = list_uuid or self.default_list_uuid
+        if not target_list:
+            lists = self.get_lists()
+            if lists:
+                target_list = lists[0].get("listUuid")
+                self.default_list_uuid = target_list
+
+        if not target_list:
+            return {
+                "success": False,
+                "is_mock": False,
+                "items_count": 0,
+                "error": "Keine Bring!-Liste ausgewählt. Bitte in den Einstellungen eine Liste wählen."
             }
 
         pushed_count = 0
@@ -274,6 +341,8 @@ class BringClient:
 
         for item in items:
             name = item.get("name", "").strip()
+            if not name:
+                continue
             spec = item.get("display_amount") or f"{item.get('amount', '')} {item.get('unit', '')}".strip()
             try:
                 self.bring_instance.saveItem(target_list, name, spec)
@@ -286,7 +355,8 @@ class BringClient:
             "is_mock": False,
             "items_count": pushed_count,
             "errors": errors,
-            "list_uuid": target_list
+            "list_uuid": target_list,
+            "message": f"Erfolgreich {pushed_count} Artikel via API in Bring! eingetragen!" if len(errors) == 0 else f"{pushed_count} Artikel eingetragen, {len(errors)} Fehler."
         }
 
     def compare_and_filter_list(

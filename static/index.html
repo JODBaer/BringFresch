@@ -2,19 +2,34 @@
 <html lang="de" class="h-full bg-slate-950 text-slate-100">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>BringFrisch | Schweizer Saisongemüse & WG-Menüplan</title>
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#10b981">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥬</text></svg>">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#020617">
+  
+  <!-- Apple iPhone / iOS PWA Optimierung -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BringFrisch">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><text x='50%' y='68%' dominant-baseline='middle' text-anchor='middle' font-size='60'>🥬</text></svg>">
+  
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+    }
     body {
       -webkit-tap-highlight-color: transparent;
       user-select: none;
+      padding-top: var(--sat);
+    }
+    .safe-bottom-nav {
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
     }
     .hide-scrollbar::-webkit-scrollbar {
       display: none;
@@ -306,17 +321,22 @@
         <div class="grid grid-cols-2 gap-2">
           <button id="syncToBringBtn" class="py-2.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs shadow-lg shadow-red-950/50 flex items-center justify-center space-x-1.5 transition">
             <i data-lucide="upload-cloud" class="w-4 h-4"></i>
-            <span id="syncBtnText">Nach Bring! (Nur Fehlendes)</span>
+            <span id="syncBtnText">Nach Bring! (API-Sync)</span>
           </button>
           <button id="copyListBtn" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 active:scale-95 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center justify-center space-x-1.5 transition">
             <i data-lucide="copy" class="w-4 h-4 text-emerald-400"></i>
             <span>Als Text kopieren</span>
           </button>
         </div>
-        <a href="https://web.getbring.com/app/lists/0" target="_blank" rel="noopener noreferrer" class="w-full py-2 px-3 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-semibold flex items-center justify-center space-x-1.5 transition">
-          <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-          <span>In Bring! Web öffnen (web.getbring.com) ↗</span>
-        </a>
+        <div class="flex items-center justify-between p-2 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px]">
+          <div class="flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-slate-300 font-medium" id="bringApiStatusInfo">Bring! API: Persönlicher Sync bereit</span>
+          </div>
+          <button id="bringReconnectBtn" class="text-[10px] text-red-400 hover:text-red-300 font-semibold underline">
+            Login / Liste ändern
+          </button>
+        </div>
       </div>
 
       <!-- Grundvorrat Zuhause Filter (Salz, Pfeffer, Öl, Mehl, Bouillon) -->
@@ -906,8 +926,8 @@
     </div>
   </div>
 
-  <!-- Bottom Navigation Bar (Mobile Tab Bar) -->
-  <nav class="flex-none bg-slate-900/95 backdrop-blur border-t border-slate-800 px-2 py-2 z-30 flex items-center justify-around fixed bottom-0 left-0 right-0 max-w-lg mx-auto">
+  <!-- Bottom Navigation Bar (Mobile Tab Bar mit iPhone Home-Bar Safe Area) -->
+  <nav class="flex-none bg-slate-900/95 backdrop-blur border-t border-slate-800 px-2 py-2 z-30 flex items-center justify-around fixed bottom-0 left-0 right-0 max-w-lg mx-auto safe-bottom-nav">
     <button class="nav-tab active flex flex-col items-center space-y-1 text-emerald-400 transition" data-target="tabPlan">
       <i data-lucide="calendar" class="w-4 h-4"></i>
       <span class="text-[9px] font-medium">Menüplan</span>
