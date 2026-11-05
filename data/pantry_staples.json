@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "staples": [
+    { "id": "salz", "name": "Speisesalz / Jodsalz", "category": "Gewürze", "in_stock": true },
+    { "id": "pfeffer", "name": "Schwarzer Pfeffer", "category": "Gewürze", "in_stock": true },
+    { "id": "aromat", "name": "Aromat (Knorr)", "category": "Gewürze", "in_stock": true },
+    { "id": "gemuesebouillon", "name": "Gemüsebouillon (Pulver/Würfel)", "category": "Gewürze", "in_stock": true },
+    { "id": "paprikapulver", "name": "Paprikapulver (edelsüss)", "category": "Gewürze", "in_stock": true },
+    { "id": "currypulver", "name": "Currypulver (mild/scharf)", "category": "Gewürze", "in_stock": true },
+    { "id": "muskatnuss", "name": "Muskatnuss", "category": "Gewürze", "in_stock": true },
+    { "id": "zimt", "name": "Zimt", "category": "Gewürze", "in_stock": true },
+    { "id": "lorbeerblatt", "name": "Lorbeerblätter", "category": "Gewürze", "in_stock": true },
+    { "id": "oregano", "name": "Oregano / Italienische Kräuter", "category": "Gewürze", "in_stock": true },
+    { "id": "chili", "name": "Chiliflocken / Cayennepfeffer", "category": "Gewürze", "in_stock": true },
+    
+    { "id": "olivenoel", "name": "Olivenöl extra vergine", "category": "Öle & Essige", "in_stock": true },
+    { "id": "rapsoel", "name": "Schweizer Rapsöl / Speiseöl", "category": "Öle & Essige", "in_stock": true },
+    { "id": "bratbutter", "name": "Schweizer Bratbutter / Bratcrème", "category": "Öle & Essige", "in_stock": true },
+    { "id": "essig", "name": "Kräuteressig / Apfelessig", "category": "Öle & Essige", "in_stock": true },
+    { "id": "balsamico", "name": "Aceto Balsamico", "category": "Öle & Essige", "in_stock": true },
+    { "id": "salatsauce", "name": "Schweizer Salatsauce (French/Italian)", "category": "Öle & Essige", "in_stock": true },
+
+    { "id": "senf", "name": "Thomy Senf (mild/scharf)", "category": "Saucen & Pasten", "in_stock": true },
+    { "id": "mayonnaise", "name": "Mayonnaise", "category": "Saucen & Pasten", "in_stock": true },
+    { "id": "ketchup", "name": "Ketchup", "category": "Saucen & Pasten", "in_stock": true },
+    { "id": "tomatenmark", "name": "Tomatenpüree / Tomatenmark (Tube)", "category": "Saucen & Pasten", "in_stock": true },
+    { "id": "sojasauce", "name": "Sojasauce", "category": "Saucen & Pasten", "in_stock": true },
+
+    { "id": "mehl", "name": "Weissmehl / Ruchmehl", "category": "Backen & Vorrat", "in_stock": true },
+    { "id": "zucker", "name": "Kristallzucker", "category": "Backen & Vorrat", "in_stock": true },
+    { "id": "honig", "name": "Schweizer Bienenhonig", "category": "Backen & Vorrat", "in_stock": true },
+    { "id": "backpulver", "name": "Backpulver", "category": "Backen & Vorrat", "in_stock": true },
+    { "id": "maizena", "name": "Maizena / Speisestärke", "category": "Backen & Vorrat", "in_stock": true },
+
+    { "id": "knoblauch", "name": "Knoblauch", "category": "Grundzutaten", "in_stock": true },
+    { "id": "teigwaren", "name": "Hörnli / Magronen / Spaghetti", "category": "Grundzutaten", "in_stock": true },
+    { "id": "reis", "name": "Basmatireis / Trockenreis", "category": "Grundzutaten", "in_stock": true },
+    { "id": "haferflocken", "name": "Haferflocken", "category": "Grundzutaten", "in_stock": true }
+  ]
+}

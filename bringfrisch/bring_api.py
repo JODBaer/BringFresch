@@ -14,10 +14,38 @@ from typing import Dict, List, Any, Optional
 BRING_API_BASE = "https://api.getbring.com/rest/v2"
 
 DEFAULT_PANTRY_STAPLES = [
-    "salz", "pfeffer", "olivenöl", "rapsöl", "sonnenblumenöl", "bratöl", "speiseöl",
-    "essig", "balsamico", "apfelessig", "zucker", "mehl", "gemüsebouillon", "bouillon",
-    "muskatnuss", "muskatnuss & lorbeerblatt", "wasser", "backpulver", "paprikapulver",
-    "currypulver", "schweizer salatsauce / rapsöl & essig"
+    # Gewürze & Brühen
+    "salz", "speisesalz", "jodsalz", "meersalz",
+    "pfeffer", "schwarzer pfeffer",
+    "aromat", "knorr aromat",
+    "bouillon", "gemüsebouillon", "rindsbouillon", "bouillonwürfel",
+    "paprikapulver", "paprika",
+    "currypulver", "curry",
+    "muskatnuss", "muskat", "muskatnuss & lorbeerblatt",
+    "zimt", "lorbeerblatt", "lorbeerblätter",
+    "oregano", "italienische kräuter", "thymian", "rosmarin",
+    "chili", "chiliflocken", "cayennepfeffer",
+    
+    # Fette, Öle & Essige
+    "olivenöl", "rapsöl", "sonnenblumenöl", "bratöl", "speiseöl",
+    "bratbutter", "bratcrème", "butter",
+    "essig", "kräuteressig", "apfelessig", "balsamico", "aceto balsamico",
+    "salatsauce", "schweizer salatsauce / rapsöl & essig", "french dressing",
+
+    # Saucen & Pasten
+    "senf", "thomy senf", "mayonnaise", "ketchup",
+    "tomatenmark", "tomatenpüree", "sojasauce",
+
+    # Backen & Binden
+    "mehl", "weissmehl", "ruchmehl",
+    "zucker", "kristallzucker", "puderzucker", "honig",
+    "backpulver", "natron", "vanillezucker",
+    "maizena", "speisestärke",
+
+    # Basics
+    "wasser", "knoblauch", "knoblauchzehe", "knoblauchzehen",
+    "teigwaren", "hörnli", "magronen", "spaghetti", "pasta",
+    "reis", "basmatireis", "trockenreis", "haferflocken"
 ]
 
 class BringClient:

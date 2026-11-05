@@ -2,7 +2,40 @@
 // Läuft 100% autonom direkt im Browser auf jedem Smartphone (iOS / Android)
 
 window.BRINGFRISCH_DATA = {
-  version: "2.0.0",
+  version: "2.1.0",
+  pantry_staples: [
+    { id: "salz", name: "Speisesalz / Jodsalz", category: "Gewürze", in_stock: true, keywords: ["salz", "jodsalz", "speisesalz"] },
+    { id: "pfeffer", name: "Schwarzer Pfeffer", category: "Gewürze", in_stock: true, keywords: ["pfeffer"] },
+    { id: "aromat", name: "Aromat (Knorr)", category: "Gewürze", in_stock: true, keywords: ["aromat"] },
+    { id: "gemuesebouillon", name: "Gemüsebouillon", category: "Gewürze", in_stock: true, keywords: ["bouillon", "gemüsebouillon"] },
+    { id: "paprikapulver", name: "Paprikapulver", category: "Gewürze", in_stock: true, keywords: ["paprika", "paprikapulver"] },
+    { id: "currypulver", name: "Currypulver", category: "Gewürze", in_stock: true, keywords: ["curry", "currypulver"] },
+    { id: "muskatnuss", name: "Muskatnuss & Lorbeer", category: "Gewürze", in_stock: true, keywords: ["muskat", "muskatnuss", "lorbeer"] },
+    { id: "zimt", name: "Zimt", category: "Gewürze", in_stock: true, keywords: ["zimt"] },
+    { id: "oregano", name: "Italienische Kräuter / Oregano", category: "Gewürze", in_stock: true, keywords: ["oregano", "kräuter", "thymian", "rosmarin"] },
+    { id: "chili", name: "Chiliflocken / Cayennepfeffer", category: "Gewürze", in_stock: true, keywords: ["chili", "cayenne"] },
+    
+    { id: "olivenoel", name: "Olivenöl extra vergine", category: "Öle & Essige", in_stock: true, keywords: ["olivenöl"] },
+    { id: "rapsoel", name: "Schweizer Rapsöl / Speiseöl", category: "Öle & Essige", in_stock: true, keywords: ["rapsöl", "speiseöl", "sonnenblumenöl"] },
+    { id: "bratbutter", name: "Bratbutter / Bratcrème", category: "Öle & Essige", in_stock: true, keywords: ["bratbutter", "bratcrème"] },
+    { id: "essig", "name": "Kräuteressig / Apfelessig", category: "Öle & Essige", in_stock: true, keywords: ["essig", "apfelessig", "kräuteressig"] },
+    { id: "balsamico", "name": "Aceto Balsamico", category: "Öle & Essige", in_stock: true, keywords: ["balsamico"] },
+    { id: "salatsauce", "name": "Schweizer Salatsauce", category: "Öle & Essige", in_stock: true, keywords: ["salatsauce", "dressing"] },
+
+    { id: "senf", name: "Thomy Senf", category: "Saucen & Pasten", in_stock: true, keywords: ["senf"] },
+    { id: "mayonnaise", name: "Mayonnaise", category: "Saucen & Pasten", in_stock: true, keywords: ["mayonnaise", "mayo"] },
+    { id: "ketchup", name: "Ketchup", category: "Saucen & Pasten", in_stock: true, keywords: ["ketchup"] },
+    { id: "tomatenmark", name: "Tomatenpüree (Tube)", category: "Saucen & Pasten", in_stock: true, keywords: ["tomatenmark", "tomatenpüree"] },
+    { id: "sojasauce", name: "Sojasauce", category: "Saucen & Pasten", in_stock: true, keywords: ["sojasauce"] },
+
+    { id: "mehl", name: "Weissmehl / Ruchmehl", category: "Backen & Vorrat", in_stock: true, keywords: ["mehl", "weissmehl", "ruchmehl"] },
+    { id: "zucker", name: "Kristallzucker", category: "Backen & Vorrat", in_stock: true, keywords: ["zucker"] },
+    { id: "honig", name: "Schweizer Honig", category: "Backen & Vorrat", in_stock: true, keywords: ["honig"] },
+    { id: "backpulver", name: "Backpulver & Natron", category: "Backen & Vorrat", in_stock: true, keywords: ["backpulver", "natron"] },
+    { id: "maizena", name: "Maizena / Speisestärke", category: "Backen & Vorrat", in_stock: true, keywords: ["maizena", "speisestärke"] },
+
+    { id: "knoblauch", name: "Knoblauch", category: "Grundzutaten", in_stock: true, keywords: ["knoblauch"] }
+  ],
   months: [
     "Januar", "Februar", "März", "April", "Mai", "Juni",
     "Juli", "August", "September", "Oktober", "November", "Dezember"

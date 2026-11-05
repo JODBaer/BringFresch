@@ -21,15 +21,21 @@ document.addEventListener("DOMContentLoaded", () => {
     shoppingList: [],
     excludeStaples: true,
     currentBringItems: ["schweizer festkochende kartoffeln", "magronen / teigwaren"],
-    shoppingFilterSubTab: "toBuy" // "toBuy", "onBring", "staples"
+    shoppingFilterSubTab: "toBuy", // "toBuy", "onBring", "staples"
+    pantryStaples: loadUserStaples()
   };
 
-  const PANTRY_STAPLES = [
-    "salz", "pfeffer", "olivenöl", "rapsöl", "sonnenblumenöl", "bratöl", "speiseöl",
-    "essig", "balsamico", "apfelessig", "zucker", "mehl", "gemüsebouillon", "bouillon",
-    "muskatnuss", "muskatnuss & lorbeerblatt", "wasser", "backpulver", "paprikapulver",
-    "currypulver", "schweizer salatsauce / rapsöl & essig"
-  ];
+  function loadUserStaples() {
+    const saved = localStorage.getItem("bringfrisch_user_staples");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return (window.BRINGFRISCH_DATA && window.BRINGFRISCH_DATA.pantry_staples) || [];
+  }
+
+  function saveUserStaples() {
+    localStorage.setItem("bringfrisch_user_staples", JSON.stringify(state.pantryStaples));
+  }
 
   const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
@@ -223,6 +229,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const scale = state.persons / 2;
     const aggregated = {};
 
+    // Aktive Grundzutaten-Keywords ermitteln
+    const activeStapleKeywords = [];
+    state.pantryStaples.forEach(st => {
+      if (st.in_stock !== false) {
+        (st.keywords || [st.name.toLowerCase()]).forEach(kw => activeStapleKeywords.push(kw.toLowerCase()));
+      }
+    });
+
     state.weekPlan.forEach(day => {
       (day.ingredients || []).forEach(ing => {
         const name = ing.name.trim();
@@ -234,7 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
           aggregated[key].amount += amt;
         } else {
           const lower = name.toLowerCase();
-          const isStaple = PANTRY_STAPLES.some(st => lower.includes(st));
+          const isStaple = activeStapleKeywords.some(st => lower.includes(st));
           const isOnBring = state.currentBringItems.some(b => lower.includes(b) || b.includes(lower));
 
           let status = "toBuy";
@@ -406,6 +420,85 @@ document.addEventListener("DOMContentLoaded", () => {
         updateShoppingList();
         alert("✅ Bring!-Liste eingelesen (Offline-Modus): Bereits vorhandene Artikel wurden markiert.");
       }
+    };
+  }
+
+  // Grundvorrat Manager Modal
+  const openStaplesManagerBtn = document.getElementById("openStaplesManagerBtn");
+  const closeStaplesModalBtn = document.getElementById("closeStaplesModalBtn");
+  const saveStaplesModalBtn = document.getElementById("saveStaplesModalBtn");
+  const staplesManagerModal = document.getElementById("staplesManagerModal");
+  const staplesListContainer = document.getElementById("staplesListContainer");
+  const newStapleInput = document.getElementById("newStapleInput");
+  const addNewStapleBtn = document.getElementById("addNewStapleBtn");
+
+  function renderStaplesManager() {
+    if (!staplesListContainer) return;
+    staplesListContainer.innerHTML = "";
+
+    const grouped = {};
+    state.pantryStaples.forEach((st, idx) => {
+      const cat = st.category || "Grundzutaten";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push({ ...st, originalIdx: idx });
+    });
+
+    Object.keys(grouped).forEach(cat => {
+      const catTitle = document.createElement("h4");
+      catTitle.className = "text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-2 mb-1";
+      catTitle.textContent = cat;
+      staplesListContainer.appendChild(catTitle);
+
+      const chipsWrapper = document.createElement("div");
+      chipsWrapper.className = "flex flex-wrap gap-1.5";
+
+      grouped[cat].forEach(st => {
+        const btn = document.createElement("button");
+        const inStock = st.in_stock !== false;
+        btn.className = `text-xs px-2.5 py-1 rounded-xl border transition flex items-center space-x-1.5 ${
+          inStock
+            ? "bg-emerald-950/40 text-emerald-300 border-emerald-600/50 shadow-sm"
+            : "bg-red-950/20 text-red-400 border-red-800/40 line-through opacity-70"
+        }`;
+        btn.innerHTML = `<span>${st.name}</span><span class="text-[10px] font-mono">${inStock ? '✓' : 'Leer'}</span>`;
+        btn.onclick = () => {
+          st.in_stock = !inStock;
+          state.pantryStaples[st.originalIdx].in_stock = st.in_stock;
+          saveUserStaples();
+          renderStaplesManager();
+          updateShoppingList();
+        };
+        chipsWrapper.appendChild(btn);
+      });
+      staplesListContainer.appendChild(chipsWrapper);
+    });
+  }
+
+  if (openStaplesManagerBtn) {
+    openStaplesManagerBtn.onclick = () => {
+      renderStaplesManager();
+      staplesManagerModal.classList.remove("hidden");
+    };
+  }
+
+  if (closeStaplesModalBtn) closeStaplesModalBtn.onclick = () => staplesManagerModal.classList.add("hidden");
+  if (saveStaplesModalBtn) saveStaplesModalBtn.onclick = () => staplesManagerModal.classList.add("hidden");
+
+  if (addNewStapleBtn) {
+    addNewStapleBtn.onclick = () => {
+      const val = (newStapleInput.value || "").trim();
+      if (!val) return;
+      state.pantryStaples.push({
+        id: "custom-" + Date.now(),
+        name: val,
+        category: "Eigene Grundzutaten",
+        in_stock: true,
+        keywords: [val.toLowerCase()]
+      });
+      saveUserStaples();
+      newStapleInput.value = "";
+      renderStaplesManager();
+      updateShoppingList();
     };
   }
 
