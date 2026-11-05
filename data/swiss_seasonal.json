@@ -1,0 +1,215 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-11-05",
+  "sources": [
+    { "name": "VSGP - Verband Schweizer Gemüseproduzenten", "url": "https://www.gemuese.ch" },
+    { "name": "Swisspatat - Schweizer Kartoffeln", "url": "https://www.kartoffel.ch" },
+    { "name": "Swissmilk - Schweizer Milch & Butter", "url": "https://www.swissmilk.ch" }
+  ],
+  "months": [
+    "Januar", "Februar", "März", "April", "Mai", "Juni",
+    "Juli", "August", "September", "Oktober", "November", "Dezember"
+  ],
+  "items": [
+    {
+      "id": "ruebli",
+      "name": "Rüebli (Karotten)",
+      "category": "Wurzelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [6, 7, 8, 9, 10, 11],
+      "storage_months": [1, 2, 3, 4, 5, 12],
+      "price_level": "budget",
+      "tags": ["schweizer_klassiker", "ballaststoffreich", "günstig", "kinderfreundlich"]
+    },
+    {
+      "id": "kartoffeln_fest",
+      "name": "Schweizer Speisekartoffeln (festkochend)",
+      "category": "Knollengemüse",
+      "source": "kartoffel.ch",
+      "field_months": [6, 7, 8, 9, 10],
+      "storage_months": [1, 2, 3, 4, 5, 11, 12],
+      "price_level": "budget",
+      "tags": ["kartoffelsalat", "gschwellti", "salzkartoffeln", "sättigend"]
+    },
+    {
+      "id": "kartoffeln_mehlig",
+      "name": "Schweizer Speisekartoffeln (mehligkochend)",
+      "category": "Knollengemüse",
+      "source": "kartoffel.ch",
+      "field_months": [7, 8, 9, 10],
+      "storage_months": [1, 2, 3, 4, 5, 6, 11, 12],
+      "price_level": "budget",
+      "tags": ["stock", "gnocchi", "roesti", "suppen"]
+    },
+    {
+      "id": "lauch",
+      "name": "Lauch (Porree)",
+      "category": "Zwiebelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [6, 7, 8, 9, 10, 11, 12],
+      "storage_months": [1, 2, 3, 4],
+      "price_level": "budget",
+      "tags": ["waehe", "suppe", "aromatisch", "vitamin_c"]
+    },
+    {
+      "id": "wirz",
+      "name": "Wirz (Wirsing)",
+      "category": "Kohl",
+      "source": "gemuese.ch",
+      "field_months": [6, 7, 8, 9, 10, 11],
+      "storage_months": [1, 2, 3, 4, 12],
+      "price_level": "budget",
+      "tags": ["eintopf", "kohlrouladen", "gesund", "schweizer_klassiker"]
+    },
+    {
+      "id": "kuerbis",
+      "name": "Kürbis (Knirps / Butternut)",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [8, 9, 10, 11],
+      "storage_months": [1, 2, 12],
+      "price_level": "budget",
+      "tags": ["suppe", "ofen", "curry", "herbst_winter"]
+    },
+    {
+      "id": "randen",
+      "name": "Randen (Rote Bete)",
+      "category": "Wurzelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [7, 8, 9, 10, 11],
+      "storage_months": [1, 2, 3, 4, 5, 12],
+      "price_level": "budget",
+      "tags": ["eisen", "salat", "ofen", "schweizer_klassiker"]
+    },
+    {
+      "id": "pastinaken",
+      "name": "Pastinaken",
+      "category": "Wurzelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [9, 10, 11, 12],
+      "storage_months": [1, 2, 3, 4],
+      "price_level": "fair",
+      "tags": ["mild", "pueree", "ofen", "winter"]
+    },
+    {
+      "id": "sellerie",
+      "name": "Knollensellerie",
+      "category": "Wurzelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [8, 9, 10, 11],
+      "storage_months": [1, 2, 3, 4, 5, 12],
+      "price_level": "budget",
+      "tags": ["suppe", "schnitzel", "salat"]
+    },
+    {
+      "id": "zwiebeln",
+      "name": "Schweizer Speisezwiebeln",
+      "category": "Zwiebelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [6, 7, 8, 9],
+      "storage_months": [1, 2, 3, 4, 5, 10, 11, 12],
+      "price_level": "budget",
+      "tags": ["basis", "günstig", "unverzichtbar"]
+    },
+    {
+      "id": "nuesslisalat",
+      "name": "Nüsslisalat (Feldsalat)",
+      "category": "Salat",
+      "source": "gemuese.ch",
+      "field_months": [1, 2, 3, 9, 10, 11, 12],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["abendbrot", "frisch", "ei", "herbst_winter"]
+    },
+    {
+      "id": "spinat",
+      "name": "Blattspinat",
+      "category": "Blattgemüse",
+      "source": "gemuese.ch",
+      "field_months": [4, 5, 6, 9, 10, 11],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["pasta", "waehe", "eisen", "frisch"]
+    },
+    {
+      "id": "zucchini",
+      "name": "Zucchini (Courgette)",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["pfanne", "sommer", "leicht"]
+    },
+    {
+      "id": "tomaten",
+      "name": "Schweizer Tomaten",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["salat", "sauce", "sommer"]
+    },
+    {
+      "id": "brokkoli",
+      "name": "Brokkoli",
+      "category": "Kohlgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10, 11],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["superfood", "pasta", "dampfgarer"]
+    },
+    {
+      "id": "blumenkohl",
+      "name": "Blumenkohl",
+      "category": "Kohlgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10, 11],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["curry", "ofen", "suppe"]
+    },
+    {
+      "id": "chicoree",
+      "name": "Chicorée",
+      "category": "Salat & Treibgemüse",
+      "source": "gemuese.ch",
+      "field_months": [1, 2, 3, 10, 11, 12],
+      "storage_months": [4],
+      "price_level": "fair",
+      "tags": ["gratin", "schinken", "salat", "bitterstoffe"]
+    },
+    {
+      "id": "rotkabis",
+      "name": "Rotkabis (Rotkohl)",
+      "category": "Kohl",
+      "source": "gemuese.ch",
+      "field_months": [7, 8, 9, 10, 11],
+      "storage_months": [1, 2, 3, 4, 5, 12],
+      "price_level": "budget",
+      "tags": ["beilage", "herbst", "marroni"]
+    },
+    {
+      "id": "schweizer_kaese",
+      "name": "Schweizer Bergkäse / Gruyère / Emmentaler",
+      "category": "Milchprodukt",
+      "source": "swissmilk.ch",
+      "field_months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["abendbrot", "aelplermagronen", "protein", "schweizer_klassiker"]
+    },
+    {
+      "id": "schweizer_rahm",
+      "name": "Schweizer Vollrahm / Halbrahm",
+      "category": "Milchprodukt",
+      "source": "swissmilk.ch",
+      "field_months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["sauce", "waehe", "schweizer_klassiker"]
+    }
+  ]
+}
