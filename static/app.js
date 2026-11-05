@@ -1,8 +1,8 @@
 // BringFrisch PWA Application Logic - 100% Standalone & Mobile Optimized
 document.addEventListener("DOMContentLoaded", () => {
-  // Service Worker Registration for PWA Offline Capability
+  // Service Worker Registration for PWA Offline Capability (Relative Path for GitHub Pages)
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch((err) => console.log("SW Reg Error:", err));
+    navigator.serviceWorker.register("sw.js").catch((err) => console.log("SW Reg Error:", err));
   }
 
   // Lucide Icons init

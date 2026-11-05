@@ -1,7 +1,8 @@
 {
   "name": "BringFrisch",
   "short_name": "BringFrisch",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#064e3b",
   "theme_color": "#10b981",

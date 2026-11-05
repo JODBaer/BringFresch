@@ -1,12 +1,12 @@
-const CACHE_NAME = 'bringfrisch-cache-v2';
+const CACHE_NAME = 'bringfrisch-cache-v3';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/app.js',
-  '/standalone_data.js',
-  '/pantry_tracker.js',
-  '/recipe_importer.js',
-  '/manifest.json'
+  './',
+  './index.html',
+  './app.js',
+  './standalone_data.js',
+  './pantry_tracker.js',
+  './recipe_importer.js',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
