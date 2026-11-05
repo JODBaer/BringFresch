@@ -1,0 +1,100 @@
+{
+  "version": "1.0.0",
+  "regions": [
+    {
+      "region": "Wetzikon & Pfäffikersee",
+      "markets": [
+        {
+          "id": "wochenmarkt-wetzikon",
+          "name": "Wochenmarkt Wetzikon",
+          "type": "Wochenmarkt",
+          "location": "Marktplatz / Kronenwiese, 8620 Wetzikon",
+          "schedule": "Jeden Samstag 08:00 – 12:00 Uhr",
+          "highlights": "Frisches Gemüse von Zürcher Oberländer Bauern, Käse & Setzlinge",
+          "maps_query": "Marktplatz Kronenwiese Wetzikon",
+          "website": "https://www.wetzikon.ch"
+        },
+        {
+          "id": "juckerhof-seegraeben",
+          "name": "Juckerhof Seegräben (Hofladen)",
+          "type": "Hofladen & Direktverkauf",
+          "location": "Dorfstrasse 23, 8607 Seegräben (bei Wetzikon)",
+          "schedule": "Täglich geöffnet: 09:00 – 18:00 Uhr",
+          "highlights": "Riesiges Kürbisangebot, Äpfel, Beeren, Spargeln & hofeigenes Saisongemüse",
+          "maps_query": "Juckerhof Seegräben",
+          "website": "https://www.juckerfarm.ch/erlebnishoefe/juckerhof/"
+        },
+        {
+          "id": "biohof-duerstelen",
+          "name": "Biohof Dürstelen (Gossau ZH / Wetzikon)",
+          "type": "Bio-Hofladen",
+          "location": "Dürstelenstr. 80, 8625 Gossau ZH",
+          "schedule": "Dienstag, Freitag & Samstag",
+          "highlights": "100% Bio Knospe Gemüse, Wurzelgemüse, Salate & Eier",
+          "maps_query": "Biohof Dürstelen Gossau ZH",
+          "website": "https://www.duerstelen.ch"
+        }
+      ]
+    },
+    {
+      "region": "Rapperswil-Jona & Obersee",
+      "markets": [
+        {
+          "id": "wochenmarkt-rapperswil",
+          "name": "Wochenmarkt Rapperswil",
+          "type": "Wochenmarkt",
+          "location": "Hauptplatz & Fischmarktplatz, 8640 Rapperswil",
+          "schedule": "Freitagvormittag 07:30 – 11:30 Uhr (Frühling bis Herbst)",
+          "highlights": "Frisches Saisongemüse aus dem Linthgebiet, Beeren, Brot & Blumen",
+          "maps_query": "Hauptplatz Rapperswil",
+          "website": "https://www.rapperswil-jona.ch"
+        },
+        {
+          "id": "baechlihof-jona",
+          "name": "Bächlihof Jona (Jucker Farm)",
+          "type": "Hofladen & Direktverkauf",
+          "location": "Blaubrunnenstrasse 70, 8645 Jona",
+          "schedule": "Täglich geöffnet: 09:00 – 18:00 Uhr",
+          "highlights": "Frisches Schweizer Gemüse, Hofbäckerei, Heidelbeeren & Kürbisse",
+          "maps_query": "Bächlihof Jona",
+          "website": "https://www.juckerfarm.ch/erlebnishoefe/baechlihof/"
+        },
+        {
+          "id": "gemuesebau-linth",
+          "name": "Hofladen Frischgemüse Linthebene",
+          "type": "Hofladen",
+          "location": "Grynau / Uznach & Benken (Linthgebiet)",
+          "schedule": "Montag bis Samstag",
+          "highlights": "Karotten, Lauch, Wirz, Kabis und Kartoffeln direkt ab Feld",
+          "maps_query": "Gemüsebau Linthgebiet Uznach",
+          "website": "https://www.vomhof.ch"
+        }
+      ]
+    },
+    {
+      "region": "Uster & Zürcher Oberland",
+      "markets": [
+        {
+          "id": "wochenmarkt-uster",
+          "name": "Wochenmarkt Uster",
+          "type": "Wochenmarkt",
+          "location": "Stadthausplatz, 8610 Uster",
+          "schedule": "Jeden Samstag 07:30 – 12:00 Uhr",
+          "highlights": "Gemüsestände regionaler Produzenten, Pilze, Alpkäse & Früchte",
+          "maps_query": "Stadthausplatz Uster",
+          "website": "https://www.uster.ch"
+        },
+        {
+          "id": "vomhof-schweiz",
+          "name": "Vom Hof (Schweizer Bauernverband)",
+          "type": "Hofladen-Finder CH",
+          "location": "Ganze Schweiz / Umkreis-Suche",
+          "schedule": "Online Hofladen-Finder",
+          "highlights": "Finde jeden Hofladen und jedes Selbstbedienungs-Hüttli in deiner Nähe",
+          "maps_query": "Schweizer Hofladen",
+          "website": "https://www.vomhof.ch"
+        }
+      ]
+    }
+  ]
+}

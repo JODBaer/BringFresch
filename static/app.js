@@ -833,6 +833,108 @@ document.addEventListener("DOMContentLoaded", () => {
   seasonMonthSelect.onchange = (e) => loadMonthSeason(e.target.value);
   loadMonthSeason(11); // Standard: November
 
+  // Regionale Märkte & Hofläden (Wetzikon, Rapperswil, Uster)
+  const seasonSubTabVegetables = document.getElementById("seasonSubTabVegetables");
+  const seasonSubTabMarkets = document.getElementById("seasonSubTabMarkets");
+  const seasonVegetablesView = document.getElementById("seasonVegetablesView");
+  const seasonMarketsView = document.getElementById("seasonMarketsView");
+  const marketRegionPills = document.getElementById("marketRegionPills");
+  const regionalMarketsList = document.getElementById("regionalMarketsList");
+
+  let activeMarketRegion = "all";
+
+  function switchSeasonSubTab(tab) {
+    if (tab === "vegetables") {
+      seasonSubTabVegetables.className = "flex-1 py-1.5 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm";
+      seasonSubTabMarkets.className = "flex-1 py-1.5 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition";
+      seasonVegetablesView.classList.remove("hidden");
+      seasonMarketsView.classList.add("hidden");
+    } else {
+      seasonSubTabMarkets.className = "flex-1 py-1.5 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm";
+      seasonSubTabVegetables.className = "flex-1 py-1.5 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition";
+      seasonVegetablesView.classList.add("hidden");
+      seasonMarketsView.classList.remove("hidden");
+      renderRegionalMarkets();
+    }
+  }
+
+  if (seasonSubTabVegetables) seasonSubTabVegetables.onclick = () => switchSeasonSubTab("vegetables");
+  if (seasonSubTabMarkets) seasonSubTabMarkets.onclick = () => switchSeasonSubTab("markets");
+
+  function renderRegionalMarkets() {
+    if (!regionalMarketsList) return;
+    const regionalData = (window.BRINGFRISCH_DATA && window.BRINGFRISCH_DATA.regional_markets) || [];
+
+    // Region Pills aufbauen
+    if (marketRegionPills) {
+      marketRegionPills.innerHTML = "";
+      const allRegions = [{ region: "Alle", id: "all" }, ...regionalData.map(r => ({ region: r.region.split("&")[0].trim(), id: r.region }))];
+      
+      allRegions.forEach(r => {
+        const pill = document.createElement("button");
+        const isActive = activeMarketRegion === r.id;
+        pill.className = `px-2.5 py-1 rounded-xl whitespace-nowrap transition font-semibold text-xs border ${
+          isActive
+            ? "bg-amber-400 text-slate-950 border-amber-400 shadow-sm"
+            : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
+        }`;
+        pill.textContent = r.region;
+        pill.onclick = () => {
+          activeMarketRegion = r.id;
+          renderRegionalMarkets();
+        };
+        marketRegionPills.appendChild(pill);
+      });
+    }
+
+    // Märkte-Karten aufbauen
+    regionalMarketsList.innerHTML = "";
+    regionalData.forEach(reg => {
+      if (activeMarketRegion !== "all" && activeMarketRegion !== reg.region) return;
+
+      const sectionTitle = document.createElement("div");
+      sectionTitle.className = "flex items-center space-x-1.5 text-xs font-bold text-slate-300 pt-1";
+      sectionTitle.innerHTML = `<span>${reg.icon || '📍'}</span> <span>${reg.region}</span>`;
+      regionalMarketsList.appendChild(sectionTitle);
+
+      (reg.markets || []).forEach(m => {
+        const card = document.createElement("div");
+        card.className = "p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 shadow-sm";
+        
+        let typeBadgeColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+        if (m.type.includes("Bio")) typeBadgeColor = "text-cyan-400 bg-cyan-500/10 border-cyan-500/20";
+        if (m.type.includes("Finder")) typeBadgeColor = "text-amber-400 bg-amber-500/10 border-amber-500/20";
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold border ${typeBadgeColor}">${m.type}</span>
+              <h4 class="text-xs font-bold text-white mt-1">${m.name}</h4>
+              <p class="text-[11px] text-slate-400 mt-0.5">${m.location}</p>
+            </div>
+          </div>
+          
+          <div class="p-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-[11px] space-y-1">
+            <div class="text-amber-300 font-semibold flex items-center space-x-1">
+              <span>🕒</span> <span>${m.schedule}</span>
+            </div>
+            <p class="text-slate-300">${m.highlights}</p>
+          </div>
+
+          <div class="flex items-center space-x-2 pt-0.5">
+            <a href="${m.maps_url}" target="_blank" rel="noopener noreferrer" class="flex-1 py-1.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-[11px] font-semibold flex items-center justify-center space-x-1 transition">
+              <span>📍 Route auf Maps</span>
+            </a>
+            <a href="${m.website}" target="_blank" rel="noopener noreferrer" class="py-1.5 px-3 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-800/40 text-[11px] font-semibold flex items-center justify-center space-x-1 transition">
+              <span>🌐 Info</span>
+            </a>
+          </div>
+        `;
+        regionalMarketsList.appendChild(card);
+      });
+    });
+  }
+
   // 7. Foto-Rezept Import Modal
   const openImportModalBtn = document.getElementById("openImportModalBtn");
   const closeImportModalBtn = document.getElementById("closeImportModalBtn");

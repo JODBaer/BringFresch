@@ -2,7 +2,99 @@
 // Läuft 100% autonom direkt im Browser auf jedem Smartphone (iOS / Android)
 
 window.BRINGFRISCH_DATA = {
-  version: "2.1.0",
+  version: "2.2.0",
+  regional_markets: [
+    {
+      region: "Wetzikon & Pfäffikersee",
+      icon: "🥬",
+      markets: [
+        {
+          name: "Wochenmarkt Wetzikon",
+          type: "Wochenmarkt",
+          location: "Marktplatz / Kronenwiese, 8620 Wetzikon",
+          schedule: "Jeden Samstag 08:00 – 12:00 Uhr",
+          highlights: "Frisches Gemüse von Zürcher Oberländer Bauern, Käse & Setzlinge",
+          maps_url: "https://www.google.com/maps/search/?api=1&query=Marktplatz+Kronenwiese+Wetzikon",
+          website: "https://www.wetzikon.ch"
+        },
+        {
+          name: "Juckerhof Seegräben (Hofladen)",
+          type: "Hofladen & Direktverkauf",
+          location: "Dorfstrasse 23, 8607 Seegräben (bei Wetzikon)",
+          schedule: "Täglich geöffnet: 09:00 – 18:00 Uhr",
+          highlights: "Riesiges Kürbisangebot, Äpfel, Beeren, Spargeln & hofeigenes Saisongemüse",
+          maps_url: "https://www.google.com/maps/search/?api=1&query=Juckerhof+Seegräben",
+          website: "https://www.juckerfarm.ch/erlebnishoefe/juckerhof/"
+        },
+        {
+          name: "Biohof Dürstelen (Gossau ZH / Wetzikon)",
+          type: "Bio-Hofladen",
+          location: "Dürstelenstr. 80, 8625 Gossau ZH",
+          schedule: "Dienstag, Freitag & Samstag",
+          highlights: "100% Bio Knospe Gemüse, Wurzelgemüse, Salate & Eier",
+          maps_url: "https://www.google.com/maps/search/?api=1&query=Biohof+Dürstelen+Gossau+ZH",
+          website: "https://www.duerstelen.ch"
+        }
+      ]
+    },
+    {
+      region: "Rapperswil-Jona & Obersee",
+      icon: "🍎",
+      markets: [
+        {
+          name: "Wochenmarkt Rapperswil",
+          type: "Wochenmarkt",
+          location: "Hauptplatz & Fischmarktplatz, 8640 Rapperswil",
+          schedule: "Freitagvormittag 07:30 – 11:30 Uhr",
+          highlights: "Frisches Saisongemüse aus dem Linthgebiet, Beeren, Brot & Blumen",
+          maps_url: "https://www.google.com/maps/search/?api=1&query=Hauptplatz+Rapperswil",
+          website: "https://www.rapperswil-jona.ch"
+        },
+        {
+          name: "Bächlihof Jona (Jucker Farm)",
+          type: "Hofladen & Direktverkauf",
+          location: "Blaubrunnenstrasse 70, 8645 Jona",
+          schedule: "Täglich geöffnet: 09:00 – 18:00 Uhr",
+          highlights: "Frisches Schweizer Gemüse, Hofbäckerei, Heidelbeeren & Kürbisse",
+          maps_url: "https://www.google.com/maps/search/?api=1&query=Bächlihof+Jona",
+          website: "https://www.juckerfarm.ch/erlebnishoefe/baechlihof/"
+        },
+        {
+          name: "Hofladen Frischgemüse Linthebene",
+          type: "Hofladen",
+          location: "Grynau / Uznach & Benken (Linthgebiet)",
+          schedule: "Montag bis Samstag",
+          highlights: "Karotten, Lauch, Wirz, Kabis und Kartoffeln direkt ab Feld",
+          maps_url: "https://www.google.com/maps/search/?api=1&query=Gemüsebau+Linthgebiet",
+          website: "https://www.vomhof.ch"
+        }
+      ]
+    },
+    {
+      region: "Uster & Zürcher Oberland",
+      icon: "🥕",
+      markets: [
+        {
+          name: "Wochenmarkt Uster",
+          type: "Wochenmarkt",
+          location: "Stadthausplatz, 8610 Uster",
+          schedule: "Jeden Samstag 07:30 – 12:00 Uhr",
+          highlights: "Gemüsestände regionaler Produzenten, Pilze, Alpkäse & Früchte",
+          maps_url: "https://www.google.com/maps/search/?api=1&query=Stadthausplatz+Uster",
+          website: "https://www.uster.ch"
+        },
+        {
+          name: "Vom Hof (Schweizer Bauernverband)",
+          type: "Hofladen-Finder CH",
+          location: "Ganze Schweiz / Umkreis-Suche",
+          schedule: "Online Hofladen-Finder",
+          highlights: "Finde jeden Hofladen und jedes Selbstbedienungs-Hüttli in deiner Nähe",
+          maps_url: "https://www.vomhof.ch",
+          website: "https://www.vomhof.ch"
+        }
+      ]
+    }
+  ],
   pantry_staples: [
     { id: "salz", name: "Speisesalz / Jodsalz", category: "Gewürze", in_stock: true, keywords: ["salz", "jodsalz", "speisesalz"] },
     { id: "pfeffer", name: "Schwarzer Pfeffer", category: "Gewürze", in_stock: true, keywords: ["pfeffer"] },
