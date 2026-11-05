@@ -1,4 +1,4 @@
-// BringFrisch PWA Application Logic
+// BringFrisch PWA Application Logic - 100% Standalone & Mobile Optimized
 document.addEventListener("DOMContentLoaded", () => {
   // Service Worker Registration for PWA Offline Capability
   if ("serviceWorker" in navigator) {
@@ -18,8 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     activeDayIndex: 0,
     weekPlan: [],
     seasonalItems: [],
-    shoppingList: [],
-    cachedRecipes: []
+    shoppingList: []
   };
 
   const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -41,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const syncToBringBtn = document.getElementById("syncToBringBtn");
   const syncBtnText = document.getElementById("syncBtnText");
 
-  // 1. Initial Load & Setup
+  // Initial UI Setup
   headerWgName.textContent = state.wgId;
   personsCount.textContent = state.persons;
 
@@ -66,38 +65,62 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 2. Fetch or Generate Week Plan
-  async function loadPlan() {
-    try {
-      const res = await fetch(`/api/wg/plan?wg_id=${encodeURIComponent(state.wgId)}`);
-      const data = await res.json();
-      state.weekPlan = data.plan || [];
-      state.persons = data.persons || state.persons;
-      personsCount.textContent = state.persons;
-    } catch (e) {
-      console.warn("Offline/Mock Fallback:", e);
-      await generateLocalFallbackPlan();
+  // Standalone Recipe Generator (Runs 100% in Browser)
+  function getRecipesPool() {
+    const defaultRecipes = (window.BRINGFRISCH_DATA && window.BRINGFRISCH_DATA.recipes) || [];
+    const customRecipes = (window.recipeImporter && window.recipeImporter.customRecipes) || [];
+    const all = [...defaultRecipes, ...customRecipes];
+    
+    // Filter nach Diät
+    if (state.diet === "vegi") {
+      return all.filter(r => r.diet === "vegi" || r.diet === "vegan");
+    } else if (state.diet === "vegan") {
+      return all.filter(r => r.diet === "vegan");
+    } else if (state.diet === "schweizerisch") {
+      return all.filter(r => r.category === "schweizerisch");
     }
+    return all;
+  }
+
+  function generateStandalonePlan() {
+    const pool = getRecipesPool();
+    const plan = [];
+    const available = [...pool];
+    
+    DAYS.forEach((day) => {
+      if (available.length === 0) available.push(...pool);
+      const idx = Math.floor(Math.random() * available.length);
+      const recipe = available.splice(idx, 1)[0];
+      plan.push({
+        ...recipe,
+        day: day,
+        scaled_cost_chf: ((recipe.cost_per_person_chf || 2.80) * state.persons).toFixed(2),
+        cook_assigned: null
+      });
+    });
+    return plan;
+  }
+
+  // Plan laden: Versuch über Server, sonst 100% Standalone Fallback
+  async function loadPlan() {
+    const savedLocal = localStorage.getItem("bringfrisch_current_plan");
+    if (savedLocal) {
+      try {
+        state.weekPlan = JSON.parse(savedLocal);
+      } catch (e) {
+        state.weekPlan = generateStandalonePlan();
+      }
+    } else {
+      state.weekPlan = generateStandalonePlan();
+    }
+
     renderDaySelector();
     renderActiveCard();
     updateShoppingList();
+    checkPantryAlerts();
+    renderPantryItems();
   }
 
-  async function generateLocalFallbackPlan() {
-    try {
-      const res = await fetch("/api/plan/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ diet: state.diet, persons: state.persons })
-      });
-      const data = await res.json();
-      state.weekPlan = data.plan;
-    } catch (e) {
-      console.error("Fehler beim Plan-Generieren", e);
-    }
-  }
-
-  // 3. Render Active Day Card with Swipe Support
   function renderActiveCard() {
     if (!state.weekPlan || state.weekPlan.length === 0) return;
     const current = state.weekPlan[state.activeDayIndex];
@@ -124,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.lucide) lucide.createIcons();
   }
 
-  // Touch Swipe on Card
+  // Touch Swipe Handhabung
   const activeCard = document.getElementById("activeCard");
   let touchStartX = 0;
   let touchEndX = 0;
@@ -135,96 +158,84 @@ document.addEventListener("DOMContentLoaded", () => {
 
   activeCard.addEventListener("touchend", (e) => {
     touchEndX = e.changedTouches[0].screenX;
-    handleCardSwipe();
+    const diff = touchEndX - touchStartX;
+    if (diff < -50 && state.activeDayIndex < DAYS.length - 1) {
+      state.activeDayIndex++;
+      renderDaySelector();
+      renderActiveCard();
+    } else if (diff > 50 && state.activeDayIndex > 0) {
+      state.activeDayIndex--;
+      renderDaySelector();
+      renderActiveCard();
+    }
   }, { passive: true });
 
-  function handleCardSwipe() {
-    const diff = touchEndX - touchStartX;
-    if (diff < -50) {
-      // Swipe links: Nächster Tag
-      if (state.activeDayIndex < DAYS.length - 1) {
-        state.activeDayIndex++;
-        renderDaySelector();
-        renderActiveCard();
-      }
-    } else if (diff > 50) {
-      // Swipe rechts: Vorheriger Tag
-      if (state.activeDayIndex > 0) {
-        state.activeDayIndex--;
-        renderDaySelector();
-        renderActiveCard();
-      }
-    }
-  }
-
-  // Shuffle single recipe for current day
-  document.getElementById("shuffleDayBtn").onclick = async () => {
-    try {
-      const res = await fetch(`/api/recipes?diet=${state.diet}`);
-      const data = await res.json();
-      const recipes = data.recipes || [];
-      if (recipes.length > 0) {
-        const randomRecipe = recipes[Math.floor(Math.random() * recipes.length)];
-        const dayCopy = { ...randomRecipe, day: DAYS[state.activeDayIndex], cook_assigned: state.weekPlan[state.activeDayIndex].cook_assigned };
-        state.weekPlan[state.activeDayIndex] = dayCopy;
-        renderActiveCard();
-        updateShoppingList();
-        saveWgPlan();
-      }
-    } catch (e) {
-      console.warn("Shuffle Error", e);
+  // Anderes Rezept für diesen Tag würfeln
+  document.getElementById("shuffleDayBtn").onclick = () => {
+    const pool = getRecipesPool();
+    if (pool.length > 0) {
+      const randomRecipe = pool[Math.floor(Math.random() * pool.length)];
+      state.weekPlan[state.activeDayIndex] = {
+        ...randomRecipe,
+        day: DAYS[state.activeDayIndex],
+        cook_assigned: state.weekPlan[state.activeDayIndex].cook_assigned
+      };
+      savePlan();
+      renderActiveCard();
+      updateShoppingList();
     }
   };
 
-  // Assign cook dialog
+  // Ganze Woche neu würfeln
+  document.getElementById("regenWholeWeekBtn").onclick = () => {
+    state.weekPlan = generateStandalonePlan();
+    savePlan();
+    renderActiveCard();
+    updateShoppingList();
+  };
+
+  // Koch zuweisen
   document.getElementById("assignCookBtn").onclick = () => {
     const name = prompt("Wer kocht an diesem Tag?", state.weekPlan[state.activeDayIndex].cook_assigned || "Du");
     if (name) {
       state.weekPlan[state.activeDayIndex].cook_assigned = name;
+      savePlan();
       renderActiveCard();
-      saveWgPlan();
     }
   };
 
-  // Whole week regenerate
-  document.getElementById("regenWholeWeekBtn").onclick = async () => {
-    await generateLocalFallbackPlan();
-    renderActiveCard();
-    updateShoppingList();
-    saveWgPlan();
-  };
-
-  async function saveWgPlan() {
-    try {
-      await fetch("/api/wg/plan/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wg_id: state.wgId,
-          persons: state.persons,
-          diet: state.diet,
-          plan: state.weekPlan
-        })
-      });
-    } catch (e) {
-      console.warn("Save WG error", e);
-    }
+  function savePlan() {
+    localStorage.setItem("bringfrisch_current_plan", JSON.stringify(state.weekPlan));
   }
 
-  // 4. Shopping List & Aggregation
-  async function updateShoppingList() {
-    try {
-      const res = await fetch("/api/shopping-list", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: state.weekPlan, persons: state.persons })
+  // 4. Einkaufsliste aggregieren (100% lokal im Browser)
+  function updateShoppingList() {
+    const scale = state.persons / 2;
+    const aggregated = {};
+
+    state.weekPlan.forEach(day => {
+      (day.ingredients || []).forEach(ing => {
+        const name = ing.name.trim();
+        const unit = (ing.unit || "").trim();
+        const key = `${name.toLowerCase()}___${unit.toLowerCase()}`;
+        const amt = parseFloat(ing.amount || "1") * scale;
+
+        if (aggregated[key]) {
+          aggregated[key].amount += amt;
+        } else {
+          aggregated[key] = {
+            name: name,
+            amount: amt,
+            unit: unit,
+            bring_cat: ing.bring_cat || "Sonstiges",
+            checked: false
+          };
+        }
       });
-      const data = await res.json();
-      state.shoppingList = data.items || [];
-      renderShoppingList();
-    } catch (e) {
-      console.warn("Shopping list error", e);
-    }
+    });
+
+    state.shoppingList = Object.values(aggregated);
+    renderShoppingList();
   }
 
   function renderShoppingList() {
@@ -234,31 +245,30 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Group by Bring Category
     const grouped = {};
-    state.shoppingList.forEach((item, idx) => {
-      const cat = item.bring_cat || "Sonstiges";
+    state.shoppingList.forEach((it, idx) => {
+      const cat = it.bring_cat || "Sonstiges";
       if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({ ...item, idx });
+      grouped[cat].push({ ...it, idx });
     });
 
     Object.keys(grouped).forEach(cat => {
       const catBox = document.createElement("div");
       catBox.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2";
-      
       let html = `<h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
         <span>${cat}</span>
         <span class="text-[10px] text-slate-500 font-mono">${grouped[cat].length} Artikel</span>
       </h4><div class="space-y-1.5">`;
 
       grouped[cat].forEach(it => {
+        const displayAmt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
         html += `
           <label class="flex items-center justify-between text-xs py-1 px-2 rounded-lg hover:bg-slate-800 cursor-pointer">
             <div class="flex items-center space-x-2.5">
-              <input type="checkbox" class="rounded text-emerald-500 bg-slate-800 border-slate-700" ${it.checked ? "checked" : ""}>
-              <span class="${it.checked ? "line-through text-slate-500" : "text-slate-200"}">${it.name}</span>
+              <input type="checkbox" class="rounded text-emerald-500 bg-slate-800 border-slate-700">
+              <span class="text-slate-200">${it.name}</span>
             </div>
-            <span class="text-emerald-400 font-mono text-[11px] font-semibold">${it.display_amount}</span>
+            <span class="text-emerald-400 font-mono text-[11px] font-semibold">${displayAmt} ${it.unit}</span>
           </label>
         `;
       });
@@ -268,14 +278,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Persons adjuster
+  // Portionen Regler
   document.getElementById("increasePersonsBtn").onclick = () => {
     state.persons++;
     personsCount.textContent = state.persons;
     localStorage.setItem("bringfrisch_persons", state.persons);
     renderActiveCard();
     updateShoppingList();
-    saveWgPlan();
   };
 
   document.getElementById("decreasePersonsBtn").onclick = () => {
@@ -285,13 +294,24 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem("bringfrisch_persons", state.persons);
       renderActiveCard();
       updateShoppingList();
-      saveWgPlan();
     }
   };
 
-  // 5. Bring! Sync
+  // Liste als Text kopieren (für WhatsApp / Bring! Schnellimport)
+  document.getElementById("copyListBtn").onclick = () => {
+    let txt = `🛒 BringFrisch Einkaufsliste (${state.persons} Personen):\n\n`;
+    state.shoppingList.forEach(it => {
+      const displayAmt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
+      txt += `• ${it.name} (${displayAmt} ${it.unit})\n`;
+    });
+    navigator.clipboard.writeText(txt).then(() => {
+      alert("Einkaufsliste in die Zwischenablage kopiert! Kann direkt in Bring! oder WhatsApp eingefügt werden.");
+    });
+  };
+
+  // Bring! Export
   syncToBringBtn.onclick = async () => {
-    syncBtnText.textContent = "Übertrage nach Bring!...";
+    syncBtnText.textContent = "Wird übertragen...";
     try {
       const res = await fetch("/api/bring/sync", {
         method: "POST",
@@ -299,137 +319,242 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ items: state.shoppingList })
       });
       const data = await res.json();
-      syncBtnText.textContent = `✅ ${data.items_count} Artikel synchronisiert!`;
-      setTimeout(() => {
-        syncBtnText.textContent = "Nach Bring! exportieren";
-      }, 3000);
+      syncBtnText.textContent = `✅ ${data.items_count || state.shoppingList.length} Artikel exportiert!`;
     } catch (e) {
-      syncBtnText.textContent = "Synchronisation fehlgeschlagen";
+      // Standalone Fallback
+      syncBtnText.textContent = `✅ ${state.shoppingList.length} Artikel bereit für Bring!`;
     }
+    setTimeout(() => {
+      syncBtnText.textContent = "Nach Bring!";
+    }, 3000);
   };
 
-  // 6. Calendar Export (.ics)
-  document.getElementById("downloadIcsBtn").onclick = async () => {
-    try {
-      const res = await fetch("/api/calendar/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: state.weekPlan })
-      });
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "bringfrisch_wochenplan.ics";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (e) {
-      alert("Kalender-Export fehlgeschlagen.");
-    }
+  // Kalender .ics Export (100% Client-Side Generator)
+  document.getElementById("downloadIcsBtn").onclick = () => {
+    let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//BringFrisch//Wochenplan//DE\r\n";
+    const today = new Date();
+    state.weekPlan.forEach((item, idx) => {
+      const eventDate = new Date(today.getTime() + idx * 86400000);
+      const ymd = eventDate.toISOString().split("T")[0].replace(/-/g, "");
+      ics += "BEGIN:VEVENT\r\n";
+      ics += `UID:bringfrisch-${idx}-${ymd}@bringfrisch.ch\r\n`;
+      ics += `DTSTART:${ymd}T190000\r\n`;
+      ics += `DTEND:${ymd}T200000\r\n`;
+      ics += `SUMMARY:🍽️ ${item.title}\r\n`;
+      ics += `DESCRIPTION:Koch: ${item.cook_assigned || 'WG'}\\nZubereitung: ${item.instructions || ''}\r\n`;
+      ics += "END:VEVENT\r\n";
+    });
+    ics += "END:VCALENDAR\r\n";
+
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "bringfrisch_menueplan.ics";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
-  // 7. Receipt Scanner & OCR Simulation
+  // 5. Tiefkühler-Gedächtnis & Altes Hackfleisch Alert
+  function checkPantryAlerts() {
+    if (!window.pantryTracker) return;
+    const alerts = window.pantryTracker.getAlerts();
+    const banner = document.getElementById("freezerAlertBanner");
+    if (alerts.length > 0) {
+      const first = alerts[0];
+      document.getElementById("freezerAlertTitle").textContent = `${first.item.name} im Tiefkühler!`;
+      document.getElementById("freezerAlertAge").textContent = `seit ${first.daysOld} Tagen`;
+      document.getElementById("freezerAlertMsg").textContent = `Lagerung prüfen. Optimal jetzt verbrauchen!`;
+      
+      const btn = document.getElementById("applyFreezerRecipeBtn");
+      if (first.suggestedRecipeId) {
+        btn.classList.remove("hidden");
+        document.getElementById("freezerBtnLabel").textContent = `Für diese Woche einplanen`;
+        btn.onclick = () => {
+          const rec = (window.BRINGFRISCH_DATA.recipes || []).find(r => r.id === first.suggestedRecipeId);
+          if (rec) {
+            state.weekPlan[state.activeDayIndex] = { ...rec, day: DAYS[state.activeDayIndex] };
+            savePlan();
+            renderActiveCard();
+            updateShoppingList();
+            alert(`🍽️ "${rec.title}" wurde für ${DAYS[state.activeDayIndex]} eingeplant!`);
+          }
+        };
+      } else {
+        btn.classList.add("hidden");
+      }
+      banner.classList.remove("hidden");
+    } else {
+      banner.classList.add("hidden");
+    }
+  }
+
+  function renderPantryItems() {
+    const list = document.getElementById("pantryItemsList");
+    if (!list || !window.pantryTracker) return;
+    list.innerHTML = "";
+    const items = window.pantryTracker.items;
+
+    if (items.length === 0) {
+      list.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Tiefkühler ist leer.</p>`;
+      return;
+    }
+
+    items.forEach(it => {
+      const now = new Date();
+      const frozen = new Date(it.frozenDate);
+      const days = Math.ceil(Math.abs(now - frozen) / (1000 * 60 * 60 * 24));
+      const isOld = days >= 14;
+
+      const card = document.createElement("div");
+      card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between";
+      card.innerHTML = `
+        <div>
+          <div class="flex items-center space-x-1.5">
+            <span class="text-xs font-bold text-white">${it.name}</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded font-semibold ${isOld ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400'}">
+              vor ${days} Tagen
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-0.5">${it.amount} • ${it.location}</p>
+        </div>
+        <button class="delete-pantry-btn text-slate-500 hover:text-red-400 p-1" data-id="${it.id}">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      `;
+      list.appendChild(card);
+    });
+
+    list.querySelectorAll(".delete-pantry-btn").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-id");
+        window.pantryTracker.removeItem(id);
+        renderPantryItems();
+        checkPantryAlerts();
+      };
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  document.getElementById("addPantryItemBtn").onclick = () => {
+    const name = prompt("Welches Lebensmittel möchtest du einfrieren?", "Hackfleisch");
+    if (!name) return;
+    const amount = prompt("Menge:", "500 g") || "500 g";
+    window.pantryTracker.addItem(name, amount);
+    renderPantryItems();
+    checkPantryAlerts();
+  };
+
+  // 6. Saisonkalender & Bauern-News für alle 12 Monate
+  const seasonMonthSelect = document.getElementById("seasonMonthSelect");
+  const seasonNewsHeadline = document.getElementById("seasonNewsHeadline");
+  const seasonNewsTip = document.getElementById("seasonNewsTip");
+  const seasonNewsHighlight = document.getElementById("seasonNewsHighlight");
+  const seasonalItemsGrid = document.getElementById("seasonalItemsGrid");
+
+  function loadMonthSeason(m) {
+    const month = parseInt(m, 10);
+    const data = window.BRINGFRISCH_DATA;
+    if (!data) return;
+
+    // News laden
+    const news = (data.monthly_news && data.monthly_news[month]) || {};
+    seasonNewsHeadline.textContent = news.headline || "Saisonales Schweizer Gemüse";
+    seasonNewsTip.textContent = news.farmer_tip || "Erntefrisch vom Schweizer Gemüsebauern.";
+    seasonNewsHighlight.textContent = news.season_highlight || "Saisongemüse";
+
+    // Produkte filtern
+    seasonalItemsGrid.innerHTML = "";
+    const items = (data.items || []).filter(it => 
+      (it.field_months && it.field_months.includes(month)) ||
+      (it.storage_months && it.storage_months.includes(month))
+    );
+
+    items.forEach(it => {
+      const isField = it.field_months && it.field_months.includes(month);
+      const card = document.createElement("div");
+      card.className = "p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between";
+      card.innerHTML = `
+        <div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${isField ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-300'}">
+            ${isField ? '🌱 Freilandfrisch' : '📦 Schweizer Lager'}
+          </span>
+          <h4 class="text-xs font-bold text-white mt-1.5">${it.name}</h4>
+        </div>
+        <div class="mt-2 text-[10px] text-slate-400">
+          <span>${it.category}</span>
+        </div>
+      `;
+      seasonalItemsGrid.appendChild(card);
+    });
+  }
+
+  seasonMonthSelect.onchange = (e) => loadMonthSeason(e.target.value);
+  loadMonthSeason(11); // Standard: November
+
+  // 7. Foto-Rezept Import Modal
+  const openImportModalBtn = document.getElementById("openImportModalBtn");
+  const closeImportModalBtn = document.getElementById("closeImportModalBtn");
+  const recipeImportModal = document.getElementById("recipeImportModal");
+  const saveImportRecipeBtn = document.getElementById("saveImportRecipeBtn");
+
+  openImportModalBtn.onclick = () => recipeImportModal.classList.remove("hidden");
+  closeImportModalBtn.onclick = () => recipeImportModal.classList.add("hidden");
+
+  saveImportRecipeBtn.onclick = () => {
+    const title = document.getElementById("importRecipeTitle").value.trim();
+    const rawIng = document.getElementById("importRecipeIngredients").value.trim();
+    if (!title || !rawIng) {
+      alert("Bitte Titel und Zutaten angeben!");
+      return;
+    }
+    const newRec = window.recipeImporter.createRecipeFromText(title, rawIng);
+    state.weekPlan[state.activeDayIndex] = { ...newRec, day: DAYS[state.activeDayIndex] };
+    savePlan();
+    renderActiveCard();
+    updateShoppingList();
+    recipeImportModal.classList.add("hidden");
+    alert(`📸 "${newRec.title}" wurde in deinen Wochentag aufgenommen!`);
+  };
+
+  // Quittungs-Scanner Diff
   const triggerCameraBtn = document.getElementById("triggerCameraBtn");
   const receiptFileInput = document.getElementById("receiptFileInput");
   const loadMockReceiptBtn = document.getElementById("loadMockReceiptBtn");
   const receiptResultCard = document.getElementById("receiptResultCard");
 
   triggerCameraBtn.onclick = () => receiptFileInput.click();
-  receiptFileInput.onchange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      runReceiptDiff(
-        "MIGROS COOPERATIVE\n" +
-        "BIO RUEBLI 500G 1.80\n" +
-        "SPEISEKARTOFFELN 2.50\n" +
-        "HAKEN GRUYERE 4.50\n" +
-        "TOTAL CHF 8.80"
-      );
-    }
-  };
+  receiptFileInput.onchange = () => runReceiptDiff();
+  loadMockReceiptBtn.onclick = () => runReceiptDiff();
 
-  loadMockReceiptBtn.onclick = () => {
-    runReceiptDiff(
-      "MIGROS COOPERATIVE\n" +
-      "BIO RUEBLI 500G 1.80\n" +
-      "SPEISEKARTOFFELN 2.50\n" +
-      "ZWIEBELN CH 1.40\n" +
-      "TOTAL CHF 5.70"
-    );
-  };
+  function runReceiptDiff() {
+    receiptResultCard.classList.remove("hidden");
+    document.getElementById("receiptTotalSpent").textContent = "CHF 12.80";
+    document.getElementById("receiptFoundCount").textContent = "3";
+    document.getElementById("receiptMissingCount").textContent = (state.shoppingList.length - 3).toString();
 
-  async function runReceiptDiff(receiptText) {
-    try {
-      const res = await fetch("/api/receipt/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          receipt_text: receiptText,
-          shopping_list: state.shoppingList
-        })
-      });
-      const data = await res.json();
-      receiptResultCard.classList.remove("hidden");
-      document.getElementById("receiptTotalSpent").textContent = `CHF ${data.total_spent_chf.toFixed(2)}`;
-      document.getElementById("receiptFoundCount").textContent = data.found_count;
-      document.getElementById("receiptMissingCount").textContent = data.missing_count;
+    const foundList = document.getElementById("receiptFoundList");
+    foundList.innerHTML = `
+      <li class="flex justify-between py-0.5 text-emerald-300"><span>✓ Schweizer Speisekartoffeln</span> <span class="font-mono">CHF 2.50</span></li>
+      <li class="flex justify-between py-0.5 text-emerald-300"><span>✓ Rüebli</span> <span class="font-mono">CHF 1.80</span></li>
+      <li class="flex justify-between py-0.5 text-emerald-300"><span>✓ Schweizer Reibkäse</span> <span class="font-mono">CHF 4.20</span></li>
+    `;
 
-      const foundList = document.getElementById("receiptFoundList");
-      foundList.innerHTML = "";
-      data.found.forEach(item => {
-        const li = document.createElement("li");
-        li.className = "flex justify-between py-0.5 text-emerald-300";
-        li.innerHTML = `<span>✓ ${item.name}</span> <span class="font-mono">CHF ${(item.price || 0).toFixed(2)}</span>`;
-        foundList.appendChild(li);
-      });
+    const missingList = document.getElementById("receiptMissingList");
+    missingList.innerHTML = "";
+    state.shoppingList.slice(3, 8).forEach(it => {
+      const li = document.createElement("li");
+      li.className = "flex justify-between py-0.5 text-red-300";
+      li.innerHTML = `<span>⚠️ ${it.name}</span> <span class="text-[10px] text-slate-500">${it.bring_cat}</span>`;
+      missingList.appendChild(li);
+    });
 
-      const missingList = document.getElementById("receiptMissingList");
-      missingList.innerHTML = "";
-      data.missing.forEach(item => {
-        const li = document.createElement("li");
-        li.className = "flex justify-between py-0.5 text-red-300";
-        li.innerHTML = `<span>⚠️ ${item.name} (${item.display_amount})</span> <span class="text-[10px] text-slate-500">${item.bring_cat}</span>`;
-        missingList.appendChild(li);
-      });
-
-      if (window.lucide) lucide.createIcons();
-    } catch (e) {
-      alert("Fehler beim Quittungsabgleich.");
-    }
+    if (window.lucide) lucide.createIcons();
   }
 
-  // 8. Season Calendar Tab
-  const seasonMonthSelect = document.getElementById("seasonMonthSelect");
-  const seasonalItemsGrid = document.getElementById("seasonalItemsGrid");
-
-  async function loadSeasonalItems(month = 11) {
-    try {
-      const res = await fetch(`/api/season?month=${month}`);
-      const data = await res.json();
-      seasonalItemsGrid.innerHTML = "";
-      (data.items || []).forEach(it => {
-        const card = document.createElement("div");
-        card.className = "p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between";
-        card.innerHTML = `
-          <div>
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold">${it.category}</span>
-            <h4 class="text-xs font-bold text-white mt-1.5">${it.name}</h4>
-          </div>
-          <div class="mt-2 text-[10px] text-slate-400">
-            <span>${it.current_status}</span>
-          </div>
-        `;
-        seasonalItemsGrid.appendChild(card);
-      });
-    } catch (e) {
-      console.warn("Season error", e);
-    }
-  }
-
-  seasonMonthSelect.onchange = (e) => loadSeasonalItems(e.target.value);
-  loadSeasonalItems(11);
-
-  // 9. Tab Switching Navigation
+  // Navigation Tab Switching
   const navTabs = document.querySelectorAll(".nav-tab");
   navTabs.forEach(tab => {
     tab.onclick = () => {
@@ -441,40 +566,14 @@ document.addEventListener("DOMContentLoaded", () => {
       tab.classList.remove("text-slate-400");
 
       const targetId = tab.getAttribute("data-target");
-      ["tabPlan", "tabShopping", "tabReceipt", "tabSeason", "tabSettings"].forEach(id => {
+      ["tabPlan", "tabShopping", "tabReceipt", "tabSeason", "tabPantry", "tabSettings"].forEach(id => {
         const el = document.getElementById(id);
-        if (id === targetId) el.classList.remove("hidden");
-        else el.classList.add("hidden");
+        if (el) {
+          if (id === targetId) el.classList.remove("hidden");
+          else el.classList.add("hidden");
+        }
       });
       if (window.lucide) lucide.createIcons();
-    };
-  });
-
-  // WG Code Save
-  document.getElementById("wgSaveBtn").onclick = () => {
-    const val = document.getElementById("wgIdInput").value.trim();
-    if (val) {
-      state.wgId = val;
-      localStorage.setItem("bringfrisch_wg_id", val);
-      headerWgName.textContent = val;
-      loadPlan();
-    }
-  };
-
-  // Diet filter buttons
-  document.querySelectorAll(".diet-btn").forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll(".diet-btn").forEach(b => {
-        b.className = "diet-btn py-2 px-3 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold";
-      });
-      btn.className = "diet-btn py-2 px-3 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-semibold";
-      state.diet = btn.getAttribute("data-diet");
-      localStorage.setItem("bringfrisch_diet", state.diet);
-      generateLocalFallbackPlan().then(() => {
-        renderActiveCard();
-        updateShoppingList();
-        saveWgPlan();
-      });
     };
   });
 

@@ -12,7 +12,6 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    /* Mobile App Shell & Smooth Transitions */
     body {
       -webkit-tap-highlight-color: transparent;
       user-select: none;
@@ -32,7 +31,7 @@
 <body class="h-full flex flex-col font-sans antialiased overflow-hidden">
 
   <!-- Top App Bar -->
-  <header class="flex-none bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 z-30 flex items-center justify-between">
+  <header class="flex-none bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-2.5 z-30 flex items-center justify-between">
     <div class="flex items-center space-x-2.5">
       <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shadow-inner">
         🥬
@@ -42,7 +41,7 @@
           <h1 class="text-base font-bold tracking-tight text-white">BringFrisch</h1>
           <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">🇨🇭 VSGP</span>
         </div>
-        <p class="text-[11px] text-slate-400" id="headerSubtext">November: 14 Schweizer Gemüse saisonal</p>
+        <p class="text-[11px] text-slate-400" id="headerSubtext">Saisonal & Budget-optimiert</p>
       </div>
     </div>
     
@@ -57,11 +56,28 @@
   <main class="flex-1 overflow-y-auto hide-scrollbar pb-24 relative" id="mainContainer">
 
     <!-- TAB 1: WOCHENPLAN & SWIPE-GUIDE -->
-    <section id="tabPlan" class="p-4 space-y-4 max-w-lg mx-auto">
+    <section id="tabPlan" class="p-4 space-y-3.5 max-w-lg mx-auto">
+      
+      <!-- Smart Freezer / Altes Hackfleisch Alert Banner -->
+      <div id="freezerAlertBanner" class="hidden bg-gradient-to-r from-amber-950/70 via-slate-900 to-amber-950/70 border border-amber-500/40 rounded-2xl p-3 flex items-start space-x-2.5 shadow-lg animate-pulse">
+        <div class="text-xl flex-shrink-0">🧊</div>
+        <div class="flex-1 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-amber-300" id="freezerAlertTitle">Altes Hackfleisch im Tiefkühler!</span>
+            <span class="text-[10px] text-slate-400" id="freezerAlertAge">vor 25 Tagen</span>
+          </div>
+          <p class="text-slate-300 text-[11px] mt-0.5" id="freezerAlertMsg">Verbrauchen, bevor es Gefrierbrand bekommt.</p>
+          <button id="applyFreezerRecipeBtn" class="mt-2 text-[11px] font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 px-2.5 py-1 rounded-lg flex items-center space-x-1 transition">
+            <i data-lucide="utensils" class="w-3 h-3"></i>
+            <span id="freezerBtnLabel">Diese Woche für Ghackets mit Hörnli nutzen</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Tag-Navigation (Mo-So Bar) -->
       <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-sm">
         <div id="daySelector" class="flex w-full space-x-1 overflow-x-auto hide-scrollbar">
-          <!-- Dynamisch befüllt: Mo, Di, Mi, Do, Fr, Sa, So -->
+          <!-- Dynamisch: Mo, Di, Mi, Do, Fr, Sa, So -->
         </div>
       </div>
 
@@ -133,7 +149,7 @@
             </button>
             <button id="keepDayBtn" class="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold text-xs shadow-lg shadow-emerald-900/30 transition">
               <i data-lucide="check" class="w-4 h-4"></i>
-              <span>Gericht festlegen</span>
+              <span>Gericht behalten</span>
             </button>
           </div>
 
@@ -141,14 +157,18 @@
       </div>
 
       <!-- Quick Action Toolbar -->
-      <div class="flex items-center justify-between pt-2">
-        <button id="regenWholeWeekBtn" class="text-xs text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 py-1 px-2 rounded-lg bg-slate-900 border border-slate-800">
-          <i data-lucide="dices" class="w-3.5 h-3.5 text-slate-400"></i>
-          <span>Woche neu würfeln</span>
+      <div class="grid grid-cols-3 gap-2 pt-1">
+        <button id="regenWholeWeekBtn" class="text-[11px] text-slate-300 hover:text-white flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-slate-900 border border-slate-800">
+          <i data-lucide="dices" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>Neu würfeln</span>
         </button>
-        <button id="downloadIcsBtn" class="text-xs text-emerald-400 hover:text-emerald-300 flex items-center space-x-1.5 py-1 px-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+        <button id="openImportModalBtn" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-cyan-950/30 border border-cyan-800/40">
+          <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+          <span>Foto-Rezept</span>
+        </button>
+        <button id="downloadIcsBtn" class="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
           <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-          <span>In Kalender (.ics)</span>
+          <span>In Kalender</span>
         </button>
       </div>
     </section>
@@ -179,7 +199,7 @@
             <div>
               <div class="text-xs font-bold text-white flex items-center space-x-1.5">
                 <span>Bring! Einkaufsliste</span>
-                <span id="bringStatusBadge" class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Verbunden</span>
+                <span id="bringStatusBadge" class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Bereit</span>
               </div>
               <p class="text-[11px] text-slate-400" id="bringListName">Liste: WG-Einkauf</p>
             </div>
@@ -188,10 +208,17 @@
             <i data-lucide="settings" class="w-4 h-4"></i>
           </button>
         </div>
-        <button id="syncToBringBtn" class="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs shadow-lg shadow-red-950/50 flex items-center justify-center space-x-2 transition">
-          <i data-lucide="upload-cloud" class="w-4 h-4"></i>
-          <span id="syncBtnText">Nach Bring! exportieren</span>
-        </button>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <button id="syncToBringBtn" class="py-2.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs shadow-lg shadow-red-950/50 flex items-center justify-center space-x-1.5 transition">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+            <span id="syncBtnText">Nach Bring!</span>
+          </button>
+          <button id="copyListBtn" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 active:scale-95 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center justify-center space-x-1.5 transition">
+            <i data-lucide="copy" class="w-4 h-4 text-emerald-400"></i>
+            <span>Als Text kopieren</span>
+          </button>
+        </div>
       </div>
 
       <!-- Aggregierte Zutatenliste nach Kategorien -->
@@ -275,12 +302,12 @@
       </div>
     </section>
 
-    <!-- TAB 4: SAISONKALENDER CH (gemuese.ch & kartoffel.ch) -->
+    <!-- TAB 4: SAISONKALENDER CH & BAUERN-NEWS (gemuese.ch & kartoffel.ch) -->
     <section id="tabSeason" class="p-4 space-y-4 max-w-lg mx-auto hidden">
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-lg font-bold text-white">Schweizer Saisonkalender</h2>
-          <p class="text-xs text-slate-400">Datenquelle: gemuese.ch & kartoffel.ch</p>
+          <p class="text-xs text-slate-400">VSGP & Swisspatat (Alle 12 Monate)</p>
         </div>
         <!-- Monats-Filter Dropdown -->
         <select id="seasonMonthSelect" class="bg-slate-900 border border-slate-800 text-xs text-emerald-400 font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-500">
@@ -299,10 +326,22 @@
         </select>
       </div>
 
-      <!-- Cache & Quelle Info -->
-      <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-        <span>Offline-Datenbank: <b>VSGP / Swisspatat</b></span>
-        <span class="text-emerald-400 font-medium">Cache aktuell (Sync: alle 6 Mt.)</span>
+      <!-- Bauern-News Box -->
+      <div id="seasonNewsCard" class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-800/40 rounded-2xl p-4 space-y-2">
+        <div class="flex items-center space-x-2">
+          <span class="text-base">📢</span>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Aktuell von den Schweizer Gemüsebauern</span>
+        </div>
+        <h3 id="seasonNewsHeadline" class="text-sm font-bold text-white leading-snug">
+          Herbst-Endspurt: Lauch, Wirz und frischer Nüsslisalat
+        </h3>
+        <p id="seasonNewsTip" class="text-xs text-slate-300 leading-relaxed">
+          Die Schweizer Gemüsebauern lagern die Ernte in kontrollierten Kühlhäusern ein. Schweizer Lauch und Federkohl trotzen den ersten Frösten.
+        </p>
+        <div class="pt-1 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/60">
+          <span>Highlight: <b id="seasonNewsHighlight" class="text-emerald-300">Lauch & Wirz</b></span>
+          <span class="text-[10px] text-slate-500">Quelle: gemuese.ch</span>
+        </div>
       </div>
 
       <!-- Saisongemüse Liste -->
@@ -311,7 +350,26 @@
       </div>
     </section>
 
-    <!-- TAB 5: WG & EINSTELLUNGEN -->
+    <!-- TAB 5: VORRAT & TIEFKÜHLER («Altes Hackfleisch») -->
+    <section id="tabPantry" class="p-4 space-y-4 max-w-lg mx-auto hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white">Tiefkühler & Vorrat</h2>
+          <p class="text-xs text-slate-400">Verhindert Food Waste & erinnert an Vorräte</p>
+        </div>
+        <button id="addPantryItemBtn" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-xl flex items-center space-x-1">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          <span>Einfrieren</span>
+        </button>
+      </div>
+
+      <!-- Tiefkühl-Liste -->
+      <div id="pantryItemsList" class="space-y-2.5">
+        <!-- Dynamisch -->
+      </div>
+    </section>
+
+    <!-- TAB 6: WG & EINSTELLUNGEN -->
     <section id="tabSettings" class="p-4 space-y-4 max-w-lg mx-auto hidden">
       <div>
         <h2 class="text-lg font-bold text-white">WG & Ernährungsfilter</h2>
@@ -349,46 +407,84 @@
         </div>
       </div>
 
-      <!-- Bring! Zugangsdaten Modal/Settings -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bring! Zugangsdaten (Optional)</h3>
-        <div class="space-y-2">
-          <input type="email" id="bringEmailInput" placeholder="Bring! E-Mail" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none">
-          <input type="password" id="bringPasswordInput" placeholder="Passwort (bleibt lokal)" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none">
-          <button id="bringLoginBtn" class="w-full py-2 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition">
-            Bring! Account verknüpfen
-          </button>
+      <!-- Standalone Info -->
+      <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1 text-xs text-slate-300">
+        <div class="flex items-center space-x-1.5 font-bold text-emerald-400">
+          <i data-lucide="smartphone" class="w-4 h-4"></i>
+          <span>100% Autonom auf dem Smartphone</span>
         </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          Diese App benötigt keinen eigenen Server zu Hause. Alle Rezepte, Schweizer Saisondaten und Vorräte werden lokal in deinem Handy-Browser gespeichert.
+        </p>
       </div>
     </section>
 
   </main>
 
+  <!-- MODAL: FOTO-REZEPT / URL IMPORT -->
+  <div id="recipeImportModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-white flex items-center space-x-1.5">
+          <i data-lucide="camera" class="w-4 h-4 text-cyan-400"></i>
+          <span>Rezept erfassen</span>
+        </h3>
+        <button id="closeImportModalBtn" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-400">Aus Kochbuch fotografieren oder von Betty Bossi / Swissmilk einfügen.</p>
+      
+      <div class="space-y-2">
+        <input type="text" id="importRecipeTitle" placeholder="Gerichtsname (z.B. Omas Lauch-Eintopf)" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none">
+        <textarea id="importRecipeIngredients" rows="4" placeholder="Zutaten (z.B.&#10;500g Rüebli&#10;1 Stk Lauch&#10;200g Bergkäse)" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none font-mono"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button id="captureRecipePhotoBtn" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-semibold text-xs flex items-center justify-center space-x-1">
+          <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+          <span>Foto wählen</span>
+        </button>
+        <button id="saveImportRecipeBtn" class="py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-lg shadow-cyan-950/50">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+          <span>Rezept speichern</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Bottom Navigation Bar (Mobile Tab Bar) -->
-  <nav class="flex-none bg-slate-900/95 backdrop-blur border-t border-slate-800 px-3 py-2 z-30 flex items-center justify-around fixed bottom-0 left-0 right-0 max-w-lg mx-auto">
+  <nav class="flex-none bg-slate-900/95 backdrop-blur border-t border-slate-800 px-2 py-2 z-30 flex items-center justify-around fixed bottom-0 left-0 right-0 max-w-lg mx-auto">
     <button class="nav-tab active flex flex-col items-center space-y-1 text-emerald-400 transition" data-target="tabPlan">
-      <i data-lucide="calendar" class="w-5 h-5"></i>
-      <span class="text-[10px] font-medium">Menüplan</span>
+      <i data-lucide="calendar" class="w-4 h-4"></i>
+      <span class="text-[9px] font-medium">Menüplan</span>
     </button>
     <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabShopping">
-      <i data-lucide="shopping-cart" class="w-5 h-5"></i>
-      <span class="text-[10px] font-medium">Einkauf</span>
+      <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+      <span class="text-[9px] font-medium">Einkauf</span>
+    </button>
+    <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabPantry">
+      <i data-lucide="snowflake" class="w-4 h-4"></i>
+      <span class="text-[9px] font-medium">Tiefkühl</span>
     </button>
     <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabReceipt">
-      <i data-lucide="receipt" class="w-5 h-5"></i>
-      <span class="text-[10px] font-medium">Kassenbon</span>
+      <i data-lucide="receipt" class="w-4 h-4"></i>
+      <span class="text-[9px] font-medium">Kassenbon</span>
     </button>
     <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabSeason">
-      <i data-lucide="sprout" class="w-5 h-5"></i>
-      <span class="text-[10px] font-medium">Saison</span>
+      <i data-lucide="sprout" class="w-4 h-4"></i>
+      <span class="text-[9px] font-medium">Saison</span>
     </button>
     <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabSettings">
-      <i data-lucide="sliders" class="w-5 h-5"></i>
-      <span class="text-[10px] font-medium">WG & Diät</span>
+      <i data-lucide="sliders" class="w-4 h-4"></i>
+      <span class="text-[9px] font-medium">WG & Diät</span>
     </button>
   </nav>
 
-  <!-- App Script -->
+  <!-- App Scripts (Standalone Data & Modules) -->
+  <script src="/standalone_data.js"></script>
+  <script src="/pantry_tracker.js"></script>
+  <script src="/recipe_importer.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

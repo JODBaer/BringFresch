@@ -79,10 +79,12 @@ class BringFrischServer(SimpleHTTPRequestHandler):
             month = int(params.get("month", [datetime.now().month])[0])
             items = self.season_mgr.get_seasonal_items(month)
             month_name = self.season_mgr.get_month_name(month)
+            news = self.season_mgr.get_monthly_news(month)
             stale = self.season_mgr.is_cache_stale()
             self.send_json({
                 "month": month,
                 "month_name": month_name,
+                "news": news,
                 "is_cache_stale": stale,
                 "items": items
             })
@@ -211,3 +213,4 @@ def run(port: int = 8080):
 
 if __name__ == "__main__":
     run()
+

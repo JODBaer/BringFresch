@@ -61,3 +61,4 @@ class CalendarSync:
 
         lines.append("END:VCALENDAR")
         return "\r\n".join(lines)
+

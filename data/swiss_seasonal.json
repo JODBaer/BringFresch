@@ -1,25 +1,258 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "last_updated": "2026-11-05",
   "sources": [
     { "name": "VSGP - Verband Schweizer Gemüseproduzenten", "url": "https://www.gemuese.ch" },
     { "name": "Swisspatat - Schweizer Kartoffeln", "url": "https://www.kartoffel.ch" },
-    { "name": "Swissmilk - Schweizer Milch & Butter", "url": "https://www.swissmilk.ch" }
+    { "name": "Swissmilk - Schweizer Milch & Butter", "url": "https://www.swissmilk.ch" },
+    { "name": "Bio Suisse - Knospe Gemüse", "url": "https://www.bio-suisse.ch" }
   ],
   "months": [
     "Januar", "Februar", "März", "April", "Mai", "Juni",
     "Juli", "August", "September", "Oktober", "November", "Dezember"
   ],
+  "monthly_news": {
+    "1": {
+      "headline": "Winter-Power: Schweizer Lagergemüse & knackiger Chicorée",
+      "farmer_tip": "Chicorée und Nüsslisalat liefern jetzt frische Vitamine und Bitterstoffe. Lager-Rüebli und Pastinaken sind im Keller optimal gereift und extra süss.",
+      "season_highlight": "Chicorée & Nüsslisalat"
+    },
+    "2": {
+      "headline": "Lagergemüse-Hochsaison: Wirz, Kabis und Wurzeln",
+      "farmer_tip": "Schweizer Kabis und Wirz halten sich im Gemüsefach wochenlang. Ideal für wärmende Eintöpfe, die das Haushaltsbudget schonen.",
+      "season_highlight": "Wirz & Knollensellerie"
+    },
+    "3": {
+      "headline": "Frühlingserwachen: Der wilde Bärlauch ist da!",
+      "farmer_tip": "In den Schweizer Auenwäldern spriesst der Bärlauch. Gleichzeitig startet die Treibhaus-Ernte von zartem Spinat und Bundzwiebeln.",
+      "season_highlight": "Bärlauch & Frühlingsspinat"
+    },
+    "4": {
+      "headline": "Saisonstart: Knackige Radiesli und erste Spargeln",
+      "farmer_tip": "Die ersten weissen und grünen Schweizer Spargeln werden gestochen. Frische Radiesli und Rhabarber bringen Farbe auf den Teller.",
+      "season_highlight": "Schweizer Spargeln & Rhabarber"
+    },
+    "5": {
+      "headline": "Spargel-Hochsaison & die ersten Schweizer Erdbeeren",
+      "farmer_tip": "Schweizer Spargeln haben jetzt Spitzenqualität. Freiland-Kohlrabi, Lattich und Fenchel wachsen rasant.",
+      "season_highlight": "Spargeln & Kohlrabi"
+    },
+    "6": {
+      "headline": "Sommerfrische: Schweizer Zucchini, Brokkoli & Blumenkohl",
+      "farmer_tip": "Die Ernte von Freiland-Zucchini und Sommerblumenkohl läuft auf Hochtouren. Perfekt für leichte Sommerküche und Grillgemüse.",
+      "season_highlight": "Zucchini & Blumenkohl"
+    },
+    "7": {
+      "headline": "Vollernte auf den Schweizer Feldern: Tomaten & Buschbohnen",
+      "farmer_tip": "Schweizer Tomaten haben jetzt das intensivste Aroma. Frische Buschbohnen und Gurken sind knackig und preiswert.",
+      "season_highlight": "Aroma-Tomaten & Bohnen"
+    },
+    "8": {
+      "headline": "Bunte Vielfalt: Peperoni, Auberginen & Zuckermais",
+      "farmer_tip": "Hochsommer in den Gewächshäusern und auf den Feldern. Schweizer Zuckermais und Auberginen sind jetzt besonders günstig.",
+      "season_highlight": "Peperoni & Zuckermais"
+    },
+    "9": {
+      "headline": "Herbstauftakt: Die grosse Kürbis- und Kartoffelernte",
+      "farmer_tip": "Knirps, Butternut und Muskatkürbis füllen die Hofläden. Swisspatat vermeldet erstklassige Speisekartoffeln für Rösti und Gschwellti.",
+      "season_highlight": "Schweizer Kürbis & Neukartoffeln"
+    },
+    "10": {
+      "headline": "Goldener Herbst: Marroni, Randen und Schwarzwurzeln",
+      "farmer_tip": "Erdige Randen und süssliche Pastinaken sind frisch geerntet. Nüsslisalat beginnt seine zweite grosse Hochsaison.",
+      "season_highlight": "Randen & Butternut-Kürbis"
+    },
+    "11": {
+      "headline": "Herbst-Endspurt: Lauch, Wirz und frischer Nüsslisalat",
+      "farmer_tip": "Die Schweizer Gemüsebauern lagern die Ernte in kontrollierten Kühlhäusern ein. Schweizer Lauch und Federkohl trotzen den ersten Frösten.",
+      "season_highlight": "Schweizer Lauch & Wirz"
+    },
+    "12": {
+      "headline": "Winter-Vorratsküche: Federkohl, Wurzelgemüse & Festtagsküche",
+      "farmer_tip": "Schweizer Federkohl (Grünkohl) wird nach dem ersten Frost besonders mild. Rüebli, Sellerie und Kartoffeln garantieren Unabhängigkeit von Importen.",
+      "season_highlight": "Federkohl & Schweizer Lagerkartoffeln"
+    }
+  },
   "items": [
     {
+      "id": "baerlauch",
+      "name": "Bärlauch (Wildgemüse)",
+      "category": "Wildgemüse",
+      "source": "gemuese.ch",
+      "field_months": [3, 4, 5],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["frühling", "pesto", "aromatisch", "spätzli"]
+    },
+    {
+      "id": "spargeln_gruen",
+      "name": "Schweizer Grünspargeln",
+      "category": "Stängelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [4, 5, 6],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["frühling", "ofen", "pasta", "feinschmecker"]
+    },
+    {
+      "id": "spargeln_weiss",
+      "name": "Schweizer Bleichspargeln",
+      "category": "Stängelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [4, 5, 6],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["schweizer_klassiker", "sauce_hollandaise", "schinken"]
+    },
+    {
+      "id": "rhabarber",
+      "name": "Schweizer Rhabarber",
+      "category": "Stängelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [4, 5, 6],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["waehe", "kompott", "frühling", "erfrischend"]
+    },
+    {
+      "id": "radiesli",
+      "name": "Radiesli (Radieschen)",
+      "category": "Wurzelgemüse",
+      "source": "gemuese.ch",
+      "field_months": [4, 5, 6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["abendbrot", "salat", "knackig", "günstig"]
+    },
+    {
+      "id": "kohlrabi",
+      "name": "Kohlrabi",
+      "category": "Kohlgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10, 11],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["snack", "gratin", "suppe", "roh"]
+    },
+    {
+      "id": "fenchel",
+      "name": "Schweizer Fenchel",
+      "category": "Knollengemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10, 11],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["salat", "ofen", "ätherische_oele", "verdauung"]
+    },
+    {
+      "id": "blumenkohl",
+      "name": "Schweizer Blumenkohl",
+      "category": "Kohlgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10, 11],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["curry", "ofen", "suppe", "schweizer_klassiker"]
+    },
+    {
+      "id": "brokkoli",
+      "name": "Schweizer Brokkoli",
+      "category": "Kohlgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10, 11],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["superfood", "pasta", "vitaminreich", "dampfgarer"]
+    },
+    {
+      "id": "zucchini",
+      "name": "Schweizer Zucchini (Courgettes)",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["sommer", "grill", "waehe", "vielseitig"]
+    },
+    {
+      "id": "tomaten",
+      "name": "Schweizer Tomaten (Strauch/Cherry)",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [5, 6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["sommer", "salat", "sauce", "mediterran"]
+    },
+    {
+      "id": "gurken",
+      "name": "Schweizer Salatgurken",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [4, 5, 6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["sommer", "salat", "erfrischend", "kalorienarm"]
+    },
+    {
+      "id": "peperoni",
+      "name": "Schweizer Peperoni (Paprika)",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["wok", "ofen", "sommer", "vitamin_c"]
+    },
+    {
+      "id": "auberginen",
+      "name": "Schweizer Auberginen",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["auflauf", "curry", "mediterran"]
+    },
+    {
+      "id": "buschbohnen",
+      "name": "Schweizer Buschbohnen (Grüne Bohnen)",
+      "category": "Hülsenfrüchte",
+      "source": "gemuese.ch",
+      "field_months": [6, 7, 8, 9, 10],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["speck", "beilage", "eintopf", "sommer"]
+    },
+    {
+      "id": "zuckermais",
+      "name": "Schweizer Zuckermais",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [8, 9, 10],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["grill", "butter", "spätsommer", "kinder"]
+    },
+    {
+      "id": "kuerbis",
+      "name": "Schweizer Kürbis (Knirps / Butternut)",
+      "category": "Fruchtgemüse",
+      "source": "gemuese.ch",
+      "field_months": [8, 9, 10, 11],
+      "storage_months": [12, 1, 2],
+      "price_level": "budget",
+      "tags": ["suppe", "ofen", "curry", "herbst_winter", "budget_held"]
+    },
+    {
       "id": "ruebli",
-      "name": "Rüebli (Karotten)",
+      "name": "Schweizer Speiserüebli (Karotten)",
       "category": "Wurzelgemüse",
       "source": "gemuese.ch",
       "field_months": [6, 7, 8, 9, 10, 11],
-      "storage_months": [1, 2, 3, 4, 5, 12],
+      "storage_months": [12, 1, 2, 3, 4, 5],
       "price_level": "budget",
-      "tags": ["schweizer_klassiker", "ballaststoffreich", "günstig", "kinderfreundlich"]
+      "tags": ["budget_held", "ganzjahrig", "schweizer_klassiker", "ballaststoffe"]
     },
     {
       "id": "kartoffeln_fest",
@@ -27,9 +260,9 @@
       "category": "Knollengemüse",
       "source": "kartoffel.ch",
       "field_months": [6, 7, 8, 9, 10],
-      "storage_months": [1, 2, 3, 4, 5, 11, 12],
+      "storage_months": [11, 12, 1, 2, 3, 4, 5],
       "price_level": "budget",
-      "tags": ["kartoffelsalat", "gschwellti", "salzkartoffeln", "sättigend"]
+      "tags": ["gschwellti", "kartoffelsalat", "salzkartoffeln", "budget_held"]
     },
     {
       "id": "kartoffeln_mehlig",
@@ -37,159 +270,129 @@
       "category": "Knollengemüse",
       "source": "kartoffel.ch",
       "field_months": [7, 8, 9, 10],
-      "storage_months": [1, 2, 3, 4, 5, 6, 11, 12],
+      "storage_months": [11, 12, 1, 2, 3, 4, 5, 6],
       "price_level": "budget",
-      "tags": ["stock", "gnocchi", "roesti", "suppen"]
+      "tags": ["roesti", "stock", "gnocchi", "aelplermagronen", "budget_held"]
     },
     {
       "id": "lauch",
-      "name": "Lauch (Porree)",
+      "name": "Schweizer Lauch (Porree)",
       "category": "Zwiebelgemüse",
       "source": "gemuese.ch",
       "field_months": [6, 7, 8, 9, 10, 11, 12],
       "storage_months": [1, 2, 3, 4],
       "price_level": "budget",
-      "tags": ["waehe", "suppe", "aromatisch", "vitamin_c"]
+      "tags": ["waehe", "suppe", "schweizer_klassiker", "aromatisch"]
     },
     {
       "id": "wirz",
-      "name": "Wirz (Wirsing)",
+      "name": "Schweizer Wirz (Wirsing)",
       "category": "Kohl",
       "source": "gemuese.ch",
       "field_months": [6, 7, 8, 9, 10, 11],
-      "storage_months": [1, 2, 3, 4, 12],
+      "storage_months": [12, 1, 2, 3, 4],
       "price_level": "budget",
-      "tags": ["eintopf", "kohlrouladen", "gesund", "schweizer_klassiker"]
+      "tags": ["eintopf", "gesund", "schweizer_klassiker", "budget_held"]
     },
     {
-      "id": "kuerbis",
-      "name": "Kürbis (Knirps / Butternut)",
-      "category": "Fruchtgemüse",
+      "id": "weisskabis",
+      "name": "Schweizer Weisskabis (Kopfkohl)",
+      "category": "Kohl",
       "source": "gemuese.ch",
-      "field_months": [8, 9, 10, 11],
-      "storage_months": [1, 2, 12],
+      "field_months": [6, 7, 8, 9, 10, 11],
+      "storage_months": [12, 1, 2, 3, 4, 5],
       "price_level": "budget",
-      "tags": ["suppe", "ofen", "curry", "herbst_winter"]
+      "tags": ["salat", "sauerkraut", "schweizer_klassiker", "budget_held"]
+    },
+    {
+      "id": "rotkabis",
+      "name": "Schweizer Rotkabis (Rotkohl)",
+      "category": "Kohl",
+      "source": "gemuese.ch",
+      "field_months": [7, 8, 9, 10, 11],
+      "storage_months": [12, 1, 2, 3, 4, 5],
+      "price_level": "budget",
+      "tags": ["herbst", "marroni", "beilage", "schweizer_klassiker"]
+    },
+    {
+      "id": "federkohl",
+      "name": "Schweizer Federkohl (Grünkohl / Kale)",
+      "category": "Kohl",
+      "source": "gemuese.ch",
+      "field_months": [10, 11, 12, 1, 2],
+      "storage_months": [],
+      "price_level": "fair",
+      "tags": ["winter", "superfood", "chips", "eintopf"]
     },
     {
       "id": "randen",
-      "name": "Randen (Rote Bete)",
+      "name": "Schweizer Randen (Rote Bete)",
       "category": "Wurzelgemüse",
       "source": "gemuese.ch",
       "field_months": [7, 8, 9, 10, 11],
-      "storage_months": [1, 2, 3, 4, 5, 12],
+      "storage_months": [12, 1, 2, 3, 4, 5],
       "price_level": "budget",
-      "tags": ["eisen", "salat", "ofen", "schweizer_klassiker"]
+      "tags": ["eisen", "salat", "risotto", "ofen", "budget_held"]
     },
     {
       "id": "pastinaken",
-      "name": "Pastinaken",
+      "name": "Schweizer Pastinaken",
       "category": "Wurzelgemüse",
       "source": "gemuese.ch",
       "field_months": [9, 10, 11, 12],
       "storage_months": [1, 2, 3, 4],
       "price_level": "fair",
-      "tags": ["mild", "pueree", "ofen", "winter"]
+      "tags": ["suppe", "ofen", "pueree", "herbst_winter"]
     },
     {
       "id": "sellerie",
-      "name": "Knollensellerie",
+      "name": "Schweizer Knollensellerie",
       "category": "Wurzelgemüse",
       "source": "gemuese.ch",
       "field_months": [8, 9, 10, 11],
-      "storage_months": [1, 2, 3, 4, 5, 12],
+      "storage_months": [12, 1, 2, 3, 4, 5],
       "price_level": "budget",
-      "tags": ["suppe", "schnitzel", "salat"]
+      "tags": ["suppe", "schnitzel", "salat", "budget_held"]
     },
     {
-      "id": "zwiebeln",
-      "name": "Schweizer Speisezwiebeln",
-      "category": "Zwiebelgemüse",
+      "id": "chicoree",
+      "name": "Schweizer Chicorée",
+      "category": "Salat & Treibgemüse",
       "source": "gemuese.ch",
-      "field_months": [6, 7, 8, 9],
-      "storage_months": [1, 2, 3, 4, 5, 10, 11, 12],
-      "price_level": "budget",
-      "tags": ["basis", "günstig", "unverzichtbar"]
+      "field_months": [10, 11, 12, 1, 2, 3],
+      "storage_months": [4],
+      "price_level": "fair",
+      "tags": ["gratin", "salat", "bitterstoffe", "winter"]
     },
     {
       "id": "nuesslisalat",
-      "name": "Nüsslisalat (Feldsalat)",
+      "name": "Schweizer Nüsslisalat (Feldsalat)",
       "category": "Salat",
       "source": "gemuese.ch",
       "field_months": [1, 2, 3, 9, 10, 11, 12],
       "storage_months": [],
       "price_level": "fair",
-      "tags": ["abendbrot", "frisch", "ei", "herbst_winter"]
+      "tags": ["abendbrot", "salat", "herbst_winter", "ei"]
     },
     {
       "id": "spinat",
-      "name": "Blattspinat",
+      "name": "Schweizer Blattspinat",
       "category": "Blattgemüse",
       "source": "gemuese.ch",
-      "field_months": [4, 5, 6, 9, 10, 11],
+      "field_months": [3, 4, 5, 6, 9, 10, 11],
       "storage_months": [],
       "price_level": "fair",
-      "tags": ["pasta", "waehe", "eisen", "frisch"]
+      "tags": ["frisch", "waehe", "pasta", "eisen"]
     },
     {
-      "id": "zucchini",
-      "name": "Zucchini (Courgette)",
-      "category": "Fruchtgemüse",
+      "id": "zwiebeln",
+      "name": "Schweizer Speisezwiebeln (Gelb & Rot)",
+      "category": "Zwiebelgemüse",
       "source": "gemuese.ch",
-      "field_months": [5, 6, 7, 8, 9, 10],
-      "storage_months": [],
+      "field_months": [6, 7, 8, 9],
+      "storage_months": [10, 11, 12, 1, 2, 3, 4, 5],
       "price_level": "budget",
-      "tags": ["pfanne", "sommer", "leicht"]
-    },
-    {
-      "id": "tomaten",
-      "name": "Schweizer Tomaten",
-      "category": "Fruchtgemüse",
-      "source": "gemuese.ch",
-      "field_months": [5, 6, 7, 8, 9, 10],
-      "storage_months": [],
-      "price_level": "fair",
-      "tags": ["salat", "sauce", "sommer"]
-    },
-    {
-      "id": "brokkoli",
-      "name": "Brokkoli",
-      "category": "Kohlgemüse",
-      "source": "gemuese.ch",
-      "field_months": [5, 6, 7, 8, 9, 10, 11],
-      "storage_months": [],
-      "price_level": "fair",
-      "tags": ["superfood", "pasta", "dampfgarer"]
-    },
-    {
-      "id": "blumenkohl",
-      "name": "Blumenkohl",
-      "category": "Kohlgemüse",
-      "source": "gemuese.ch",
-      "field_months": [5, 6, 7, 8, 9, 10, 11],
-      "storage_months": [],
-      "price_level": "fair",
-      "tags": ["curry", "ofen", "suppe"]
-    },
-    {
-      "id": "chicoree",
-      "name": "Chicorée",
-      "category": "Salat & Treibgemüse",
-      "source": "gemuese.ch",
-      "field_months": [1, 2, 3, 10, 11, 12],
-      "storage_months": [4],
-      "price_level": "fair",
-      "tags": ["gratin", "schinken", "salat", "bitterstoffe"]
-    },
-    {
-      "id": "rotkabis",
-      "name": "Rotkabis (Rotkohl)",
-      "category": "Kohl",
-      "source": "gemuese.ch",
-      "field_months": [7, 8, 9, 10, 11],
-      "storage_months": [1, 2, 3, 4, 5, 12],
-      "price_level": "budget",
-      "tags": ["beilage", "herbst", "marroni"]
+      "tags": ["unverzichtbar", "basis", "budget_held"]
     },
     {
       "id": "schweizer_kaese",
@@ -199,17 +402,27 @@
       "field_months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
       "storage_months": [],
       "price_level": "fair",
-      "tags": ["abendbrot", "aelplermagronen", "protein", "schweizer_klassiker"]
+      "tags": ["aelplermagronen", "abendbrot", "schweizer_klassiker", "protein"]
     },
     {
-      "id": "schweizer_rahm",
-      "name": "Schweizer Vollrahm / Halbrahm",
+      "id": "schweizer_quark",
+      "name": "Schweizer Magerquark / Kräuterquark",
       "category": "Milchprodukt",
       "source": "swissmilk.ch",
       "field_months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
       "storage_months": [],
       "price_level": "budget",
-      "tags": ["sauce", "waehe", "schweizer_klassiker"]
+      "tags": ["gschwellti", "dip", "protein", "budget_held"]
+    },
+    {
+      "id": "schweizer_butter",
+      "name": "Schweizer Butter / Bratbutter",
+      "category": "Milchprodukt",
+      "source": "swissmilk.ch",
+      "field_months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "storage_months": [],
+      "price_level": "budget",
+      "tags": ["roesti", "basis", "schweizer_klassiker"]
     }
   ]
 }

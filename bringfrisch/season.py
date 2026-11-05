@@ -55,3 +55,15 @@ class SeasonManager:
         if 1 <= month <= len(months):
             return months[month - 1]
         return f"Monat {month}"
+
+    def get_monthly_news(self, month: Optional[int] = None) -> Dict[str, str]:
+        """Gibt die Ernte-News & Bauerntipps für den gewählten Monat zurück."""
+        if month is None:
+            month = datetime.now().month
+        news_map = self.data.get("monthly_news", {})
+        return news_map.get(str(month), {
+            "headline": "Saisongemüse frisch vom Feld & Lager",
+            "farmer_tip": "Achte beim Einkauf auf die Herkunft Schweiz.",
+            "season_highlight": "Schweizer Gemüse"
+        })
+

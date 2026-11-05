@@ -94,3 +94,4 @@ Das Projekt ist vollständig versioniert. Änderungen committen:
 git add .
 git commit -m "feat: deine erweiterung"
 ```
+

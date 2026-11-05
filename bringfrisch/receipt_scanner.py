@@ -119,3 +119,4 @@ class ReceiptScanner:
             "missing": missing,
             "extras": extras
         }
+
