@@ -121,6 +121,11 @@ class BringFrischServer(SimpleHTTPRequestHandler):
             self.send_json({"lists": lists})
             return
 
+        elif path == "/api/bring/status":
+            status_data = self.bring_client.get_status()
+            self.send_json(status_data)
+            return
+
         elif path == "/api/bring/current":
             list_uuid = params.get("list_uuid", [None])[0]
             items = self.bring_client.get_list_items(list_uuid)
@@ -179,8 +184,20 @@ class BringFrischServer(SimpleHTTPRequestHandler):
         elif path == "/api/bring/login":
             email = body.get("email")
             password = body.get("password")
-            res = self.bring_client.login(email, password)
+            list_uuid = body.get("list_uuid")
+            res = self.bring_client.login(email, password, list_uuid)
             self.send_json(res)
+            return
+
+        elif path == "/api/bring/set-list":
+            list_uuid = body.get("list_uuid")
+            list_name = body.get("list_name")
+            if list_uuid:
+                self.bring_client.default_list_uuid = list_uuid
+            if list_name:
+                self.bring_client.default_list_name = list_name
+            self.bring_client._save_config()
+            self.send_json({"success": True, "list_uuid": list_uuid, "list_name": list_name})
             return
 
         elif path == "/api/bring/sync":

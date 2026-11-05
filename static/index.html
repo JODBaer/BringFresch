@@ -214,16 +214,16 @@
               b!
             </div>
             <div>
-              <div class="text-xs font-bold text-white flex items-center space-x-1.5">
-                <span>Bring! Einkaufsliste</span>
-                <span id="bringStatusBadge" class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Bereit</span>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-xs font-bold text-white">Bring! Einkaufsliste</span>
+                <span id="bringStatusBadge" class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold cursor-pointer">Nicht verbunden</span>
               </div>
-              <p class="text-[11px] text-slate-400" id="bringListName">Liste: WG-Einkauf</p>
+              <p class="text-[11px] text-slate-400" id="bringListName">Klicke auf das Zahnrad zum Verbinden</p>
             </div>
           </div>
-          <button id="compareBringBtn" class="text-xs bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-lg flex items-center space-x-1 transition" title="Aktuelle Bring!-Liste einlesen & Duplikate vermeiden">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-amber-400"></i>
-            <span>Abgleichen</span>
+          <button id="bringSettingsBtn" class="text-xs bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 p-2 rounded-xl flex items-center space-x-1 transition" title="Bring! Account verbinden & Liste wählen">
+            <i data-lucide="settings" class="w-3.5 h-3.5 text-red-400"></i>
+            <span class="text-[11px] font-semibold">Verbinden</span>
           </button>
         </div>
         
@@ -586,6 +586,56 @@
         <button id="saveStaplesModalBtn" class="w-full py-2 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition">
           Fertig
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BRING! ACCOUNT & LISTEN-VERKNÜPFUNG -->
+  <div id="bringSettingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full space-y-3.5 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black text-white text-xs shadow-md">
+            b!
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Bring! verknüpfen</h3>
+            <p class="text-[11px] text-slate-400">Direkter Sync mit deiner Bring!-App</p>
+          </div>
+        </div>
+        <button id="closeBringModalBtn" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Feedback Banner -->
+      <div id="bringLoginFeedback" class="hidden p-2.5 rounded-xl text-xs flex items-center space-x-1.5">
+        <!-- Dynamische Erfolgs- / Fehlermeldung -->
+      </div>
+
+      <!-- Login Formular -->
+      <div class="space-y-2.5">
+        <div>
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">Bring! E-Mail</label>
+          <input type="email" id="bringEmailInput" placeholder="deine@email.com" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none focus:border-red-500">
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-300 block mb-1">Passwort</label>
+          <input type="password" id="bringPasswordInput" placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none focus:border-red-500">
+        </div>
+        <button id="bringLoginBtn" class="w-full py-2.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-1.5">
+          <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+          <span id="bringLoginBtnText">Jetzt mit Bring! verbinden</span>
+        </button>
+      </div>
+
+      <!-- Listen-Auswahl Dropdown (nach Login) -->
+      <div id="bringListSelectSection" class="pt-2 border-t border-slate-800 space-y-1.5">
+        <label class="text-[11px] font-bold text-slate-300 block">Ziel-Einkaufsliste in Bring!</label>
+        <select id="bringListSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-emerald-400 font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500">
+          <option value="">(Wird nach Verbindung geladen)</option>
+        </select>
+        <p class="text-[10px] text-slate-500">Wähle die Liste, auf die BringFrisch Zutaten schreiben soll.</p>
       </div>
     </div>
   </div>

@@ -174,6 +174,173 @@ document.addEventListener("DOMContentLoaded", () => {
     checkPantryAlerts();
     renderPantryItems();
     renderMembersManager();
+    checkBringStatus();
+  }
+
+  // Bring! Status & Modal Logic
+  const bringSettingsBtn = document.getElementById("bringSettingsBtn");
+  const bringStatusBadge = document.getElementById("bringStatusBadge");
+  const bringListName = document.getElementById("bringListName");
+  const bringSettingsModal = document.getElementById("bringSettingsModal");
+  const closeBringModalBtn = document.getElementById("closeBringModalBtn");
+  const bringEmailInput = document.getElementById("bringEmailInput");
+  const bringPasswordInput = document.getElementById("bringPasswordInput");
+  const bringLoginBtn = document.getElementById("bringLoginBtn");
+  const bringLoginBtnText = document.getElementById("bringLoginBtnText");
+  const bringLoginFeedback = document.getElementById("bringLoginFeedback");
+  const bringListSelect = document.getElementById("bringListSelect");
+
+  let isBringConnected = false;
+
+  async function checkBringStatus() {
+    try {
+      const res = await fetch("/api/bring/status");
+      const data = await res.json();
+      isBringConnected = data.is_connected && !data.is_mock;
+
+      if (isBringConnected) {
+        if (bringStatusBadge) {
+          bringStatusBadge.textContent = "Verbunden";
+          bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
+        }
+        if (bringListName) {
+          bringListName.textContent = `Liste: ${data.list_name || 'WG-Einkauf'}`;
+        }
+        if (bringEmailInput && data.email) {
+          bringEmailInput.value = data.email;
+        }
+        loadBringLists();
+      } else {
+        if (bringStatusBadge) {
+          bringStatusBadge.textContent = "Nicht verbunden";
+          bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold cursor-pointer";
+        }
+        if (bringListName) {
+          bringListName.textContent = "Klicke auf 'Verbinden' für Bring!";
+        }
+      }
+    } catch (e) {
+      console.warn("Bring status check error", e);
+    }
+  }
+
+  async function loadBringLists() {
+    try {
+      const res = await fetch("/api/bring/lists");
+      const data = await res.json();
+      const lists = data.lists || [];
+      if (bringListSelect && lists.length > 0) {
+        bringListSelect.innerHTML = "";
+        lists.forEach(l => {
+          const opt = document.createElement("option");
+          opt.value = l.listUuid;
+          opt.textContent = l.name;
+          bringListSelect.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.warn("Load lists error", e);
+    }
+  }
+
+  function openBringModal() {
+    if (bringSettingsModal) {
+      bringSettingsModal.classList.remove("hidden");
+      if (bringLoginFeedback) bringLoginFeedback.classList.add("hidden");
+    }
+  }
+
+  if (bringSettingsBtn) bringSettingsBtn.onclick = openBringModal;
+  if (bringStatusBadge) bringStatusBadge.onclick = openBringModal;
+  if (closeBringModalBtn) {
+    closeBringModalBtn.onclick = () => {
+      if (bringSettingsModal) bringSettingsModal.classList.add("hidden");
+    };
+  }
+
+  if (bringLoginBtn) {
+    bringLoginBtn.onclick = async () => {
+      const email = (bringEmailInput.value || "").trim();
+      const password = (bringPasswordInput.value || "").trim();
+
+      if (!email || !password) {
+        showBringFeedback("Bitte E-Mail und Passwort eingeben!", false);
+        return;
+      }
+
+      bringLoginBtnText.textContent = "Verbinde mit Bring!...";
+      try {
+        const res = await fetch("/api/bring/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          isBringConnected = true;
+          showBringFeedback(`✅ Verbunden als ${data.email}!`, true);
+          bringLoginBtnText.textContent = "Verknüpft";
+          
+          if (data.lists && bringListSelect) {
+            bringListSelect.innerHTML = "";
+            data.lists.forEach(l => {
+              const opt = document.createElement("option");
+              opt.value = l.listUuid;
+              opt.textContent = l.name;
+              if (l.listUuid === data.list_uuid) opt.selected = true;
+              bringListSelect.appendChild(opt);
+            });
+          }
+
+          if (bringStatusBadge) {
+            bringStatusBadge.textContent = "Verbunden";
+            bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
+          }
+          if (bringListName) {
+            bringListName.textContent = `Liste: ${data.list_name || 'WG-Einkauf'}`;
+          }
+
+          setTimeout(() => {
+            if (bringSettingsModal) bringSettingsModal.classList.add("hidden");
+          }, 1500);
+        } else {
+          showBringFeedback(`❌ ${data.error || 'Login fehlgeschlagen. Bitte Zugangsdaten prüfen.'}`, false);
+          bringLoginBtnText.textContent = "Jetzt mit Bring! verbinden";
+        }
+      } catch (e) {
+        showBringFeedback("❌ Verbindungsfehler zum Server.", false);
+        bringLoginBtnText.textContent = "Jetzt mit Bring! verbinden";
+      }
+    };
+  }
+
+  function showBringFeedback(msg, isSuccess) {
+    if (!bringLoginFeedback) return;
+    bringLoginFeedback.textContent = msg;
+    bringLoginFeedback.className = `p-2.5 rounded-xl text-xs flex items-center space-x-1.5 ${
+      isSuccess
+        ? "bg-emerald-950/40 text-emerald-300 border border-emerald-700/50"
+        : "bg-red-950/40 text-red-300 border border-red-700/50"
+    }`;
+    bringLoginFeedback.classList.remove("hidden");
+  }
+
+  if (bringListSelect) {
+    bringListSelect.onchange = async (e) => {
+      const selectedUuid = e.target.value;
+      const selectedName = e.target.options[e.target.selectedIndex].text;
+      try {
+        await fetch("/api/bring/set-list", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ list_uuid: selectedUuid, list_name: selectedName })
+        });
+        if (bringListName) bringListName.textContent = `Liste: ${selectedName}`;
+      } catch (err) {
+        console.warn("Set list error", err);
+      }
+    };
   }
 
   function renderActiveCard() {
@@ -645,6 +812,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Bring! Export (nur noch fehlende Artikel exportieren!)
   syncToBringBtn.onclick = async () => {
+    if (!isBringConnected) {
+      openBringModal();
+      showBringFeedback("Bitte verbinde zuerst deinen Bring!-Account mit E-Mail & Passwort!", false);
+      return;
+    }
+
     const itemsToExport = state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
     if (itemsToExport.length === 0) {
       alert("Alles bereits erledigt! Alle Zutaten sind entweder schon auf Bring! oder als Grundvorrat zuhause vorhanden.");
@@ -658,10 +831,14 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ items: itemsToExport })
       });
       const data = await res.json();
-      syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel exportiert!`;
+      if (data.success) {
+        syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel exportiert!`;
+      } else {
+        syncBtnText.textContent = "Fehler beim Export";
+        alert(`Bring! Fehler: ${data.errors ? data.errors.join(', ') : 'Synchronisation fehlgeschlagen'}`);
+      }
     } catch (e) {
-      // Standalone Fallback
-      syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel bereit für Bring!`;
+      syncBtnText.textContent = "Verbindungsfehler";
     }
     setTimeout(() => {
       syncBtnText.textContent = "Nach Bring! (Nur Fehlendes)";

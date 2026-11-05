@@ -1,17 +1,22 @@
 """
-Bring! API V2 Client für BringFrisch.
-Unterstützt Authentifizierung, Listenabruf und den direkten Export von Einkaufslisten.
-Inklusive Offline-Sandbox-Modus für sicheres Testen ohne Zugangsdaten.
+Bring! API Integration für BringFrisch.
+Verwendet die erprobte python-bring-api Bibliothek für zuverlässige Authentifizierung,
+Listenabruf und das Hinzufügen von Artikeln.
 """
 
 from __future__ import annotations
+import os
 import json
-import urllib.request
-import urllib.parse
-import urllib.error
+from pathlib import Path
 from typing import Dict, List, Any, Optional
 
-BRING_API_BASE = "https://api.getbring.com/rest/v2"
+try:
+    from python_bring_api.bring import Bring
+    HAS_BRING_LIB = True
+except ImportError:
+    HAS_BRING_LIB = False
+
+CONFIG_FILE = Path(__file__).parent.parent / "data" / "bring_config.json"
 
 DEFAULT_PANTRY_STAPLES = [
     # Gewürze & Brühen
@@ -49,118 +54,212 @@ DEFAULT_PANTRY_STAPLES = [
 ]
 
 class BringClient:
-    def __init__(self, email: Optional[str] = None, password: Optional[str] = None):
-        self.email = email
-        self.password = password
-        self.access_token: Optional[str] = None
-        self.user_uuid: Optional[str] = None
+    def __init__(self):
+        self.email: Optional[str] = None
+        self.password: Optional[str] = None
         self.default_list_uuid: Optional[str] = None
+        self.default_list_name: Optional[str] = None
+        self.bring_instance: Optional[Any] = None
+        self._load_saved_config()
 
-    def login(self, email: Optional[str] = None, password: Optional[str] = None) -> Dict[str, Any]:
-        """Authentifiziert den Nutzer bei der Bring! API."""
-        user_email = email or self.email
-        user_pw = password or self.password
+    def _load_saved_config(self):
+        """Lädt gespeicherte Zugangsdaten aus data/bring_config.json."""
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                    self.email = cfg.get("email")
+                    self.password = cfg.get("password")
+                    self.default_list_uuid = cfg.get("list_uuid")
+                    self.default_list_name = cfg.get("list_name")
+                    if self.email and self.password and HAS_BRING_LIB:
+                        self.bring_instance = Bring(self.email, self.password)
+            except Exception as e:
+                print("Bring Config Load Error:", e)
+
+    def _save_config(self):
+        CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump({
+                "email": self.email,
+                "password": self.password,
+                "list_uuid": self.default_list_uuid,
+                "list_name": self.default_list_name
+            }, f, indent=2)
+
+    def get_status(self) -> Dict[str, Any]:
+        """Gibt den aktuellen Verbindungsstatus zurück."""
+        has_creds = bool(self.email and self.password)
+        return {
+            "is_connected": has_creds,
+            "email": self.email if has_creds else None,
+            "list_uuid": self.default_list_uuid,
+            "list_name": self.default_list_name or "Hauptliste",
+            "is_mock": not has_creds
+        }
+
+    def login(self, email: Optional[str] = None, password: Optional[str] = None, list_uuid: Optional[str] = None) -> Dict[str, Any]:
+        """Authentifiziert den Nutzer bei Bring!."""
+        user_email = (email or self.email or "").strip()
+        user_pw = (password or self.password or "").strip()
 
         if not user_email or not user_pw:
-            # Virtueller / Offline-Mock für Demo & WG-Test
-            self.access_token = "mock-token-wg-bringfrisch"
-            self.user_uuid = "mock-user-uuid"
-            self.default_list_uuid = "mock-wg-list-uuid"
-            return {
-                "success": True,
-                "is_mock": True,
-                "access_token": self.access_token,
-                "user_uuid": self.user_uuid,
-                "bring_list_uuid": self.default_list_uuid,
-                "message": "Erfolgreich im Offline-/Demo-Modus verbunden"
-            }
-
-        url = f"{BRING_API_BASE}/bringauth"
-        data = urllib.parse.urlencode({"email": user_email, "password": user_pw}).encode("utf-8")
-        req = urllib.request.Request(url, data=data, method="POST")
-        req.add_header("Content-Type", "application/x-www-form-urlencoded")
-        req.add_header("X-BRING-COUNTRY", "CH")
-
-        try:
-            with urllib.request.urlopen(req, timeout=10) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                self.access_token = res_data.get("access_token")
-                self.user_uuid = res_data.get("userUuid")
-                self.default_list_uuid = res_data.get("bringListUuid")
-                return {
-                    "success": True,
-                    "is_mock": False,
-                    "access_token": self.access_token,
-                    "user_uuid": self.user_uuid,
-                    "bring_list_uuid": self.default_list_uuid
-                }
-        except Exception as e:
-            # Falls falsches PW oder Offline, Fehlermeldung zurückgeben
             return {
                 "success": False,
-                "is_mock": False,
-                "error": str(e)
+                "error": "Bitte E-Mail und Passwort für Bring! eingeben"
+            }
+
+        if not HAS_BRING_LIB:
+            return {
+                "success": False,
+                "error": "python-bring-api Bibliothek ist nicht installiert"
+            }
+
+        try:
+            bring = Bring(user_email, user_pw)
+            bring.login()
+            self.email = user_email
+            self.password = user_pw
+            self.bring_instance = bring
+
+            # Listen laden
+            lists_data = bring.loadLists()
+            lists = lists_data.get("lists", [])
+
+            # Standardliste setzen
+            if list_uuid:
+                self.default_list_uuid = list_uuid
+            elif lists:
+                self.default_list_uuid = lists[0].get("listUuid")
+                self.default_list_name = lists[0].get("name")
+
+            self._save_config()
+
+            return {
+                "success": True,
+                "email": self.email,
+                "list_uuid": self.default_list_uuid,
+                "list_name": self.default_list_name,
+                "lists": lists,
+                "message": f"Erfolgreich mit Bring! verbunden ({self.email})"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Bring! Login fehlgeschlagen: {str(e)}"
             }
 
     def get_lists(self) -> List[Dict[str, Any]]:
-        """Gibt alle verfügbaren Bring!-Listen des Nutzers/der WG zurück."""
-        if not self.access_token or self.access_token.startswith("mock-"):
-            return [
-                {"listUuid": "mock-wg-list-uuid", "name": "WG-Einkauf (Bring! Test)", "theme": "ch.bring.theme.home"}
-            ]
+        """Gibt alle verfügbaren Bring!-Listen des Nutzers zurück."""
+        if not self.bring_instance:
+            if self.email and self.password and HAS_BRING_LIB:
+                try:
+                    self.bring_instance = Bring(self.email, self.password)
+                    self.bring_instance.login()
+                except Exception:
+                    pass
 
-        url = f"{BRING_API_BASE}/bringusers/{self.user_uuid}/lists"
-        req = urllib.request.Request(url, method="GET")
-        req.add_header("Authorization", f"Bearer {self.access_token}")
+        if not self.bring_instance:
+            return [{"listUuid": "mock-wg", "name": "WG Einkauf (Demo / Nicht verknüpft)"}]
 
         try:
-            with urllib.request.urlopen(req, timeout=10) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                return res_data.get("lists", [])
-        except Exception:
-            return [{"listUuid": self.default_list_uuid or "default", "name": "Hauptliste", "theme": "default"}]
+            lists_data = self.bring_instance.loadLists()
+            return lists_data.get("lists", [])
+        except Exception as e:
+            print("Bring loadLists error:", e)
+            return [{"listUuid": self.default_list_uuid or "default", "name": self.default_list_name or "Hauptliste"}]
 
     def get_list_items(self, list_uuid: Optional[str] = None) -> Dict[str, Any]:
-        """Liest die aktuellen Artikel einer Bring!-Liste ein (purchase & recently)."""
-        target_list = list_uuid or self.default_list_uuid or "mock-wg-list-uuid"
+        """Liest aktive Artikel aus der Bring!-Liste ein."""
+        target_list = list_uuid or self.default_list_uuid
 
-        if not self.access_token or self.access_token.startswith("mock-"):
-            # Demo-Daten für den Abgleich im Mock-Modus
+        if not self.bring_instance and self.email and self.password and HAS_BRING_LIB:
+            try:
+                self.bring_instance = Bring(self.email, self.password)
+                self.bring_instance.login()
+            except Exception:
+                pass
+
+        if not self.bring_instance or not target_list:
             return {
                 "success": True,
                 "is_mock": True,
-                "list_uuid": target_list,
                 "purchase": [
                     {"name": "Schweizer Festkochende Kartoffeln", "specification": "1 kg"},
                     {"name": "Magronen / Teigwaren", "specification": "500 g"}
                 ],
-                "recently": [
-                    {"name": "Rüebli", "specification": "1 Beutel"}
-                ]
+                "recently": []
             }
 
-        url = f"{BRING_API_BASE}/bringlists/{target_list}"
-        req = urllib.request.Request(url, method="GET")
-        req.add_header("Authorization", f"Bearer {self.access_token}")
-
         try:
-            with urllib.request.urlopen(req, timeout=10) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                return {
-                    "success": True,
-                    "is_mock": False,
-                    "list_uuid": target_list,
-                    "purchase": res_data.get("purchase", []),
-                    "recently": res_data.get("recently", [])
-                }
+            items_data = self.bring_instance.getItems(target_list)
+            # getItems returns BringItemsResponse with .purchase and .recently
+            purchase = items_data.purchase if hasattr(items_data, "purchase") else items_data.get("purchase", [])
+            recently = items_data.recently if hasattr(items_data, "recently") else items_data.get("recently", [])
+            
+            # Formatieren in standard dicts
+            def serialize_item(item):
+                if hasattr(item, "name"):
+                    return {"name": item.name, "specification": getattr(item, "specification", "")}
+                return item
+
+            return {
+                "success": True,
+                "is_mock": False,
+                "list_uuid": target_list,
+                "purchase": [serialize_item(i) for i in purchase],
+                "recently": [serialize_item(i) for i in recently]
+            }
         except Exception as e:
             return {
                 "success": False,
-                "is_mock": False,
                 "error": str(e),
                 "purchase": [],
                 "recently": []
             }
+
+    def push_items_to_list(
+        self,
+        items: List[Dict[str, Any]],
+        list_uuid: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Pusht eine Liste von Zutaten in die angegebene Bring!-Liste."""
+        target_list = list_uuid or self.default_list_uuid
+
+        if not self.bring_instance and self.email and self.password and HAS_BRING_LIB:
+            try:
+                self.bring_instance = Bring(self.email, self.password)
+                self.bring_instance.login()
+            except Exception:
+                pass
+
+        if not self.bring_instance or not target_list:
+            return {
+                "success": True,
+                "is_mock": True,
+                "items_count": len(items),
+                "message": f"{len(items)} Artikel virtuell exportiert (Verknüpfe Bring! in den Einstellungen für echten Sync)"
+            }
+
+        pushed_count = 0
+        errors = []
+
+        for item in items:
+            name = item.get("name", "").strip()
+            spec = item.get("display_amount") or f"{item.get('amount', '')} {item.get('unit', '')}".strip()
+            try:
+                self.bring_instance.saveItem(target_list, name, spec)
+                pushed_count += 1
+            except Exception as e:
+                errors.append(f"{name}: {str(e)}")
+
+        return {
+            "success": len(errors) == 0,
+            "is_mock": False,
+            "items_count": pushed_count,
+            "errors": errors,
+            "list_uuid": target_list
+        }
 
     def compare_and_filter_list(
         self,
@@ -169,13 +268,7 @@ class BringClient:
         custom_pantry_staples: Optional[List[str]] = None,
         exclude_staples: bool = True
     ) -> Dict[str, Any]:
-        """
-        Gleicht die Einkaufsliste mit der aktuellen Bring!-Liste ab und filtert Grundzutaten.
-        Klassifiziert Zutaten in:
-        - to_sync: Neu auf die Bring!-Liste zu setzen
-        - already_on_bring: Steht bereits auf Bring!
-        - pantry_staple: Grundzutat zuhause (Salz, Pfeffer, Öl, Bouillon etc.)
-        """
+        """Gleicht die Einkaufsliste mit der aktuellen Bring!-Liste ab und filtert Grundzutaten."""
         current_data = self.get_list_items(list_uuid)
         existing_bring_names = {
             item.get("name", "").strip().lower() for item in current_data.get("purchase", [])
@@ -189,11 +282,7 @@ class BringClient:
 
         for item in shopping_list:
             name_lower = item.get("name", "").strip().lower()
-            
-            # 1. Ist es eine Grundzutat (Salz, Pfeffer, Öl)?
             is_staple = any(st in name_lower for st in staples_set)
-            
-            # 2. Steht es bereits auf der Bring!-Liste?
             is_on_bring = any(ex in name_lower or name_lower in ex for ex in existing_bring_names)
 
             item_copy = dict(item)
@@ -219,57 +308,3 @@ class BringClient:
             "already_on_bring": already_on_bring,
             "pantry_items": pantry_items
         }
-
-    def push_items_to_list(
-        self,
-        items: List[Dict[str, Any]],
-        list_uuid: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Pusht eine Liste von BringFrisch-Zutaten in die angegebene Bring!-Liste.
-        Format der Items: [{"name": "Rüebli", "display_amount": "500 g", ...}]
-        """
-        target_list = list_uuid or self.default_list_uuid or "mock-wg-list-uuid"
-
-        if not self.access_token or self.access_token.startswith("mock-"):
-            return {
-                "success": True,
-                "is_mock": True,
-                "items_count": len(items),
-                "list_uuid": target_list,
-                "message": f"{len(items)} Artikel virtuell mit Bring! synchronisiert"
-            }
-
-        url = f"{BRING_API_BASE}/bringlists/{target_list}"
-        pushed_count = 0
-        errors = []
-
-        for item in items:
-            item_name = item.get("name", "").strip()
-            item_spec = item.get("display_amount", "").strip()
-            
-            # Bring! Spezifikation per PUT/POST
-            data = urllib.parse.urlencode({
-                "purchase": item_name,
-                "specification": item_spec
-            }).encode("utf-8")
-
-            req = urllib.request.Request(url, data=data, method="PUT")
-            req.add_header("Authorization", f"Bearer {self.access_token}")
-            req.add_header("Content-Type", "application/x-www-form-urlencoded")
-
-            try:
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    if resp.status in [200, 204]:
-                        pushed_count += 1
-            except Exception as e:
-                errors.append(f"{item_name}: {str(e)}")
-
-        return {
-            "success": len(errors) == 0,
-            "is_mock": False,
-            "items_count": pushed_count,
-            "errors": errors,
-            "list_uuid": target_list
-        }
-
