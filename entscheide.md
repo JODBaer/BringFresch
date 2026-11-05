@@ -69,3 +69,4 @@ Dieses Dokument hält alle grundlegenden Architektur- und Verhaltensregeln des B
 | **R5: Grundvorrat** | 30+ Schweizer Grundzutaten (Salz, Aromat, Öl) bleiben zuhause, es sei denn leer markiert. |
 | **R6: Ernte-Automatik** | Jeden Monat automatischer Abgleich mit den Schweizer Erntedaten (VSGP). |
 | **R7: Serverlos mobil** | Voll mobilfähig auf iPhone & Android als PWA, teilbar via Link. |
+

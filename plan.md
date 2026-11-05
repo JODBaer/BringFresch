@@ -52,3 +52,4 @@ Jedes Menü besteht pro Person aus 3 Teilen:
 * **Persönlicher Login**: Direkte Anmeldung in der App mit Bring!-E-Mail und Passwort.
 * **Kein Copy-Paste / kein Web-Clipboard**: BringFrisch spricht die offizielle Bring!-REST-API an.
 * **Listen-Wahl**: Ziel-Einkaufsliste (z.B. «WG-Einkauf») frei wählbar.
+

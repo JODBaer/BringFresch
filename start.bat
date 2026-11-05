@@ -13,3 +13,4 @@ echo Druecke Ctrl+C zum Beenden.
 echo.
 python -m bringfrisch.server
 pause
+
