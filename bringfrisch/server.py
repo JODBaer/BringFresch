@@ -133,10 +133,18 @@ class BringFrischServer(SimpleHTTPRequestHandler):
             return
 
         # Statische Dateien (PWA Frontend)
-        if path == "/":
+        clean_path = path.lstrip("/")
+        if clean_path.startswith("static/"):
+            clean_path = clean_path[len("static/"):]
+
+        if not clean_path or clean_path == "index.html":
             file_path = STATIC_DIR / "index.html"
         else:
-            file_path = STATIC_DIR / path.lstrip("/")
+            file_path = STATIC_DIR / clean_path
+            if not file_path.exists():
+                alt_path = BASE_DIR / path.lstrip("/")
+                if alt_path.exists() and alt_path.is_file():
+                    file_path = alt_path
 
         if file_path.exists() and file_path.is_file():
             mime_type, _ = mimetypes.guess_type(str(file_path))
