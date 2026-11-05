@@ -8,7 +8,9 @@ venv/
 env/
 ENV/
 
-# BringFrisch local data
+# Scratch
+scratch/
+
 data/local_cache.json
 *.log
 
