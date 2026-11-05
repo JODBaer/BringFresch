@@ -86,7 +86,66 @@ class RecipeImporter {
     this.saveCustomRecipes();
     return newRecipe;
   }
+
+  /**
+   * Analysiert eine Rezept-URL (Betty Bossi, Swissmilk, Fooby, Chefkoch, etc.)
+   * und leitet daraus Domain und einen sauberen Rezepttitel ab.
+   */
+  analyzeRecipeUrl(url) {
+    if (!url) return { title: "", domain: "" };
+    try {
+      const u = new URL(url.trim());
+      const domain = u.hostname.replace(/^www\./, "");
+      const segments = u.pathname.split("/").filter(s => s && s.length > 2 && !/^(de|fr|it|en|rezepte|rezept|showrezept|recipes)$/i.test(s));
+      
+      let candidate = "";
+      if (segments.length > 0) {
+        candidate = segments[segments.length - 1];
+        // Dateiendungen wie .html entfernen
+        candidate = candidate.replace(/\.(html|php|asp)$/i, "");
+        // Typische IDs / Hash-Prefixe entfernen (z.B. BB_KUCA130802_0060A-40-de-lauch-waehe)
+        candidate = candidate.replace(/^[A-Z0-9_-]{8,}[-_]/i, "");
+        // Trennzeichen ersetzen
+        candidate = decodeURIComponent(candidate).replace(/[-_]+/g, " ").trim();
+        // Groß-/Kleinschreibung formatieren
+        candidate = candidate.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      }
+
+      if (!candidate || candidate.length < 3) {
+        candidate = `Rezept (${domain})`;
+      }
+
+      return { title: candidate, domain: domain };
+    } catch (e) {
+      return { title: "Web-Rezept", domain: "" };
+    }
+  }
+
+  /**
+   * Erstellt ein Rezept aus einer Web-URL und speichert den Link für den Browser.
+   */
+  createRecipeFromUrl(url, title, rawIngredientsText = "", diet = "vegi", costEstimate = 3.50) {
+    let cleanTitle = title;
+    if (!cleanTitle && url) {
+      const analysis = this.analyzeRecipeUrl(url);
+      cleanTitle = analysis.title;
+    }
+    if (!cleanTitle) cleanTitle = "Web-Rezept aus Browser";
+
+    const recipe = this.createRecipeFromText(cleanTitle, rawIngredientsText, "Zubereitung siehe Originalrezept im Browser.", diet, costEstimate);
+    recipe.source_url = url.trim();
+    recipe.is_web_recipe = true;
+    recipe.health_tip = `Direkt verlinkt mit Rezeptseite (${url ? new URL(url).hostname : 'Web'}).`;
+    this.saveCustomRecipes();
+    return recipe;
+  }
+
+  deleteCustomRecipe(id) {
+    this.customRecipes = this.customRecipes.filter(r => r.id !== id);
+    this.saveCustomRecipes();
+  }
 }
 
 window.recipeImporter = new RecipeImporter();
+
 

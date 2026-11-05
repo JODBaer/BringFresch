@@ -74,119 +74,178 @@
         </div>
       </div>
 
-      <!-- Tag-Navigation (Mo-So Bar) -->
-      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-sm">
-        <div id="daySelector" class="flex w-full space-x-1 overflow-x-auto hide-scrollbar">
-          <!-- Dynamisch: Mo, Di, Mi, Do, Fr, Sa, So -->
+      <!-- Top Toolbar & View-Umschalter -->
+      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-sm">
+        <div class="flex items-center space-x-1">
+          <button id="viewGridBtn" class="py-1.5 px-2.5 text-xs font-bold rounded-xl bg-emerald-500 text-slate-950 shadow-md flex items-center space-x-1 transition">
+            <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+            <span>7-Tage Kacheln</span>
+          </button>
+          <button id="viewSingleBtn" class="py-1.5 px-2.5 text-xs font-bold rounded-xl text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition">
+            <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+            <span>Detail</span>
+          </button>
+        </div>
+        <div class="flex items-center space-x-1.5">
+          <button id="openAllMenusBtn" class="text-[11px] text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2 py-1 rounded-xl font-semibold flex items-center space-x-1 transition" title="Alle Menüs durchsuchen & Tagen zuweisen">
+            <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+            <span>Menüs</span>
+          </button>
+          <button id="openAddRecipeLinkBtn" class="text-[11px] text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 px-2 py-1 rounded-xl font-semibold flex items-center space-x-1 transition" title="Rezept via Link aus dem Browser hinzufügen">
+            <i data-lucide="link" class="w-3.5 h-3.5"></i>
+            <span>+ Link</span>
+          </button>
+          <button id="quickSyncBringBtn" class="text-[11px] text-red-300 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 px-2.5 py-1 rounded-xl font-bold flex items-center space-x-1 transition active:scale-95" title="Jetzt direkt in Bring! übertragen">
+            <i data-lucide="shopping-cart" class="w-3.5 h-3.5 text-red-400"></i>
+            <span>Bring! Sync</span>
+          </button>
+          <button id="regenWholeWeekBtnTop" class="text-[11px] text-slate-400 hover:text-amber-300 p-1.5 rounded-xl hover:bg-slate-800 transition" title="Ganze Woche neu würfeln">
+            <i data-lucide="dices" class="w-4 h-4 text-amber-400"></i>
+          </button>
         </div>
       </div>
 
-      <!-- Swipe / Active Day Card -->
-      <div id="dayCardWrapper" class="relative min-h-[420px]">
-        <div id="activeCard" class="bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl relative card-swipe-animation">
-          
-          <div class="flex items-start justify-between">
-            <span id="cardDayBadge" class="text-xs uppercase font-extrabold tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Montag
-            </span>
-            <div class="flex items-center space-x-2">
-              <span id="cardDietBadge" class="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
-                Vegi
-              </span>
-              <span id="cardCostBadge" class="text-[11px] font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                CHF 2.80 / P.
-              </span>
-            </div>
+      <!-- Reste-Puffer Info Banner (+2 Portionen für Zmittag) -->
+      <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-800/40 rounded-2xl p-2.5 flex items-center justify-between text-xs">
+        <div class="flex items-center space-x-2">
+          <span class="text-base">🍲</span>
+          <div>
+            <span class="font-bold text-white">Standard: +2 Portionen für Zmittag-Reste</span>
+            <p class="text-[10px] text-slate-400">Automatisch +2 Portionen einkalkuliert, damit am nächsten Tag Reste da sind.</p>
           </div>
+        </div>
+        <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg flex-shrink-0">Aktiv ✓</span>
+      </div>
 
-          <h2 id="cardTitle" class="text-xl font-bold text-white mt-3 leading-snug">
-            Klassische Älplermagronen mit Apfelmus
-          </h2>
+      <!-- VIEW 1: DIE 7-TAGE KACHEL-ÜBERSICHT (Standardansicht) -->
+      <div id="weekGridSection" class="space-y-3">
+        <div id="weekCardsContainer" class="space-y-3">
+          <!-- Dynamisch generierte 7 Wochentagskacheln mit Menü, Personen & Reste-Verteilung -->
+        </div>
+      </div>
 
-          <div class="flex items-center space-x-3 text-xs text-slate-400 mt-2">
-            <span class="flex items-center space-x-1">
-              <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
-              <span id="cardPrepTime">25 Min.</span>
-            </span>
-            <span class="flex items-center space-x-1">
-              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
-              <span id="cardSeasonFokus">Schweizer Kartoffeln & Zwiebeln</span>
-            </span>
+      <!-- VIEW 2: SWIPE / SINGLE-DAY DETAIL VIEW -->
+      <div id="singleCardSection" class="hidden space-y-3.5">
+        <!-- Tag-Navigation (Mo-So Bar) -->
+        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-sm">
+          <div id="daySelector" class="flex w-full space-x-1 overflow-x-auto hide-scrollbar">
+            <!-- Dynamisch: Mo, Di, Mi, Do, Fr, Sa, So -->
           </div>
+        </div>
 
-          <!-- Wer isst mit heute? (Tages-Esser & Diät-Anpassung) -->
-          <div class="mt-3.5 p-3 rounded-2xl bg-slate-800/70 border border-slate-700/70 space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
-                <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
-                <span>Wer isst heute mit?</span>
+        <!-- Swipe / Active Day Card -->
+        <div id="dayCardWrapper" class="relative min-h-[420px]">
+          <div id="activeCard" class="bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl relative card-swipe-animation">
+            
+            <div class="flex items-start justify-between">
+              <span id="cardDayBadge" class="text-xs uppercase font-extrabold tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Montag
               </span>
-              <span id="dayEaterSummary" class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-mono">
-                3 Personen • VEGI
-              </span>
-            </div>
-            <!-- Mitbewohner Check-Chips für diesen Tag -->
-            <div id="dayEatersList" class="flex flex-wrap gap-1.5 pt-0.5">
-              <!-- Dynamisch: [x] Jonas (Vegi) [x] Anna (Vegan) [ ] Lukas (Fleisch) -->
-            </div>
-          </div>
-
-          <!-- Koch-Zuweisung WG -->
-          <div class="mt-2.5 p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-              <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                👨‍🍳
+              <div class="flex items-center space-x-2">
+                <span id="cardDietBadge" class="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
+                  Vegi
+                </span>
+                <span id="cardCostBadge" class="text-[11px] font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                  CHF 2.80 / P.
+                </span>
               </div>
-              <span class="text-xs text-slate-300" id="cardCookName">Koch: Offen / WG</span>
             </div>
-            <button id="assignCookBtn" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 active:scale-95 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
-              Zuweisen
-            </button>
-          </div>
 
-          <!-- Zutaten-Auszug -->
-          <div class="mt-4">
-            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Hauptzutaten</h4>
-            <ul id="cardIngredients" class="space-y-1.5 text-xs text-slate-200">
-              <!-- Dynamisch -->
-            </ul>
-          </div>
+            <div class="flex items-start justify-between mt-3 gap-2">
+              <h2 id="cardTitle" class="text-xl font-bold text-white leading-snug">
+                Klassische Älplermagronen mit Apfelmus
+              </h2>
+              <a id="cardSourceLink" href="#" target="_blank" rel="noopener" class="hidden text-xs text-cyan-400 hover:text-cyan-300 flex items-center space-x-1 bg-cyan-950/40 border border-cyan-800/40 px-2 py-1 rounded-lg flex-shrink-0" title="Rezept im Browser öffnen">
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                <span>Browser</span>
+              </a>
+            </div>
 
-          <!-- Gesundheitstipp -->
-          <div class="mt-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-900/60 text-[11px] text-emerald-300 flex items-start space-x-2">
-            <i data-lucide="heart-pulse" class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"></i>
-            <span id="cardHealthTip">Ausgewogen mit Schweizer Lagerkartoffeln und ungesüsstem Apfelmus.</span>
-          </div>
+            <div class="flex items-center space-x-3 text-xs text-slate-400 mt-2">
+              <span class="flex items-center space-x-1">
+                <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
+                <span id="cardPrepTime">25 Min.</span>
+              </span>
+              <span class="flex items-center space-x-1">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span id="cardSeasonFokus">Schweizer Kartoffeln & Zwiebeln</span>
+              </span>
+            </div>
 
-          <!-- Swipe Action Buttons -->
-          <div class="mt-5 grid grid-cols-2 gap-3">
-            <button id="shuffleDayBtn" class="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-slate-800 hover:bg-slate-750 active:scale-95 border border-slate-700 text-slate-300 font-semibold text-xs transition">
-              <i data-lucide="refresh-cw" class="w-4 h-4 text-amber-400"></i>
-              <span>Anderes Rezept</span>
-            </button>
-            <button id="keepDayBtn" class="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold text-xs shadow-lg shadow-emerald-900/30 transition">
-              <i data-lucide="check" class="w-4 h-4"></i>
-              <span>Gericht behalten</span>
-            </button>
-          </div>
+            <!-- Wer isst mit heute? (Tages-Esser & Diät-Anpassung) -->
+            <div class="mt-3.5 p-3 rounded-2xl bg-slate-800/70 border border-slate-700/70 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
+                  <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>Wer isst heute mit?</span>
+                </span>
+                <span id="dayEaterSummary" class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-mono">
+                  3 Personen • VEGI
+                </span>
+              </div>
+              <!-- Mitbewohner Check-Chips für diesen Tag -->
+              <div id="dayEatersList" class="flex flex-wrap gap-1.5 pt-0.5">
+                <!-- Dynamisch: [x] Jonas (Vegi) [x] Anna (Vegan) [ ] Lukas (Fleisch) -->
+              </div>
+            </div>
 
+            <!-- Koch-Zuweisung WG -->
+            <div class="mt-2.5 p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
+                  👨‍🍳
+                </div>
+                <span class="text-xs text-slate-300" id="cardCookName">Koch: Offen / WG</span>
+              </div>
+              <button id="assignCookBtn" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 active:scale-95 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
+                Zuweisen
+              </button>
+            </div>
+
+            <!-- Zutaten-Auszug -->
+            <div class="mt-4">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Hauptzutaten</h4>
+              <ul id="cardIngredients" class="space-y-1.5 text-xs text-slate-200">
+                <!-- Dynamisch -->
+              </ul>
+            </div>
+
+            <!-- Gesundheitstipp -->
+            <div class="mt-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-900/60 text-[11px] text-emerald-300 flex items-start space-x-2">
+              <i data-lucide="heart-pulse" class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"></i>
+              <span id="cardHealthTip">Ausgewogen mit Schweizer Lagerkartoffeln und ungesüsstem Apfelmus.</span>
+            </div>
+
+            <!-- Swipe Action Buttons -->
+            <div class="mt-5 grid grid-cols-2 gap-3">
+              <button id="shuffleDayBtn" class="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-slate-800 hover:bg-slate-750 active:scale-95 border border-slate-700 text-slate-300 font-semibold text-xs transition">
+                <i data-lucide="refresh-cw" class="w-4 h-4 text-amber-400"></i>
+                <span>Anderes Rezept</span>
+              </button>
+              <button id="keepDayBtn" class="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold text-xs shadow-lg shadow-emerald-900/30 transition">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>Gericht behalten</span>
+              </button>
+            </div>
+
+          </div>
         </div>
-      </div>
 
-      <!-- Quick Action Toolbar -->
-      <div class="grid grid-cols-3 gap-2 pt-1">
-        <button id="regenWholeWeekBtn" class="text-[11px] text-slate-300 hover:text-white flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-slate-900 border border-slate-800">
-          <i data-lucide="dices" class="w-3.5 h-3.5 text-amber-400"></i>
-          <span>Neu würfeln</span>
-        </button>
-        <button id="openImportModalBtn" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-cyan-950/30 border border-cyan-800/40">
-          <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-          <span>Foto-Rezept</span>
-        </button>
-        <button id="downloadIcsBtn" class="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-          <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-          <span>In Kalender</span>
-        </button>
+        <!-- Quick Action Toolbar -->
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <button id="regenWholeWeekBtn" class="text-[11px] text-slate-300 hover:text-white flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-slate-900 border border-slate-800">
+            <i data-lucide="dices" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>Neu würfeln</span>
+          </button>
+          <button id="openImportModalBtn" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-cyan-950/30 border border-cyan-800/40">
+            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+            <span>Foto-Rezept</span>
+          </button>
+          <button id="downloadIcsBtn" class="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+            <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+            <span>In Kalender</span>
+          </button>
+        </div>
       </div>
     </section>
 
@@ -566,6 +625,117 @@
     </section>
 
   </main>
+
+  <!-- MODAL: ALLE MENÜS & REZEPTE (KATALOG ZUM ANKLICKEN & WOCHENTAG-ZUWEISEN) -->
+  <div id="allMenusModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 max-w-md w-full max-h-[90vh] flex flex-col space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between flex-none">
+        <div class="flex items-center space-x-2">
+          <span class="text-xl">📖</span>
+          <div>
+            <h3 class="text-sm font-bold text-white">Alle Menüs & Rezepte</h3>
+            <p class="text-[11px] text-slate-400" id="allMenusSubtitle">Klicke auf [Mo–So], um das Menü dem Tag zuzuweisen</p>
+          </div>
+        </div>
+        <button id="closeAllMenusModalBtn" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Suche & Filter -->
+      <div class="space-y-2 flex-none">
+        <div class="relative">
+          <input type="text" id="menuCatalogSearch" placeholder="Menü oder Zutat suchen (z.B. Lauch, Rösti, Risotto)..." class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:border-emerald-500">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5"></i>
+        </div>
+        <div class="flex space-x-1 overflow-x-auto hide-scrollbar text-[10px]" id="menuCatalogFilters">
+          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-950 font-bold" data-filter="all">Alle</button>
+          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold" data-filter="vegi">Vegi</button>
+          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold" data-filter="vegan">Vegan</button>
+          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold" data-filter="schweizerisch">Schweizerisch</button>
+          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold" data-filter="fleisch">Mit Fleisch</button>
+          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-cyan-300 font-semibold" data-filter="links">🌐 Mit Web-Link</button>
+        </div>
+      </div>
+
+      <!-- Rezept-Liste -->
+      <div class="flex-1 overflow-y-auto hide-scrollbar space-y-2.5 pr-0.5" id="menuCatalogList">
+        <!-- Dynamische Kacheln aller Rezepte mit [Mo..So] Zuweisungs-Buttons -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MENÜ VIA LINK AUS DEM BROWSER HINZUFÜGEN -->
+  <div id="addRecipeLinkModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 max-w-sm w-full space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center font-bold">
+            🌐
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Menü via Link hinzufügen</h3>
+            <p class="text-[11px] text-slate-400">Betty Bossi, Swissmilk, Fooby & Web</p>
+          </div>
+        </div>
+        <button id="closeAddRecipeLinkModalBtn" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="text-[10px] font-bold text-slate-300 block mb-1">Web-Link / URL aus dem Browser</label>
+          <div class="flex items-center space-x-1.5">
+            <input type="url" id="newRecipeUrlInput" placeholder="https://www.bettybossi.ch/..." class="flex-1 bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-500">
+            <button id="analyzeUrlBtn" class="bg-slate-700 hover:bg-slate-600 text-cyan-300 text-[11px] font-bold px-2 py-1.5 rounded-xl transition flex-shrink-0">
+              Analysieren
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-slate-300 block mb-1">Menüname</label>
+          <input type="text" id="newRecipeTitleInput" placeholder="z.B. Knusprige Lauchwähe mit Bergkäse" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] font-bold text-slate-300 block mb-1">Ernährungsform</label>
+            <select id="newRecipeDietSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2 py-1.5 focus:outline-none">
+              <option value="vegi">Vegetarisch</option>
+              <option value="vegan">Vegan</option>
+              <option value="schweizerisch">Schweizerisch</option>
+              <option value="fleisch">Mit Fleisch</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-300 block mb-1">Direkt zuweisen</label>
+            <select id="newRecipeDaySelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2 py-1.5 focus:outline-none">
+              <option value="-1">Nur in Menü-Katalog</option>
+              <option value="0">Montag</option>
+              <option value="1">Dienstag</option>
+              <option value="2">Mittwoch</option>
+              <option value="3">Donnerstag</option>
+              <option value="4">Freitag</option>
+              <option value="5">Samstag</option>
+              <option value="6">Sonntag</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-slate-300 block mb-1">Zutaten (optional, z.B. für Einkaufsliste)</label>
+          <textarea id="newRecipeIngredientsInput" rows="3" placeholder="500g Schweizer Lauch&#10;200g Bergkäse gerieben&#10;1 Pck Wähenteig" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none font-mono"></textarea>
+        </div>
+
+        <button id="saveNewRecipeLinkBtn" class="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-950/50 transition flex items-center justify-center space-x-1.5">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+          <span>Rezept speichern & zuweisen</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: FOTO-REZEPT / URL IMPORT -->
   <div id="recipeImportModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">

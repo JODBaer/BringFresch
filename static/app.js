@@ -140,15 +140,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const pool = getRecipesPool(effectiveDiet);
       const recipe = pool[Math.floor(Math.random() * pool.length)];
       const personCount = allMemberIds.length || 3;
+      const buffer = 2; // Standardmäßig +2 Portionen für Reste / Zmittag am nächsten Tag
+      const totalPersons = personCount + buffer;
 
       plan.push({
         ...recipe,
         day: day,
         eaters: [...allMemberIds],
+        leftover_buffer: buffer,
         extra_guests: 0,
         effective_diet: effectiveDiet,
-        person_count: personCount,
-        scaled_cost_chf: ((recipe.cost_per_person_chf || 2.80) * personCount).toFixed(2),
+        person_count: totalPersons,
+        scaled_cost_chf: ((recipe.cost_per_person_chf || 2.80) * totalPersons).toFixed(2),
         cook_assigned: null
       });
     });
@@ -193,7 +196,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // Sicherstellen, dass jeder Tag leftover_buffer hat
+    state.weekPlan.forEach(d => {
+      if (d.leftover_buffer === undefined) d.leftover_buffer = 2;
+    });
+
     renderDaySelector();
+    renderWeekGrid();
     renderActiveCard();
     updateShoppingList();
     checkPantryAlerts();
@@ -381,6 +390,46 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  const bringTokenInput = document.getElementById("bringTokenInput");
+  const bringTokenLoginBtn = document.getElementById("bringTokenLoginBtn");
+
+  if (bringTokenLoginBtn) {
+    bringTokenLoginBtn.onclick = async () => {
+      const token = (bringTokenInput.value || "").trim();
+      if (!token) {
+        showBringFeedback("Bitte einen Bring! Token eingeben!", false);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/bring/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: token })
+        });
+        const data = await res.json();
+        if (data.success) {
+          isBringConnected = true;
+          showBringFeedback("✅ Erfolgreich via Token verknüpft!", true);
+          if (bringStatusBadge) {
+            bringStatusBadge.textContent = "Verbunden";
+            bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
+          }
+          if (bringListName) {
+            bringListName.textContent = "Liste: Bring! Web";
+          }
+          setTimeout(() => {
+            if (bringSettingsModal) bringSettingsModal.classList.add("hidden");
+          }, 1500);
+        } else {
+          showBringFeedback(`❌ ${data.error || 'Token ungültig'}`, false);
+        }
+      } catch (e) {
+        showBringFeedback("❌ Verbindungsfehler zum Server.", false);
+      }
+    };
+  }
+
   function showBringFeedback(msg, isSuccess) {
     if (!bringLoginFeedback) return;
     bringLoginFeedback.textContent = msg;
@@ -421,8 +470,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (current.extra_guests === undefined) {
       current.extra_guests = 0;
     }
+    if (current.leftover_buffer === undefined) {
+      current.leftover_buffer = 2;
+    }
 
-    const dayPersons = current.eaters.length + current.extra_guests || 1;
+    const eatersCount = current.eaters.length;
+    const guests = current.extra_guests || 0;
+    const buffer = current.leftover_buffer;
+    const dayPersons = eatersCount + guests + buffer || 4;
     current.person_count = dayPersons;
     current.effective_diet = calculateEffectiveDiet(current.eaters);
 
@@ -430,17 +485,27 @@ document.addEventListener("DOMContentLoaded", () => {
     cardDietBadge.textContent = (current.diet || current.effective_diet).toUpperCase();
     
     const costPerP = current.cost_per_person_chf || 2.80;
-    cardCostBadge.textContent = `CHF ${(costPerP * dayPersons).toFixed(2)} für ${dayPersons} P.`;
+    cardCostBadge.textContent = `CHF ${(costPerP * dayPersons).toFixed(2)} (${dayPersons} Port.)`;
     cardTitle.textContent = current.title;
     cardPrepTime.textContent = `${current.prep_time_min || 30} Min.`;
     cardSeasonFokus.textContent = (current.primary_vegetables || []).join(", ") || "Schweizer Saisongemüse";
     cardCookName.textContent = current.cook_assigned ? `Koch: ${current.cook_assigned}` : "Koch: Offen / WG";
     cardHealthTip.textContent = current.health_tip || "Ausgewogenes Rezept mit Schweizer Gemüse.";
 
+    const cardSourceLink = document.getElementById("cardSourceLink");
+    if (cardSourceLink) {
+      if (current.source_url) {
+        cardSourceLink.href = current.source_url;
+        cardSourceLink.classList.remove("hidden");
+      } else {
+        cardSourceLink.classList.add("hidden");
+      }
+    }
+
     // Wer isst mit heute? UI rendern
     const dayEaterSummary = document.getElementById("dayEaterSummary");
     if (dayEaterSummary) {
-      dayEaterSummary.textContent = `${dayPersons} ${dayPersons === 1 ? 'Person' : 'Personen'} • ${current.effective_diet.toUpperCase()}`;
+      dayEaterSummary.textContent = `${eatersCount} Esser + ${buffer} Reste = ${dayPersons} Port. • ${current.effective_diet.toUpperCase()}`;
     }
 
     const dayEatersList = document.getElementById("dayEatersList");
@@ -563,7 +628,552 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("bringfrisch_current_plan", JSON.stringify(state.weekPlan));
   }
 
-  // 4. Einkaufsliste aggregieren, mit Bring! abgleichen & Grundvorrat filtern (Tag-genau skaliert!)
+  // 7-Tage Kachel-Übersicht & View Switcher
+  const weekCardsContainer = document.getElementById("weekCardsContainer");
+  const viewGridBtn = document.getElementById("viewGridBtn");
+  const viewSingleBtn = document.getElementById("viewSingleBtn");
+  const weekGridSection = document.getElementById("weekGridSection");
+  const singleCardSection = document.getElementById("singleCardSection");
+  const regenWholeWeekBtnTop = document.getElementById("regenWholeWeekBtnTop");
+  const quickSyncBringBtn = document.getElementById("quickSyncBringBtn");
+
+  function setViewMode(mode) {
+    if (mode === "grid") {
+      if (weekGridSection) weekGridSection.classList.remove("hidden");
+      if (singleCardSection) singleCardSection.classList.add("hidden");
+      if (viewGridBtn) viewGridBtn.className = "py-1.5 px-2.5 text-xs font-bold rounded-xl bg-emerald-500 text-slate-950 shadow-md flex items-center space-x-1 transition";
+      if (viewSingleBtn) viewSingleBtn.className = "py-1.5 px-2.5 text-xs font-bold rounded-xl text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition";
+      renderWeekGrid();
+    } else {
+      if (weekGridSection) weekGridSection.classList.add("hidden");
+      if (singleCardSection) singleCardSection.classList.remove("hidden");
+      if (viewGridBtn) viewGridBtn.className = "py-1.5 px-2.5 text-xs font-bold rounded-xl text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition";
+      if (viewSingleBtn) viewSingleBtn.className = "py-1.5 px-2.5 text-xs font-bold rounded-xl bg-emerald-500 text-slate-950 shadow-md flex items-center space-x-1 transition";
+      renderActiveCard();
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  if (viewGridBtn) viewGridBtn.onclick = () => setViewMode("grid");
+  if (viewSingleBtn) viewSingleBtn.onclick = () => setViewMode("single");
+
+  if (regenWholeWeekBtnTop) {
+    regenWholeWeekBtnTop.onclick = () => {
+      if (confirm("Ganze Woche mit neuen Schweizer Saison-Rezepten würfeln?")) {
+        state.weekPlan = generateStandalonePlan();
+        savePlan();
+        renderWeekGrid();
+        renderActiveCard();
+        renderAttendanceMatrix();
+        updateShoppingList();
+      }
+    };
+  }
+
+  if (quickSyncBringBtn) {
+    quickSyncBringBtn.onclick = () => performBringSync();
+  }
+
+  // Render 7-Tage Kachel-Übersicht mit 3-Komponenten Menüs ("Alles für Alle")
+  function renderWeekGrid() {
+    if (!weekCardsContainer || !state.weekPlan || state.weekPlan.length === 0) return;
+    weekCardsContainer.innerHTML = "";
+
+    state.weekPlan.forEach((day, idx) => {
+      if (!day.eaters) day.eaters = state.members.map(m => m.id);
+      if (day.leftover_buffer === undefined) day.leftover_buffer = 2;
+      if (day.extra_guests === undefined) day.extra_guests = 0;
+
+      const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
+      const eatersCount = attendingMembers.length;
+      const buffer = day.leftover_buffer;
+      const guests = day.extra_guests;
+      const totalPersons = eatersCount + guests + buffer || 4;
+      day.person_count = totalPersons;
+      day.effective_diet = calculateEffectiveDiet(day.eaters);
+
+      // Individuelle Proteine ermitteln
+      const meatEaters = attendingMembers.filter(m => m.diet === "fleisch");
+      const vegiEaters = attendingMembers.filter(m => m.diet === "vegi");
+      const veganEaters = attendingMembers.filter(m => m.diet === "vegan");
+
+      const card = document.createElement("div");
+      card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 shadow-sm hover:border-slate-700 transition";
+
+      card.innerHTML = `
+        <!-- Tag-Kopfzeile -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs uppercase font-extrabold tracking-wider px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+              ${day.day || DAYS[idx]}
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">
+              ${(day.diet || day.effective_diet).toUpperCase()}
+            </span>
+            ${
+              day.source_url
+                ? `<a href="${day.source_url}" target="_blank" rel="noopener" class="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-0.5 bg-cyan-950/40 border border-cyan-800/40 px-1.5 py-0.5 rounded-md transition" title="Rezept im Browser öffnen">
+                     <i data-lucide="external-link" class="w-3 h-3"></i>
+                     <span>Link</span>
+                   </a>`
+                : ""
+            }
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <button class="grid-cook-btn text-[10px] font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-750 px-2 py-0.5 rounded-md border border-slate-700 flex items-center space-x-1" data-day-idx="${idx}">
+              <span>👨‍🍳</span>
+              <span>${day.cook_assigned || 'Koch?'}</span>
+            </button>
+            <button class="grid-shuffle-btn text-slate-400 hover:text-amber-300 p-1" data-day-idx="${idx}" title="Anderes Saison-Rezept würfeln">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+            <button class="grid-detail-btn text-slate-400 hover:text-emerald-400 p-1" data-day-idx="${idx}" title="Tages-Detail öffnen">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Menütitel & Menü wählen Button -->
+        <div class="flex items-start justify-between gap-2 pt-0.5">
+          <div class="flex-1">
+            <div class="flex items-center space-x-1.5">
+              <span class="text-xs">🍲</span>
+              <h4 class="text-sm font-bold text-white leading-snug">${day.title}</h4>
+            </div>
+            <div class="flex items-center space-x-2.5 text-[10px] text-slate-400 mt-1 pl-4">
+              <span>⏱️ ${day.prep_time_min || 25} Min.</span>
+              <span>💰 CHF ${day.cost_per_person_chf || '2.80'}/P.</span>
+              ${
+                day.source_url
+                  ? `<a href="${day.source_url}" target="_blank" rel="noopener" class="text-cyan-400 hover:underline flex items-center space-x-0.5">
+                       <span>Browser-Rezept</span>
+                       <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+                     </a>`
+                  : ""
+              }
+            </div>
+          </div>
+          <button class="grid-pick-menu-btn text-[11px] font-semibold text-emerald-300 bg-emerald-950/50 hover:bg-emerald-900/60 active:scale-95 border border-emerald-500/40 px-2.5 py-1.5 rounded-xl transition flex items-center space-x-1 flex-shrink-0" data-day-idx="${idx}">
+            <i data-lucide="book-open" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Menü wählen</span>
+          </button>
+        </div>
+
+        <!-- 3-Komponenten Übersicht ("Alles für Alle") -->
+        <div class="p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1 text-[11px]">
+          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1">
+            <span>✨ 3-Teile Menü (Alles für Alle):</span>
+          </div>
+          <div class="grid grid-cols-1 gap-1 text-[10px]">
+            <div class="text-slate-300 flex items-center space-x-1">
+              <span class="text-emerald-400 font-bold">1. Basis:</span>
+              <span>${day.title} (für alle ${totalPersons} Port. inkl. Reste)</span>
+            </div>
+            <div class="text-slate-300 flex items-center space-x-1 flex-wrap">
+              <span class="text-amber-400 font-bold">2. Proteine:</span>
+              ${
+                meatEaters.length > 0
+                  ? `<span class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 mr-1">🥩 Speck / Steak (${meatEaters.map(m=>m.name).join(', ')})</span>`
+                  : ""
+              }
+              ${
+                vegiEaters.length > 0
+                  ? `<span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 mr-1">🧀 Halloumi / Bergkäse (${vegiEaters.map(m=>m.name).join(', ')})</span>`
+                  : ""
+              }
+              ${
+                veganEaters.length > 0
+                  ? `<span class="px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 mr-1">🌱 Vegan-Käse / Pesto (${veganEaters.map(m=>m.name).join(', ')})</span>`
+                  : ""
+              }
+            </div>
+            <div class="text-slate-300 flex items-center space-x-1">
+              <span class="text-cyan-400 font-bold">3. Beilage:</span>
+              <span>Schweizer Nüsslisalat / Frisches Saisongemüse</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personen & Reste-Verteilung -->
+        <div class="pt-1.5 border-t border-slate-800/80 space-y-1.5">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400 font-medium flex items-center space-x-1">
+              <i data-lucide="users" class="w-3 h-3 text-emerald-400"></i>
+              <span>Wer isst heute mit?</span>
+            </span>
+            <div class="flex items-center space-x-1 text-[10px] text-slate-300">
+              <span class="font-bold text-white">${eatersCount}</span> Esser
+              <span>+</span>
+              <span class="text-amber-300 font-bold">${buffer} Reste</span>
+              <span>=</span>
+              <span class="font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">${totalPersons} Port.</span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5">
+            ${state.members.map(mem => {
+              const isAttending = day.eaters && day.eaters.includes(mem.id);
+              return `
+                <button class="grid-eater-chip text-[10px] px-2 py-0.5 rounded-lg border transition font-medium ${
+                  isAttending
+                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50'
+                    : 'bg-slate-800/60 text-slate-500 border-slate-700/40 line-through opacity-60'
+                }" data-day-idx="${idx}" data-member-id="${mem.id}">
+                  ${isAttending ? '✓' : '–'} ${mem.name} (${mem.diet.substring(0,3).toUpperCase()})
+                </button>
+              `;
+            }).join("")}
+
+            <!-- Reste-Puffer Regler (+2 Standard) -->
+            <div class="ml-auto flex items-center space-x-1 bg-slate-800/80 border border-slate-700/60 rounded-lg px-1.5 py-0.5 text-[10px]">
+              <span class="text-slate-400">🍲 Reste:</span>
+              <button class="grid-buffer-btn text-slate-300 hover:text-white px-1 font-bold" data-day-idx="${idx}" data-delta="-1" title="Reste-Portionen verringern">–</button>
+              <span class="font-bold text-amber-300 px-0.5">+${buffer}</span>
+              <button class="grid-buffer-btn text-slate-300 hover:text-white px-1 font-bold" data-day-idx="${idx}" data-delta="1" title="Reste-Portionen erhöhen">+</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      weekCardsContainer.appendChild(card);
+    });
+
+    if (window.lucide) lucide.createIcons();
+
+    // Event Handlers for Grid Card Actions
+    weekCardsContainer.querySelectorAll(".grid-eater-chip").forEach(btn => {
+      btn.onclick = () => {
+        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
+        const mId = btn.getAttribute("data-member-id");
+        const day = state.weekPlan[dIdx];
+        if (!day) return;
+        if (!day.eaters) day.eaters = [];
+        if (day.eaters.includes(mId)) {
+          day.eaters = day.eaters.filter(id => id !== mId);
+        } else {
+          day.eaters.push(mId);
+        }
+        day.effective_diet = calculateEffectiveDiet(day.eaters);
+        savePlan();
+        renderWeekGrid();
+        renderAttendanceMatrix();
+        updateShoppingList();
+      };
+    });
+
+    weekCardsContainer.querySelectorAll(".grid-buffer-btn").forEach(btn => {
+      btn.onclick = () => {
+        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
+        const delta = parseInt(btn.getAttribute("data-delta"), 10);
+        const day = state.weekPlan[dIdx];
+        if (!day) return;
+        if (day.leftover_buffer === undefined) day.leftover_buffer = 2;
+        day.leftover_buffer = Math.max(0, day.leftover_buffer + delta);
+        savePlan();
+        renderWeekGrid();
+        updateShoppingList();
+      };
+    });
+
+    weekCardsContainer.querySelectorAll(".grid-shuffle-btn").forEach(btn => {
+      btn.onclick = () => {
+        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
+        const day = state.weekPlan[dIdx];
+        if (!day) return;
+        const targetDiet = day.effective_diet || state.diet;
+        const pool = getRecipesPool(targetDiet);
+        if (pool.length > 0) {
+          const rec = pool[Math.floor(Math.random() * pool.length)];
+          state.weekPlan[dIdx] = {
+            ...rec,
+            day: DAYS[dIdx],
+            eaters: day.eaters,
+            leftover_buffer: day.leftover_buffer,
+            extra_guests: day.extra_guests,
+            effective_diet: day.effective_diet,
+            person_count: day.person_count,
+            cook_assigned: day.cook_assigned
+          };
+          savePlan();
+          renderWeekGrid();
+          updateShoppingList();
+        }
+      };
+    });
+
+    weekCardsContainer.querySelectorAll(".grid-cook-btn").forEach(btn => {
+      btn.onclick = () => {
+        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
+        const day = state.weekPlan[dIdx];
+        if (!day) return;
+        const cook = prompt(`Wer kocht am ${DAYS[dIdx]}?`, day.cook_assigned || (state.members[0] ? state.members[0].name : "Ich"));
+        if (cook !== null) {
+          day.cook_assigned = cook.trim() || null;
+          savePlan();
+          renderWeekGrid();
+        }
+      };
+    });
+
+    weekCardsContainer.querySelectorAll(".grid-pick-menu-btn").forEach(btn => {
+      btn.onclick = () => {
+        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
+        openMenuCatalogModal(dIdx);
+      };
+    });
+
+    weekCardsContainer.querySelectorAll(".grid-detail-btn").forEach(btn => {
+      btn.onclick = () => {
+        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
+        state.activeDayIndex = dIdx;
+        setViewMode("single");
+      };
+    });
+  }
+
+  // Menü-Katalog Modal Logic
+  let catalogTargetDayIdx = 0;
+  let catalogFilter = "all";
+
+  const allMenusModal = document.getElementById("allMenusModal");
+  const closeAllMenusModalBtn = document.getElementById("closeAllMenusModalBtn");
+  const openAllMenusBtn = document.getElementById("openAllMenusBtn");
+  const menuCatalogSearch = document.getElementById("menuCatalogSearch");
+
+  if (openAllMenusBtn) {
+    openAllMenusBtn.onclick = () => openMenuCatalogModal(state.activeDayIndex || 0);
+  }
+
+  if (closeAllMenusModalBtn && allMenusModal) {
+    closeAllMenusModalBtn.onclick = () => allMenusModal.classList.add("hidden");
+  }
+
+  if (menuCatalogSearch) {
+    menuCatalogSearch.oninput = () => renderMenuCatalogList();
+  }
+
+  const catalogFilterBtns = document.querySelectorAll(".catalog-filter-btn");
+  catalogFilterBtns.forEach(btn => {
+    btn.onclick = () => {
+      catalogFilterBtns.forEach(b => {
+        b.className = "catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold";
+      });
+      btn.className = "catalog-filter-btn px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-950 font-bold active";
+      catalogFilter = btn.getAttribute("data-filter");
+      renderMenuCatalogList();
+    };
+  });
+
+  function openMenuCatalogModal(targetDayIdx = 0) {
+    catalogTargetDayIdx = targetDayIdx;
+    if (!allMenusModal) return;
+
+    const allMenusSubtitle = document.getElementById("allMenusSubtitle");
+    if (allMenusSubtitle) {
+      allMenusSubtitle.textContent = `Wähle ein Menü für ${DAYS[targetDayIdx]} oder einen anderen Tag`;
+    }
+
+    renderMenuCatalogList();
+    allMenusModal.classList.remove("hidden");
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function renderMenuCatalogList() {
+    const list = document.getElementById("menuCatalogList");
+    if (!list) return;
+
+    const searchTerm = menuCatalogSearch ? menuCatalogSearch.value.toLowerCase().trim() : "";
+    const allRecipes = getRecipesPool();
+
+    list.innerHTML = "";
+
+    const filtered = allRecipes.filter(r => {
+      if (catalogFilter === "vegi" && r.diet !== "vegi" && r.diet !== "vegan") return false;
+      if (catalogFilter === "vegan" && r.diet !== "vegan") return false;
+      if (catalogFilter === "schweizerisch" && r.category !== "schweizerisch") return false;
+      if (catalogFilter === "fleisch" && r.diet !== "fleisch") return false;
+      if (catalogFilter === "links" && !r.source_url) return false;
+
+      if (searchTerm) {
+        const matchTitle = (r.title || "").toLowerCase().includes(searchTerm);
+        const matchIng = (r.ingredients || []).some(i => (i.name || "").toLowerCase().includes(searchTerm));
+        if (!matchTitle && !matchIng) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">Keine Rezepte gefunden.</div>`;
+      return;
+    }
+
+    filtered.forEach(rec => {
+      const card = document.createElement("div");
+      card.className = "p-3 rounded-2xl bg-slate-800/80 border border-slate-700/60 space-y-2 hover:border-slate-600 transition";
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <h4 class="text-xs font-bold text-white">${rec.title}</h4>
+            <div class="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5">
+              <span class="text-emerald-400 font-mono uppercase">${rec.diet || 'vegi'}</span>
+              <span>⏱️ ${rec.prep_time_min || 30} Min.</span>
+              <span>💰 CHF ${rec.cost_per_person_chf || '2.80'}/P.</span>
+            </div>
+          </div>
+          ${
+            rec.source_url
+              ? `<a href="${rec.source_url}" target="_blank" rel="noopener" class="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-1 bg-cyan-950/40 border border-cyan-800/40 px-2 py-0.5 rounded-lg flex-shrink-0" title="Rezept im Browser öffnen">
+                   <i data-lucide="external-link" class="w-3 h-3"></i>
+                   <span>Browser</span>
+                 </a>`
+              : ""
+          }
+        </div>
+
+        <div class="pt-1 flex items-center justify-between border-t border-slate-700/60 text-[10px]">
+          <span class="text-slate-400">Auf Tag legen:</span>
+          <div class="flex space-x-1">
+            ${DAYS.map((d, dIdx) => `
+              <button class="assign-recipe-day-btn w-6 h-6 rounded-lg font-bold text-[10px] transition ${
+                dIdx === catalogTargetDayIdx
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                  : 'bg-slate-700 hover:bg-slate-650 text-slate-200'
+              }" data-recipe-id="${rec.id}" data-day-idx="${dIdx}" title="Als ${d} kochen">
+                ${d.substring(0,2)}
+              </button>
+            `).join("")}
+          </div>
+        </div>
+      `;
+
+      list.appendChild(card);
+    });
+
+    if (window.lucide) lucide.createIcons();
+
+    list.querySelectorAll(".assign-recipe-day-btn").forEach(btn => {
+      btn.onclick = () => {
+        const rId = btn.getAttribute("data-recipe-id");
+        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
+        const chosen = allRecipes.find(r => r.id === rId);
+        if (!chosen) return;
+
+        const currentDay = state.weekPlan[dIdx] || {};
+        state.weekPlan[dIdx] = {
+          ...chosen,
+          day: DAYS[dIdx],
+          eaters: currentDay.eaters || state.members.map(m => m.id),
+          leftover_buffer: currentDay.leftover_buffer !== undefined ? currentDay.leftover_buffer : 2,
+          extra_guests: currentDay.extra_guests || 0,
+          effective_diet: currentDay.effective_diet || calculateEffectiveDiet(currentDay.eaters),
+          person_count: currentDay.person_count || 5,
+          cook_assigned: currentDay.cook_assigned || null
+        };
+
+        savePlan();
+        renderWeekGrid();
+        renderActiveCard();
+        updateShoppingList();
+
+        if (allMenusModal) allMenusModal.classList.add("hidden");
+        alert(`✅ "${chosen.title}" wurde für ${DAYS[dIdx]} eingeplant!`);
+      };
+    });
+  }
+
+  // Modal: Menü via Web-Link hinzufügen Logic
+  const openAddRecipeLinkBtn = document.getElementById("openAddRecipeLinkBtn");
+  const addRecipeLinkModal = document.getElementById("addRecipeLinkModal");
+  const closeAddRecipeLinkModalBtn = document.getElementById("closeAddRecipeLinkModalBtn");
+  const newRecipeUrlInput = document.getElementById("newRecipeUrlInput");
+  const analyzeUrlBtn = document.getElementById("analyzeUrlBtn");
+  const newRecipeTitleInput = document.getElementById("newRecipeTitleInput");
+  const newRecipeDietSelect = document.getElementById("newRecipeDietSelect");
+  const newRecipeDaySelect = document.getElementById("newRecipeDaySelect");
+  const newRecipeIngredientsInput = document.getElementById("newRecipeIngredientsInput");
+  const saveNewRecipeLinkBtn = document.getElementById("saveNewRecipeLinkBtn");
+
+  if (openAddRecipeLinkBtn && addRecipeLinkModal) {
+    openAddRecipeLinkBtn.onclick = () => {
+      addRecipeLinkModal.classList.remove("hidden");
+      if (newRecipeUrlInput) newRecipeUrlInput.focus();
+    };
+  }
+
+  if (closeAddRecipeLinkModalBtn && addRecipeLinkModal) {
+    closeAddRecipeLinkModalBtn.onclick = () => addRecipeLinkModal.classList.add("hidden");
+  }
+
+  if (analyzeUrlBtn) {
+    analyzeUrlBtn.onclick = () => {
+      const url = newRecipeUrlInput ? newRecipeUrlInput.value.trim() : "";
+      if (!url) {
+        alert("Bitte zuerst eine Rezept-URL eingeben!");
+        return;
+      }
+      if (window.recipeImporter) {
+        const res = window.recipeImporter.analyzeRecipeUrl(url);
+        if (newRecipeTitleInput) newRecipeTitleInput.value = res.title;
+      }
+    };
+  }
+
+  if (saveNewRecipeLinkBtn) {
+    saveNewRecipeLinkBtn.onclick = () => {
+      const url = newRecipeUrlInput ? newRecipeUrlInput.value.trim() : "";
+      let title = newRecipeTitleInput ? newRecipeTitleInput.value.trim() : "";
+      const diet = newRecipeDietSelect ? newRecipeDietSelect.value : "vegi";
+      const ings = newRecipeIngredientsInput ? newRecipeIngredientsInput.value.trim() : "";
+      const dayIdx = newRecipeDaySelect ? parseInt(newRecipeDaySelect.value, 10) : -1;
+
+      if (!title && !url) {
+        alert("Bitte mindestens einen Titel oder eine Web-URL angeben!");
+        return;
+      }
+
+      let newRecipe;
+      if (window.recipeImporter) {
+        newRecipe = window.recipeImporter.createRecipeFromUrl(url, title, ings, diet);
+      } else {
+        newRecipe = {
+          id: "custom-" + Date.now(),
+          title: title || "Web-Rezept",
+          source_url: url,
+          diet: diet,
+          ingredients: []
+        };
+      }
+
+      if (dayIdx >= 0 && dayIdx < 7) {
+        const cur = state.weekPlan[dayIdx] || {};
+        state.weekPlan[dayIdx] = {
+          ...newRecipe,
+          day: DAYS[dayIdx],
+          eaters: cur.eaters || state.members.map(m => m.id),
+          leftover_buffer: cur.leftover_buffer !== undefined ? cur.leftover_buffer : 2,
+          extra_guests: cur.extra_guests || 0,
+          effective_diet: cur.effective_diet || calculateEffectiveDiet(cur.eaters),
+          person_count: cur.person_count || 5,
+          cook_assigned: cur.cook_assigned || null
+        };
+      }
+
+      savePlan();
+      renderWeekGrid();
+      renderActiveCard();
+      updateShoppingList();
+
+      if (addRecipeLinkModal) addRecipeLinkModal.classList.add("hidden");
+      if (newRecipeUrlInput) newRecipeUrlInput.value = "";
+      if (newRecipeTitleInput) newRecipeTitleInput.value = "";
+      if (newRecipeIngredientsInput) newRecipeIngredientsInput.value = "";
+
+      alert(`🎉 Rezept "${newRecipe.title}" gespeichert${dayIdx >= 0 ? ` und ${DAYS[dayIdx]} zugewiesen` : ''}!`);
+    };
+  }
+
+  // 4. Einkaufsliste aggregieren, mit Bring! abgleichen & Grundvorrat filtern (Tag-genau skaliert + 3 Komponenten!)
   function updateShoppingList() {
     const aggregated = {};
 
@@ -575,43 +1185,71 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    function addAggregatedItem(name, unit, amt, bringCat) {
+      if (!name || amt <= 0) return;
+      const key = `${name.toLowerCase()}___${(unit || "").toLowerCase()}`;
+      if (aggregated[key]) {
+        aggregated[key].amount += amt;
+      } else {
+        const lower = name.toLowerCase();
+        const isStaple = activeStapleKeywords.some(st => lower.includes(st));
+        const isOnBring = state.currentBringItems.some(b => lower.includes(b) || b.includes(lower));
+
+        let status = "toBuy";
+        if (isStaple && state.excludeStaples) {
+          status = "staples";
+        } else if (isOnBring) {
+          status = "onBring";
+        }
+
+        aggregated[key] = {
+          name: name,
+          amount: amt,
+          unit: unit || "",
+          bring_cat: bringCat || "Sonstiges",
+          isStaple: isStaple,
+          isOnBring: isOnBring,
+          status: status,
+          checked: false
+        };
+      }
+    }
+
     state.weekPlan.forEach(day => {
-      // Skalierung genau nach Esser-Anzahl dieses einzelnen Tages!
-      const dayPersons = (day.eaters ? day.eaters.length : 0) + (day.extra_guests || 0) || state.persons;
+      // Skalierung nach Esser-Anzahl dieses einzelnen Tages + Reste-Puffer (+2 standardmäßig)!
+      const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
+      const eatersCount = attendingMembers.length;
+      const buffer = (day.leftover_buffer !== undefined ? day.leftover_buffer : 2);
+      const guests = (day.extra_guests || 0);
+      const dayPersons = eatersCount + guests + buffer || 4;
       const dayScale = dayPersons / 2;
 
+      // 1. Basis-Zutaten für alle (skaliert für Esser + Reste-Puffer)
       (day.ingredients || []).forEach(ing => {
-        const name = ing.name.trim();
-        const unit = (ing.unit || "").trim();
-        const key = `${name.toLowerCase()}___${unit.toLowerCase()}`;
         const amt = parseFloat(ing.amount || "1") * dayScale;
-
-        if (aggregated[key]) {
-          aggregated[key].amount += amt;
-        } else {
-          const lower = name.toLowerCase();
-          const isStaple = activeStapleKeywords.some(st => lower.includes(st));
-          const isOnBring = state.currentBringItems.some(b => lower.includes(b) || b.includes(lower));
-
-          let status = "toBuy";
-          if (isStaple && state.excludeStaples) {
-            status = "staples";
-          } else if (isOnBring) {
-            status = "onBring";
-          }
-
-          aggregated[key] = {
-            name: name,
-            amount: amt,
-            unit: unit,
-            bring_cat: ing.bring_cat || "Sonstiges",
-            isStaple: isStaple,
-            isOnBring: isOnBring,
-            status: status,
-            checked: false
-          };
-        }
+        addAggregatedItem(ing.name.trim(), (ing.unit || "").trim(), amt, ing.bring_cat);
       });
+
+      // 2. Modulare Proteine / Toppings ("Alles für Alle"):
+      const meatEaters = attendingMembers.filter(m => m.diet === "fleisch").length;
+      const vegiEaters = attendingMembers.filter(m => m.diet === "vegi").length;
+      const veganEaters = attendingMembers.filter(m => m.diet === "vegan").length;
+
+      // Fleisch-Variante (z.B. Speck / Rindssteak für Lukas)
+      if (meatEaters > 0) {
+        addAggregatedItem("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meatEaters, "Fleisch & Fisch");
+      }
+      // Vegi-Variante (z.B. Halloumi / Bergkäse für Jonas)
+      if (vegiEaters > 0) {
+        addAggregatedItem("Schweizer Grillkäse / Halloumi", "g", 100 * vegiEaters, "Milch & Käse");
+      }
+      // Vegan-Variante (z.B. Veganer Reibkäse / Pesto / Tofu für Anna)
+      if (veganEaters > 0) {
+        addAggregatedItem("Veganer Reibkäse-Ersatz / Pesto", "Portion", veganEaters, "Milch & Käse");
+      }
+
+      // 3. Frische Beilage (Teil 3 des Menüs: Frischer Schweizer Salat)
+      addAggregatedItem("Schweizer Nüsslisalat / Frischer Salat", "g", 50 * dayPersons, "Obst & Gemüse");
     });
 
     state.shoppingList = Object.values(aggregated);
@@ -877,10 +1515,10 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Bring! Export (nur noch fehlende Artikel exportieren!)
-  syncToBringBtn.onclick = async () => {
+  async function performBringSync() {
     if (!isBringConnected) {
       openBringModal();
-      showBringFeedback("Bitte verbinde zuerst deinen Bring!-Account mit E-Mail & Passwort!", false);
+      showBringFeedback("Bitte verbinde zuerst deinen Bring!-Account mit E-Mail & Passwort oder Bearer-Token!", false);
       return;
     }
 
@@ -889,7 +1527,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Alles bereits erledigt! Alle Zutaten sind entweder schon auf Bring! oder als Grundvorrat zuhause vorhanden.");
       return;
     }
-    syncBtnText.textContent = "Wird übertragen...";
+    if (syncBtnText) syncBtnText.textContent = "Wird übertragen...";
     try {
       const res = await fetch("/api/bring/sync", {
         method: "POST",
@@ -898,18 +1536,25 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const data = await res.json();
       if (data.success) {
-        syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel exportiert!`;
+        if (syncBtnText) syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel exportiert!`;
+        alert(`🎉 Erfolg! ${itemsToExport.length} fehlende Zutaten wurden direkt in deine Bring!-Liste übertragen.`);
+        checkBringStatus();
       } else {
-        syncBtnText.textContent = "Fehler beim Export";
+        if (syncBtnText) syncBtnText.textContent = "Fehler beim Export";
         alert(`Bring! Fehler: ${data.errors ? data.errors.join(', ') : 'Synchronisation fehlgeschlagen'}`);
       }
     } catch (e) {
-      syncBtnText.textContent = "Verbindungsfehler";
+      if (syncBtnText) syncBtnText.textContent = "Verbindungsfehler";
+      alert("Verbindungsfehler beim Synchronisieren zu Bring!");
     }
     setTimeout(() => {
-      syncBtnText.textContent = "Nach Bring! (Nur Fehlendes)";
+      if (syncBtnText) syncBtnText.textContent = "Nach Bring! (Nur Fehlendes)";
     }, 3000);
-  };
+  }
+
+  if (syncToBringBtn) {
+    syncToBringBtn.onclick = () => performBringSync();
+  }
 
   // Kalender .ics Export (100% Client-Side Generator)
   document.getElementById("downloadIcsBtn").onclick = () => {
