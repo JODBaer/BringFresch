@@ -155,17 +155,42 @@ document.addEventListener("DOMContentLoaded", () => {
     return plan;
   }
 
-  // Plan laden: Versuch über Server, sonst 100% Standalone Fallback
+  // Plan laden: Prüft P2P URL-Hash (#plan=...), sonst LocalStorage / Server
   async function loadPlan() {
-    const savedLocal = localStorage.getItem("bringfrisch_current_plan");
-    if (savedLocal) {
+    let planLoadedFromHash = false;
+    // 1. P2P Mesh Import via URL-Hash
+    if (window.location.hash.startsWith("#plan=")) {
       try {
-        state.weekPlan = JSON.parse(savedLocal);
-      } catch (e) {
+        const base64Data = decodeURIComponent(window.location.hash.substring(6));
+        const jsonStr = decodeURIComponent(escape(atob(base64Data)));
+        const sharedPayload = JSON.parse(jsonStr);
+
+        if (sharedPayload.weekPlan) state.weekPlan = sharedPayload.weekPlan;
+        else if (sharedPayload.plan) state.weekPlan = sharedPayload.plan;
+        if (sharedPayload.members) state.members = sharedPayload.members;
+        if (sharedPayload.wgId) state.wgId = sharedPayload.wgId;
+
+        savePlan();
+        saveMembers();
+        planLoadedFromHash = true;
+        history.replaceState(null, "", window.location.pathname);
+        alert(`🎉 WG-Wochenplan "${state.wgId}" erfolgreich via P2P empfangen und synchronisiert!`);
+      } catch (err) {
+        console.warn("P2P hash import error", err);
+      }
+    }
+
+    if (!planLoadedFromHash) {
+      const savedLocal = localStorage.getItem("bringfrisch_current_plan");
+      if (savedLocal) {
+        try {
+          state.weekPlan = JSON.parse(savedLocal);
+        } catch (e) {
+          state.weekPlan = generateStandalonePlan();
+        }
+      } else {
         state.weekPlan = generateStandalonePlan();
       }
-    } else {
-      state.weekPlan = generateStandalonePlan();
     }
 
     renderDaySelector();
@@ -174,6 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
     checkPantryAlerts();
     renderPantryItems();
     renderMembersManager();
+    renderAttendanceMatrix();
     checkBringStatus();
   }
 
@@ -1257,6 +1283,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state.members[idx].diet = e.target.value;
         saveMembers();
         renderMembersManager();
+        renderAttendanceMatrix();
         renderActiveCard();
         updateShoppingList();
       };
@@ -1272,6 +1299,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state.members.splice(idx, 1);
         saveMembers();
         renderMembersManager();
+        renderAttendanceMatrix();
         renderActiveCard();
         updateShoppingList();
       };
@@ -1292,8 +1320,171 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       saveMembers();
       renderMembersManager();
+      renderAttendanceMatrix();
       renderActiveCard();
       updateShoppingList();
+    };
+  }
+
+  // Interaktive Wochen-Anwesenheit & Diät-Matrix Tabelle
+  const attendanceMatrixTable = document.getElementById("attendanceMatrixTable");
+
+  function renderAttendanceMatrix() {
+    if (!attendanceMatrixTable) return;
+    attendanceMatrixTable.innerHTML = "";
+
+    // Sicherstellen, dass jeder Tag im weekPlan die Esser-Liste hat
+    state.weekPlan.forEach((day, dIdx) => {
+      if (!day.eaters) {
+        day.eaters = state.members.map(m => m.id);
+      }
+    });
+
+    const thead = document.createElement("thead");
+    thead.innerHTML = `
+      <tr class="text-slate-400 border-b border-slate-800">
+        <th class="py-2 px-2 text-left font-semibold">Mitbewohner</th>
+        <th class="py-2 px-1 text-center font-semibold">Mo</th>
+        <th class="py-2 px-1 text-center font-semibold">Di</th>
+        <th class="py-2 px-1 text-center font-semibold">Mi</th>
+        <th class="py-2 px-1 text-center font-semibold">Do</th>
+        <th class="py-2 px-1 text-center font-semibold">Fr</th>
+        <th class="py-2 px-1 text-center font-semibold">Sa</th>
+        <th class="py-2 px-1 text-center font-semibold">So</th>
+      </tr>
+    `;
+    attendanceMatrixTable.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    tbody.className = "divide-y divide-slate-800/60";
+
+    // Eine Zeile pro Mitbewohner
+    state.members.forEach((mem) => {
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-slate-900/50 transition";
+
+      let dietColor = "text-emerald-400";
+      if (mem.diet === "vegan") dietColor = "text-cyan-400";
+      if (mem.diet === "fleisch") dietColor = "text-amber-400";
+
+      let tdHtml = `
+        <td class="py-2 px-2 text-left">
+          <div class="flex items-center space-x-1.5">
+            <span class="font-bold text-slate-200">${mem.name}</span>
+            <span class="text-[9px] font-mono px-1 py-0.2 rounded border border-slate-700/60 ${dietColor}">${mem.diet.substring(0,3).toUpperCase()}</span>
+          </div>
+        </td>
+      `;
+
+      // 7 Spalten für Mo bis So
+      for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+        const dayPlan = state.weekPlan[dayIdx];
+        const isAttending = dayPlan && dayPlan.eaters && dayPlan.eaters.includes(mem.id);
+
+        tdHtml += `
+          <td class="py-1.5 px-0.5 text-center">
+            <button class="matrix-toggle-btn w-6 h-6 rounded-lg font-bold text-xs transition inline-flex items-center justify-center ${
+              isAttending
+                ? "bg-emerald-500 text-slate-950 shadow-sm"
+                : "bg-slate-800/80 text-slate-600 hover:text-slate-400"
+            }" data-member-id="${mem.id}" data-day-idx="${dayIdx}" title="${mem.name} am ${DAYS[dayIdx]} ${isAttending ? 'dabei' : 'abwesend'}">
+              ${isAttending ? "✓" : "–"}
+            </button>
+          </td>
+        `;
+      }
+      tr.innerHTML = tdHtml;
+      tbody.appendChild(tr);
+    });
+
+    // Zusammenfassungs-Zeile: Diät & Anzahl Esser
+    const summaryTr = document.createElement("tr");
+    summaryTr.className = "bg-slate-900/80 font-bold border-t border-slate-700/80 text-[10px]";
+    let summaryHtml = `<td class="py-2 px-2 text-left text-slate-400">Total / Diät</td>`;
+
+    for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+      const dayPlan = state.weekPlan[dayIdx];
+      const count = (dayPlan && dayPlan.eaters ? dayPlan.eaters.length : 0) + (dayPlan && dayPlan.extra_guests ? dayPlan.extra_guests : 0);
+      const diet = dayPlan ? (dayPlan.effective_diet || "vegi").substring(0, 3).toUpperCase() : "VEG";
+
+      let dietColor = "text-emerald-400";
+      if (diet === "VEG" && dayPlan && dayPlan.effective_diet === "vegan") dietColor = "text-cyan-400";
+      if (diet === "FLE") dietColor = "text-amber-400";
+
+      summaryHtml += `
+        <td class="py-1.5 px-0.5 text-center">
+          <div class="flex flex-col items-center">
+            <span class="text-white">${count}P</span>
+            <span class="${dietColor} text-[8px] font-mono">${diet}</span>
+          </div>
+        </td>
+      `;
+    }
+    summaryTr.innerHTML = summaryHtml;
+    tbody.appendChild(summaryTr);
+
+    attendanceMatrixTable.appendChild(tbody);
+
+    // Klick-Handler für Matrix Checkboxen
+    attendanceMatrixTable.querySelectorAll(".matrix-toggle-btn").forEach(btn => {
+      btn.onclick = () => {
+        const memId = btn.getAttribute("data-member-id");
+        const dayIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
+        const dayPlan = state.weekPlan[dayIdx];
+        if (!dayPlan) return;
+
+        if (!dayPlan.eaters) dayPlan.eaters = [];
+        if (dayPlan.eaters.includes(memId)) {
+          dayPlan.eaters = dayPlan.eaters.filter(id => id !== memId);
+        } else {
+          dayPlan.eaters.push(memId);
+        }
+
+        dayPlan.effective_diet = calculateEffectiveDiet(dayPlan.eaters);
+        dayPlan.person_count = dayPlan.eaters.length + (dayPlan.extra_guests || 0);
+
+        savePlan();
+        renderAttendanceMatrix();
+        renderActiveCard();
+        updateShoppingList();
+      };
+    });
+  }
+
+  // Dezentraler P2P / Mesh Sync via URL-Hash
+  const shareP2pPlanBtn = document.getElementById("shareP2pPlanBtn");
+  if (shareP2pPlanBtn) {
+    shareP2pPlanBtn.onclick = () => {
+      try {
+        const payload = {
+          v: 1,
+          wgId: state.wgId,
+          members: state.members,
+          weekPlan: state.weekPlan,
+          ts: Date.now()
+        };
+        const jsonStr = JSON.stringify(payload);
+        const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
+        const baseUrl = window.location.href.split("#")[0];
+        const shareUrl = `${baseUrl}#plan=${encodeURIComponent(base64Data)}`;
+
+        if (navigator.share) {
+          navigator.share({
+            title: `BringFrisch WG-Plan (${state.wgId})`,
+            text: `Hier ist unser aktueller Wochen- und Einkaufsplan für die WG!`,
+            url: shareUrl
+          }).catch(() => {
+            navigator.clipboard.writeText(shareUrl);
+            alert("🔗 Plan-Link erfolgreich in die Zwischenablage kopiert!\n\nSende den Link per WhatsApp/Signal an deine Mitbewohner. Wenn sie den Link öffnen, wird die WG-Woche auf ihren Handys synchronisiert.");
+          });
+        } else {
+          navigator.clipboard.writeText(shareUrl);
+          alert("🔗 Plan-Link erfolgreich in die Zwischenablage kopiert!\n\nSende den Link per WhatsApp/Signal an deine Mitbewohner. Wenn sie den Link öffnen, wird die WG-Woche auf ihren Handys synchronisiert.");
+        }
+      } catch (err) {
+        console.error("P2P share error", err);
+        alert("Fehler beim Erstellen des Sharing-Links: " + err.message);
+      }
     };
   }
 
