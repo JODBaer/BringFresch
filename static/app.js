@@ -522,46 +522,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  const bringTokenInput = document.getElementById("bringTokenInput");
-  const bringTokenLoginBtn = document.getElementById("bringTokenLoginBtn");
-
-  if (bringTokenLoginBtn) {
-    bringTokenLoginBtn.onclick = async () => {
-      const token = (bringTokenInput.value || "").trim();
-      if (!token) {
-        showBringFeedback("Bitte einen Bring! Token eingeben!", false);
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/bring/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: token })
-        });
-        const data = await res.json();
-        if (data.success) {
-          isBringConnected = true;
-          showBringFeedback("✅ Erfolgreich via Token verknüpft!", true);
-          if (bringStatusBadge) {
-            bringStatusBadge.textContent = "Verbunden";
-            bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
-          }
-          if (bringListName) {
-            bringListName.textContent = "Liste: Bring! Web";
-          }
-          setTimeout(() => {
-            if (bringSettingsModal) bringSettingsModal.classList.add("hidden");
-          }, 1500);
-        } else {
-          showBringFeedback(`❌ ${data.error || 'Token ungültig'}`, false);
-        }
-      } catch (e) {
-        showBringFeedback("❌ Verbindungsfehler zum Server.", false);
-      }
-    };
-  }
-
   function showBringFeedback(msg, isSuccess) {
     if (!bringLoginFeedback) return;
     bringLoginFeedback.textContent = msg;
