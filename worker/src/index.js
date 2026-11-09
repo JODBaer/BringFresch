@@ -59,6 +59,8 @@ async function route(request, env, url) {
   requirePin(request, env);
 
   if (path === "/bring/list" && method === "GET") return json(await bringList(env));
+  if (path === "/bring/lists" && method === "GET") return json(await bringLists(env));
+  if (path === "/bring/remove" && method === "POST") return json(await bringRemove(env, await body(request)));
   if (path === "/bring/sync" && method === "POST") return json(await bringSync(env, await body(request)));
 
   const week = path.match(/^\/week\/(\d{4}-W\d{2})(?:\/(candidates|vote)(?:\/([\w-]+))?)?$/);
@@ -92,7 +94,7 @@ async function route(request, env, url) {
   // Kalender-Link für die App (nur mit PIN sichtbar)
   if (path === "/cal-link" && method === "GET") {
     if (!env.CAL_TOKEN) throw httpError(500, "CAL_TOKEN nicht eingerichtet");
-    return json({ url: `${url.origin}/cal/${env.CAL_TOKEN}.ics` });
+    return json({ url: `${url.origin}/cal/${env.CAL_TOKEN.trim()}.ics` });
   }
 
   throw httpError(404, "Unbekannter Endpunkt");
@@ -163,8 +165,18 @@ async function bringLogin(env) {
   if (!data.uuid || !data.access_token || !listUuid) throw httpError(502, "Bring!-Antwort unvollständig");
   return {
     listUuid,
+    userUuid: data.uuid,
     headers: { ...BRING_HEADERS, "X-BRING-USER-UUID": data.uuid, Authorization: `Bearer ${data.access_token}` },
   };
+}
+
+// Alle Listen des Bot-Kontos (zum Einrichten: welche ist die WG-Liste?)
+async function bringLists(env) {
+  const s = await bringLogin(env);
+  const res = await fetch(`${BRING}bringusers/${s.userUuid}/lists`, { headers: s.headers });
+  if (!res.ok) throw httpError(502, `Bring!-Listen nicht lesbar (${res.status})`);
+  const data = await res.json();
+  return { active: s.listUuid, lists: (data.lists || []).map(l => ({ uuid: l.listUuid, name: l.name })) };
 }
 
 async function bringList(env) {
@@ -193,6 +205,24 @@ async function bringSync(env, { items }) {
     else errors.push(`${name}: ${res.status}`);
   }
   return { ok: errors.length === 0, pushed, errors };
+}
+
+// Artikel wieder von der Liste nehmen (für Tests / Aufräumen)
+async function bringRemove(env, { names }) {
+  if (!Array.isArray(names) || names.length === 0 || names.length > MAX_ITEMS) throw httpError(400, "Keine Artikel");
+  const s = await bringLogin(env);
+  let removed = 0;
+  for (const n of names) {
+    const name = String(n || "").trim().slice(0, 80);
+    if (!name) continue;
+    const res = await fetch(`${BRING}bringlists/${s.listUuid}`, {
+      method: "PUT",
+      headers: { ...s.headers, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+      body: new URLSearchParams({ remove: name }),
+    });
+    if (res.ok) removed++;
+  }
+  return { ok: true, removed };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -248,7 +278,7 @@ function stamp(d) {
 }
 
 async function calendar(env, token) {
-  if (!env.CAL_TOKEN || !timingSafeEqual(token, env.CAL_TOKEN)) return new Response("Not found", { status: 404 });
+  if (!env.CAL_TOKEN || !timingSafeEqual(token, env.CAL_TOKEN.trim())) return new Response("Not found", { status: 404 });
   const doc = (await env.WG.get("plan", "json")) || {};
   const monday = mondayOf(doc.week);
   const lines = [
