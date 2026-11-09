@@ -150,10 +150,13 @@ async function bringLogin(env) {
   if (!env.BRING_EMAIL || !env.BRING_PASSWORD) throw httpError(500, "Bring!-Zugang im Worker nicht eingerichtet");
   const res = await fetch(BRING + "bringauth", {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ email: env.BRING_EMAIL, password: env.BRING_PASSWORD }),
+    headers: { ...BRING_HEADERS, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ email: env.BRING_EMAIL.trim(), password: env.BRING_PASSWORD }),
   });
-  if (res.status === 401 || res.status === 400) throw httpError(502, "Bring!-Login abgelehnt (E-Mail/Passwort des Bot-Kontos prüfen)");
+  if (res.status === 401 || res.status === 400) {
+    const why = await res.json().then(d => d.message || "", () => "");
+    throw httpError(502, `Bring!-Login abgelehnt (E-Mail/Passwort des Bot-Kontos prüfen)${why ? ": " + why : ""}`);
+  }
   if (!res.ok) throw httpError(502, `Bring!-Login fehlgeschlagen (${res.status})`);
   const data = await res.json();
   const listUuid = env.BRING_LIST_UUID || data.bringListUUID;
