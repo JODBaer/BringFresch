@@ -201,26 +201,37 @@ async function bringSetTarget(env, { uuid }) {
   return { ok: true, active: hit.uuid, name: hit.name };
 }
 
-async function bringPurchase(s) {
+// Liste mit Mengenangaben: [{ name, spec }]
+async function bringDetails(s) {
   const res = await fetch(`${BRING}bringlists/${s.listUuid}`, { headers: s.headers });
   if (!res.ok) throw httpError(502, `Bring!-Liste nicht lesbar (${res.status})`);
   const data = await res.json();
   const purchase = (data.items && data.items.purchase) || data.purchase || [];
-  return purchase.map(p => p.name || p.itemId);
+  return purchase.map(p => ({ name: p.name || p.itemId, spec: p.specification || "" }));
+}
+async function bringPurchase(s) {
+  return (await bringDetails(s)).map(p => p.name);
 }
 
 // Was hat der Bot selbst auf die Liste gesetzt? Nur das darf er wieder wegnehmen.
 const ownKey = s => `bot:${s.listUuid}`;
+// own: { "rahm": { name: "Rahm", spec: "4 dl" } } – Menge, die der Bot zuletzt gesendet hat
 async function loadOwn(env, s) {
-  return (await env.WG.get(ownKey(s), "json")) || {};
+  const raw = (await env.WG.get(ownKey(s), "json")) || {};
+  for (const k of Object.keys(raw)) if (typeof raw[k] === "string") raw[k] = { name: raw[k], spec: "" }; // altes Format
+  return raw;
 }
 
 async function bringList(env) {
   const s = await bringLogin(env);
-  const items = await bringPurchase(s);
+  const details = await bringDetails(s);
   const own = await loadOwn(env, s);
-  const onList = new Set(items.map(n => n.toLowerCase()));
-  return { items, mine: Object.values(own).filter(n => onList.has(n.toLowerCase())) };
+  const onList = new Set(details.map(d => d.name.toLowerCase()));
+  // Gekauft/abgehakt = nicht mehr drauf -> vergessen; trägt es später jemand neu ein, gehört es ihm
+  const gone = Object.keys(own).filter(k => !onList.has(k));
+  if (gone.length) { gone.forEach(k => delete own[k]); await env.WG.put(ownKey(s), JSON.stringify(own)); }
+  const mineDetails = Object.values(own);
+  return { items: details.map(d => d.name), details, mine: mineDetails.map(o => o.name), mineDetails };
 }
 
 function bringPut(s, params) {
@@ -237,15 +248,17 @@ async function bringSync(env, { items }) {
   const s = await bringLogin(env);
   const before = new Set((await bringPurchase(s)).map(n => n.toLowerCase()));
   const own = await loadOwn(env, s);
+  const spec = it => String(it.spec || "").slice(0, 80);
   let pushed = 0;
   const errors = [];
   for (const it of items) {
     const name = String(it.name || "").trim().slice(0, 80);
     if (!name) continue;
-    const res = await bringPut(s, { purchase: name, specification: String(it.spec || "").slice(0, 80) });
+    const res = await bringPut(s, { purchase: name, specification: spec(it) });
     if (res.ok) {
       pushed++;
-      if (!before.has(name.toLowerCase())) own[name.toLowerCase()] = name; // neu vom Bot -> gehört ihm
+      const k = name.toLowerCase();
+      if (!before.has(k) || own[k]) own[k] = { name, spec: spec(it) }; // neu oder schon vom Bot -> gehört ihm, Menge merken
     } else errors.push(`${name}: ${res.status}`);
   }
   await env.WG.put(ownKey(s), JSON.stringify(own));

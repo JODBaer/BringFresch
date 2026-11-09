@@ -73,6 +73,8 @@
     shopping: [],
     bringItems: [],
     bringMine: [], // vom Bot gesetzt -> darf er wieder wegnehmen
+    bringSpecs: {}, // name (klein) -> Mengenangabe auf Bring!
+    sentSpecs: {}, // name (klein) -> was der Bot zuletzt gesendet hat
     shopFilter: "toBuy",
     catalogDay: 0,
     catalogFilter: "all",
@@ -395,7 +397,8 @@
     for (const it of list) {
       const target = it.bring || it.name;
       const k = target.toLowerCase();
-      const g = groups.get(k) || { name: target, amounts: new Map(), extra: new Set() };
+      const g = groups.get(k) || { name: target, amounts: new Map(), extra: new Set(), from: new Set() };
+      (it.from || []).forEach(f => g.from.add(f));
       const [base, f] = UNIT_BASE[(it.unit || "").toLowerCase()] || [it.unit || "", 1];
       g.amounts.set(base, (g.amounts.get(base) || 0) + it.amount * f);
       if (it.bring && bringLookup(it.name) !== it.bring) g.extra.add(it.name); // Sorte nur, wenn nicht schon der Katalogname
@@ -405,7 +408,7 @@
     return [...groups.values()].map(g => {
       const parts = [...g.amounts].map(([u, a]) =>
         u === "g" && a >= 1000 ? formatAmount(a / 1000, "kg") : u === "dl" && a >= 10 ? formatAmount(a / 10, "l") : formatAmount(a, u));
-      return { name: g.name, spec: [parts.join(" + "), ...g.extra].filter(Boolean).join(", ") };
+      return { name: g.name, spec: [parts.join(" + "), ...g.extra].filter(Boolean).join(", "), from: [...g.from] };
     });
   }
 
@@ -417,13 +420,14 @@
     const onBring = state.bringItems.map(n => n.toLowerCase().trim());
     const agg = {};
 
-    function add(rawName, unit, amount, cat) {
+    function add(rawName, unit, amount, cat, from) {
       const { name, note, skip } = cleanIngredient(rawName);
       if (!name || skip || !(amount > 0)) return;
       const key = `${name.toLowerCase()}__${(unit || "").toLowerCase()}`;
       if (agg[key]) {
         agg[key].amount += amount;
         if (note) agg[key].notes.add(note);
+        if (from) agg[key].from.add(from);
         return;
       }
       const lower = name.toLowerCase();
@@ -435,6 +439,7 @@
         unit: unit || "",
         amount,
         notes: new Set(note ? [note] : []),
+        from: new Set(from ? [from] : []),
         cat: cat || "Sonstiges",
         isStaple: stapleKeywords.some(k => lower.includes(k)),
         isOnBring: onBring.some(b => b === lower || b.includes(lower) || lower.includes(b) || bringLower.includes(b))
@@ -448,7 +453,7 @@
 
       // 1. Gemeinsame Basis für alle + Reste
       (day.ingredients || []).forEach(ing => {
-        add(ing.name.trim(), (ing.unit || "").trim(), parseFloat(ing.amount || "1") * scale, ing.bring_cat);
+        add(ing.name.trim(), (ing.unit || "").trim(), parseFloat(ing.amount || "1") * scale, ing.bring_cat, day.title);
       });
 
       // 2. Individuelle Proteine je anwesendem Esser
@@ -456,26 +461,26 @@
       const meat = present.filter(m => m.diet === "fleisch").length;
       const vegi = present.filter(m => m.diet === "vegi").length;
       const vegan = present.filter(m => m.diet === "vegan").length;
-      if (meat > 0 && day.diet !== "fleisch" && !day.no_addons) add("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meat, "Fleisch & Fisch");
+      if (meat > 0 && day.diet !== "fleisch" && !day.no_addons) add("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meat, "Fleisch & Fisch", day.title);
       const swap = day.vegi_swap; // z.B. Vegi-Nuggets statt Grillkäse
-      if (vegi > 0 && swap) add(swap.name, swap.unit, swap.amount * vegi, swap.bring_cat);
-      else if (vegi > 0 && !day.no_addons) add("Schweizer Grillkäse / Halloumi", "g", 100 * vegi, "Milch & Käse");
-      if (vegan > 0) add("Tofu / veganer Reibkäse", "Portion", vegan, "Milch & Käse");
+      if (vegi > 0 && swap) add(swap.name, swap.unit, swap.amount * vegi, swap.bring_cat, day.title);
+      else if (vegi > 0 && !day.no_addons) add("Schweizer Grillkäse / Halloumi", "g", 100 * vegi, "Milch & Käse", day.title);
+      if (vegan > 0) add("Tofu / veganer Reibkäse", "Portion", vegan, "Milch & Käse", day.title);
 
       // 3. Frische Beilage
-      add("Nüsslisalat / Saisonsalat", "g", 50 * portions, "Obst & Gemüse");
+      add("Nüsslisalat / Saisonsalat", "g", 50 * portions, "Obst & Gemüse", day.title);
     });
 
     // Leerer Grundvorrat kommt auf die Liste, auch wenn ihn diese Woche kein Rezept braucht
     state.staples.forEach(st => {
       if (st.in_stock !== false) return;
       const { name } = cleanIngredient(st.name);
-      if (!Object.values(agg).some(it => it.name.toLowerCase() === name.toLowerCase())) add(st.name, "", 1, "Grundvorrat");
+      if (!Object.values(agg).some(it => it.name.toLowerCase() === name.toLowerCase())) add(st.name, "", 1, "Grundvorrat", "Grundvorrat");
     });
 
-    state.shopping = Object.values(agg).map(({ notes, ...it }) => {
+    state.shopping = Object.values(agg).map(({ notes, from, ...it }) => {
       const info = [...new Set([...notes].join(", ").split(", "))].filter(Boolean).join(", ");
-      return { ...it, spec: [formatAmount(it.amount, it.unit), info].filter(Boolean).join(", ") };
+      return { ...it, from: [...from], spec: [formatAmount(it.amount, it.unit), info].filter(Boolean).join(", ") };
     });
   }
 
@@ -526,9 +531,12 @@
   }
 
   function renderCta() {
-    const n = toBuyItems().length;
+    const diff = bringDiff();
+    const n = diff.missing.length;
+    const more = diff.changed.length;
     const wanted = state.shopping.filter(it => !it.isStaple).length;
-    $("ctaCount").textContent = n === 0 && wanted > 0 ? "· alles auf Bring! ✓" : `· ${n} Artikel`;
+    $("ctaCount").textContent = n === 0 && more === 0 && wanted > 0 ? "· alles auf Bring! ✓"
+      : `· ${n} Artikel${more ? ` · ${more} mehr` : ""}`;
     $("syncBtn").disabled = wanted === 0; // auch bei «alles drauf» antippbar -> fragt nach
   }
 
@@ -1123,7 +1131,9 @@
     const name = cleanIngredient(st.name).name;
     return bringItemId(name) || name;
   }
-  const onBringNow = name => state.bringItems.some(n => n.toLowerCase() === String(name).toLowerCase());
+  function onBringNow(name) {
+    return state.bringItems.some(n => n.toLowerCase() === String(name).toLowerCase());
+  }
 
   function renderStaples() {
     const order = window.BRING_SECTION_ORDER || [];
@@ -1447,6 +1457,8 @@
   function setBringList(data) {
     state.bringItems = (data && data.items) || [];
     state.bringMine = (data && data.mine) || [];
+    state.bringSpecs = Object.fromEntries(((data && data.details) || []).map(d => [d.name.toLowerCase(), d.spec || ""]));
+    state.sentSpecs = Object.fromEntries(((data && data.mineDetails) || []).map(d => [d.name.toLowerCase(), d.spec || ""]));
     const on = new Set(state.bringItems.map(n => n.toLowerCase()));
     let changed = false;
     state.staples.forEach(st => {
@@ -1459,21 +1471,62 @@
     if (changed) saveStaples();
   }
 
-  // Fast alles schon auf Bring!? Dann fragen statt doppelt senden.
-  function askDuplicate(on, total, missing) {
+  // Was muss auf Bring!? Vergleich Plan <-> Liste:
+  //  missing  = noch nicht drauf -> einfach senden
+  //  changed  = vom Bot, aber der Plan braucht jetzt mehr/anders (z.B. zweites Rezept mit Rahm) -> nachfragen, vorausgewählt
+  //  foreign  = hat jemand anderes eingetragen -> nachfragen, nicht vorausgewählt (Menge wird ergänzt)
+  function bringDiff() {
+    const wanted = bringPayload(state.shopping.filter(it => !it.isStaple));
+    const res = { missing: [], changed: [], foreign: [] };
+    for (const d of wanted) {
+      const k = d.name.toLowerCase();
+      if (!onBringNow(d.name)) res.missing.push(d);
+      else if (k in state.sentSpecs) { if (state.sentSpecs[k] !== d.spec) res.changed.push({ ...d, now: state.bringSpecs[k] || "" }); }
+      else res.foreign.push({ ...d, now: state.bringSpecs[k] || "" });
+    }
+    return res;
+  }
+
+  function askReview(diff) {
     return new Promise(resolve => {
+      const rows = [
+        ...diff.changed.map(d => ({ d, checked: true, kind: "changed" })),
+        ...diff.foreign.map(d => ({ d, checked: false, kind: "foreign" })),
+      ];
+      $("dupText").textContent = (diff.missing.length ? `${diff.missing.length} neue Artikel werden hinzugefügt. ` : "") +
+        "Diese stehen schon auf Bring!. Nochmals hinzufügen?";
+      $("dupList").innerHTML = rows.map((r, i) => `
+        <label class="duprow">
+          <input type="checkbox" data-dup="${i}"${r.checked ? " checked" : ""}>
+          <span><b>${esc(r.d.name)}</b>
+            <small>auf Bring!: ${esc(r.d.now || "–")}${r.kind === "foreign" ? " (von jemand anderem)" : ""}</small>
+            <small>Plan braucht: ${esc(r.d.spec)}${r.d.from.length ? ` · für ${esc(r.d.from.slice(0, 3).join(", "))}` : ""}</small>
+          </span>
+        </label>`).join("");
       const dlg = $("dupDialog");
-      $("dupText").textContent = missing
-        ? `${on} von ${total} Artikeln sind schon auf Bring!. Nur die ${missing} fehlenden hinzufügen – oder alles nochmals (Mengen werden ergänzt)?`
-        : `Alle ${total} Artikel sind schon auf Bring!. Nochmals senden (Mengen werden ergänzt)?`;
-      $("dupMissingBtn").hidden = !missing;
-      $("dupMissingBtn").textContent = `Nur ${missing} fehlende`;
       const done = v => { dlg.close(); resolve(v); };
-      $("dupMissingBtn").onclick = () => done("missing");
-      $("dupAllBtn").onclick = () => done("all");
+      $("dupSendBtn").onclick = () => {
+        const picked = [...$("dupList").querySelectorAll("[data-dup]")].filter(c => c.checked).map(c => rows[+c.dataset.dup]);
+        // vom Bot: neue Gesamtmenge · fremd: Menge ergänzen, ihre Angabe bleibt stehen
+        done(picked.map(r => ({ name: r.d.name, spec: r.kind === "foreign" && r.d.now ? `${r.d.now} + ${r.d.spec}` : r.d.spec })));
+      };
       $("dupCancelBtn").onclick = () => done(null);
       dlg.showModal();
     });
+  }
+
+  async function undoBring({ remove, restore }) {
+    try {
+      for (let i = 0; i < remove.length; i += 40) {
+        await api("/bring/remove", { method: "POST", body: { names: remove.slice(i, i + 40) } });
+      }
+      if (restore.length) await api("/bring/sync", { method: "POST", body: { items: restore } });
+      setBringList(await api("/bring/list"));
+      refresh();
+      toast("Rückgängig gemacht – nichts eingefügt");
+    } catch (e) {
+      toast(`Bring!: ${e.message}`);
+    }
   }
 
   async function syncToBring() {
@@ -1482,14 +1535,19 @@
     try {
       setBringList(await api("/bring/list")); // aktueller Stand – vielleicht hat schon jemand gefüllt
       refresh();
-      const wanted = state.shopping.filter(it => !it.isStaple);
-      const missing = toBuyItems();
-      const on = wanted.length - missing.length;
-      let pick = "missing";
-      if (wanted.length && on / wanted.length >= 0.9) pick = await askDuplicate(on, wanted.length, missing.length);
-      if (!pick) return;
-      const items = bringPayload(pick === "all" ? wanted : missing);
-      if (!items.length) return toast("Nichts zu senden");
+      const diff = bringDiff();
+      let extra = [];
+      if (diff.changed.length || diff.foreign.length) {
+        extra = await askReview(diff);
+        if (extra === null) return;
+      }
+      const items = [...diff.missing, ...extra].map(({ name, spec }) => ({ name, spec }));
+      if (!items.length) return toast("Alles schon auf Bring! ✓");
+      // Für «Rückgängig»: neue Artikel wieder weg, bestehende auf die alte Menge zurück
+      const undo = {
+        remove: diff.missing.map(d => d.name),
+        restore: extra.map(x => ({ name: x.name, spec: state.bringSpecs[x.name.toLowerCase()] || "" })),
+      };
       let pushed = 0;
       for (let i = 0; i < items.length; i += 40) {
         const res = await api("/bring/sync", { method: "POST", body: { items: items.slice(i, i + 40) } });
@@ -1497,7 +1555,7 @@
       }
       setBringList(await api("/bring/list"));
       refresh();
-      toast(`${pushed} Artikel in Bring! ✓`);
+      toast(`${pushed} Artikel in Bring! ✓`, { label: "Rückgängig", run: () => undoBring(undo) });
     } catch (e) {
       toast(`Bring!: ${e.message}`);
       openHandoff();

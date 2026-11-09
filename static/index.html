@@ -210,6 +210,10 @@
     .filters button { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; white-space: nowrap; }
     .filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
     /* Grundvorrat: Bring!-Abteilungen und -Artikel, kleine Pillen ohne Bild; auf Bring! = durchgestrichen */
+    .duprow { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+    .duprow input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); flex: 0 0 auto; }
+    .duprow span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .duprow small { color: var(--muted); font-size: 12.5px; }
     .bsec h3 { font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 6px; }
     .btiles { display: flex; flex-wrap: wrap; gap: 6px; }
     .btile { border: 1px solid var(--line); background: none; color: inherit; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
@@ -475,16 +479,16 @@
     </div>
   </dialog>
 
-  <!-- Schon fast alles auf Bring! -->
+  <!-- Schon auf Bring!: nachfragen -->
   <dialog id="dupDialog">
     <div class="sheet">
       <div class="sheet-head">
         <div><h2>Schon auf Bring!</h2><p id="dupText"></p></div>
       </div>
-      <div class="sheet-body" style="display:flex;flex-direction:column;gap:8px">
-        <button class="btn primary" type="button" id="dupMissingBtn">Nur fehlende</button>
-        <button class="btn" type="button" id="dupAllBtn">Alles nochmals</button>
-        <button class="btn" type="button" id="dupCancelBtn">Abbrechen</button>
+      <div class="sheet-body" style="display:flex;flex-direction:column;gap:10px">
+        <div id="dupList" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button class="btn primary" type="button" id="dupSendBtn">Senden</button>
+        <button class="btn" type="button" id="dupCancelBtn">Abbrechen – nichts senden</button>
       </div>
     </div>
   </dialog>

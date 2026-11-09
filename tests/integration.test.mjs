@@ -123,14 +123,57 @@ check(bringList.every(i => i.specification && !/\d\.\d{3}/.test(i.specification)
 check(/schon auf Bring!/.test(A2.document.getElementById("basketLine").textContent), "Plan-Seite zeigt 'schon auf Bring!'");
 check(/alles auf Bring/.test(A2.document.getElementById("ctaCount").textContent), "nach dem Sync: «alles auf Bring! ✓»");
 
-// Nochmals «Bring! füllen»: alles schon drauf -> App fragt statt doppelt zu senden
+// Nochmals «Bring! füllen»: alles schon drauf, nichts geändert -> nichts senden, nicht fragen
 const before2 = bringList.length;
 A2.document.getElementById("syncBtn").click();
 await wait(300);
-check(A2.document.getElementById("dupDialog").open, "zweites «Bring! füllen» fragt nach (alles schon auf Bring!)");
-A2.document.getElementById("dupCancelBtn").click();
+check(!A2.document.getElementById("dupDialog").open && bringList.length === before2, "zweites «Bring! füllen» ohne Änderung: nichts doppelt, keine Frage");
+
+// Ein zweites Rezept braucht dasselbe (mehr Gäste am Montag) -> nachfragen, Menge erhöhen
+const p2 = JSON.parse(A2.localStorage.getItem("bringfrisch_current_plan"));
+const firstIng = p2[0].ingredients[0];
+const specBefore = JSON.stringify(bringList.map(i => [i.name, i.specification]));
+A2.document.querySelectorAll("#days .day")[0].querySelector(".buf").value = "6";
+A2.document.querySelectorAll("#days .day")[0].querySelector(".buf").dispatchEvent(new A2.Event("change", { bubbles: true }));
 await wait(100);
-check(bringList.length === before2, "Abbrechen sendet nichts doppelt");
+check(/mehr/.test(A2.document.getElementById("ctaCount").textContent), `Knopf zeigt «mehr» (${A2.document.getElementById("ctaCount").textContent})`);
+A2.document.getElementById("syncBtn").click();
+await wait(300);
+const dlg = A2.document.getElementById("dupDialog");
+check(dlg.open && dlg.querySelectorAll("#dupList input:checked").length > 0, "fragt nach: schon vorhandene Artikel, Mengen-Erhöhung vorausgewählt");
+check(/für /.test(dlg.querySelector("#dupList").textContent), "zeigt, für welches Rezept");
+A2.document.getElementById("dupSendBtn").click();
+await wait(400);
+const specAfter = JSON.stringify(bringList.map(i => [i.name, i.specification]));
+check(specAfter !== specBefore && bringList.length === before2, "Mengen auf Bring! erhöht, keine doppelten Einträge");
+
+// Rückgängig: alles wie vorher
+A2.document.querySelector(".toast button").click();
+await wait(400);
+check(JSON.stringify(bringList.map(i => [i.name, i.specification])) === specBefore, "«Rückgängig» stellt die alten Mengen wieder her");
+void firstIng;
+
+// Fremder Eintrag: Artikel wurde gekauft, dann trägt Leonie ihn mit eigener Menge neu ein
+const victim = bringList[0].name;
+bringList.splice(0, 1);
+A2.document.getElementById("syncBtn").click(); // App sieht: fehlt -> würde senden … aber erst Liste neu laden
+await wait(400);
+A2.document.querySelector(".toast button") && A2.document.querySelector(".toast button").click(); // rückgängig
+await wait(400);
+const vi = bringList.findIndex(i => i.name === victim);
+if (vi >= 0) bringList.splice(vi, 1);
+bringList.push({ name: victim, specification: "1 Pack (Leonie)" });
+A2.document.getElementById("syncBtn").click();
+await wait(400);
+const rowF = [...A2.document.querySelectorAll("#dupList .duprow")].find(r => r.textContent.includes(victim));
+check(!!rowF && /von jemand anderem/.test(rowF.textContent) && !rowF.querySelector("input").checked, `fremder Eintrag «${victim}» wird gefragt, nicht vorausgewählt`);
+rowF.querySelector("input").checked = true;
+A2.document.getElementById("dupSendBtn").click();
+await wait(400);
+check(/^1 Pack \(Leonie\) \+ /.test(bringList.find(i => i.name === victim).specification), "Menge ergänzt, Leonies Angabe bleibt stehen");
+A2.document.getElementById("syncBtn").click();
+await wait(300);
+A2.document.getElementById("dupDialog").open && A2.document.getElementById("dupCancelBtn").click();
 
 // Grundvorrat wie Bring!: antippen = drauf, nochmals = wieder weg
 bringList.push({ name: "Salz", specification: "von Leonie" }); // jemand anderes
