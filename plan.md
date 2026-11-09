@@ -56,6 +56,14 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
     - **🎲 Zufällig neu** (wie bisher «Neue Woche»)
     - **Einzelne Tage tauschen** (Plan bleibt, man ändert nur, was man will)
   - Ohne Auswahl bleibt alles wie es ist; der Plan ist mit seiner Woche beschriftet (z.B. «KW 46»), damit klar ist, welche gilt
+- [ ] **Extras im Menü sichtbar** (Menü in der Wochenübersicht öffnen)
+  - Unter den Rezept-Zutaten ein Block «Extras» mit allem, was die App dazurechnet, pro Person:
+    - Vegi-Menü: «+ 150 g Speckwürfeli / Rindssteak für J, L, Le»
+    - Fleisch-Menü: «+ 100 g Grillkäse für Jo» bzw. der Ersatz (z.B. «+ 150 g Vegi-Nuggets für Jo»)
+    - Beilagensalat: «+ 50 g Salat pro Portion»; eigene Beilagen: «+ 80 g Salat für Jo», «+ 150 g Gemüse für Lukas»
+  - Mengen gelten für die Esser **an diesem Tag** (wer weg ist, fällt raus); Kürzel wie im Plan
+  - Im Plan pro Tag als kleine Zeichen sichtbar (🥩 / 🧀 / 🥗), damit man es ohne Öffnen sieht
+  - Gleiche Zahlen wie auf der Einkaufsliste (eine Rechnung, zwei Ansichten)
 - [ ] **Beilagen pro Person** beim Menü (z.B. Jo extra Salat, Lukas eine kleine Extraportion Gemüse)
   - Im Plan pro Tag: «+ Beilage» → Person(en) antippen → Beilage wählen: Salat, Gemüse, Brot, Reis/Teigwaren, eigene
   - Menge pro Person (z.B. Salat 80 g, Gemüse 150 g, Brot 1 Stk) kommt automatisch auf die Einkaufsliste, nur wenn die Person an dem Tag mitisst
