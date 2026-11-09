@@ -6,20 +6,31 @@ WG-Menüplaner mit Schweizer Saisongemüse. Die WG wählt gemeinsam 7 Znacht fü
 
 ## So funktioniert's
 
-1. **🃏 Wochenwahl**: 14 saisonale Gerichte (halb vegi, halb Fleisch). Alle tippen auf dem eigenen Handy ihre Favoriten an, optional mit Wunschtag. «Neu mischeln» tauscht Gerichte ohne Stimme aus.
-2. **Plan**: Die Top 7 landen an Tagen, an denen ihre Fans zuhause sind. Pro Tag: wer isst mit (`J L Le Jo`), Reste-Puffer +0 … +6, Menü antippen zum Wechseln.
-3. **🛒 Bring! füllen**: Gemeinsame Basis + Protein pro Person (Fleisch / Vegi) + Salat, Grundvorrat (Salz, Öl, …) wird weggelassen.
-4. **📅 Kalender**: Alle Znacht als Abo im iPhone-, Google- oder Outlook-Kalender.
+1. **🃏 Wochenwahl**: 14 Gerichte – 12 saisonale (halb vegi, halb Fleisch) + 2 schnelle/Reste (⚡ Pizza, Nuggets, Gnocchi … · ♻️ Resteessen). Alle tippen auf dem eigenen Handy ihre Favoriten an, optional mit Wunschtag. «Neu mischeln» tauscht Gerichte ohne Stimme aus.
+2. **📅 Plan**: Die Top 7 landen an Tagen, an denen ihre Fans zuhause sind. Pro Tag: wer isst mit (`J L Le Jo`), Reste-Puffer +0 … +6, Menü antippen zum Wechseln.
+3. **🛒 Bring! füllen**: Gemeinsame Basis + Protein pro Person (Fleisch / Vegi, z.B. Vegi-Nuggets für Jo) + Salat.
+   - Fehlendes kommt direkt auf Bring!, mit Bring!-Bild (z.B. «Kürbis · 1 kg, Butternuss-Kürbis»).
+   - Steht etwas schon drauf, fragt die App pro Artikel nach (z.B. zweites Rezept braucht mehr Rahm). Danach «Rückgängig».
+   - Jede Zeile in «Einkauf» antippen = auf Bring! / wieder weg – auch nach dem Füllen.
+4. **Grundvorrat** (Einkauf → «Grundvorrat verwalten»): gleiche Abteilungen und Artikel wie Bring!. Antippen = auf Bring! (durchgestrichen), nochmals = weg. Gekauftes gilt wieder als «da». Gilt für die ganze WG.
+5. **Herunterziehen** = sofort synchronisieren (eigene Änderungen hoch, Stand der anderen holen).
+6. **📅 Kalender**: Alle Znacht als Abo im iPhone-, Google- oder Outlook-Kalender.
 
-Rezepte: 10 Klassiker + 82 Saisonrezepte von Betty Bossi, Migusto, Fooby und Swissmilk (verlinkt aufs Original) + eigene Rezepte mit Link.
+**Wer hat recht?** Bring! für «was steht auf der Liste» (BringFrisch fragt immer neu nach). BringFrisch (WG-Server) für Plan, Stimmen und Grundvorrat. Der Bot nimmt nur weg, was er selbst gesetzt hat.
+
+Rezepte: 10 Klassiker + 6 schnelle/Reste + 82 Saisonrezepte von Betty Bossi, Migusto, Fooby und Swissmilk (verlinkt aufs Original) + eigene Rezepte mit Link.
 
 ## Aufbau
 
 | Ordner | Inhalt |
 |---|---|
-| `static/` | Die App (HTML/JS, läuft offline, Daten im Browser) – wird auf GitHub Pages veröffentlicht |
-| `worker/` | Kleiner Cloudflare Worker: Bring!-Sync, gemeinsame Wochenwahl, Kalender-Abo. Einrichtung: [worker/README.md](worker/README.md) |
-| `tools/` | Einmaliger Rezept-Import (`python tools/import_recipes.py`) |
-| `tests/` | `cd tests && npm install && npm test` |
+| `static/` | Die App (HTML/JS, läuft offline) – wird auf GitHub Pages veröffentlicht |
+| `worker/` | Cloudflare Worker: Bring!-Sync über Bot-Konto, gemeinsamer Plan/Vorrat/Wochenwahl, Kalender-Abo. Einrichtung: [worker/README.md](worker/README.md) |
+| `tools/` | Rezept-Import (einmalig), Bring!-Katalog (`update_bring_catalog.mjs`), App-Icons (`make_icons.py`), Live-Check (`check_live.ps1`) |
+| `tests/` | `cd tests && npm install && npm test` · echter Durchlauf mit Bring!: `powershell -ExecutionPolicy Bypass -File tests\e2e_live.ps1` |
 
 Ohne Worker funktioniert alles auf einem Handy; Bring! dann über Teilen/Kopieren.
+
+## Kosten
+
+Nichts. GitHub Pages + Cloudflare Free Plan. Eine WG mit 4 Leuten braucht weit unter 1 % der Gratis-Limits (100 000 Aufrufe/Tag, 1 000 Speicher-Schreibvorgänge/Tag). Zahlen: Cloudflare-Dashboard → Workers & Pages → bringfrisch → Metrics.

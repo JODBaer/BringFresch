@@ -1,6 +1,7 @@
 # BringFrisch – Plan
 
 Ziel: Tool für **unsere WG**, einfach zu benutzen. Erst mit der WG testen, dann erweitern.
+Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch baut nur drumherum. **Grundvorrat, Plan und Wochenwahl** sind die Wahrheit von BringFrisch (gemeinsam im WG-Server).
 
 ## Erledigt
 
@@ -11,15 +12,38 @@ Ziel: Tool für **unsere WG**, einfach zu benutzen. Erst mit der WG testen, dann
 - [x] Cloudflare Worker: Bring!-Sync (Bot-Konto), gemeinsame Wochenwahl, gemeinsamer Plan, Kalender-Abo, Rezept-Link-Import
 - [x] 82 Saisonrezepte (Betty Bossi, Migusto, Fooby, Swissmilk), ½ vegi / ½ Fleisch pro Saison
 - [x] Python-Backend entfernt (alter Stand: `git tag v0-full`)
+- [x] **Worker live** (`bringfrisch.bringfrisch-worker.workers.dev`), Bot-Konto `allmenbot@gmail.com`, Adresse fest in der App
+- [x] Bring!-Liste in der App wählbar (gilt für die ganze WG)
+- [x] Bring!-Katalog: Artikel bekommen ihr Bring!-Bild (Butternuss-Kürbis → Kürbis, Sorte in der Mengenangabe), ~95 % der Zutaten
+- [x] Einkaufsnamen aufgeräumt: «Schweizer», Klammern, «à ca. 400 g» in der Mengenangabe; Leitungswasser nie auf der Liste
+- [x] Schnelles & Reste: Fertigpizza, Nuggets, Maultaschen, Gnocchi, Dumplings, Resteessen (2 pro Woche im Memory)
+- [x] Grundvorrat wie Bring!: gleiche Abteilungen/Artikel, antippen = auf Bring!, nochmals = weg; gemeinsam für die WG
+- [x] Jede Zeile der Einkaufsliste antippbar (auf/von Bring!), auch nach dem Füllen
+- [x] Bot nimmt nur weg, was er selbst gesetzt hat; Gekauftes gilt wieder als «da»
+- [x] «Bring! füllen»: Fehlendes einfach senden, bei schon Vorhandenem pro Artikel nachfragen (z.B. 2. Rezept mit Rahm), danach «Rückgängig»
+- [x] Herunterziehen = sofort synchronisieren
+- [x] Untere Navigation mit Icons (Plan · Einkauf · Rezepte & Saison · Einstellungen), Homescreen-Icon
+- [x] Tests: App (jsdom), 2-Handy-Integration, Worker offline, `tools/check_live` (Kette), `tests/e2e_live` (echtes Bring!)
 
 ## Als Nächstes
 
-- [ ] **Joshua**: Bring!-Bot-Konto + Cloudflare einrichten → `worker/README.md`
-- [ ] Worker-Adresse in `static/app.js` (`DEFAULT_SYNC_URL`) eintragen
+- [ ] **Joshua**: WG-Liste in Bring! mit `allmenbot@gmail.com` teilen, in der App unter Einstellungen → «Bring!-Liste der WG» wählen
+- [ ] **Design-Entscheid** (Joshua, live): Material 2014 oder 2018, Grün behalten oder Google-Farben – Vorschau: <https://claude.ai/artifact/GJVsoZBRtYx5RFzgP1w6ac>
+  - danach ganze App umstellen, inkl. Android-Sync-Animation (Kreis mit Bogen) und Snackbar mit «Rückgängig»
+- [ ] **Mehr Rezepte, von Hand geschrieben** (kein Scraping), je 4 Portionen, mit Saison:
+  - **Salate als Hauptgang** (ohne zusätzlichen Beilagensalat): Feigen-Ziegenkäse-Rucola mit Baumnüssen (Aug–Okt), Nüsslisalat mit Ei, Speck und Croûtons (Okt–März), Randen-Linsen mit Feta und Apfel (Sep–März), Chicorée-Orangen mit Poulet (Nov–März), Kürbis-Quinoa mit Granatapfel (Sep–Dez, vegan), Wassermelone-Feta-Minze (Jun–Aug), Panzanella (Jul–Sep)
+  - **Teigwaren**: Kürbis-Salbei-Penne (Sep–Dez), Carbonara (Jo: Champignons), Lauch-Rahm-Nudeln mit Schinken (Jo: Räuchertofu), Orecchiette mit Rosenkohl, Zitrone, Baumnüssen (Okt–Feb), Bolognese mit Rüebli (Jo: Vegi-Hack), Spinat-Ricotta-Penne (Frühling/Herbst), Cherrytomaten-Burrata-Pasta (Jun–Sep)
+  - Regel: Salat-Rezepte bekommen `is_salad: true` → kein extra «Nüsslisalat / Saisonsalat» auf der Liste
+- [ ] **Schütteln zum Mischeln** in der Wochenwahl: Handy schütteln = «Neu mischeln» (nur Gerichte ohne Stimme), mit kleiner Karten-Animation
+  - iPhone verlangt eine Erlaubnis für Bewegungssensoren → einmal beim ersten Tippen auf «🔀 Neu mischeln» fragen; Schalter «📳 Schütteln» zum Ein/Aus
+  - Entprellen (max. 1× pro 1.5 s), nur solange die Wochenwahl offen ist
+- [ ] **Live-Test** der neuen Bring!-Logik (Nachfragen, Rückgängig, Herunterziehen): `powershell -ExecutionPolicy Bypass -File tests\e2e_live.ps1`
 - [ ] **Praxistest**: eine echte Woche mit Lukas, Leonie und Jo planen, einkaufen, Feedback sammeln
-- [ ] Danach entscheiden: Mengen der Protein-Zusätze (aktuell 150 g Fleisch / 100 g Käse pro Person), Rezeptauswahl prüfen, evtl. Koch-Zuteilung
+- [ ] Danach entscheiden: Mengen der Protein-Zusätze (150 g Fleisch / 100 g Käse pro Person), Rezeptauswahl, evtl. Koch-Zuteilung
 
 ## Später, nur wenn nötig
 
 - Echte Kalender-Einladungen mit «Annehmen» (braucht E-Mail-Dienst)
 - Weitere Rezepte einzeln über «Eigenes Rezept → Link» statt Massen-Import
+- Bring!-Batch-Schnittstelle (`PUT bringlists/{uuid}/items`, ein Aufruf statt einer pro Artikel) → hebt das 45-Artikel-Limit auf
+- Eigene Bilder für Artikel ohne Bring!-Bild (Bring!-API kann kein Hochladen; nur von Hand in der Bring!-App)
