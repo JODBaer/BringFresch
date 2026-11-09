@@ -27,3 +27,6 @@ tools/.cache/
 # Test-Abhängigkeiten
 node_modules/
 tools/recipes_staging.json
+
+# Wrangler lokal
+worker/.wrangler/
