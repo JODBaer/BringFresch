@@ -266,7 +266,7 @@
 
   // Einkaufsnamen aufräumen: «Schweizer», Klammern, «à ca. 400 g» wandern in die Zusatzinfo (wie die Menge)
   const SYNONYMS = { "speisekartoffeln": "Kartoffeln", "festkochende kartoffeln": "Kartoffeln", "mehligkochende kartoffeln": "Kartoffeln", "zwiebeln": "Zwiebel" };
-  const TAP_WATER = /^(lauwarmes|kaltes|heisses|warmes|kochendes)?\s*(liter\s+)?wasser$/i;
+  const TAP_WATER = /^((lauwarmes|kaltes|heisses|warmes|kochendes)?\s*(liter\s+)?(salz)?wasser|bratschlauch|backpapier)$/i;
   function cleanIngredient(raw) {
     let name = String(raw || "").trim();
     const notes = [];
@@ -278,6 +278,113 @@
     name = SYNONYMS[name.toLowerCase()] || name;
     name = name.charAt(0).toUpperCase() + name.slice(1);
     return { name, note: notes.join(", "), skip: TAP_WATER.test(name) };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bring!-Katalog: Namen auf bekannte Bring!-Artikel abbilden, damit sie ein Bild bekommen.
+  // «Butternuss-Kürbis» -> Kürbis (Zusatz «Butternuss-Kürbis» in der Mengenangabe)
+  // ---------------------------------------------------------------------------
+  const BRING_SYNONYMS = {
+    "zwiebel": "Zwiebeln", "schalotte": "Zwiebeln", "schalotten": "Zwiebeln", "röstzwiebeln": "Zwiebeln", "zwiebelringe": "Zwiebeln",
+    "rüebli": "Karotten", "bundrüebli": "Karotten", "pfälzerrüebli": "Karotten", "bundkarotten": "Karotten",
+    "knoblauchzehe": "Knoblauch", "knoblauchzehen": "Knoblauch", "peterli": "Petersilie",
+    "ei": "Eier", "eigelb": "Eier", "eigelbe": "Eier", "eiweiss": "Eier", "freilandeier": "Eier",
+    "bratbutter": "Butter", "bratcrème": "Butter", "bratcreme": "Butter", "butterflocken": "Butter",
+    "bio-zitrone": "Zitrone", "zitronenschnitz": "Zitrone", "limetten": "Limette", "blutorangen": "Orange",
+    "bundzwiebel": "Frühlingszwiebeln", "bundzwiebeln": "Frühlingszwiebeln",
+    "zucchini": "Zucchetti", "auberginen": "Aubergine", "chicorée": "Salat", "nüsslisalat": "Salat", "salatspinat": "Spinat",
+    "peperoncino": "Peperoncini", "chilischote": "Peperoncini", "kefen": "Erbsen", "maiskolben": "Mais",
+    "pastinaken": "Gemüse", "schwarzwurzeln": "Gemüse", "okras": "Gemüse", "federkohl": "Kohl", "rosenkohl": "Kohl", "wirz": "Kohl", "pak choi": "Kohl",
+    "stangensellerie": "Sellerie", "knollensellerie": "Sellerie", "sellerieknolle": "Sellerie", "salatgurke": "Gurke",
+    "tomate": "Tomaten", "gehackte tomaten": "Pelati", "passata": "Tomatensauce", "tomatensugo": "Tomatensauce", "tomatenpüree": "Tomatenmark",
+    "estragon": "Kräuter", "dill": "Kräuter", "kerbel": "Kräuter", "kresse": "Kräuter", "bärlauch": "Kräuter", "salbeiblätter": "Salbei",
+    "maizena": "Speisestärke", "maisstärke": "Speisestärke", "panko": "Paniermehl", "crème fraîche": "Creme fraiche",
+    "paprika": "Paprikapulver", "edelsüss-paprika": "Paprikapulver", "zimtpulver": "Zimt",
+    "sultaninen": "Dörrobst", "apfelschnitze": "Dörrobst", "birnenschnitze": "Dörrobst", "dörraprikosen": "Dörrobst",
+    "kürbiskerne": "Nüsse", "sonnenblumenkerne": "Nüsse", "cashewkerne": "Nüsse",
+    "teigwaren": "Pasta", "magronen": "Pasta", "hörnli": "Pasta", "pappardelle": "Pasta", "maultaschen": "Pasta",
+    "spätzle": "Nudeln", "spätzli": "Nudeln", "knöpfle": "Nudeln", "wildreismix": "Reis", "risotto-reis": "Risottoreis",
+    "tiefkühlpizza": "Pizza", "chicken nuggets": "Chicken Wings", "dumplings": "Chinesisches Essen", "gyoza": "Chinesisches Essen",
+    "sbrinz": "Reibkäse", "sbrinzlocken": "Reibkäse", "gruyère": "Käse", "appenzeller": "Käse", "emmentaler": "Käse", "cheddar": "Käse",
+    "pecorino": "Käse", "grillkäse": "Käse", "halloumi": "Käse", "raclettekäse": "Raclette",
+    "speckwürfeli": "Speck", "speckwürfelchen": "Speck", "apfelwein": "Cidre", "cornflakes": "Corn Flakes", "fleur de sel": "Salz",
+    "quinoa": "Couscous", "goldhirse": "Couscous", "pleurotus": "Pilze", "kräuterseitlinge": "Pilze", "estragonzweiglein": "Kräuter",
+    "cervelats": "Cervelat", "luganighe": "Wurst", "mortadella": "Aufschnitt", "schinkentranchen": "Schinken",
+  };
+  const BRING_PREFIX = [
+    [/^kalbs?/, "Kalbfleisch"], [/^schweins?/, "Schweinefleisch"], [/^rinds?/, "Rindfleisch"], [/^lamm/, "Lamm"],
+    [/^poulet/, "Poulet"], [/^lachs/, "Lachs"], [/^thunfisch/, "Thunfisch"],
+    [/^(kabeljau|seelachs|seehecht|seeteufel|saibling|forelle|egli|zander)/, "Fisch"],
+  ];
+  let bringIndex = null;
+  function bringLookup(word) {
+    if (!bringIndex) {
+      bringIndex = {};
+      for (const [id, n] of Object.entries(window.BRING_CATALOG || {})) {
+        bringIndex[id.toLowerCase()] = id;
+        bringIndex[n.toLowerCase()] = id;
+      }
+    }
+    const w = String(word || "").toLowerCase().trim();
+    if (!w) return null;
+    const syn = BRING_SYNONYMS[w];
+    if (syn && bringIndex[syn.toLowerCase()]) return bringIndex[syn.toLowerCase()];
+    for (const v of [w, w.replace(/n$/, ""), w.replace(/en$/, ""), w.replace(/e$/, ""), w + "n", w + "e"]) {
+      if (bringIndex[v]) return bringIndex[v];
+    }
+    return null;
+  }
+  // -> Bring!-itemId oder null (dann eigener Artikel ohne Bild)
+  function bringItemId(name) {
+    if (!window.BRING_CATALOG) return null;
+    const full = String(name || "").replace(/(AOP|IGP|Bio)/g, "").replace(/\s+(in|am|an|mit|aus|zum|ohne|für|nach)\s+.*$/i, "").trim();
+    let id = bringLookup(full);
+    if (id) return id;
+    const alt = full.split(/\s+(?:oder|und|&)\s+|\s*\/\s*/)[0].trim();
+    if (alt && alt !== full && (id = bringItemId(alt))) return id;
+    // mehrteilige Katalognamen («Getrocknete Tomaten») im Text
+    const lower = full.toLowerCase();
+    for (const key of Object.keys(bringIndex)) if (key.includes(" ") && lower.includes(key)) return bringIndex[key];
+    const words = full.split(/[\s-]+/).filter(Boolean);
+    for (let i = words.length - 1; i >= 0; i--) if ((id = bringLookup(words[i]))) return id;
+    // Kompositum: das Grundwort steht hinten (Blattspinat -> Spinat, Weissweinessig -> Essig)
+    const last = words[words.length - 1].toLowerCase();
+    if (/öl$/.test(last)) return bringLookup("Öl");
+    if (/bouillon/.test(last)) return bringLookup("Bouillon");
+    for (const [re, target] of BRING_PREFIX) if (re.test(last)) return bringLookup(target);
+    let best = null;
+    for (const key of Object.keys(bringIndex)) {
+      if (key.length >= 4 && !key.includes(" ") && last.endsWith(key) && last.length - key.length >= 3 && (!best || key.length > best.length)) best = key;
+    }
+    if (best) return bringIndex[best];
+    // Bestimmungswort vorne (Spinatblätter -> Spinat, Lauchstängel -> Lauch)
+    for (const key of Object.keys(bringIndex)) {
+      if (key.length >= 4 && !key.includes(" ") && last.startsWith(key) && last.length - key.length >= 3 && (!best || key.length > best.length)) best = key;
+    }
+    return best ? bringIndex[best] : null;
+  }
+
+  // Einkaufsliste -> Bring!-Einträge. Ziel ist der Bring!-Katalogname (mit Bild); Bring! kennt pro Artikel nur
+  // einen Eintrag, also alles mit demselben Ziel zusammenfassen: Mengen gleicher Einheit addieren,
+  // genaue Sorte und Zusatzinfos dahinter: «Kartoffeln: 3.3 kg, Fest kochende Kartoffeln, Schweizer».
+  const UNIT_BASE = { g: ["g", 1], kg: ["g", 1000], ml: ["dl", 0.01], dl: ["dl", 1], l: ["dl", 10] };
+  function bringPayload(list) {
+    const groups = new Map();
+    for (const it of list) {
+      const target = it.bring || it.name;
+      const k = target.toLowerCase();
+      const g = groups.get(k) || { name: target, amounts: new Map(), extra: new Set() };
+      const [base, f] = UNIT_BASE[(it.unit || "").toLowerCase()] || [it.unit || "", 1];
+      g.amounts.set(base, (g.amounts.get(base) || 0) + it.amount * f);
+      if (it.bring && bringLookup(it.name) !== it.bring) g.extra.add(it.name); // Sorte nur, wenn nicht schon der Katalogname
+      it.spec.split(", ").slice(1).forEach(x => g.extra.add(x));
+      groups.set(k, g);
+    }
+    return [...groups.values()].map(g => {
+      const parts = [...g.amounts].map(([u, a]) =>
+        u === "g" && a >= 1000 ? formatAmount(a / 1000, "kg") : u === "dl" && a >= 10 ? formatAmount(a / 10, "l") : formatAmount(a, u));
+      return { name: g.name, spec: [parts.join(" + "), ...g.extra].filter(Boolean).join(", ") };
+    });
   }
 
   function computeShopping() {
@@ -298,14 +405,17 @@
         return;
       }
       const lower = name.toLowerCase();
+      const bring = bringItemId(name); // Bring!-Katalogartikel (mit Bild) oder null
+      const bringLower = bring ? [bring.toLowerCase(), String((window.BRING_CATALOG || {})[bring] || "").toLowerCase()] : [];
       agg[key] = {
         name,
+        bring,
         unit: unit || "",
         amount,
         notes: new Set(note ? [note] : []),
         cat: cat || "Sonstiges",
         isStaple: stapleKeywords.some(k => lower.includes(k)),
-        isOnBring: onBring.some(b => b === lower || b.includes(lower) || lower.includes(b))
+        isOnBring: onBring.some(b => b === lower || b.includes(lower) || lower.includes(b) || bringLower.includes(b))
       };
     }
 
@@ -1200,14 +1310,7 @@
   }
 
   async function syncToBring() {
-    // Bring! kennt pro Name nur einen Eintrag: gleiche Namen mit verschiedenen Einheiten zusammenfassen
-    const byName = new Map();
-    for (const it of toBuyItems()) {
-      const k = it.name.toLowerCase();
-      const prev = byName.get(k);
-      byName.set(k, prev ? { name: prev.name, spec: `${prev.spec} + ${it.spec}` } : { name: it.name, spec: it.spec });
-    }
-    const items = [...byName.values()];
+    const items = bringPayload(toBuyItems());
     const btn = $("syncBtn");
     btn.disabled = true;
     try {

@@ -1,10 +1,11 @@
-const CACHE_NAME = 'bringfrisch-cache-v13';
+const CACHE_NAME = 'bringfrisch-cache-v14';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.js',
   './standalone_data.js',
   './recipes_imported.js',
+  './bring_catalog.js',
   './recipe_importer.js',
   './manifest.json'
 ];

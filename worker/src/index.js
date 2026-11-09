@@ -211,7 +211,7 @@ async function bringSync(env, { items }) {
     const res = await fetch(`${BRING}bringlists/${s.listUuid}`, {
       method: "PUT",
       headers: { ...s.headers, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-      body: new URLSearchParams({ purchase: name, specification: String(it.spec || "").slice(0, 40) }),
+      body: new URLSearchParams({ purchase: name, specification: String(it.spec || "").slice(0, 80) }),
     });
     if (res.ok) pushed++;
     else errors.push(`${name}: ${res.status}`);
