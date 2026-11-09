@@ -1,2513 +1,835 @@
-// BringFrisch PWA Application Logic - 100% Standalone & Mobile Optimized
-document.addEventListener("DOMContentLoaded", () => {
-  // Service Worker Registration for PWA Offline Capability (Relative Path for GitHub Pages)
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch((err) => console.log("SW Reg Error:", err));
-  }
+// BringFrisch – WG-Menüplaner mit Schweizer Saisongemüse und Bring!-Übergabe.
+// Läuft komplett im Browser; alle Daten liegen in localStorage.
+(() => {
+  "use strict";
 
-  // Lucide Icons init
-  if (window.lucide) {
-    lucide.createIcons();
-  }
+  const DATA = window.BRINGFRISCH_DATA || {};
+  const importer = window.recipeImporter;
 
-  // Application State
-  const state = {
-    wgId: localStorage.getItem("bringfrisch_wg_id") || "wg-limmat-4",
-    persons: parseInt(localStorage.getItem("bringfrisch_persons") || "3", 10),
-    diet: localStorage.getItem("bringfrisch_diet") || "vegi",
-    activeDayIndex: 0,
-    weekPlan: [],
-    seasonalItems: [],
-    shoppingList: [],
-    excludeStaples: true,
-    currentBringItems: ["schweizer festkochende kartoffeln", "magronen / teigwaren"],
-    shoppingFilterSubTab: "toBuy", // "toBuy", "onBring", "staples"
-    pantryStaples: loadUserStaples(),
-    members: loadMembers()
+  const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  const MONTHS = DATA.months || ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const DEFAULT_SERVINGS = 4;
+  const DEFAULT_BUFFER = 2;
+
+  const DEFAULT_MEMBERS = [
+    { id: "joshua", name: "Joshua", diet: "fleisch" },
+    { id: "lukas", name: "Lukas", diet: "fleisch" },
+    { id: "leonie", name: "Leonie", diet: "fleisch" },
+    { id: "jo", name: "Jo", diet: "vegi" }
+  ];
+
+  const KEYS = {
+    plan: "bringfrisch_current_plan",
+    members: "bringfrisch_members",
+    staples: "bringfrisch_user_staples"
   };
 
-  function loadMembers() {
-    const saved = localStorage.getItem("bringfrisch_members");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+  // Altlasten früherer Versionen (Logins, Layouts, Tiefkühler …) einmalig entfernen
+  const LEGACY_KEYS = [
+    "bringfrisch_phone_bring_creds", "bringfrisch_layout_mode", "bringfrisch_theme_mode",
+    "bringfrisch_wg_id", "bringfrisch_persons", "bringfrisch_diet", "bringfrisch_freezer_pantry"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Speicher
+  // ---------------------------------------------------------------------------
+  function load(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      return fallback;
     }
-    return [
-      { id: "m1", name: "Jonas", diet: "vegi" },
-      { id: "m2", name: "Anna", diet: "vegan" },
-      { id: "m3", name: "Lukas", diet: "fleisch" }
-    ];
   }
 
-  function saveMembers() {
-    localStorage.setItem("bringfrisch_members", JSON.stringify(state.members));
+  function save(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      console.warn("Speichern fehlgeschlagen", key, e);
+    }
   }
 
-  function calculateEffectiveDiet(eaterIds) {
-    if (!eaterIds || eaterIds.length === 0) return "vegi";
-    const diets = eaterIds.map(id => {
-      const m = state.members.find(mem => mem.id === id);
-      return m ? m.diet : "vegi";
+  LEGACY_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* egal */ } });
+
+  function loadMembers() {
+    const saved = load(KEYS.members, null);
+    const isOldPlaceholder = Array.isArray(saved) && saved.some(m => m.name === "Anna" || m.name === "Jonas");
+    if (!Array.isArray(saved) || saved.length === 0 || isOldPlaceholder) return DEFAULT_MEMBERS.map(m => ({ ...m }));
+    return saved;
+  }
+
+  const state = {
+    members: loadMembers(),
+    staples: load(KEYS.staples, null) || (DATA.pantry_staples || []).map(s => ({ ...s })),
+    plan: [],
+    shopping: [],
+    bringItems: [],
+    shopFilter: "toBuy",
+    catalogDay: 0,
+    catalogFilter: "all"
+  };
+
+  const savePlan = () => save(KEYS.plan, state.plan);
+  const saveMembers = () => save(KEYS.members, state.members);
+  const saveStaples = () => save(KEYS.staples, state.staples);
+
+  // ---------------------------------------------------------------------------
+  // Hilfsfunktionen
+  // ---------------------------------------------------------------------------
+  const $ = id => document.getElementById(id);
+
+  function esc(str) {
+    return String(str == null ? "" : str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function currentMonth() {
+    return new Date().getMonth() + 1;
+  }
+
+  function todayIndex() {
+    return (new Date().getDay() + 6) % 7;
+  }
+
+  function isoWeek(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  }
+
+  // Kürzel: erster Buchstabe, bei Kollision länger (Joshua=J, Lukas=L, Leonie=Le, Jo=Jo)
+  function initialsMap() {
+    const taken = new Set();
+    const map = {};
+    state.members.forEach(m => {
+      const name = (m.name || "?").trim();
+      let k = 1;
+      let short = name.slice(0, k);
+      while (taken.has(short.toLowerCase()) && k < name.length) {
+        k++;
+        short = name.slice(0, k);
+      }
+      taken.add(short.toLowerCase());
+      map[m.id] = short;
     });
+    return map;
+  }
+
+  let toastTimer = null;
+  function toast(message, action) {
+    document.querySelectorAll(".toast").forEach(t => t.remove());
+    clearTimeout(toastTimer);
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.setAttribute("role", "status");
+    el.textContent = message;
+    if (action) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = action.label;
+      btn.style.cssText = "margin-left:12px;border:0;background:none;color:inherit;font-weight:800;text-decoration:underline";
+      btn.onclick = () => { action.run(); el.remove(); };
+      el.appendChild(btn);
+    }
+    document.body.appendChild(el);
+    toastTimer = setTimeout(() => el.remove(), action ? 6000 : 3200);
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rezepte & Wochenplan
+  // ---------------------------------------------------------------------------
+  function allRecipes() {
+    return [...(DATA.recipes || []), ...((importer && importer.customRecipes) || [])];
+  }
+
+  // Gemeinsamer Nenner der Anwesenden: vegan > vegi > fleisch
+  function effectiveDiet(eaterIds) {
+    const diets = (eaterIds || []).map(id => (state.members.find(m => m.id === id) || {}).diet);
     if (diets.includes("vegan")) return "vegan";
     if (diets.includes("vegi")) return "vegi";
-    if (diets.includes("schweizerisch")) return "schweizerisch";
     return "fleisch";
   }
 
-  function loadUserStaples() {
-    const saved = localStorage.getItem("bringfrisch_user_staples");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return (window.BRINGFRISCH_DATA && window.BRINGFRISCH_DATA.pantry_staples) || [];
+  function fitsDiet(recipe, diet) {
+    if (diet === "vegan") return recipe.diet === "vegan";
+    if (diet === "vegi") return recipe.diet === "vegi" || recipe.diet === "vegan";
+    return true;
   }
 
-  function saveUserStaples() {
-    localStorage.setItem("bringfrisch_user_staples", JSON.stringify(state.pantryStaples));
+  function inSeason(recipe, month = currentMonth()) {
+    return !recipe.season_months || recipe.season_months.includes(month);
   }
 
-  const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  // Zufallsrezept passend zur Diät, saisonal bevorzugt, möglichst ohne Wiederholung
+  function pickRecipe(diet, excludeIds = []) {
+    const all = allRecipes();
+    const fitting = all.filter(r => fitsDiet(r, diet));
+    const pool = fitting.length ? fitting : all;
+    const tiers = [
+      pool.filter(r => inSeason(r) && !excludeIds.includes(r.id)),
+      pool.filter(r => !excludeIds.includes(r.id)),
+      pool
+    ];
+    const tier = tiers.find(t => t.length > 0) || [];
+    return tier[Math.floor(Math.random() * tier.length)];
+  }
 
-  // Elements
-  const headerWgName = document.getElementById("headerWgName");
-  const daySelector = document.getElementById("daySelector");
-  const cardDayBadge = document.getElementById("cardDayBadge");
-  const cardDietBadge = document.getElementById("cardDietBadge");
-  const cardCostBadge = document.getElementById("cardCostBadge");
-  const cardTitle = document.getElementById("cardTitle");
-  const cardPrepTime = document.getElementById("cardPrepTime");
-  const cardSeasonFokus = document.getElementById("cardSeasonFokus");
-  const cardCookName = document.getElementById("cardCookName");
-  const cardIngredients = document.getElementById("cardIngredients");
-  const cardHealthTip = document.getElementById("cardHealthTip");
-  const personsCount = document.getElementById("personsCount");
-  const shoppingListContainer = document.getElementById("shoppingListContainer");
-  const syncToBringBtn = document.getElementById("syncToBringBtn");
-  const syncBtnText = document.getElementById("syncBtnText");
+  function makeDay(recipe, dayIdx, previous) {
+    const prev = previous || {};
+    return {
+      ...recipe,
+      day: DAYS[dayIdx],
+      eaters: prev.eaters ? [...prev.eaters] : state.members.map(m => m.id),
+      leftover_buffer: prev.leftover_buffer !== undefined ? prev.leftover_buffer : DEFAULT_BUFFER,
+      extra_guests: prev.extra_guests || 0
+    };
+  }
 
-  // Initial UI Setup
-  headerWgName.textContent = state.wgId;
-  personsCount.textContent = state.persons;
-
-  // Initialize Day Selector Pills
-  function renderDaySelector() {
-    daySelector.innerHTML = "";
-    DAYS.forEach((day, idx) => {
-      const btn = document.createElement("button");
-      btn.className = `flex-1 py-1.5 px-2 text-[11px] font-bold rounded-xl transition ${
-        idx === state.activeDayIndex
-          ? "bg-emerald-500 text-slate-950 shadow-md"
-          : "text-slate-400 hover:text-slate-200"
-      }`;
-      btn.textContent = day.substring(0, 2);
-      btn.title = day;
-      btn.onclick = () => {
-        state.activeDayIndex = idx;
-        renderDaySelector();
-        renderActiveCard();
-      };
-      daySelector.appendChild(btn);
+  function generateWeek() {
+    const allIds = state.members.map(m => m.id);
+    const diet = effectiveDiet(allIds);
+    const used = [];
+    return DAYS.map((_, idx) => {
+      const recipe = pickRecipe(diet, used);
+      used.push(recipe.id);
+      return makeDay(recipe, idx, null);
     });
   }
 
-  // Standalone Recipe Generator (Runs 100% in Browser)
-  function getRecipesPool(dietOverride = null) {
-    const targetDiet = dietOverride || state.diet;
-    const defaultRecipes = (window.BRINGFRISCH_DATA && window.BRINGFRISCH_DATA.recipes) || [];
-    const customRecipes = (window.recipeImporter && window.recipeImporter.customRecipes) || [];
-    const all = [...defaultRecipes, ...customRecipes];
-    
-    // Filter nach Diät
-    if (targetDiet === "vegan") {
-      const veganList = all.filter(r => r.diet === "vegan");
-      return veganList.length > 0 ? veganList : all;
-    } else if (targetDiet === "vegi") {
-      const vegiList = all.filter(r => r.diet === "vegi" || r.diet === "vegan");
-      return vegiList.length > 0 ? vegiList : all;
-    } else if (targetDiet === "schweizerisch") {
-      const swissList = all.filter(r => r.category === "schweizerisch");
-      return swissList.length > 0 ? swissList : all;
+  // Esser-IDs bereinigen (z.B. nach Mitbewohner-Wechsel) und Standardwerte setzen
+  function normalizePlan() {
+    const ids = new Set(state.members.map(m => m.id));
+    if (!Array.isArray(state.plan) || state.plan.length !== 7 || state.plan.some(d => !d || !d.title)) {
+      state.plan = generateWeek();
     }
-    return all;
-  }
-
-  function generateStandalonePlan() {
-    const plan = [];
-    const allMemberIds = state.members.map(m => m.id);
-
-    DAYS.forEach((day) => {
-      const effectiveDiet = calculateEffectiveDiet(allMemberIds);
-      const pool = getRecipesPool(effectiveDiet);
-      const recipe = pool[Math.floor(Math.random() * pool.length)];
-      const personCount = allMemberIds.length || 3;
-      const buffer = 2; // Standardmäßig +2 Portionen für Reste / Zmittag am nächsten Tag
-      const totalPersons = personCount + buffer;
-
-      plan.push({
-        ...recipe,
-        day: day,
-        eaters: [...allMemberIds],
-        leftover_buffer: buffer,
-        extra_guests: 0,
-        effective_diet: effectiveDiet,
-        person_count: totalPersons,
-        scaled_cost_chf: ((recipe.cost_per_person_chf || 2.80) * totalPersons).toFixed(2),
-        cook_assigned: null
-      });
+    state.plan.forEach((day, idx) => {
+      day.day = DAYS[idx];
+      const before = Array.isArray(day.eaters) ? day.eaters : null;
+      const valid = before ? before.filter(id => ids.has(id)) : null;
+      day.eaters = !before || (valid.length === 0 && before.length > 0) ? [...ids] : valid;
+      if (day.leftover_buffer === undefined) day.leftover_buffer = DEFAULT_BUFFER;
+      if (!day.extra_guests) day.extra_guests = 0;
     });
-    return plan;
   }
 
-  // Plan laden: Prüft P2P URL-Hash (#plan=...), sonst LocalStorage / Server
-  async function loadPlan() {
-    let planLoadedFromHash = false;
-    // 1. P2P Mesh Import via URL-Hash
-    if (window.location.hash.startsWith("#plan=")) {
-      try {
-        const base64Data = decodeURIComponent(window.location.hash.substring(6));
-        const jsonStr = decodeURIComponent(escape(atob(base64Data)));
-        const sharedPayload = JSON.parse(jsonStr);
+  function portionsFor(day) {
+    const people = day.eaters.length + (day.extra_guests || 0);
+    if (people === 0) return 0; // niemand zuhause = es wird nicht gekocht
+    return people + (day.leftover_buffer || 0);
+  }
 
-        if (sharedPayload.weekPlan) state.weekPlan = sharedPayload.weekPlan;
-        else if (sharedPayload.plan) state.weekPlan = sharedPayload.plan;
-        if (sharedPayload.members) state.members = sharedPayload.members;
-        if (sharedPayload.wgId) state.wgId = sharedPayload.wgId;
+  // ---------------------------------------------------------------------------
+  // Einkaufsliste (R2: Basis + individuelle Proteine + Beilage, R3: Reste-Puffer, R6: Grundvorrat)
+  // ---------------------------------------------------------------------------
+  const COUNT_UNITS = /^(stk|stück|bund|glas|dose|kopf|rolle|tranchen|portion|becher|pck|packung|el|tl|prise|zehe|zehen)$/i;
 
-        savePlan();
-        saveMembers();
-        planLoadedFromHash = true;
-        history.replaceState(null, "", window.location.pathname);
-        alert(`🎉 WG-Wochenplan "${state.wgId}" erfolgreich via P2P empfangen und synchronisiert!`);
-      } catch (err) {
-        console.warn("P2P hash import error", err);
+  function formatAmount(amount, unit) {
+    const u = (unit || "").trim();
+    const lu = u.toLowerCase();
+    if (lu === "g" || lu === "ml") {
+      if (amount >= 1000) {
+        return `${(Math.ceil(amount / 100) / 10).toString()} ${lu === "g" ? "kg" : "l"}`;
       }
+      return `${Math.max(10, Math.ceil(amount / 10) * 10)} ${u}`;
     }
+    if (lu === "dl") return `${Math.ceil(amount * 2) / 2} dl`;
+    if (lu === "kg" || lu === "l") return `${Math.ceil(amount * 10) / 10} ${u}`;
+    if (COUNT_UNITS.test(lu)) return `${Math.max(1, Math.ceil(amount - 0.05))} ${u}`;
+    return `${Math.round(amount * 10) / 10} ${u}`.trim();
+  }
 
-    if (!planLoadedFromHash) {
-      const savedLocal = localStorage.getItem("bringfrisch_current_plan");
-      if (savedLocal) {
-        try {
-          state.weekPlan = JSON.parse(savedLocal);
-        } catch (e) {
-          state.weekPlan = generateStandalonePlan();
-        }
-      } else {
-        state.weekPlan = generateStandalonePlan();
-      }
-    }
-
-    // Sicherstellen, dass jeder Tag leftover_buffer hat
-    state.weekPlan.forEach(d => {
-      if (d.leftover_buffer === undefined) d.leftover_buffer = 2;
+  function computeShopping() {
+    const stapleKeywords = [];
+    state.staples.forEach(s => {
+      if (s.in_stock !== false) (s.keywords || [s.name.toLowerCase()]).forEach(k => stapleKeywords.push(k.toLowerCase()));
     });
+    const onBring = state.bringItems.map(n => n.toLowerCase().trim());
+    const agg = {};
 
-    renderDaySelector();
-    renderWeekGrid();
-    renderActiveCard();
-    updateShoppingList();
-    checkPantryAlerts();
-    renderPantryItems();
-    renderMembersManager();
-    renderAttendanceMatrix();
-    checkBringStatus();
-  }
-
-  // Bring! Status & Modal Logic
-  const bringSettingsBtn = document.getElementById("bringSettingsBtn");
-  const bringStatusBadge = document.getElementById("bringStatusBadge");
-  const bringListName = document.getElementById("bringListName");
-  const bringSettingsModal = document.getElementById("bringSettingsModal");
-  const closeBringModalBtn = document.getElementById("closeBringModalBtn");
-  const bringEmailInput = document.getElementById("bringEmailInput");
-  const bringPasswordInput = document.getElementById("bringPasswordInput");
-  const bringLoginBtn = document.getElementById("bringLoginBtn");
-  const bringLoginBtnText = document.getElementById("bringLoginBtnText");
-  const bringLoginFeedback = document.getElementById("bringLoginFeedback");
-  const bringListSelect = document.getElementById("bringListSelect");
-
-  let isBringConnected = false;
-
-  // Phone-First LocalStorage Credentials (damit alles auf dem Phone gespeichert bleibt!)
-  function getSavedPhoneBringCreds() {
-    try {
-      return JSON.parse(localStorage.getItem("bringfrisch_phone_bring_creds") || "{}");
-    } catch (e) {
-      return {};
-    }
-  }
-
-  function savePhoneBringCreds(creds) {
-    const current = getSavedPhoneBringCreds();
-    const merged = { ...current, ...creds };
-    localStorage.setItem("bringfrisch_phone_bring_creds", JSON.stringify(merged));
-  }
-
-  async function fetchSyncBridge(path, options = {}) {
-    // Versucht zuerst relativen Pfad (wenn lokal gestartet), sonst localhost:8080 Sync-Brücke
-    const urls = [path, `http://localhost:8080${path}`];
-    let lastErr = null;
-    for (const u of urls) {
-      try {
-        const res = await fetch(u, options);
-        if (res.ok) return res;
-      } catch (e) {
-        lastErr = e;
-      }
-    }
-    throw lastErr || new Error("Sync-Brücke nicht erreichbar");
-  }
-
-  async function checkBringStatus() {
-    const phoneCreds = getSavedPhoneBringCreds();
-    if (bringEmailInput && phoneCreds.email) bringEmailInput.value = phoneCreds.email;
-    if (bringPasswordInput && phoneCreds.password) bringPasswordInput.value = phoneCreds.password;
-
-    try {
-      const res = await fetchSyncBridge("/api/bring/status");
-      const data = await res.json();
-      isBringConnected = (data.is_connected && !data.is_mock) || !!(phoneCreds.email && phoneCreds.password);
-
-      if (isBringConnected) {
-        if (bringStatusBadge) {
-          bringStatusBadge.textContent = "Sync Bereit ✓";
-          bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
-        }
-        if (bringListName) {
-          bringListName.textContent = `Liste: ${data.list_name || phoneCreds.list_name || 'WG-Einkauf'}`;
-        }
-        if (bringEmailInput && data.email) {
-          bringEmailInput.value = data.email;
-        }
-        loadBringLists();
-      } else {
-        if (bringStatusBadge) {
-          bringStatusBadge.textContent = "Phone-Sync";
-          bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold cursor-pointer";
-        }
-        if (bringListName) {
-          bringListName.textContent = "Bereit für 1-Klick Bring!-Übergabe";
-        }
-      }
-    } catch (e) {
-      // Reine Phone-PWA Ansicht ohne laufenden lokalen Server
-      if (bringStatusBadge) {
-        bringStatusBadge.textContent = "PWA Modus";
-        bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold cursor-pointer";
-      }
-      if (bringListName) {
-        bringListName.textContent = "100% Phone-PWA • 1-Klick Bring! Übergabe bereit";
-      }
-    }
-  }
-
-  async function loadBringLists() {
-    try {
-      const res = await fetchSyncBridge("/api/bring/lists");
-      const data = await res.json();
-      const lists = data.lists || [];
-      if (bringListSelect && lists.length > 0) {
-        bringListSelect.innerHTML = "";
-        lists.forEach(l => {
-          const opt = document.createElement("option");
-          opt.value = l.listUuid;
-          opt.textContent = l.name;
-          bringListSelect.appendChild(opt);
-        });
-      }
-    } catch (e) {}
-  }
-
-  const serverlessPreviewBox = document.getElementById("serverlessPreviewBox");
-  const serverlessItemCountBadge = document.getElementById("serverlessItemCountBadge");
-  const serverlessNativeShareBtn = document.getElementById("serverlessNativeShareBtn");
-  const serverlessOpenBringAppBtn = document.getElementById("serverlessOpenBringAppBtn");
-  const serverlessCopyOnlyBtn = document.getElementById("serverlessCopyOnlyBtn");
-
-  function getMissingExportItems() {
-    return state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
-  }
-
-  function buildBringExportText(items) {
-    return items.map(it => {
-      const amt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
-      return `${it.name} (${amt} ${it.unit})`;
-    }).join("\n");
-  }
-
-  function refreshServerlessHubPreview() {
-    const items = getMissingExportItems();
-    if (serverlessItemCountBadge) {
-      serverlessItemCountBadge.textContent = `${items.length} Zutaten bereit`;
-    }
-    if (serverlessPreviewBox) {
-      if (items.length === 0) {
-        serverlessPreviewBox.innerHTML = `<div class="text-slate-500 py-2 text-center">Alle Artikel sind bereits erledigt oder im Vorrat!</div>`;
-      } else {
-        serverlessPreviewBox.innerHTML = items.map(it => {
-          const amt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
-          return `<div class="flex items-center justify-between border-b border-slate-800/60 py-0.5">
-            <span class="truncate pr-2">• ${it.name}</span>
-            <span class="text-emerald-400 font-bold flex-shrink-0">${amt} ${it.unit}</span>
-          </div>`;
-        }).join("");
-      }
-    }
-  }
-
-  if (serverlessNativeShareBtn) {
-    serverlessNativeShareBtn.onclick = async () => {
-      const items = getMissingExportItems();
-      const text = buildBringExportText(items);
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (e) {}
-
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: `BringFrisch Einkaufsliste (${state.wgId})`,
-            text: text
-          });
-          showBringFeedback(`✅ ${items.length} Zutaten erfolgreich ans Teilen-Menü übergeben!`, true);
-          return;
-        } catch (err) {}
-      }
-      showBringFeedback(`✅ ${items.length} Zutaten kopiert! Jetzt in Bring! oder WhatsApp einfügen.`, true);
-    };
-  }
-
-  if (serverlessOpenBringAppBtn) {
-    serverlessOpenBringAppBtn.onclick = async () => {
-      const items = getMissingExportItems();
-      const text = buildBringExportText(items);
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (e) {}
-      showBringFeedback(`✅ ${items.length} Zutaten kopiert! Öffne Bring!-App...`, true);
-      setTimeout(() => {
-        window.location.href = "bring://";
-        setTimeout(() => {
-          window.open("https://web.getbring.com/app/lists/0", "_blank");
-        }, 900);
-      }, 300);
-    };
-  }
-
-  if (serverlessCopyOnlyBtn) {
-    serverlessCopyOnlyBtn.onclick = async () => {
-      const items = getMissingExportItems();
-      const text = buildBringExportText(items);
-      try {
-        await navigator.clipboard.writeText(text);
-        showBringFeedback(`✅ ${items.length} Zutaten in die Zwischenablage kopiert!`, true);
-      } catch (e) {
-        showBringFeedback("⚠️ Bitte Text aus der Box oben markieren und kopieren.", false);
-      }
-    };
-  }
-
-  function openBringModal() {
-    refreshServerlessHubPreview();
-    if (bringSettingsModal) {
-      bringSettingsModal.classList.remove("hidden");
-      if (bringLoginFeedback) bringLoginFeedback.classList.add("hidden");
-    }
-  }
-
-  if (bringSettingsBtn) bringSettingsBtn.onclick = openBringModal;
-  if (bringStatusBadge) bringStatusBadge.onclick = openBringModal;
-  if (closeBringModalBtn) {
-    closeBringModalBtn.onclick = () => {
-      if (bringSettingsModal) bringSettingsModal.classList.add("hidden");
-    };
-  }
-
-  if (bringLoginBtn) {
-    bringLoginBtn.onclick = async () => {
-      const email = (bringEmailInput.value || "").trim();
-      const password = (bringPasswordInput.value || "").trim();
-
-      if (!email || !password) {
-        showBringFeedback("Bitte E-Mail und Passwort eingeben!", false);
+    function add(name, unit, amount, cat) {
+      if (!name || !(amount > 0)) return;
+      const key = `${name.toLowerCase()}__${(unit || "").toLowerCase()}`;
+      if (agg[key]) {
+        agg[key].amount += amount;
         return;
       }
-
-      // Immer lokal auf dem Phone sichern!
-      savePhoneBringCreds({ email, password });
-      bringLoginBtnText.textContent = "Verbinde mit Sync-Brücke...";
-      try {
-        const res = await fetchSyncBridge("/api/bring/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          isBringConnected = true;
-          savePhoneBringCreds({ email, password, list_uuid: data.list_uuid, list_name: data.list_name });
-          showBringFeedback(`✅ Verbunden als ${data.email}!`, true);
-          bringLoginBtnText.textContent = "Verknüpft ✓";
-          
-          if (data.lists && bringListSelect) {
-            bringListSelect.innerHTML = "";
-            data.lists.forEach(l => {
-              const opt = document.createElement("option");
-              opt.value = l.listUuid;
-              opt.textContent = l.name;
-              if (l.listUuid === data.list_uuid) opt.selected = true;
-              bringListSelect.appendChild(opt);
-            });
-          }
-
-          if (bringStatusBadge) {
-            bringStatusBadge.textContent = "Sync Bereit ✓";
-            bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
-          }
-          if (bringListName) {
-            bringListName.textContent = `Liste: ${data.list_name || 'WG-Einkauf'}`;
-          }
-
-          setTimeout(() => {
-            if (bringSettingsModal) bringSettingsModal.classList.add("hidden");
-          }, 1500);
-        } else {
-          showBringFeedback(`❌ ${data.error || 'Login fehlgeschlagen. Bitte Zugangsdaten prüfen.'}`, false);
-          bringLoginBtnText.textContent = "Mit Backend-API verbinden";
-        }
-      } catch (e) {
-        showBringFeedback("✅ Zugangsdaten auf dem Phone gespeichert! (Nutze oben den 1-Klick Phone-Export oder starte für API-Push den lokalen Sync-Stecker).", true);
-        bringLoginBtnText.textContent = "Auf Phone gespeichert ✓";
-      }
-    };
-  }
-
-  const bringTokenInput = document.getElementById("bringTokenInput");
-  const bringTokenLoginBtn = document.getElementById("bringTokenLoginBtn");
-
-  if (bringTokenLoginBtn) {
-    bringTokenLoginBtn.onclick = async () => {
-      const token = (bringTokenInput.value || "").trim();
-      if (!token) {
-        showBringFeedback("Bitte einen Bring! Token eingeben!", false);
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/bring/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: token })
-        });
-        const data = await res.json();
-        if (data.success) {
-          isBringConnected = true;
-          showBringFeedback("✅ Erfolgreich via Token verknüpft!", true);
-          if (bringStatusBadge) {
-            bringStatusBadge.textContent = "Verbunden";
-            bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
-          }
-          if (bringListName) {
-            bringListName.textContent = "Liste: Bring! Web";
-          }
-          setTimeout(() => {
-            if (bringSettingsModal) bringSettingsModal.classList.add("hidden");
-          }, 1500);
-        } else {
-          showBringFeedback(`❌ ${data.error || 'Token ungültig'}`, false);
-        }
-      } catch (e) {
-        showBringFeedback("❌ Verbindungsfehler zum Server.", false);
-      }
-    };
-  }
-
-  function showBringFeedback(msg, isSuccess) {
-    if (!bringLoginFeedback) return;
-    bringLoginFeedback.textContent = msg;
-    bringLoginFeedback.className = `p-2.5 rounded-xl text-xs flex items-center space-x-1.5 ${
-      isSuccess
-        ? "bg-emerald-950/40 text-emerald-300 border border-emerald-700/50"
-        : "bg-red-950/40 text-red-300 border border-red-700/50"
-    }`;
-    bringLoginFeedback.classList.remove("hidden");
-  }
-
-  if (bringListSelect) {
-    bringListSelect.onchange = async (e) => {
-      const selectedUuid = e.target.value;
-      const selectedName = e.target.options[e.target.selectedIndex].text;
-      try {
-        await fetch("/api/bring/set-list", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ list_uuid: selectedUuid, list_name: selectedName })
-        });
-        if (bringListName) bringListName.textContent = `Liste: ${selectedName}`;
-      } catch (err) {
-        console.warn("Set list error", err);
-      }
-    };
-  }
-
-  function renderActiveCard() {
-    if (!state.weekPlan || state.weekPlan.length === 0) return;
-    const current = state.weekPlan[state.activeDayIndex];
-    if (!current) return;
-
-    // Standard-Esser initialisieren falls noch nicht gesetzt
-    if (!current.eaters) {
-      current.eaters = state.members.map(m => m.id);
-    }
-    if (current.extra_guests === undefined) {
-      current.extra_guests = 0;
-    }
-    if (current.leftover_buffer === undefined) {
-      current.leftover_buffer = 2;
+      const lower = name.toLowerCase();
+      agg[key] = {
+        name,
+        unit: unit || "",
+        amount,
+        cat: cat || "Sonstiges",
+        isStaple: stapleKeywords.some(k => lower.includes(k)),
+        isOnBring: onBring.some(b => b === lower || b.includes(lower) || lower.includes(b))
+      };
     }
 
-    const eatersCount = current.eaters.length;
-    const guests = current.extra_guests || 0;
-    const buffer = current.leftover_buffer;
-    const dayPersons = eatersCount + guests + buffer || 4;
-    current.person_count = dayPersons;
-    current.effective_diet = calculateEffectiveDiet(current.eaters);
+    state.plan.forEach(day => {
+      const portions = portionsFor(day);
+      if (portions === 0) return;
+      const scale = portions / (day.servings || DEFAULT_SERVINGS);
 
-    cardDayBadge.textContent = current.day || DAYS[state.activeDayIndex];
-    cardDietBadge.textContent = (current.diet || current.effective_diet).toUpperCase();
-    
-    const costPerP = current.cost_per_person_chf || 2.80;
-    cardCostBadge.textContent = `CHF ${(costPerP * dayPersons).toFixed(2)} (${dayPersons} Port.)`;
-    cardTitle.textContent = current.title;
-    cardPrepTime.textContent = `${current.prep_time_min || 30} Min.`;
-    cardSeasonFokus.textContent = (current.primary_vegetables || []).join(", ") || "Schweizer Saisongemüse";
-    cardCookName.textContent = current.cook_assigned ? `Koch: ${current.cook_assigned}` : "Koch: Offen / WG";
-    cardHealthTip.textContent = current.health_tip || "Ausgewogenes Rezept mit Schweizer Gemüse.";
-
-    const cardSourceLink = document.getElementById("cardSourceLink");
-    if (cardSourceLink) {
-      if (current.source_url) {
-        cardSourceLink.href = current.source_url;
-        cardSourceLink.classList.remove("hidden");
-      } else {
-        cardSourceLink.classList.add("hidden");
-      }
-    }
-
-    // Wer isst mit heute? UI rendern
-    const dayEaterSummary = document.getElementById("dayEaterSummary");
-    if (dayEaterSummary) {
-      dayEaterSummary.textContent = `${eatersCount} Esser + ${buffer} Reste = ${dayPersons} Port. • ${current.effective_diet.toUpperCase()}`;
-    }
-
-    const dayEatersList = document.getElementById("dayEatersList");
-    if (dayEatersList) {
-      dayEatersList.innerHTML = "";
-      state.members.forEach(mem => {
-        const isAttending = current.eaters.includes(mem.id);
-        const btn = document.createElement("button");
-        btn.className = `text-[11px] px-2.5 py-1 rounded-xl border transition flex items-center space-x-1.5 ${
-          isAttending
-            ? "bg-emerald-950/50 text-emerald-300 border-emerald-500/50 shadow-sm"
-            : "bg-slate-800/80 text-slate-400 border-slate-700/60 line-through opacity-60"
-        }`;
-        btn.innerHTML = `<span>${isAttending ? '✓' : '✗'} ${mem.name}</span> <span class="text-[9px] px-1 py-0.2 rounded bg-slate-900 font-mono text-slate-400 uppercase">${mem.diet}</span>`;
-        btn.onclick = () => {
-          if (isAttending) {
-            current.eaters = current.eaters.filter(id => id !== mem.id);
-          } else {
-            current.eaters.push(mem.id);
-          }
-          current.effective_diet = calculateEffectiveDiet(current.eaters);
-          savePlan();
-          renderActiveCard();
-          updateShoppingList();
-        };
-        dayEatersList.appendChild(btn);
+      // 1. Gemeinsame Basis für alle + Reste
+      (day.ingredients || []).forEach(ing => {
+        add(ing.name.trim(), (ing.unit || "").trim(), parseFloat(ing.amount || "1") * scale, ing.bring_cat);
       });
 
-      // Gast-Button (+1 / -1)
-      const guestBtn = document.createElement("button");
-      guestBtn.className = "text-[11px] px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 transition flex items-center space-x-1";
-      guestBtn.innerHTML = `<span>+ Gast (${current.extra_guests})</span>`;
-      guestBtn.onclick = () => {
-        current.extra_guests = (current.extra_guests + 1) % 5;
-        savePlan();
-        renderActiveCard();
-        updateShoppingList();
-      };
-      dayEatersList.appendChild(guestBtn);
-    }
+      // 2. Individuelle Proteine je anwesendem Esser
+      const present = state.members.filter(m => day.eaters.includes(m.id));
+      const meat = present.filter(m => m.diet === "fleisch").length;
+      const vegi = present.filter(m => m.diet === "vegi").length;
+      const vegan = present.filter(m => m.diet === "vegan").length;
+      if (meat > 0 && day.diet !== "fleisch") add("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meat, "Fleisch & Fisch");
+      if (vegi > 0) add("Schweizer Grillkäse / Halloumi", "g", 100 * vegi, "Milch & Käse");
+      if (vegan > 0) add("Tofu / veganer Reibkäse", "Portion", vegan, "Milch & Käse");
 
-    cardIngredients.innerHTML = "";
-    const scale = dayPersons / 2;
-    (current.ingredients || []).forEach(ing => {
-      const li = document.createElement("li");
-      li.className = "flex items-center justify-between py-0.5 border-b border-slate-800/40";
-      const scaledAmt = (parseFloat(ing.amount || "1") * scale);
-      const displayAmt = scaledAmt === parseInt(scaledAmt) ? scaledAmt : scaledAmt.toFixed(1);
-      li.innerHTML = `<span>${ing.name}</span> <span class="text-slate-400 font-mono text-[11px]">${displayAmt} ${ing.unit}</span>`;
-      cardIngredients.appendChild(li);
+      // 3. Frische Beilage
+      add("Nüsslisalat / Saisonsalat", "g", 50 * portions, "Obst & Gemüse");
     });
 
-    if (window.lucide) lucide.createIcons();
+    state.shopping = Object.values(agg).map(it => ({ ...it, spec: formatAmount(it.amount, it.unit) }));
   }
 
-  // Touch Swipe Handhabung
-  const activeCard = document.getElementById("activeCard");
-  let touchStartX = 0;
-  let touchEndX = 0;
+  const toBuyItems = () => state.shopping.filter(it => !it.isStaple && !it.isOnBring);
+  const listLine = it => `${it.name} (${it.spec})`;
 
-  activeCard.addEventListener("touchstart", (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-  }, { passive: true });
+  // ---------------------------------------------------------------------------
+  // Rendering: Plan
+  // ---------------------------------------------------------------------------
+  function renderHeader() {
+    const now = new Date();
+    $("weekLabel").textContent = `KW ${isoWeek(now)} · ${MONTHS[now.getMonth()]}`;
+  }
 
-  activeCard.addEventListener("touchend", (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    const diff = touchEndX - touchStartX;
-    if (diff < -50 && state.activeDayIndex < DAYS.length - 1) {
-      state.activeDayIndex++;
-      renderDaySelector();
-      renderActiveCard();
-    } else if (diff > 50 && state.activeDayIndex > 0) {
-      state.activeDayIndex--;
-      renderDaySelector();
-      renderActiveCard();
+  function renderDays() {
+    const short = initialsMap();
+    const today = todayIndex();
+    $("days").innerHTML = state.plan.map((day, idx) => `
+      <div class="day${idx === today ? " today" : ""}">
+        <span class="d">${DAYS[idx].slice(0, 2)}</span>
+        <button class="title-btn" type="button" data-pick="${idx}" aria-label="Menü am ${DAYS[idx]} wechseln: ${esc(day.title)}">
+          <span class="t">${esc(day.title)}</span><span class="caret">▾</span>
+          ${day.source_url ? `<a class="src" href="${esc(day.source_url)}" target="_blank" rel="noopener" data-link aria-label="Rezept öffnen">🌐</a>` : ""}
+        </button>
+        <span class="chips">
+          ${state.members.map(m => `<button type="button" class="chip${day.eaters.includes(m.id) ? "" : " off"}" data-day="${idx}" data-member="${esc(m.id)}" aria-pressed="${day.eaters.includes(m.id)}" aria-label="${esc(m.name)} am ${DAYS[idx]}">${esc(short[m.id])}</button>`).join("")}
+          <select class="buf" data-buffer="${idx}" aria-label="Reste-Puffer am ${DAYS[idx]}">
+            ${[0, 1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === day.leftover_buffer ? " selected" : ""}>+${n}</option>`).join("")}
+          </select>
+        </span>
+      </div>`).join("");
+  }
+
+  function renderBasketLine() {
+    const n = toBuyItems().length;
+    const staples = state.shopping.filter(it => it.isStaple).length;
+    const onBring = state.shopping.filter(it => it.isOnBring && !it.isStaple).length;
+    const extra = [staples ? `${staples} Grundvorrat ausgeblendet` : "", onBring ? `${onBring} schon auf Bring!` : ""].filter(Boolean).join(" · ");
+    $("basketLine").innerHTML = `<span><b>🛒 Einkaufskorb: ${n} Artikel</b><small>${extra || "Alles für die ganze Woche"}</small></span><span class="chev">›</span>`;
+  }
+
+  function renderSeasonHint() {
+    const m = currentMonth();
+    const names = (DATA.season_items || [])
+      .filter(it => (it.field_months || []).includes(m))
+      .map(it => it.name.replace(/^Schweizer\s+/i, "").replace(/\s*\(.*\)$/, ""));
+    $("seasonHint").textContent = names.length ? `Saison im ${MONTHS[m - 1]}: ${names.slice(0, 8).join(", ")}.` : "";
+  }
+
+  function renderCta() {
+    const n = toBuyItems().length;
+    $("ctaCount").textContent = `· ${n} Artikel`;
+    $("syncBtn").disabled = n === 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rendering: Einkauf
+  // ---------------------------------------------------------------------------
+  function renderShop() {
+    const groups = {
+      toBuy: toBuyItems(),
+      onBring: state.shopping.filter(it => it.isOnBring && !it.isStaple),
+      staples: state.shopping.filter(it => it.isStaple)
+    };
+    $("cntToBuy").textContent = groups.toBuy.length;
+    $("cntOnBring").textContent = groups.onBring.length;
+    $("cntStaples").textContent = groups.staples.length;
+    $("shopSummary").textContent = `${state.shopping.length} Zutaten diese Woche`;
+    document.querySelectorAll("#tab-shop .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === state.shopFilter)));
+
+    const items = groups[state.shopFilter];
+    if (items.length === 0) {
+      const msg = {
+        toBuy: "Nichts mehr zu kaufen. 🎉",
+        onBring: "Noch nichts davon steht auf Bring!.",
+        staples: "Keine Grundzutaten in diesem Wochenplan."
+      }[state.shopFilter];
+      $("shopList").innerHTML = `<div class="empty">${msg}</div>`;
+      return;
     }
-  }, { passive: true });
+    const byAisle = {};
+    items.forEach(it => (byAisle[it.cat] = byAisle[it.cat] || []).push(it));
+    $("shopList").innerHTML = Object.keys(byAisle).sort().map(cat => `
+      <div class="aisle">
+        <h3>${esc(cat)}</h3>
+        ${byAisle[cat].map(it => `<div class="item"><span>${esc(it.name)}</span><span class="amt">${esc(it.spec)}</span></div>`).join("")}
+      </div>`).join("");
+  }
 
-  // Anderes Rezept für diesen Tag würfeln (beachtet Diät aller heutigen Esser!)
-  document.getElementById("shuffleDayBtn").onclick = () => {
-    const current = state.weekPlan[state.activeDayIndex];
-    const targetDiet = current.effective_diet || state.diet;
-    const pool = getRecipesPool(targetDiet);
-    if (pool.length > 0) {
-      const randomRecipe = pool[Math.floor(Math.random() * pool.length)];
-      state.weekPlan[state.activeDayIndex] = {
-        ...randomRecipe,
-        day: DAYS[state.activeDayIndex],
-        eaters: current.eaters,
-        extra_guests: current.extra_guests,
-        effective_diet: current.effective_diet,
-        person_count: current.person_count,
-        cook_assigned: current.cook_assigned
-      };
-      savePlan();
-      renderActiveCard();
-      updateShoppingList();
-    }
-  };
+  // ---------------------------------------------------------------------------
+  // Rendering: Saison
+  // ---------------------------------------------------------------------------
+  function renderSeason(month) {
+    const m = parseInt(month, 10);
+    const news = (DATA.monthly_news || {})[m] || {};
+    $("newsHeadline").textContent = news.headline || `Saison im ${MONTHS[m - 1]}`;
+    $("newsTip").textContent = news.farmer_tip || "";
+    const items = DATA.season_items || [];
+    const field = items.filter(it => (it.field_months || []).includes(m));
+    const storage = items.filter(it => !(it.field_months || []).includes(m) && (it.storage_months || []).includes(m));
+    const card = it => `<div class="card veg"><b>${esc(it.name)}</b><small>${esc(it.category)}</small></div>`;
+    $("fieldGrid").innerHTML = field.map(card).join("") || `<p class="hint">Diesen Monat kein Freilandgemüse.</p>`;
+    $("storageGrid").innerHTML = storage.map(card).join("") || `<p class="hint">Keine Lagerware.</p>`;
+  }
 
-  // Ganze Woche neu würfeln
-  document.getElementById("regenWholeWeekBtn").onclick = () => {
-    state.weekPlan = generateStandalonePlan();
+  function setupSeason() {
+    const sel = $("monthSelect");
+    sel.innerHTML = MONTHS.map((name, i) => `<option value="${i + 1}">${name}</option>`).join("");
+    sel.value = String(currentMonth());
+    sel.onchange = () => renderSeason(sel.value);
+    renderSeason(sel.value);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rendering: WG
+  // ---------------------------------------------------------------------------
+  const DIET_LABEL = { fleisch: "Fleisch", vegi: "Vegi", vegan: "Vegan" };
+
+  function renderMembers() {
+    $("members").innerHTML = state.members.map(m => `
+      <div class="member">
+        <b>${esc(m.name)}</b>
+        <select data-diet="${esc(m.id)}" aria-label="Ernährung von ${esc(m.name)}">
+          ${Object.keys(DIET_LABEL).map(d => `<option value="${d}"${m.diet === d ? " selected" : ""}>${DIET_LABEL[d]}</option>`).join("")}
+        </select>
+        <button class="icon-btn" type="button" data-remove="${esc(m.id)}" aria-label="${esc(m.name)} entfernen">✕</button>
+      </div>`).join("");
+  }
+
+  function renderAttendance() {
+    const short = initialsMap();
+    const head = `<tr><th></th>${DAYS.map(d => `<th>${d.slice(0, 2)}</th>`).join("")}</tr>`;
+    const rows = state.members.map(m => `<tr><td>${esc(m.name)}</td>${state.plan.map((day, idx) => {
+      const on = day.eaters.includes(m.id);
+      return `<td><button type="button" class="att${on ? "" : " off"}" data-day="${idx}" data-member="${esc(m.id)}" aria-pressed="${on}" aria-label="${esc(m.name)} am ${DAYS[idx]}">${esc(short[m.id])}</button></td>`;
+    }).join("")}</tr>`).join("");
+    const guests = `<tr><td>Gäste</td>${state.plan.map((day, idx) => `<td><button type="button" class="att guest" data-guests="${idx}" aria-label="Gäste am ${DAYS[idx]}: ${day.extra_guests}">${day.extra_guests}</button></td>`).join("")}</tr>`;
+    const totals = `<tr><td class="muted">Portionen</td>${state.plan.map(day => `<td class="muted">${portionsFor(day)}</td>`).join("")}</tr>`;
+    $("attendance").innerHTML = head + rows + guests + totals;
+  }
+
+  // Alles neu berechnen und zeichnen
+  function refresh() {
+    computeShopping();
+    renderDays();
+    renderBasketLine();
+    renderCta();
+    renderShop();
+    renderAttendance();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Aktionen: Plan
+  // ---------------------------------------------------------------------------
+  function toggleEater(dayIdx, memberId) {
+    const day = state.plan[dayIdx];
+    if (!day) return;
+    day.eaters = day.eaters.includes(memberId) ? day.eaters.filter(id => id !== memberId) : [...day.eaters, memberId];
     savePlan();
-    renderActiveCard();
-    updateShoppingList();
-  };
-
-  // Koch zuweisen
-  document.getElementById("assignCookBtn").onclick = () => {
-    const name = prompt("Wer kocht an diesem Tag?", state.weekPlan[state.activeDayIndex].cook_assigned || "Du");
-    if (name) {
-      state.weekPlan[state.activeDayIndex].cook_assigned = name;
-      savePlan();
-      renderActiveCard();
-    }
-  };
-
-  function savePlan() {
-    localStorage.setItem("bringfrisch_current_plan", JSON.stringify(state.weekPlan));
+    refresh();
   }
 
-  // 7-Tage Kachel-Übersicht, View Switcher & UX Co-Designer (3 Aufstellungen & 3 Themes)
-  const weekCardsContainer = document.getElementById("weekCardsContainer");
-  const viewGridBtn = document.getElementById("viewGridBtn");
-  const viewSingleBtn = document.getElementById("viewSingleBtn");
-  const weekGridSection = document.getElementById("weekGridSection");
-  const singleCardSection = document.getElementById("singleCardSection");
-  const regenWholeWeekBtnTop = document.getElementById("regenWholeWeekBtnTop");
-  const quickSyncBringBtn = document.getElementById("quickSyncBringBtn");
-
-  const layoutBtnBento = document.getElementById("layoutBtnBento");
-  const layoutBtnLego = document.getElementById("layoutBtnLego");
-  const layoutBtnMatrix = document.getElementById("layoutBtnMatrix");
-  const themeBtnLight = document.getElementById("themeBtnLight");
-  const themeBtnDark = document.getElementById("themeBtnDark");
-  const themeBtnSwiss = document.getElementById("themeBtnSwiss");
-
-  state.layoutMode = localStorage.getItem("bringfrisch_layout_mode") || "bento"; // "bento", "lego", "matrix"
-  state.themeMode = localStorage.getItem("bringfrisch_theme_mode") || "dark";    // "light", "dark", "swiss"
-
-  function applyThemeMode(theme) {
-    state.themeMode = theme;
-    localStorage.setItem("bringfrisch_theme_mode", theme);
-    document.body.classList.remove("theme-light", "theme-swiss");
-    if (theme === "light") document.body.classList.add("theme-light");
-    if (theme === "swiss") document.body.classList.add("theme-swiss");
-
-    const map = { light: themeBtnLight, dark: themeBtnDark, swiss: themeBtnSwiss };
-    Object.keys(map).forEach(k => {
-      const btn = map[k];
-      if (!btn) return;
-      if (k === theme) {
-        btn.className = "px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500 text-slate-950 shadow transition";
-      } else {
-        btn.className = "px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 transition";
-      }
-    });
-  }
-
-  function applyLayoutMode(layout) {
-    state.layoutMode = layout;
-    localStorage.setItem("bringfrisch_layout_mode", layout);
-    const map = { bento: layoutBtnBento, lego: layoutBtnLego, matrix: layoutBtnMatrix };
-    const labels = {
-      bento: ["1. Bento-Kacheln", "2-Spalten Wand"],
-      lego: ["2. Lego 3-Teile", "Baukasten-Kacheln"],
-      matrix: ["3. Split-Matrix", "Plan + Live-Korb"]
-    };
-    Object.keys(map).forEach(k => {
-      const btn = map[k];
-      if (!btn) return;
-      if (k === layout) {
-        btn.className = "py-1.5 px-2 rounded-xl text-[11px] font-bold bg-emerald-500 text-slate-950 shadow flex flex-col items-center justify-center transition";
-      } else {
-        btn.className = "py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white flex flex-col items-center justify-center transition";
-      }
-      btn.innerHTML = `<span>${labels[k][0]}</span><span class="text-[9px] opacity-80 font-normal">${labels[k][1]}</span>`;
-    });
-    setViewMode("grid");
-  }
-
-  if (themeBtnLight) themeBtnLight.onclick = () => applyThemeMode("light");
-  if (themeBtnDark) themeBtnDark.onclick = () => applyThemeMode("dark");
-  if (themeBtnSwiss) themeBtnSwiss.onclick = () => applyThemeMode("swiss");
-
-  if (layoutBtnBento) layoutBtnBento.onclick = () => { applyLayoutMode("bento"); };
-  if (layoutBtnLego) layoutBtnLego.onclick = () => { applyLayoutMode("lego"); };
-  if (layoutBtnMatrix) layoutBtnMatrix.onclick = () => { applyLayoutMode("matrix"); };
-
-  // Initial Theme & Layout aktivieren
-  applyThemeMode(state.themeMode);
-
-  function setViewMode(mode) {
-    if (mode === "grid") {
-      if (weekGridSection) weekGridSection.classList.remove("hidden");
-      if (singleCardSection) singleCardSection.classList.add("hidden");
-      if (viewGridBtn) viewGridBtn.className = "py-1.5 px-2.5 text-xs font-bold rounded-xl bg-emerald-500 text-slate-950 shadow-md flex items-center space-x-1 transition";
-      if (viewSingleBtn) viewSingleBtn.className = "py-1.5 px-2.5 text-xs font-bold rounded-xl text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition";
-      renderWeekGrid();
-    } else {
-      if (weekGridSection) weekGridSection.classList.add("hidden");
-      if (singleCardSection) singleCardSection.classList.remove("hidden");
-      if (viewGridBtn) viewGridBtn.className = "py-1.5 px-2.5 text-xs font-bold rounded-xl text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition";
-      if (viewSingleBtn) viewSingleBtn.className = "py-1.5 px-2.5 text-xs font-bold rounded-xl bg-emerald-500 text-slate-950 shadow-md flex items-center space-x-1 transition";
-      renderActiveCard();
-    }
-    if (window.lucide) lucide.createIcons();
-  }
-
-  if (viewGridBtn) viewGridBtn.onclick = () => setViewMode("grid");
-  if (viewSingleBtn) viewSingleBtn.onclick = () => setViewMode("single");
-
-  if (regenWholeWeekBtnTop) {
-    regenWholeWeekBtnTop.onclick = () => {
-      if (confirm("Ganze Woche mit neuen Schweizer Saison-Rezepten würfeln?")) {
-        state.weekPlan = generateStandalonePlan();
-        savePlan();
-        renderWeekGrid();
-        renderActiveCard();
-        renderAttendanceMatrix();
-        updateShoppingList();
-      }
-    };
-  }
-
-  if (quickSyncBringBtn) {
-    quickSyncBringBtn.onclick = () => performBringSync();
-  }
-
-  // Render Wochen-Ansicht in 3 wählbaren UX-Aufstellungen:
-  // 1. "bento"  -> 2-Spalten Bento-Kachel-Wand (alle 7 Tage auf einen Blick)
-  // 2. "lego"   -> 3-Teile Lego-Stack (Tages-Baukasten mit 3 grossen Protein-Kacheln)
-  // 3. "matrix" -> Split-Matrix oben + Live-Einkaufs-Kacheln direkt darunter
-  function renderWeekGrid() {
-    if (!weekCardsContainer || !state.weekPlan || state.weekPlan.length === 0) return;
-    weekCardsContainer.innerHTML = "";
-
-    // Tag-Daten vorbereiten
-    state.weekPlan.forEach((day, idx) => {
-      if (!day.eaters) day.eaters = state.members.map(m => m.id);
-      if (day.leftover_buffer === undefined) day.leftover_buffer = 2;
-      if (day.extra_guests === undefined) day.extra_guests = 0;
-      const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
-      day.person_count = attendingMembers.length + day.extra_guests + day.leftover_buffer || 4;
-      day.effective_diet = calculateEffectiveDiet(day.eaters);
-    });
-
-    if (state.layoutMode === "bento") {
-      // =========================================================================
-      // AUFSTELLUNG 1: BENTO-KACHEL-WAND (2-Spalten Grid für alle 7 Tage)
-      // =========================================================================
-      weekCardsContainer.className = "grid grid-cols-1 sm:grid-cols-2 gap-3";
-
-      state.weekPlan.forEach((day, idx) => {
-        const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
-        const eatersCount = attendingMembers.length;
-        const buffer = day.leftover_buffer;
-        const totalPersons = day.person_count;
-        const meatEaters = attendingMembers.filter(m => m.diet === "fleisch");
-        const vegiEaters = attendingMembers.filter(m => m.diet === "vegi");
-        const veganEaters = attendingMembers.filter(m => m.diet === "vegan");
-
-        const card = document.createElement("div");
-        card.className = `bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between space-y-2.5 shadow-sm hover:border-emerald-500/40 transition ${idx === 6 ? "sm:col-span-2" : ""}`;
-
-        card.innerHTML = `
-          <div class="space-y-2">
-            <!-- Kopfzeile -->
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs uppercase font-extrabold px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                  ${(day.day || DAYS[idx]).substring(0, 2)} • ${day.day || DAYS[idx]}
-                </span>
-                ${day.source_url ? `<a href="${day.source_url}" target="_blank" rel="noopener" class="text-xs text-cyan-400 hover:underline px-1.5 py-0.5 rounded bg-cyan-500/10">🌐 Link</a>` : ""}
-              </div>
-              <div class="flex items-center gap-1">
-                <button class="grid-pick-menu-btn text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-lg transition" data-day-idx="${idx}">
-                  Menü ▾
-                </button>
-                <button class="grid-shuffle-btn text-slate-400 hover:text-amber-300 p-1" data-day-idx="${idx}" title="Neu würfeln">
-                  <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                </button>
-              </div>
-            </div>
-
-            <!-- Titel -->
-            <div>
-              <h4 class="text-sm font-bold text-white leading-snug">${day.title}</h4>
-              <div class="text-xs text-slate-400 mt-0.5">⏱️ ${day.prep_time_min || 25} Min • 💰 CHF ${day.cost_per_person_chf || '2.80'}/P.</div>
-            </div>
-
-            <!-- 3-Teile Bento-Badges -->
-            <div class="p-2 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1 text-xs">
-              <div class="text-slate-300 truncate"><span class="text-emerald-400 font-bold">🍚 Basis:</span> ${day.title} (${totalPersons}P)</div>
-              <div class="flex flex-wrap gap-1 pt-0.5">
-                ${meatEaters.length > 0 ? `<span class="px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 border border-orange-500/30 text-[10px] font-semibold">🥩 ${meatEaters.map(m=>m.name).join(', ')}</span>` : ""}
-                ${vegiEaters.length > 0 ? `<span class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-semibold">🧀 ${vegiEaters.map(m=>m.name).join(', ')}</span>` : ""}
-                ${veganEaters.length > 0 ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold">🌱 ${veganEaters.map(m=>m.name).join(', ')}</span>` : ""}
-                <span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px] font-semibold">🥗 Salat</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Fusszeile: Esser & Reste -->
-          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
-            <div class="flex flex-wrap gap-1">
-              ${state.members.map(mem => {
-                const isAttending = day.eaters && day.eaters.includes(mem.id);
-                const icon = mem.diet === "fleisch" ? "🥩" : (mem.diet === "vegan" ? "🌱" : "🧀");
-                return `
-                  <button class="grid-eater-chip text-xs px-2 py-0.5 rounded-lg border transition font-bold ${
-                    isAttending
-                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50"
-                      : "bg-slate-800/50 text-slate-500 border-slate-700/40 line-through opacity-50"
-                  }" data-day-idx="${idx}" data-member-id="${mem.id}">
-                    ${icon} ${mem.name}
-                  </button>
-                `;
-              }).join("")}
-            </div>
-            <div class="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-0.5 text-xs">
-              <button class="grid-buffer-btn text-slate-300 hover:text-white px-1 font-bold" data-day-idx="${idx}" data-delta="-1">–</button>
-              <span class="font-bold text-amber-300">+${buffer}</span>
-              <button class="grid-buffer-btn text-slate-300 hover:text-white px-1 font-bold" data-day-idx="${idx}" data-delta="1">+</button>
-            </div>
-          </div>
-        `;
-        weekCardsContainer.appendChild(card);
-      });
-
-    } else if (state.layoutMode === "lego") {
-      // =========================================================================
-      // AUFSTELLUNG 2: 3-TEILE LEGO-STACK (Grosse modulare Baustein-Kacheln)
-      // =========================================================================
-      weekCardsContainer.className = "space-y-3";
-      const idx = state.activeDayIndex || 0;
-      const day = state.weekPlan[idx] || state.weekPlan[0];
-      const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
-      const buffer = day.leftover_buffer;
-      const totalPersons = day.person_count;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "space-y-3";
-      wrapper.innerHTML = `
-        <!-- Wochentag-Leiste -->
-        <div class="grid grid-cols-7 gap-1.5 bg-slate-900 border border-slate-800 p-1.5 rounded-2xl">
-          ${state.weekPlan.map((d, dIdx) => `
-            <button class="lego-day-pill py-2 rounded-xl text-xs font-extrabold transition flex flex-col items-center ${
-              dIdx === idx ? "bg-emerald-500 text-slate-950 shadow-md" : "bg-slate-800/60 text-slate-400 hover:text-white"
-            }" data-day-idx="${dIdx}">
-              <span>${DAYS[dIdx].substring(0, 2)}</span>
-              <span class="text-[9px] font-mono opacity-80">${d.person_count}P</span>
-            </button>
-          `).join("")}
-        </div>
-
-        <!-- Hauptkarte mit 3 gestapelten Lego-Kacheln -->
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 space-y-3.5 shadow-lg">
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <span class="text-xs font-extrabold uppercase text-emerald-400">${day.day || DAYS[idx]} • 3-Teile Lego-Baukasten</span>
-              <h3 class="text-lg font-extrabold text-white mt-0.5">${day.title}</h3>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <button class="grid-pick-menu-btn text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" data-day-idx="${idx}">
-                📖 Menü wählen
-              </button>
-              <button class="grid-shuffle-btn p-2 rounded-xl bg-slate-800 text-amber-400 border border-slate-700" data-day-idx="${idx}" title="Zufalls-Rezept">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- LEGO-KACHEL 1: GEMEINSAME BASIS -->
-          <div class="p-3.5 rounded-2xl bg-slate-950/70 border-l-4 border-emerald-500 border border-slate-800 space-y-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-extrabold text-emerald-400 uppercase">Baustein 1 • Gemeinsame Basis (für alle)</span>
-              <div class="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded-lg px-2 py-0.5 text-xs">
-                <span class="text-slate-400">Reste:</span>
-                <button class="grid-buffer-btn text-slate-200 font-bold px-1" data-day-idx="${idx}" data-delta="-1">–</button>
-                <span class="font-bold text-amber-300">+${buffer}</span>
-                <button class="grid-buffer-btn text-slate-200 font-bold px-1" data-day-idx="${idx}" data-delta="1">+</button>
-              </div>
-            </div>
-            <div class="text-xs text-slate-200 font-semibold">
-              🍚 ${(day.ingredients || []).map(i => `${i.name} (${i.amount}${i.unit})`).join(" • ")}
-            </div>
-            <div class="text-xs text-slate-400">Skaliert automatisch auf <strong>${totalPersons} Gesamt-Portionen</strong> (${attendingMembers.length} Esser + ${buffer} Zmittag-Reste)</div>
-          </div>
-
-          <!-- LEGO-KACHEL 2: 3 PROTEIN-KACHELN NEBENEINANDER (Direkt antippbar!) -->
-          <div class="space-y-1.5">
-            <div class="text-xs font-extrabold text-amber-400 uppercase px-1">
-              Baustein 2 • Individuelle Proteine (Kachel antippen zum Ein-/Ausschalten!)
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              ${state.members.map(mem => {
-                const isAttending = day.eaters && day.eaters.includes(mem.id);
-                const isMeat = mem.diet === "fleisch";
-                const isVegan = mem.diet === "vegan";
-                const emoji = isMeat ? "🥩" : (isVegan ? "🌱" : "🧀");
-                const proteinDesc = isMeat ? "150g Speckwürfeli / Rindssteak" : (isVegan ? "1 Port. Vegan-Käse / Tofu / Pesto" : "100g Schweizer Halloumi / Bergkäse");
-                return `
-                  <button class="grid-eater-chip p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
-                    isAttending
-                      ? "bg-emerald-950/40 border-emerald-500/60 text-white shadow-md"
-                      : "bg-slate-950/30 border-slate-800 text-slate-500 opacity-50"
-                  }" data-day-idx="${idx}" data-member-id="${mem.id}">
-                    <div class="flex items-center justify-between w-full">
-                      <span class="text-base">${emoji}</span>
-                      <span class="text-xs font-extrabold px-2 py-0.5 rounded-full ${isAttending ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-slate-400"}">
-                        ${isAttending ? "ISST MIT ✓" : "PAUSIERT"}
-                      </span>
-                    </div>
-                    <div class="mt-2">
-                      <div class="text-sm font-bold">${mem.name} (${mem.diet.toUpperCase()})</div>
-                      <div class="text-xs text-slate-300 mt-0.5">${proteinDesc}</div>
-                    </div>
-                  </button>
-                `;
-              }).join("")}
-            </div>
-          </div>
-
-          <!-- LEGO-KACHEL 3: FRISCHE SCHWEIZER BEILAGE -->
-          <div class="p-3.5 rounded-2xl bg-slate-950/70 border-l-4 border-cyan-500 border border-slate-800 flex items-center justify-between">
-            <div>
-              <div class="text-xs font-extrabold text-cyan-400 uppercase">Baustein 3 • Frische Beilage</div>
-              <div class="text-xs text-slate-200 font-semibold mt-0.5">🥗 Schweizer Nüsslisalat / Saisonsalat (${totalPersons * 50}g)</div>
-            </div>
-            <span class="text-xs px-2.5 py-1 rounded-xl bg-cyan-500/15 text-cyan-300 font-bold">🇨🇭 VSGP</span>
-          </div>
-        </div>
-      `;
-      weekCardsContainer.appendChild(wrapper);
-
-      weekCardsContainer.querySelectorAll(".lego-day-pill").forEach(btn => {
-        btn.onclick = () => {
-          state.activeDayIndex = parseInt(btn.getAttribute("data-day-idx"), 10);
-          renderWeekGrid();
-        };
-      });
-
-    } else {
-      // =========================================================================
-      // AUFSTELLUNG 3: SPLIT-MATRIX (Wochen-Streifen oben + Live-Einkaufs-Kacheln unten)
-      // =========================================================================
-      weekCardsContainer.className = "space-y-4";
-
-      const matrixBox = document.createElement("div");
-      matrixBox.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2";
-      matrixBox.innerHTML = `
-        <div class="flex items-center justify-between px-1">
-          <span class="text-xs font-extrabold uppercase text-emerald-400">1. Kompakte 7-Tage Schnell-Matrix</span>
-          <span class="text-xs text-slate-400">Esser direkt rechts antippen</span>
-        </div>
-        <div class="space-y-1.5">
-          ${state.weekPlan.map((day, idx) => `
-            <div class="flex items-center justify-between bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2 gap-2">
-              <div class="flex items-center gap-2 min-w-0 flex-1">
-                <span class="text-xs font-extrabold text-emerald-400 w-7 flex-shrink-0">${DAYS[idx].substring(0, 2)}</span>
-                <button class="grid-pick-menu-btn text-left text-xs font-bold text-white hover:text-emerald-400 truncate flex-1" data-day-idx="${idx}" title="Klicken zum Menü wechseln">
-                  ${day.title} ▾
-                </button>
-              </div>
-              <div class="flex items-center gap-1 flex-shrink-0">
-                ${state.members.map(mem => {
-                  const isAttending = day.eaters && day.eaters.includes(mem.id);
-                  return `
-                    <button class="grid-eater-chip px-2 py-1 rounded-lg text-xs font-extrabold border transition ${
-                      isAttending
-                        ? "bg-emerald-500 text-slate-950 border-emerald-400"
-                        : "bg-slate-800 text-slate-500 border-slate-700 opacity-50"
-                    }" data-day-idx="${idx}" data-member-id="${mem.id}" title="${mem.name}">
-                      ${mem.name.substring(0, 1)}
-                    </button>
-                  `;
-                }).join("")}
-                <button class="grid-buffer-btn text-xs font-mono font-bold px-1.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30" data-day-idx="${idx}" data-delta="1" title="Reste-Puffer (+1)">
-                  +${day.leftover_buffer}
-                </button>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      `;
-      weekCardsContainer.appendChild(matrixBox);
-
-      // Live Einkaufs-Kacheln direkt darunter rendern!
-      const liveBasketBox = document.createElement("div");
-      liveBasketBox.className = "bg-slate-900 border border-emerald-500/40 rounded-2xl p-3.5 space-y-3 shadow-lg";
-      const toBuyItems = state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
-      const byCat = {};
-      toBuyItems.forEach(it => {
-        const c = it.bring_cat || "Sonstiges";
-        if (!byCat[c]) byCat[c] = [];
-        byCat[c].push(it);
-      });
-
-      liveBasketBox.innerHTML = `
-        <div class="flex items-center justify-between">
-          <div>
-            <span class="text-xs font-extrabold uppercase text-emerald-400">2. Live-Einkaufskorb (Kacheln nach Abteilung)</span>
-            <p class="text-xs text-slate-400">Aktualisiert sich sofort, wenn du oben Personen an-/abwählst!</p>
-          </div>
-          <span class="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300">${toBuyItems.length} Zutaten</span>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          ${Object.keys(byCat).map(cat => `
-            <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
-              <div class="text-xs font-bold text-emerald-400 uppercase flex items-center justify-between">
-                <span>${cat}</span>
-                <span class="text-[10px] text-slate-400 font-mono">${byCat[cat].length}x</span>
-              </div>
-              <div class="space-y-1 max-h-36 overflow-y-auto text-xs">
-                ${byCat[cat].map(item => {
-                  const amt = item.amount === parseInt(item.amount) ? item.amount : item.amount.toFixed(1);
-                  return `<div class="flex items-center justify-between text-slate-200">
-                    <span class="truncate pr-2">• ${item.name}</span>
-                    <span class="font-mono text-emerald-400 font-semibold flex-shrink-0">${amt} ${item.unit}</span>
-                  </div>`;
-                }).join("")}
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      `;
-      weekCardsContainer.appendChild(liveBasketBox);
-    }
-
-    if (window.lucide) lucide.createIcons();
-
-    // Event Handlers for Grid Card Actions
-    weekCardsContainer.querySelectorAll(".grid-eater-chip").forEach(btn => {
-      btn.onclick = () => {
-        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
-        const mId = btn.getAttribute("data-member-id");
-        const day = state.weekPlan[dIdx];
-        if (!day) return;
-        if (!day.eaters) day.eaters = [];
-        if (day.eaters.includes(mId)) {
-          day.eaters = day.eaters.filter(id => id !== mId);
-        } else {
-          day.eaters.push(mId);
-        }
-        day.effective_diet = calculateEffectiveDiet(day.eaters);
-        savePlan();
-        updateShoppingList();
-        renderWeekGrid();
-        renderAttendanceMatrix();
-      };
-    });
-
-    weekCardsContainer.querySelectorAll(".grid-buffer-btn").forEach(btn => {
-      btn.onclick = () => {
-        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
-        const delta = parseInt(btn.getAttribute("data-delta"), 10);
-        const day = state.weekPlan[dIdx];
-        if (!day) return;
-        if (day.leftover_buffer === undefined) day.leftover_buffer = 2;
-        day.leftover_buffer = (day.leftover_buffer + delta) > 6 ? 0 : Math.max(0, day.leftover_buffer + delta);
-        savePlan();
-        updateShoppingList();
-        renderWeekGrid();
-      };
-    });
-
-    weekCardsContainer.querySelectorAll(".grid-shuffle-btn").forEach(btn => {
-      btn.onclick = () => {
-        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
-        const day = state.weekPlan[dIdx];
-        if (!day) return;
-        const targetDiet = day.effective_diet || state.diet;
-        const pool = getRecipesPool(targetDiet);
-        if (pool.length > 0) {
-          const rec = pool[Math.floor(Math.random() * pool.length)];
-          state.weekPlan[dIdx] = {
-            ...rec,
-            day: DAYS[dIdx],
-            eaters: day.eaters,
-            leftover_buffer: day.leftover_buffer,
-            extra_guests: day.extra_guests,
-            effective_diet: day.effective_diet,
-            person_count: day.person_count,
-            cook_assigned: day.cook_assigned
-          };
-          savePlan();
-          updateShoppingList();
-          renderWeekGrid();
-        }
-      };
-    });
-
-    weekCardsContainer.querySelectorAll(".grid-cook-btn").forEach(btn => {
-      btn.onclick = () => {
-        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
-        const day = state.weekPlan[dIdx];
-        if (!day) return;
-        const cook = prompt(`Wer kocht am ${DAYS[dIdx]}?`, day.cook_assigned || (state.members[0] ? state.members[0].name : "Ich"));
-        if (cook !== null) {
-          day.cook_assigned = cook.trim() || null;
-          savePlan();
-          renderWeekGrid();
-        }
-      };
-    });
-
-    weekCardsContainer.querySelectorAll(".grid-pick-menu-btn").forEach(btn => {
-      btn.onclick = () => {
-        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
-        openMenuCatalogModal(dIdx);
-      };
-    });
-
-    weekCardsContainer.querySelectorAll(".grid-detail-btn").forEach(btn => {
-      btn.onclick = () => {
-        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
-        state.activeDayIndex = dIdx;
-        setViewMode("single");
-      };
-    });
-  }
-
-  // Menü-Katalog Modal Logic
-  let catalogTargetDayIdx = 0;
-  let catalogFilter = "all";
-
-  const allMenusModal = document.getElementById("allMenusModal");
-  const closeAllMenusModalBtn = document.getElementById("closeAllMenusModalBtn");
-  const openAllMenusBtn = document.getElementById("openAllMenusBtn");
-  const menuCatalogSearch = document.getElementById("menuCatalogSearch");
-
-  if (openAllMenusBtn) {
-    openAllMenusBtn.onclick = () => openMenuCatalogModal(state.activeDayIndex || 0);
-  }
-
-  if (closeAllMenusModalBtn && allMenusModal) {
-    closeAllMenusModalBtn.onclick = () => allMenusModal.classList.add("hidden");
-  }
-
-  if (menuCatalogSearch) {
-    menuCatalogSearch.oninput = () => renderMenuCatalogList();
-  }
-
-  const catalogFilterBtns = document.querySelectorAll(".catalog-filter-btn");
-  catalogFilterBtns.forEach(btn => {
-    btn.onclick = () => {
-      catalogFilterBtns.forEach(b => {
-        b.className = "catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold";
-      });
-      btn.className = "catalog-filter-btn px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-950 font-bold active";
-      catalogFilter = btn.getAttribute("data-filter");
-      renderMenuCatalogList();
-    };
+  $("days").addEventListener("click", e => {
+    if (e.target.closest("[data-link]")) return; // Rezept-Link normal öffnen
+    const chip = e.target.closest("[data-member]");
+    if (chip) return toggleEater(+chip.dataset.day, chip.dataset.member);
+    if (e.target.closest("[data-buffer]")) return; // Auswahl läuft über "change"
+    const pick = e.target.closest("[data-pick]");
+    if (pick) openCatalog(+pick.dataset.pick);
   });
 
-  function openMenuCatalogModal(targetDayIdx = 0) {
-    catalogTargetDayIdx = targetDayIdx;
-    if (!allMenusModal) return;
+  // Reste-Puffer pro Tag: +0 … +6 Portionen
+  $("days").addEventListener("change", e => {
+    const sel = e.target.closest("[data-buffer]");
+    if (!sel) return;
+    state.plan[+sel.dataset.buffer].leftover_buffer = parseInt(sel.value, 10);
+    savePlan();
+    refresh();
+  });
 
-    const allMenusSubtitle = document.getElementById("allMenusSubtitle");
-    if (allMenusSubtitle) {
-      allMenusSubtitle.textContent = `Wähle ein Menü für ${DAYS[targetDayIdx]} oder einen anderen Tag`;
-    }
+  $("newWeekBtn").onclick = () => {
+    const previous = state.plan;
+    state.plan = generateWeek();
+    savePlan();
+    refresh();
+    toast("Neue Woche geplant", {
+      label: "Rückgängig",
+      run: () => { state.plan = previous; savePlan(); refresh(); }
+    });
+  };
 
-    renderMenuCatalogList();
-    allMenusModal.classList.remove("hidden");
-    if (window.lucide) lucide.createIcons();
+  $("basketLine").onclick = () => showTab("shop");
+
+  // ---------------------------------------------------------------------------
+  // Menü-Katalog
+  // ---------------------------------------------------------------------------
+  function assignRecipe(recipe, dayIdx) {
+    state.plan[dayIdx] = makeDay(recipe, dayIdx, state.plan[dayIdx]);
+    savePlan();
+    refresh();
   }
 
-  function renderMenuCatalogList() {
-    const list = document.getElementById("menuCatalogList");
-    if (!list) return;
+  function openCatalog(dayIdx) {
+    state.catalogDay = dayIdx;
+    $("catalogSubtitle").textContent = `für ${DAYS[dayIdx]} · ${state.plan[dayIdx].eaters.length} Esser`;
+    $("catalogSearch").value = "";
+    renderCatalog();
+    $("catalogDialog").showModal();
+  }
 
-    const searchTerm = menuCatalogSearch ? menuCatalogSearch.value.toLowerCase().trim() : "";
-    const allRecipes = getRecipesPool();
-
-    list.innerHTML = "";
-
-    const filtered = allRecipes.filter(r => {
-      if (catalogFilter === "vegi" && r.diet !== "vegi" && r.diet !== "vegan") return false;
-      if (catalogFilter === "vegan" && r.diet !== "vegan") return false;
-      if (catalogFilter === "schweizerisch" && r.category !== "schweizerisch") return false;
-      if (catalogFilter === "fleisch" && r.diet !== "fleisch") return false;
-      if (catalogFilter === "links" && !r.source_url) return false;
-
-      if (searchTerm) {
-        const matchTitle = (r.title || "").toLowerCase().includes(searchTerm);
-        const matchIng = (r.ingredients || []).some(i => (i.name || "").toLowerCase().includes(searchTerm));
-        if (!matchTitle && !matchIng) return false;
+  function renderCatalog() {
+    const q = $("catalogSearch").value.toLowerCase().trim();
+    const f = state.catalogFilter;
+    document.querySelectorAll("#catalogFilters button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === f)));
+    const list = allRecipes().filter(r => {
+      if (f === "vegi" && !fitsDiet(r, "vegi")) return false;
+      if (f === "fleisch" && r.diet !== "fleisch") return false;
+      if (f === "season" && !inSeason(r)) return false;
+      if (f === "custom" && !r.is_custom && !String(r.id).startsWith("custom-")) return false;
+      if (q) {
+        const hay = [r.title, ...(r.ingredients || []).map(i => i.name)].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
       }
       return true;
     });
-
-    if (filtered.length === 0) {
-      list.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">Keine Rezepte gefunden.</div>`;
-      return;
-    }
-
-    filtered.forEach(rec => {
-      const card = document.createElement("div");
-      card.className = "p-3 rounded-2xl bg-slate-800/80 border border-slate-700/60 space-y-2 hover:border-slate-600 transition";
-
-      card.innerHTML = `
-        <div class="flex items-start justify-between gap-2">
-          <div>
-            <h4 class="text-xs font-bold text-white">${rec.title}</h4>
-            <div class="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5">
-              <span class="text-emerald-400 font-mono uppercase">${rec.diet || 'vegi'}</span>
-              <span>⏱️ ${rec.prep_time_min || 30} Min.</span>
-              <span>💰 CHF ${rec.cost_per_person_chf || '2.80'}/P.</span>
-            </div>
-          </div>
-          ${
-            rec.source_url
-              ? `<a href="${rec.source_url}" target="_blank" rel="noopener" class="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-1 bg-cyan-950/40 border border-cyan-800/40 px-2 py-0.5 rounded-lg flex-shrink-0" title="Rezept im Browser öffnen">
-                   <i data-lucide="external-link" class="w-3 h-3"></i>
-                   <span>Browser</span>
-                 </a>`
-              : ""
-          }
-        </div>
-
-        <div class="pt-1 flex items-center justify-between border-t border-slate-700/60 text-[10px]">
-          <span class="text-slate-400">Auf Tag legen:</span>
-          <div class="flex space-x-1">
-            ${DAYS.map((d, dIdx) => `
-              <button class="assign-recipe-day-btn w-6 h-6 rounded-lg font-bold text-[10px] transition ${
-                dIdx === catalogTargetDayIdx
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                  : 'bg-slate-700 hover:bg-slate-650 text-slate-200'
-              }" data-recipe-id="${rec.id}" data-day-idx="${dIdx}" title="Als ${d} kochen">
-                ${d.substring(0,2)}
-              </button>
-            `).join("")}
-          </div>
-        </div>
-      `;
-
-      list.appendChild(card);
-    });
-
-    if (window.lucide) lucide.createIcons();
-
-    list.querySelectorAll(".assign-recipe-day-btn").forEach(btn => {
-      btn.onclick = () => {
-        const rId = btn.getAttribute("data-recipe-id");
-        const dIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
-        const chosen = allRecipes.find(r => r.id === rId);
-        if (!chosen) return;
-
-        const currentDay = state.weekPlan[dIdx] || {};
-        state.weekPlan[dIdx] = {
-          ...chosen,
-          day: DAYS[dIdx],
-          eaters: currentDay.eaters || state.members.map(m => m.id),
-          leftover_buffer: currentDay.leftover_buffer !== undefined ? currentDay.leftover_buffer : 2,
-          extra_guests: currentDay.extra_guests || 0,
-          effective_diet: currentDay.effective_diet || calculateEffectiveDiet(currentDay.eaters),
-          person_count: currentDay.person_count || 5,
-          cook_assigned: currentDay.cook_assigned || null
-        };
-
-        savePlan();
-        renderWeekGrid();
-        renderActiveCard();
-        updateShoppingList();
-
-        if (allMenusModal) allMenusModal.classList.add("hidden");
-        alert(`✅ "${chosen.title}" wurde für ${DAYS[dIdx]} eingeplant!`);
-      };
-    });
-  }
-
-  // Modal: Menü via Web-Link hinzufügen Logic
-  const openAddRecipeLinkBtn = document.getElementById("openAddRecipeLinkBtn");
-  const addRecipeLinkModal = document.getElementById("addRecipeLinkModal");
-  const closeAddRecipeLinkModalBtn = document.getElementById("closeAddRecipeLinkModalBtn");
-  const newRecipeUrlInput = document.getElementById("newRecipeUrlInput");
-  const analyzeUrlBtn = document.getElementById("analyzeUrlBtn");
-  const newRecipeTitleInput = document.getElementById("newRecipeTitleInput");
-  const newRecipeDietSelect = document.getElementById("newRecipeDietSelect");
-  const newRecipeDaySelect = document.getElementById("newRecipeDaySelect");
-  const newRecipeIngredientsInput = document.getElementById("newRecipeIngredientsInput");
-  const saveNewRecipeLinkBtn = document.getElementById("saveNewRecipeLinkBtn");
-
-  if (openAddRecipeLinkBtn && addRecipeLinkModal) {
-    openAddRecipeLinkBtn.onclick = () => {
-      addRecipeLinkModal.classList.remove("hidden");
-      if (newRecipeUrlInput) newRecipeUrlInput.focus();
-    };
-  }
-
-  if (closeAddRecipeLinkModalBtn && addRecipeLinkModal) {
-    closeAddRecipeLinkModalBtn.onclick = () => addRecipeLinkModal.classList.add("hidden");
-  }
-
-  if (analyzeUrlBtn) {
-    analyzeUrlBtn.onclick = () => {
-      const url = newRecipeUrlInput ? newRecipeUrlInput.value.trim() : "";
-      if (!url) {
-        alert("Bitte zuerst eine Rezept-URL eingeben!");
-        return;
-      }
-      if (window.recipeImporter) {
-        const res = window.recipeImporter.analyzeRecipeUrl(url);
-        if (newRecipeTitleInput) newRecipeTitleInput.value = res.title;
-      }
-    };
-  }
-
-  if (saveNewRecipeLinkBtn) {
-    saveNewRecipeLinkBtn.onclick = () => {
-      const url = newRecipeUrlInput ? newRecipeUrlInput.value.trim() : "";
-      let title = newRecipeTitleInput ? newRecipeTitleInput.value.trim() : "";
-      const diet = newRecipeDietSelect ? newRecipeDietSelect.value : "vegi";
-      const ings = newRecipeIngredientsInput ? newRecipeIngredientsInput.value.trim() : "";
-      const dayIdx = newRecipeDaySelect ? parseInt(newRecipeDaySelect.value, 10) : -1;
-
-      if (!title && !url) {
-        alert("Bitte mindestens einen Titel oder eine Web-URL angeben!");
-        return;
-      }
-
-      let newRecipe;
-      if (window.recipeImporter) {
-        newRecipe = window.recipeImporter.createRecipeFromUrl(url, title, ings, diet);
-      } else {
-        newRecipe = {
-          id: "custom-" + Date.now(),
-          title: title || "Web-Rezept",
-          source_url: url,
-          diet: diet,
-          ingredients: []
-        };
-      }
-
-      if (dayIdx >= 0 && dayIdx < 7) {
-        const cur = state.weekPlan[dayIdx] || {};
-        state.weekPlan[dayIdx] = {
-          ...newRecipe,
-          day: DAYS[dayIdx],
-          eaters: cur.eaters || state.members.map(m => m.id),
-          leftover_buffer: cur.leftover_buffer !== undefined ? cur.leftover_buffer : 2,
-          extra_guests: cur.extra_guests || 0,
-          effective_diet: cur.effective_diet || calculateEffectiveDiet(cur.eaters),
-          person_count: cur.person_count || 5,
-          cook_assigned: cur.cook_assigned || null
-        };
-      }
-
-      savePlan();
-      renderWeekGrid();
-      renderActiveCard();
-      updateShoppingList();
-
-      if (addRecipeLinkModal) addRecipeLinkModal.classList.add("hidden");
-      if (newRecipeUrlInput) newRecipeUrlInput.value = "";
-      if (newRecipeTitleInput) newRecipeTitleInput.value = "";
-      if (newRecipeIngredientsInput) newRecipeIngredientsInput.value = "";
-
-      alert(`🎉 Rezept "${newRecipe.title}" gespeichert${dayIdx >= 0 ? ` und ${DAYS[dayIdx]} zugewiesen` : ''}!`);
-    };
-  }
-
-  // 4. Einkaufsliste aggregieren, mit Bring! abgleichen & Grundvorrat filtern (Tag-genau skaliert + 3 Komponenten!)
-  function updateShoppingList() {
-    const aggregated = {};
-
-    // Aktive Grundzutaten-Keywords ermitteln
-    const activeStapleKeywords = [];
-    state.pantryStaples.forEach(st => {
-      if (st.in_stock !== false) {
-        (st.keywords || [st.name.toLowerCase()]).forEach(kw => activeStapleKeywords.push(kw.toLowerCase()));
-      }
-    });
-
-    function addAggregatedItem(name, unit, amt, bringCat) {
-      if (!name || amt <= 0) return;
-      const key = `${name.toLowerCase()}___${(unit || "").toLowerCase()}`;
-      if (aggregated[key]) {
-        aggregated[key].amount += amt;
-      } else {
-        const lower = name.toLowerCase();
-        const isStaple = activeStapleKeywords.some(st => lower.includes(st));
-        const isOnBring = state.currentBringItems.some(b => lower.includes(b) || b.includes(lower));
-
-        let status = "toBuy";
-        if (isStaple && state.excludeStaples) {
-          status = "staples";
-        } else if (isOnBring) {
-          status = "onBring";
-        }
-
-        aggregated[key] = {
-          name: name,
-          amount: amt,
-          unit: unit || "",
-          bring_cat: bringCat || "Sonstiges",
-          isStaple: isStaple,
-          isOnBring: isOnBring,
-          status: status,
-          checked: false
-        };
-      }
-    }
-
-    state.weekPlan.forEach(day => {
-      // Skalierung nach Esser-Anzahl dieses einzelnen Tages + Reste-Puffer (+2 standardmäßig)!
-      const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
-      const eatersCount = attendingMembers.length;
-      const buffer = (day.leftover_buffer !== undefined ? day.leftover_buffer : 2);
-      const guests = (day.extra_guests || 0);
-      const dayPersons = eatersCount + guests + buffer || 4;
-      const dayScale = dayPersons / 2;
-
-      // 1. Basis-Zutaten für alle (skaliert für Esser + Reste-Puffer)
-      (day.ingredients || []).forEach(ing => {
-        const amt = parseFloat(ing.amount || "1") * dayScale;
-        addAggregatedItem(ing.name.trim(), (ing.unit || "").trim(), amt, ing.bring_cat);
-      });
-
-      // 2. Modulare Proteine / Toppings ("Alles für Alle"):
-      const meatEaters = attendingMembers.filter(m => m.diet === "fleisch").length;
-      const vegiEaters = attendingMembers.filter(m => m.diet === "vegi").length;
-      const veganEaters = attendingMembers.filter(m => m.diet === "vegan").length;
-
-      // Fleisch-Variante (z.B. Speck / Rindssteak für Lukas)
-      if (meatEaters > 0) {
-        addAggregatedItem("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meatEaters, "Fleisch & Fisch");
-      }
-      // Vegi-Variante (z.B. Halloumi / Bergkäse für Jonas)
-      if (vegiEaters > 0) {
-        addAggregatedItem("Schweizer Grillkäse / Halloumi", "g", 100 * vegiEaters, "Milch & Käse");
-      }
-      // Vegan-Variante (z.B. Veganer Reibkäse / Pesto / Tofu für Anna)
-      if (veganEaters > 0) {
-        addAggregatedItem("Veganer Reibkäse-Ersatz / Pesto", "Portion", veganEaters, "Milch & Käse");
-      }
-
-      // 3. Frische Beilage (Teil 3 des Menüs: Frischer Schweizer Salat)
-      addAggregatedItem("Schweizer Nüsslisalat / Frischer Salat", "g", 50 * dayPersons, "Obst & Gemüse");
-    });
-
-    state.shoppingList = Object.values(aggregated);
-    updateShoppingCounters();
-    renderShoppingList();
-  }
-
-  function updateShoppingCounters() {
-    let toBuy = 0;
-    let onBring = 0;
-    let staples = 0;
-
-    state.shoppingList.forEach(it => {
-      if (it.isStaple && state.excludeStaples) staples++;
-      else if (it.isOnBring) onBring++;
-      else toBuy++;
-    });
-
-    const countToBuy = document.getElementById("countToBuy");
-    const countOnBring = document.getElementById("countOnBring");
-    const countStaples = document.getElementById("countStaples");
-    const staplesCounterBadge = document.getElementById("staplesCounterBadge");
-
-    if (countToBuy) countToBuy.textContent = toBuy;
-    if (countOnBring) countOnBring.textContent = onBring;
-    if (countStaples) countStaples.textContent = staples;
-    if (staplesCounterBadge) {
-      staplesCounterBadge.textContent = state.excludeStaples ? `${staples} ausgeblendet` : "Eingeblendet";
-    }
-  }
-
-  function renderShoppingList() {
-    shoppingListContainer.innerHTML = "";
-    if (state.shoppingList.length === 0) {
-      shoppingListContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Keine Artikel</p>`;
-      return;
-    }
-
-    // Nach aktuellem Sub-Tab filtern
-    const filteredItems = state.shoppingList.filter(it => {
-      if (state.shoppingFilterSubTab === "staples") return it.isStaple && state.excludeStaples;
-      if (state.shoppingFilterSubTab === "onBring") return it.isOnBring && (!it.isStaple || !state.excludeStaples);
-      // toBuy:
-      return !it.isOnBring && (!it.isStaple || !state.excludeStaples);
-    });
-
-    if (filteredItems.length === 0) {
-      let emptyMsg = "Keine Artikel in dieser Ansicht.";
-      if (state.shoppingFilterSubTab === "onBring") emptyMsg = "Keine der Zutaten steht bisher auf Bring!. Klicke auf 'Nach Bring!' um sie hinzuzufügen.";
-      if (state.shoppingFilterSubTab === "staples") emptyMsg = "Keine Grundzutaten ausgeblendet.";
-      shoppingListContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">${emptyMsg}</p>`;
-      return;
-    }
-
-    const grouped = {};
-    filteredItems.forEach((it, idx) => {
-      const cat = it.bring_cat || "Sonstiges";
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({ ...it, idx });
-    });
-
-    Object.keys(grouped).forEach(cat => {
-      const catBox = document.createElement("div");
-      catBox.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2";
-      let html = `<h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-        <span>${cat}</span>
-        <span class="text-[10px] text-slate-500 font-mono">${grouped[cat].length} Artikel</span>
-      </h4><div class="space-y-1.5">`;
-
-      grouped[cat].forEach(it => {
-        const displayAmt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
-        let badge = "";
-        if (it.isOnBring) {
-          badge = `<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">Schon auf Bring!</span>`;
-        } else if (it.isStaple) {
-          badge = `<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Grundzutat</span>`;
-        }
-
-        html += `
-          <label class="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg hover:bg-slate-800 cursor-pointer">
-            <div class="flex items-center space-x-2.5">
-              <input type="checkbox" class="rounded text-emerald-500 bg-slate-800 border-slate-700" ${it.isOnBring ? "checked disabled" : ""}>
-              <span class="${it.isOnBring ? 'text-slate-400 font-medium' : 'text-slate-200'}">${it.name}</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              ${badge}
-              <span class="text-emerald-400 font-mono text-[11px] font-semibold">${displayAmt} ${it.unit}</span>
-            </div>
-          </label>
-        `;
-      });
-      html += `</div>`;
-      catBox.innerHTML = html;
-      shoppingListContainer.appendChild(catBox);
-    });
-  }
-
-  // Toggle für Grundzutaten
-  const excludeStaplesToggle = document.getElementById("excludeStaplesToggle");
-  if (excludeStaplesToggle) {
-    excludeStaplesToggle.onchange = (e) => {
-      state.excludeStaples = e.target.checked;
-      updateShoppingList();
-    };
-  }
-
-  // Sub-Tabs Umschaltung für Einkaufsliste
-  const filterTabToBuy = document.getElementById("filterTabToBuy");
-  const filterTabOnBring = document.getElementById("filterTabOnBring");
-  const filterTabStaples = document.getElementById("filterTabStaples");
-
-  function setSubTab(activeTab) {
-    state.shoppingFilterSubTab = activeTab;
-    [filterTabToBuy, filterTabOnBring, filterTabStaples].forEach(tab => {
-      if (tab) {
-        tab.className = "flex-1 py-1 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition";
-      }
-    });
-
-    if (activeTab === "toBuy" && filterTabToBuy) {
-      filterTabToBuy.className = "flex-1 py-1 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm";
-    } else if (activeTab === "onBring" && filterTabOnBring) {
-      filterTabOnBring.className = "flex-1 py-1 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm";
-    } else if (activeTab === "staples" && filterTabStaples) {
-      filterTabStaples.className = "flex-1 py-1 px-2 rounded-lg bg-slate-700 text-white font-bold transition shadow-sm";
-    }
-    renderShoppingList();
-  }
-
-  if (filterTabToBuy) filterTabToBuy.onclick = () => setSubTab("toBuy");
-  if (filterTabOnBring) filterTabOnBring.onclick = () => setSubTab("onBring");
-  if (filterTabStaples) filterTabStaples.onclick = () => setSubTab("staples");
-
-  // Mit Bring! Liste abgleichen (liest aktuelle Bring-Einträge)
-  const compareBringBtn = document.getElementById("compareBringBtn");
-  if (compareBringBtn) {
-    compareBringBtn.onclick = async () => {
-      try {
-        const res = await fetch("/api/bring/current");
-        const data = await res.json();
-        const purchase = data.purchase || [];
-        state.currentBringItems = purchase.map(p => (p.name || "").toLowerCase().trim());
-        updateShoppingList();
-        alert(`✅ Bring!-Liste eingelesen: ${purchase.length} Artikel aktiv. Menüplan abgeglichen!`);
-      } catch (e) {
-        // Standalone Mock Fallback
-        state.currentBringItems = ["magronen / teigwaren", "schweizer festkochende kartoffeln"];
-        updateShoppingList();
-        alert("✅ Bring!-Liste eingelesen (Offline-Modus): Bereits vorhandene Artikel wurden markiert.");
-      }
-    };
-  }
-
-  // Grundvorrat Manager Modal
-  const openStaplesManagerBtn = document.getElementById("openStaplesManagerBtn");
-  const closeStaplesModalBtn = document.getElementById("closeStaplesModalBtn");
-  const saveStaplesModalBtn = document.getElementById("saveStaplesModalBtn");
-  const staplesManagerModal = document.getElementById("staplesManagerModal");
-  const staplesListContainer = document.getElementById("staplesListContainer");
-  const newStapleInput = document.getElementById("newStapleInput");
-  const addNewStapleBtn = document.getElementById("addNewStapleBtn");
-
-  function renderStaplesManager() {
-    if (!staplesListContainer) return;
-    staplesListContainer.innerHTML = "";
-
-    const grouped = {};
-    state.pantryStaples.forEach((st, idx) => {
-      const cat = st.category || "Grundzutaten";
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({ ...st, originalIdx: idx });
-    });
-
-    Object.keys(grouped).forEach(cat => {
-      const catTitle = document.createElement("h4");
-      catTitle.className = "text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-2 mb-1";
-      catTitle.textContent = cat;
-      staplesListContainer.appendChild(catTitle);
-
-      const chipsWrapper = document.createElement("div");
-      chipsWrapper.className = "flex flex-wrap gap-1.5";
-
-      grouped[cat].forEach(st => {
-        const btn = document.createElement("button");
-        const inStock = st.in_stock !== false;
-        btn.className = `text-xs px-2.5 py-1 rounded-xl border transition flex items-center space-x-1.5 ${
-          inStock
-            ? "bg-emerald-950/40 text-emerald-300 border-emerald-600/50 shadow-sm"
-            : "bg-red-950/20 text-red-400 border-red-800/40 line-through opacity-70"
-        }`;
-        btn.innerHTML = `<span>${st.name}</span><span class="text-[10px] font-mono">${inStock ? '✓' : 'Leer'}</span>`;
-        btn.onclick = () => {
-          st.in_stock = !inStock;
-          state.pantryStaples[st.originalIdx].in_stock = st.in_stock;
-          saveUserStaples();
-          renderStaplesManager();
-          updateShoppingList();
-        };
-        chipsWrapper.appendChild(btn);
-      });
-      staplesListContainer.appendChild(chipsWrapper);
-    });
-  }
-
-  if (openStaplesManagerBtn) {
-    openStaplesManagerBtn.onclick = () => {
-      renderStaplesManager();
-      staplesManagerModal.classList.remove("hidden");
-    };
-  }
-
-  if (closeStaplesModalBtn) closeStaplesModalBtn.onclick = () => staplesManagerModal.classList.add("hidden");
-  if (saveStaplesModalBtn) saveStaplesModalBtn.onclick = () => staplesManagerModal.classList.add("hidden");
-
-  if (addNewStapleBtn) {
-    addNewStapleBtn.onclick = () => {
-      const val = (newStapleInput.value || "").trim();
-      if (!val) return;
-      state.pantryStaples.push({
-        id: "custom-" + Date.now(),
-        name: val,
-        category: "Eigene Grundzutaten",
-        in_stock: true,
-        keywords: [val.toLowerCase()]
-      });
-      saveUserStaples();
-      newStapleInput.value = "";
-      renderStaplesManager();
-      updateShoppingList();
-    };
-  }
-
-  // Portionen Regler
-  document.getElementById("increasePersonsBtn").onclick = () => {
-    state.persons++;
-    personsCount.textContent = state.persons;
-    localStorage.setItem("bringfrisch_persons", state.persons);
-    renderActiveCard();
-    updateShoppingList();
-  };
-
-  document.getElementById("decreasePersonsBtn").onclick = () => {
-    if (state.persons > 1) {
-      state.persons--;
-      personsCount.textContent = state.persons;
-      localStorage.setItem("bringfrisch_persons", state.persons);
-      renderActiveCard();
-      updateShoppingList();
-    }
-  };
-
-  // Liste als Text kopieren (für WhatsApp / Bring! Schnellimport)
-  document.getElementById("copyListBtn").onclick = () => {
-    const itemsToExport = state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
-    let txt = `🛒 BringFrisch Einkaufsliste (${state.persons} Personen - nur Fehlendes):\n\n`;
-    itemsToExport.forEach(it => {
-      const displayAmt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
-      txt += `• ${it.name} (${displayAmt} ${it.unit})\n`;
-    });
-    navigator.clipboard.writeText(txt).then(() => {
-      alert(`Einkaufsliste (${itemsToExport.length} fehlende Artikel) in die Zwischenablage kopiert!`);
-    });
-  };
-
-  // Bring! Sync (Phone-First + Stateless Sync-Brücke)
-  async function performBringSync() {
-    const itemsToExport = state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
-    if (itemsToExport.length === 0) {
-      alert("Alles bereits erledigt! Alle Zutaten sind entweder schon auf Bring! oder als Grundvorrat zuhause vorhanden.");
-      return;
-    }
-
-    const phoneCreds = getSavedPhoneBringCreds();
-    // 1. Versuch: Direkt über die lokale Sync-Brücke pushen (falls erreichbar & Credentials vorhanden)
-    if (isBringConnected || (phoneCreds.email && phoneCreds.password)) {
-      if (syncBtnText) syncBtnText.textContent = "Synchronisiere...";
-      try {
-        const res = await fetchSyncBridge("/api/bring/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: itemsToExport,
-            email: phoneCreds.email,
-            password: phoneCreds.password,
-            list_uuid: phoneCreds.list_uuid
-          })
-        });
-        const data = await res.json();
-        if (data.success) {
-          if (syncBtnText) syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel in Bring!`;
-          alert(`🎉 Erfolg! ${itemsToExport.length} Zutaten wurden direkt via Sync-Brücke in deine Bring!-Liste übertragen.`);
-          checkBringStatus();
-          setTimeout(() => {
-            if (syncBtnText) syncBtnText.textContent = "Nach Bring! (Nur Fehlendes)";
-          }, 3000);
-          return;
-        }
-      } catch (e) {
-        // Lokaler Sync-Server läuft gerade nicht -> Öffne nahtlos den Phone-Sync-Hub!
-      }
-    }
-
-    // 2. Phone-First PWA Sync-Hub öffnen (Funktioniert immer 100% ohne Server!)
-    openBringModal();
-    showBringFeedback(`📲 ${itemsToExport.length} Zutaten bereit! Wähle oben 1-Klick Phone-Übergabe oder verbinde unten die Sync-Brücke.`, true);
-  }
-
-  if (syncToBringBtn) {
-    syncToBringBtn.onclick = () => performBringSync();
-  }
-
-  // Kalender .ics Export (100% Client-Side Generator)
-  document.getElementById("downloadIcsBtn").onclick = () => {
-    let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//BringFrisch//Wochenplan//DE\r\n";
-    const today = new Date();
-    state.weekPlan.forEach((item, idx) => {
-      const eventDate = new Date(today.getTime() + idx * 86400000);
-      const ymd = eventDate.toISOString().split("T")[0].replace(/-/g, "");
-      ics += "BEGIN:VEVENT\r\n";
-      ics += `UID:bringfrisch-${idx}-${ymd}@bringfrisch.ch\r\n`;
-      ics += `DTSTART:${ymd}T190000\r\n`;
-      ics += `DTEND:${ymd}T200000\r\n`;
-      ics += `SUMMARY:🍽️ ${item.title}\r\n`;
-      ics += `DESCRIPTION:Koch: ${item.cook_assigned || 'WG'}\\nZubereitung: ${item.instructions || ''}\r\n`;
-      ics += "END:VEVENT\r\n";
-    });
-    ics += "END:VCALENDAR\r\n";
-
-    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "bringfrisch_menueplan.ics";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
-
-  // 5. Tiefkühler-Gedächtnis & Altes Hackfleisch Alert
-  function checkPantryAlerts() {
-    if (!window.pantryTracker) return;
-    const alerts = window.pantryTracker.getAlerts();
-    const banner = document.getElementById("freezerAlertBanner");
-    if (alerts.length > 0) {
-      const first = alerts[0];
-      document.getElementById("freezerAlertTitle").textContent = `${first.item.name} im Tiefkühler!`;
-      document.getElementById("freezerAlertAge").textContent = `seit ${first.daysOld} Tagen`;
-      document.getElementById("freezerAlertMsg").textContent = `Lagerung prüfen. Optimal jetzt verbrauchen!`;
-      
-      const btn = document.getElementById("applyFreezerRecipeBtn");
-      if (first.suggestedRecipeId) {
-        btn.classList.remove("hidden");
-        document.getElementById("freezerBtnLabel").textContent = `Für diese Woche einplanen`;
-        btn.onclick = () => {
-          const rec = (window.BRINGFRISCH_DATA.recipes || []).find(r => r.id === first.suggestedRecipeId);
-          if (rec) {
-            state.weekPlan[state.activeDayIndex] = { ...rec, day: DAYS[state.activeDayIndex] };
-            savePlan();
-            renderActiveCard();
-            updateShoppingList();
-            alert(`🍽️ "${rec.title}" wurde für ${DAYS[state.activeDayIndex]} eingeplant!`);
-          }
-        };
-      } else {
-        btn.classList.add("hidden");
-      }
-      banner.classList.remove("hidden");
-    } else {
-      banner.classList.add("hidden");
-    }
-  }
-
-  function renderPantryItems() {
-    const list = document.getElementById("pantryItemsList");
-    if (!list || !window.pantryTracker) return;
-    list.innerHTML = "";
-    const items = window.pantryTracker.items;
-
-    if (items.length === 0) {
-      list.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Tiefkühler ist leer.</p>`;
-      return;
-    }
-
-    items.forEach(it => {
-      const now = new Date();
-      const frozen = new Date(it.frozenDate);
-      const days = Math.ceil(Math.abs(now - frozen) / (1000 * 60 * 60 * 24));
-      const isOld = days >= 14;
-
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between";
-      card.innerHTML = `
-        <div>
-          <div class="flex items-center space-x-1.5">
-            <span class="text-xs font-bold text-white">${it.name}</span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded font-semibold ${isOld ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400'}">
-              vor ${days} Tagen
-            </span>
-          </div>
-          <p class="text-[11px] text-slate-400 mt-0.5">${it.amount} • ${it.location}</p>
-        </div>
-        <button class="delete-pantry-btn text-slate-500 hover:text-red-400 p-1" data-id="${it.id}">
-          <i data-lucide="trash-2" class="w-4 h-4"></i>
-        </button>
-      `;
-      list.appendChild(card);
-    });
-
-    list.querySelectorAll(".delete-pantry-btn").forEach(btn => {
-      btn.onclick = () => {
-        const id = btn.getAttribute("data-id");
-        window.pantryTracker.removeItem(id);
-        renderPantryItems();
-        checkPantryAlerts();
-      };
-    });
-
-    if (window.lucide) lucide.createIcons();
-  }
-
-  document.getElementById("addPantryItemBtn").onclick = () => {
-    const name = prompt("Welches Lebensmittel möchtest du einfrieren?", "Hackfleisch");
-    if (!name) return;
-    const amount = prompt("Menge:", "500 g") || "500 g";
-    window.pantryTracker.addItem(name, amount);
-    renderPantryItems();
-    checkPantryAlerts();
-  };
-
-  // 6. Saisonkalender & Bauern-News für alle 12 Monate
-  const seasonMonthSelect = document.getElementById("seasonMonthSelect");
-  const seasonNewsHeadline = document.getElementById("seasonNewsHeadline");
-  const seasonNewsTip = document.getElementById("seasonNewsTip");
-  const seasonNewsHighlight = document.getElementById("seasonNewsHighlight");
-  const seasonalItemsGrid = document.getElementById("seasonalItemsGrid");
-
-  function loadMonthSeason(m) {
-    const month = parseInt(m, 10);
-    const data = window.BRINGFRISCH_DATA;
-    if (!data) return;
-
-    // News laden
-    const news = (data.monthly_news && data.monthly_news[month]) || {};
-    seasonNewsHeadline.textContent = news.headline || "Saisonales Schweizer Gemüse";
-    seasonNewsTip.textContent = news.farmer_tip || "Erntefrisch vom Schweizer Gemüsebauern.";
-    seasonNewsHighlight.textContent = news.season_highlight || "Saisongemüse";
-
-    // Produkte filtern
-    seasonalItemsGrid.innerHTML = "";
-    const items = (data.items || []).filter(it => 
-      (it.field_months && it.field_months.includes(month)) ||
-      (it.storage_months && it.storage_months.includes(month))
-    );
-
-    items.forEach(it => {
-      const isField = it.field_months && it.field_months.includes(month);
-      const card = document.createElement("div");
-      card.className = "p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between";
-      card.innerHTML = `
-        <div>
-          <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${isField ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-300'}">
-            ${isField ? '🌱 Freilandfrisch' : '📦 Schweizer Lager'}
-          </span>
-          <h4 class="text-xs font-bold text-white mt-1.5">${it.name}</h4>
-        </div>
-        <div class="mt-2 text-[10px] text-slate-400">
-          <span>${it.category}</span>
-        </div>
-      `;
-      seasonalItemsGrid.appendChild(card);
-    });
-  }
-
-  const MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
-  const syncSeasonMonthBtn = document.getElementById("syncSeasonMonthBtn");
-  const seasonCurrentMonthBadge = document.getElementById("seasonCurrentMonthBadge");
-  const seasonLastSyncTime = document.getElementById("seasonLastSyncTime");
-
-  async function syncSeasonalMonth(targetMonth = null, showNotification = false) {
-    const realCalendarMonth = new Date().getMonth() + 1;
-    const month = targetMonth ? parseInt(targetMonth, 10) : realCalendarMonth;
-
-    if (seasonMonthSelect) {
-      seasonMonthSelect.value = month.toString();
-    }
-    if (seasonCurrentMonthBadge) {
-      seasonCurrentMonthBadge.textContent = MONTH_NAMES[month - 1];
-    }
-    if (seasonLastSyncTime) {
-      const dateStr = new Date().toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit' });
-      seasonLastSyncTime.textContent = `Sync: ${dateStr} ✓`;
-    }
-
-    loadMonthSeason(month);
-
-    localStorage.setItem("bringfrisch_current_synced_month", month.toString());
-    localStorage.setItem("bringfrisch_season_synced_at", new Date().toISOString());
-
-    // Online-Sync Endpunkt prüfen falls Server läuft
-    try {
-      const res = await fetch("/api/season/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: month })
-      });
-      const data = await res.json();
-      if (data && data.success && data.news) {
-        if (seasonNewsHeadline) seasonNewsHeadline.textContent = data.news.headline;
-        if (seasonNewsTip) seasonNewsTip.textContent = data.news.farmer_tip;
-      }
-    } catch (e) {
-      // Offline fallback: standalone_data.js greift zuverlässig
-    }
-
-    if (showNotification) {
-      alert(`🌱 Saisongemüse für Monat ${MONTH_NAMES[month - 1]} erfolgreich synchronisiert!\n\nAktuelle Schweizer Freiland- & Lager-Gemüsesorten sowie Ernte-News sind jetzt geladen.`);
-    }
-  }
-
-  if (syncSeasonMonthBtn) {
-    syncSeasonMonthBtn.onclick = () => syncSeasonalMonth(null, true);
-  }
-
-  if (seasonMonthSelect) {
-    seasonMonthSelect.onchange = (e) => syncSeasonalMonth(e.target.value, false);
-  }
-
-  // Automatischer Monats-Sync beim Start: Ermittelt den echten aktuellen Kalendermonat
-  const savedSyncedMonth = parseInt(localStorage.getItem("bringfrisch_current_synced_month") || "0", 10);
-  const realCurrentMonth = new Date().getMonth() + 1;
-  syncSeasonalMonth(savedSyncedMonth || realCurrentMonth, false);
-
-  // Regionale Märkte & Hofläden (Wetzikon, Rapperswil, Uster)
-  const seasonSubTabVegetables = document.getElementById("seasonSubTabVegetables");
-  const seasonSubTabMarkets = document.getElementById("seasonSubTabMarkets");
-  const seasonVegetablesView = document.getElementById("seasonVegetablesView");
-  const seasonMarketsView = document.getElementById("seasonMarketsView");
-  const marketRegionPills = document.getElementById("marketRegionPills");
-  const regionalMarketsList = document.getElementById("regionalMarketsList");
-
-  let activeMarketRegion = "all";
-
-  function switchSeasonSubTab(tab) {
-    if (tab === "vegetables") {
-      seasonSubTabVegetables.className = "flex-1 py-1.5 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm";
-      seasonSubTabMarkets.className = "flex-1 py-1.5 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition";
-      seasonVegetablesView.classList.remove("hidden");
-      seasonMarketsView.classList.add("hidden");
-    } else {
-      seasonSubTabMarkets.className = "flex-1 py-1.5 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm";
-      seasonSubTabVegetables.className = "flex-1 py-1.5 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition";
-      seasonVegetablesView.classList.add("hidden");
-      seasonMarketsView.classList.remove("hidden");
-      renderRegionalMarkets();
-    }
-  }
-
-  if (seasonSubTabVegetables) seasonSubTabVegetables.onclick = () => switchSeasonSubTab("vegetables");
-  if (seasonSubTabMarkets) seasonSubTabMarkets.onclick = () => switchSeasonSubTab("markets");
-
-  function renderRegionalMarkets() {
-    if (!regionalMarketsList) return;
-    const regionalData = (window.BRINGFRISCH_DATA && window.BRINGFRISCH_DATA.regional_markets) || [];
-
-    // Region Pills aufbauen
-    if (marketRegionPills) {
-      marketRegionPills.innerHTML = "";
-      const allRegions = [{ region: "Alle", id: "all" }, ...regionalData.map(r => ({ region: r.region.split("&")[0].trim(), id: r.region }))];
-      
-      allRegions.forEach(r => {
-        const pill = document.createElement("button");
-        const isActive = activeMarketRegion === r.id;
-        pill.className = `px-2.5 py-1 rounded-xl whitespace-nowrap transition font-semibold text-xs border ${
-          isActive
-            ? "bg-amber-400 text-slate-950 border-amber-400 shadow-sm"
-            : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
-        }`;
-        pill.textContent = r.region;
-        pill.onclick = () => {
-          activeMarketRegion = r.id;
-          renderRegionalMarkets();
-        };
-        marketRegionPills.appendChild(pill);
-      });
-    }
-
-    // Märkte-Karten aufbauen
-    regionalMarketsList.innerHTML = "";
-    regionalData.forEach(reg => {
-      if (activeMarketRegion !== "all" && activeMarketRegion !== reg.region) return;
-
-      const sectionTitle = document.createElement("div");
-      sectionTitle.className = "flex items-center space-x-1.5 text-xs font-bold text-slate-300 pt-1";
-      sectionTitle.innerHTML = `<span>${reg.icon || '📍'}</span> <span>${reg.region}</span>`;
-      regionalMarketsList.appendChild(sectionTitle);
-
-      (reg.markets || []).forEach(m => {
-        const card = document.createElement("div");
-        card.className = "p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 shadow-sm";
-        
-        let typeBadgeColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-        if (m.type.includes("Bio")) typeBadgeColor = "text-cyan-400 bg-cyan-500/10 border-cyan-500/20";
-        if (m.type.includes("Finder")) typeBadgeColor = "text-amber-400 bg-amber-500/10 border-amber-500/20";
-
-        card.innerHTML = `
-          <div class="flex items-start justify-between">
+    const day = DAYS[state.catalogDay].slice(0, 2);
+    $("catalogList").innerHTML = list.length === 0
+      ? `<div class="empty">Keine Rezepte gefunden.</div>`
+      : list.map(r => {
+        const custom = r.is_custom || String(r.id).startsWith("custom-");
+        return `
+        <div class="card recipe">
+          <div class="recipe-head">
             <div>
-              <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold border ${typeBadgeColor}">${m.type}</span>
-              <h4 class="text-xs font-bold text-white mt-1">${m.name}</h4>
-              <p class="text-[11px] text-slate-400 mt-0.5">${m.location}</p>
+              <b>${esc(r.title)}</b>
+              <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}</small>
             </div>
+            ${r.source_url ? `<a class="pill" href="${esc(r.source_url)}" target="_blank" rel="noopener">🌐 Rezept</a>` : ""}
           </div>
-          
-          <div class="p-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-[11px] space-y-1">
-            <div class="text-amber-300 font-semibold flex items-center space-x-1">
-              <span>🕒</span> <span>${m.schedule}</span>
-            </div>
-            <p class="text-slate-300">${m.highlights}</p>
+          <div class="row">
+            <button class="btn dark" type="button" data-assign="${esc(r.id)}">Für ${day} einplanen</button>
+            ${custom ? `<button class="btn" type="button" data-delete="${esc(r.id)}" style="flex:0 0 auto">Löschen</button>` : ""}
           </div>
-
-          <div class="flex items-center space-x-2 pt-0.5">
-            <a href="${m.maps_url}" target="_blank" rel="noopener noreferrer" class="flex-1 py-1.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-[11px] font-semibold flex items-center justify-center space-x-1 transition">
-              <span>📍 Route auf Maps</span>
-            </a>
-            <a href="${m.website}" target="_blank" rel="noopener noreferrer" class="py-1.5 px-3 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-800/40 text-[11px] font-semibold flex items-center justify-center space-x-1 transition">
-              <span>🌐 Info</span>
-            </a>
-          </div>
-        `;
-        regionalMarketsList.appendChild(card);
-      });
-    });
+        </div>`;
+      }).join("");
   }
 
-  // 7. Foto-Rezept Import Modal
-  const openImportModalBtn = document.getElementById("openImportModalBtn");
-  const closeImportModalBtn = document.getElementById("closeImportModalBtn");
-  const recipeImportModal = document.getElementById("recipeImportModal");
-  const saveImportRecipeBtn = document.getElementById("saveImportRecipeBtn");
-
-  openImportModalBtn.onclick = () => recipeImportModal.classList.remove("hidden");
-  closeImportModalBtn.onclick = () => recipeImportModal.classList.add("hidden");
-
-  saveImportRecipeBtn.onclick = () => {
-    const title = document.getElementById("importRecipeTitle").value.trim();
-    const rawIng = document.getElementById("importRecipeIngredients").value.trim();
-    if (!title || !rawIng) {
-      alert("Bitte Titel und Zutaten angeben!");
-      return;
-    }
-    const newRec = window.recipeImporter.createRecipeFromText(title, rawIng);
-    state.weekPlan[state.activeDayIndex] = { ...newRec, day: DAYS[state.activeDayIndex] };
-    savePlan();
-    renderActiveCard();
-    updateShoppingList();
-    recipeImportModal.classList.add("hidden");
-    alert(`📸 "${newRec.title}" wurde in deinen Wochentag aufgenommen!`);
-  };
-
-  // Quittungs-Scanner Diff
-  const triggerCameraBtn = document.getElementById("triggerCameraBtn");
-  const receiptFileInput = document.getElementById("receiptFileInput");
-  const loadMockReceiptBtn = document.getElementById("loadMockReceiptBtn");
-  const receiptResultCard = document.getElementById("receiptResultCard");
-
-  triggerCameraBtn.onclick = () => receiptFileInput.click();
-  receiptFileInput.onchange = () => runReceiptDiff();
-  loadMockReceiptBtn.onclick = () => runReceiptDiff();
-
-  function runReceiptDiff() {
-    receiptResultCard.classList.remove("hidden");
-    document.getElementById("receiptTotalSpent").textContent = "CHF 12.80";
-    document.getElementById("receiptFoundCount").textContent = "3";
-    document.getElementById("receiptMissingCount").textContent = (state.shoppingList.length - 3).toString();
-
-    const foundList = document.getElementById("receiptFoundList");
-    foundList.innerHTML = `
-      <li class="flex justify-between py-0.5 text-emerald-300"><span>✓ Schweizer Speisekartoffeln</span> <span class="font-mono">CHF 2.50</span></li>
-      <li class="flex justify-between py-0.5 text-emerald-300"><span>✓ Rüebli</span> <span class="font-mono">CHF 1.80</span></li>
-      <li class="flex justify-between py-0.5 text-emerald-300"><span>✓ Schweizer Reibkäse</span> <span class="font-mono">CHF 4.20</span></li>
-    `;
-
-    const missingList = document.getElementById("receiptMissingList");
-    missingList.innerHTML = "";
-    state.shoppingList.slice(3, 8).forEach(it => {
-      const li = document.createElement("li");
-      li.className = "flex justify-between py-0.5 text-red-300";
-      li.innerHTML = `<span>⚠️ ${it.name}</span> <span class="text-[10px] text-slate-500">${it.bring_cat}</span>`;
-      missingList.appendChild(li);
-    });
-
-    if (window.lucide) lucide.createIcons();
-  }
-
-  // Mitbewohner & Diäten verwalten UI (Tab 6)
-  const membersListContainer = document.getElementById("membersListContainer");
-  const addMemberBtn = document.getElementById("addMemberBtn");
-
-  function renderMembersManager() {
-    if (!membersListContainer) return;
-    membersListContainer.innerHTML = "";
-
-    state.members.forEach((mem, idx) => {
-      const card = document.createElement("div");
-      card.className = "flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60";
-      
-      let dietBadgeColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-      if (mem.diet === "vegan") dietBadgeColor = "text-cyan-400 bg-cyan-500/10 border-cyan-500/20";
-      if (mem.diet === "fleisch") dietBadgeColor = "text-amber-400 bg-amber-500/10 border-amber-500/20";
-
-      card.innerHTML = `
-        <div class="flex items-center space-x-2">
-          <div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
-            ${mem.name.charAt(0)}
-          </div>
-          <span class="text-xs font-bold text-white">${mem.name}</span>
-          <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${dietBadgeColor}">${mem.diet}</span>
-        </div>
-        <div class="flex items-center space-x-1.5">
-          <select class="diet-select bg-slate-900 border border-slate-700 text-[11px] text-slate-300 rounded-lg px-2 py-1 focus:outline-none" data-idx="${idx}">
-            <option value="vegi" ${mem.diet === "vegi" ? "selected" : ""}>Vegi</option>
-            <option value="vegan" ${mem.diet === "vegan" ? "selected" : ""}>Vegan</option>
-            <option value="fleisch" ${mem.diet === "fleisch" ? "selected" : ""}>Mit Fleisch</option>
-            <option value="schweizerisch" ${mem.diet === "schweizerisch" ? "selected" : ""}>Schweizerisch</option>
-          </select>
-          <button class="delete-member-btn text-slate-500 hover:text-red-400 p-1" data-idx="${idx}">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-          </button>
-        </div>
-      `;
-      membersListContainer.appendChild(card);
-    });
-
-    membersListContainer.querySelectorAll(".diet-select").forEach(sel => {
-      sel.onchange = (e) => {
-        const idx = parseInt(e.target.getAttribute("data-idx"), 10);
-        state.members[idx].diet = e.target.value;
-        saveMembers();
-        renderMembersManager();
-        renderAttendanceMatrix();
-        renderActiveCard();
-        updateShoppingList();
-      };
-    });
-
-    membersListContainer.querySelectorAll(".delete-member-btn").forEach(btn => {
-      btn.onclick = (e) => {
-        const idx = parseInt(btn.getAttribute("data-idx"), 10);
-        if (state.members.length <= 1) {
-          alert("Mindestens ein Mitbewohner muss vorhanden sein!");
-          return;
-        }
-        state.members.splice(idx, 1);
-        saveMembers();
-        renderMembersManager();
-        renderAttendanceMatrix();
-        renderActiveCard();
-        updateShoppingList();
-      };
-    });
-
-    if (window.lucide) lucide.createIcons();
-  }
-
-  if (addMemberBtn) {
-    addMemberBtn.onclick = () => {
-      const name = prompt("Name des Mitbewohners:", "Sarah");
-      if (!name) return;
-      const diet = prompt("Ernährungsform (vegi, vegan, fleisch, schweizerisch):", "vegi") || "vegi";
-      state.members.push({
-        id: "m-" + Date.now(),
-        name: name.trim(),
-        diet: diet.toLowerCase().trim()
-      });
-      saveMembers();
-      renderMembersManager();
-      renderAttendanceMatrix();
-      renderActiveCard();
-      updateShoppingList();
-    };
-  }
-
-  // Interaktive Wochen-Anwesenheit & Diät-Matrix Tabelle
-  const attendanceMatrixTable = document.getElementById("attendanceMatrixTable");
-
-  function renderAttendanceMatrix() {
-    if (!attendanceMatrixTable) return;
-    attendanceMatrixTable.innerHTML = "";
-
-    // Sicherstellen, dass jeder Tag im weekPlan die Esser-Liste hat
-    state.weekPlan.forEach((day, dIdx) => {
-      if (!day.eaters) {
-        day.eaters = state.members.map(m => m.id);
-      }
-    });
-
-    const thead = document.createElement("thead");
-    thead.innerHTML = `
-      <tr class="text-slate-400 border-b border-slate-800">
-        <th class="py-2 px-2 text-left font-semibold">Mitbewohner</th>
-        <th class="py-2 px-1 text-center font-semibold">Mo</th>
-        <th class="py-2 px-1 text-center font-semibold">Di</th>
-        <th class="py-2 px-1 text-center font-semibold">Mi</th>
-        <th class="py-2 px-1 text-center font-semibold">Do</th>
-        <th class="py-2 px-1 text-center font-semibold">Fr</th>
-        <th class="py-2 px-1 text-center font-semibold">Sa</th>
-        <th class="py-2 px-1 text-center font-semibold">So</th>
-      </tr>
-    `;
-    attendanceMatrixTable.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    tbody.className = "divide-y divide-slate-800/60";
-
-    // Eine Zeile pro Mitbewohner
-    state.members.forEach((mem) => {
-      const tr = document.createElement("tr");
-      tr.className = "hover:bg-slate-900/50 transition";
-
-      let dietColor = "text-emerald-400";
-      if (mem.diet === "vegan") dietColor = "text-cyan-400";
-      if (mem.diet === "fleisch") dietColor = "text-amber-400";
-
-      let tdHtml = `
-        <td class="py-2 px-2 text-left">
-          <div class="flex items-center space-x-1.5">
-            <span class="font-bold text-slate-200">${mem.name}</span>
-            <span class="text-[9px] font-mono px-1 py-0.2 rounded border border-slate-700/60 ${dietColor}">${mem.diet.substring(0,3).toUpperCase()}</span>
-          </div>
-        </td>
-      `;
-
-      // 7 Spalten für Mo bis So
-      for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
-        const dayPlan = state.weekPlan[dayIdx];
-        const isAttending = dayPlan && dayPlan.eaters && dayPlan.eaters.includes(mem.id);
-
-        tdHtml += `
-          <td class="py-1.5 px-0.5 text-center">
-            <button class="matrix-toggle-btn w-6 h-6 rounded-lg font-bold text-xs transition inline-flex items-center justify-center ${
-              isAttending
-                ? "bg-emerald-500 text-slate-950 shadow-sm"
-                : "bg-slate-800/80 text-slate-600 hover:text-slate-400"
-            }" data-member-id="${mem.id}" data-day-idx="${dayIdx}" title="${mem.name} am ${DAYS[dayIdx]} ${isAttending ? 'dabei' : 'abwesend'}">
-              ${isAttending ? "✓" : "–"}
-            </button>
-          </td>
-        `;
-      }
-      tr.innerHTML = tdHtml;
-      tbody.appendChild(tr);
-    });
-
-    // Zusammenfassungs-Zeile: Diät & Anzahl Esser
-    const summaryTr = document.createElement("tr");
-    summaryTr.className = "bg-slate-900/80 font-bold border-t border-slate-700/80 text-[10px]";
-    let summaryHtml = `<td class="py-2 px-2 text-left text-slate-400">Total / Diät</td>`;
-
-    for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
-      const dayPlan = state.weekPlan[dayIdx];
-      const count = (dayPlan && dayPlan.eaters ? dayPlan.eaters.length : 0) + (dayPlan && dayPlan.extra_guests ? dayPlan.extra_guests : 0);
-      const diet = dayPlan ? (dayPlan.effective_diet || "vegi").substring(0, 3).toUpperCase() : "VEG";
-
-      let dietColor = "text-emerald-400";
-      if (diet === "VEG" && dayPlan && dayPlan.effective_diet === "vegan") dietColor = "text-cyan-400";
-      if (diet === "FLE") dietColor = "text-amber-400";
-
-      summaryHtml += `
-        <td class="py-1.5 px-0.5 text-center">
-          <div class="flex flex-col items-center">
-            <span class="text-white">${count}P</span>
-            <span class="${dietColor} text-[8px] font-mono">${diet}</span>
-          </div>
-        </td>
-      `;
-    }
-    summaryTr.innerHTML = summaryHtml;
-    tbody.appendChild(summaryTr);
-
-    attendanceMatrixTable.appendChild(tbody);
-
-    // Klick-Handler für Matrix Checkboxen
-    attendanceMatrixTable.querySelectorAll(".matrix-toggle-btn").forEach(btn => {
-      btn.onclick = () => {
-        const memId = btn.getAttribute("data-member-id");
-        const dayIdx = parseInt(btn.getAttribute("data-day-idx"), 10);
-        const dayPlan = state.weekPlan[dayIdx];
-        if (!dayPlan) return;
-
-        if (!dayPlan.eaters) dayPlan.eaters = [];
-        if (dayPlan.eaters.includes(memId)) {
-          dayPlan.eaters = dayPlan.eaters.filter(id => id !== memId);
-        } else {
-          dayPlan.eaters.push(memId);
-        }
-
-        dayPlan.effective_diet = calculateEffectiveDiet(dayPlan.eaters);
-        dayPlan.person_count = dayPlan.eaters.length + (dayPlan.extra_guests || 0);
-
-        savePlan();
-        renderAttendanceMatrix();
-        renderActiveCard();
-        updateShoppingList();
-      };
-    });
-  }
-
-  // Dezentraler P2P / Mesh Sync via URL-Hash
-  const shareP2pPlanBtn = document.getElementById("shareP2pPlanBtn");
-  if (shareP2pPlanBtn) {
-    shareP2pPlanBtn.onclick = () => {
-      try {
-        const payload = {
-          v: 1,
-          wgId: state.wgId,
-          members: state.members,
-          weekPlan: state.weekPlan,
-          ts: Date.now()
-        };
-        const jsonStr = JSON.stringify(payload);
-        const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
-        const baseUrl = window.location.href.split("#")[0];
-        const shareUrl = `${baseUrl}#plan=${encodeURIComponent(base64Data)}`;
-
-        if (navigator.share) {
-          navigator.share({
-            title: `BringFrisch WG-Plan (${state.wgId})`,
-            text: `Hier ist unser aktueller Wochen- und Einkaufsplan für die WG!`,
-            url: shareUrl
-          }).catch(() => {
-            navigator.clipboard.writeText(shareUrl);
-            alert("🔗 Plan-Link erfolgreich in die Zwischenablage kopiert!\n\nSende den Link per WhatsApp/Signal an deine Mitbewohner. Wenn sie den Link öffnen, wird die WG-Woche auf ihren Handys synchronisiert.");
-          });
-        } else {
-          navigator.clipboard.writeText(shareUrl);
-          alert("🔗 Plan-Link erfolgreich in die Zwischenablage kopiert!\n\nSende den Link per WhatsApp/Signal an deine Mitbewohner. Wenn sie den Link öffnen, wird die WG-Woche auf ihren Handys synchronisiert.");
-        }
-      } catch (err) {
-        console.error("P2P share error", err);
-        alert("Fehler beim Erstellen des Sharing-Links: " + err.message);
-      }
-    };
-  }
-
-  // Navigation Tab Switching
-  const navTabs = document.querySelectorAll(".nav-tab");
-  navTabs.forEach(tab => {
-    tab.onclick = () => {
-      navTabs.forEach(t => {
-        t.classList.remove("text-emerald-400", "active");
-        t.classList.add("text-slate-400");
-      });
-      tab.classList.add("text-emerald-400", "active");
-      tab.classList.remove("text-slate-400");
-
-      const targetId = tab.getAttribute("data-target");
-      ["tabPlan", "tabShopping", "tabReceipt", "tabSeason", "tabPantry", "tabSettings"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-          if (id === targetId) el.classList.remove("hidden");
-          else el.classList.add("hidden");
-        }
-      });
-      if (window.lucide) lucide.createIcons();
-    };
+  $("catalogSearch").oninput = renderCatalog;
+  $("catalogFilters").addEventListener("click", e => {
+    const b = e.target.closest("[data-filter]");
+    if (!b) return;
+    state.catalogFilter = b.dataset.filter;
+    renderCatalog();
   });
 
-  // Start initial load
-  loadPlan();
-});
+  $("catalogList").addEventListener("click", e => {
+    const assign = e.target.closest("[data-assign]");
+    if (assign) {
+      const recipe = allRecipes().find(r => String(r.id) === assign.dataset.assign);
+      if (!recipe) return;
+      assignRecipe(recipe, state.catalogDay);
+      $("catalogDialog").close();
+      toast(`${DAYS[state.catalogDay]}: ${recipe.title}`);
+      return;
+    }
+    const del = e.target.closest("[data-delete]");
+    if (del) {
+      if (del.dataset.armed !== "1") {
+        del.dataset.armed = "1";
+        del.textContent = "Wirklich?";
+        return;
+      }
+      importer.deleteCustomRecipe(del.dataset.delete);
+      renderCatalog();
+      toast("Rezept gelöscht");
+    }
+  });
+
+  $("randomPickBtn").onclick = () => {
+    const idx = state.catalogDay;
+    const current = state.plan[idx];
+    const recipe = pickRecipe(effectiveDiet(current.eaters), state.plan.map(d => d.id));
+    assignRecipe(recipe, idx);
+    $("catalogDialog").close();
+    toast(`${DAYS[idx]}: ${recipe.title}`);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Eigenes Rezept
+  // ---------------------------------------------------------------------------
+  $("newRecipeBtn").onclick = () => {
+    $("recipeForm").reset();
+    $("recipeServings").value = DEFAULT_SERVINGS;
+    $("catalogDialog").close();
+    $("recipeDialog").showModal();
+  };
+
+  $("recipeUrl").addEventListener("change", () => {
+    const title = $("recipeTitle");
+    if (!title.value.trim()) title.value = importer.analyzeRecipeUrl($("recipeUrl").value).title;
+  });
+
+  $("recipeForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const recipe = importer.createCustomRecipe({
+      title: $("recipeTitle").value,
+      url: $("recipeUrl").value,
+      diet: $("recipeDiet").value,
+      servings: $("recipeServings").value,
+      ingredientsText: $("recipeIngredients").value,
+      instructions: $("recipeInstructions").value
+    });
+    assignRecipe(recipe, state.catalogDay);
+    $("recipeDialog").close();
+    toast(`Gespeichert und für ${DAYS[state.catalogDay]} eingeplant`);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Einkauf & Grundvorrat
+  // ---------------------------------------------------------------------------
+  document.querySelector("#tab-shop .seg").addEventListener("click", e => {
+    const b = e.target.closest("[data-filter]");
+    if (!b) return;
+    state.shopFilter = b.dataset.filter;
+    renderShop();
+  });
+
+  $("copyListBtn").onclick = async () => {
+    const items = toBuyItems();
+    const ok = await copyText(items.map(listLine).join("\n"));
+    toast(ok ? `${items.length} Artikel kopiert` : "Kopieren nicht möglich");
+  };
+
+  function renderStaples() {
+    const byCat = {};
+    state.staples.forEach((s, idx) => (byCat[s.category || "Grundzutaten"] = byCat[s.category || "Grundzutaten"] || []).push({ ...s, idx }));
+    $("staplesList").innerHTML = Object.keys(byCat).map(cat => `
+      <div>
+        <p class="label" style="padding:0 0 6px">${esc(cat)}</p>
+        <div class="row" style="gap:6px">
+          ${byCat[cat].map(s => `<button type="button" class="staple${s.in_stock === false ? " empty-stock" : ""}" data-staple="${s.idx}" aria-pressed="${s.in_stock !== false}" style="flex:0 0 auto">${esc(s.name)}</button>`).join("")}
+        </div>
+      </div>`).join("");
+  }
+
+  $("openStaplesBtn").onclick = () => {
+    renderStaples();
+    $("staplesDialog").showModal();
+  };
+
+  $("staplesList").addEventListener("click", e => {
+    const b = e.target.closest("[data-staple]");
+    if (!b) return;
+    const s = state.staples[+b.dataset.staple];
+    s.in_stock = s.in_stock === false;
+    saveStaples();
+    renderStaples();
+    refresh();
+  });
+
+  $("addStapleForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const val = $("newStaple").value.trim();
+    if (!val) return;
+    state.staples.push({ id: "custom-" + Date.now(), name: val, category: "Eigene", in_stock: true, keywords: [val.toLowerCase()] });
+    saveStaples();
+    $("newStaple").value = "";
+    renderStaples();
+    refresh();
+  });
+
+  // ---------------------------------------------------------------------------
+  // WG: Mitbewohner, Anwesenheit, Plan teilen
+  // ---------------------------------------------------------------------------
+  $("members").addEventListener("change", e => {
+    const sel = e.target.closest("[data-diet]");
+    if (!sel) return;
+    const m = state.members.find(x => x.id === sel.dataset.diet);
+    m.diet = sel.value;
+    saveMembers();
+    refresh();
+  });
+
+  $("members").addEventListener("click", e => {
+    const b = e.target.closest("[data-remove]");
+    if (!b) return;
+    if (state.members.length <= 1) return toast("Mindestens eine Person braucht es");
+    if (b.dataset.armed !== "1") {
+      b.dataset.armed = "1";
+      b.textContent = "Entfernen?";
+      return;
+    }
+    const id = b.dataset.remove;
+    state.members = state.members.filter(m => m.id !== id);
+    state.plan.forEach(d => { d.eaters = d.eaters.filter(x => x !== id); });
+    saveMembers();
+    savePlan();
+    renderMembers();
+    refresh();
+  });
+
+  $("addMemberForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("newMemberName").value.trim();
+    if (!name) return;
+    const id = name.toLowerCase().replace(/[^a-z0-9äöü]+/g, "-") + "-" + Date.now().toString(36);
+    state.members.push({ id, name, diet: $("newMemberDiet").value });
+    state.plan.forEach(d => d.eaters.push(id));
+    saveMembers();
+    savePlan();
+    $("newMemberName").value = "";
+    renderMembers();
+    refresh();
+  });
+
+  $("attendance").addEventListener("click", e => {
+    const att = e.target.closest("[data-member]");
+    if (att) return toggleEater(+att.dataset.day, att.dataset.member);
+    const g = e.target.closest("[data-guests]");
+    if (g) {
+      const day = state.plan[+g.dataset.guests];
+      day.extra_guests = ((day.extra_guests || 0) + 1) % 5;
+      savePlan();
+      refresh();
+    }
+  });
+
+  function encodePlan() {
+    const json = JSON.stringify({ v: 2, members: state.members, weekPlan: state.plan });
+    return btoa(unescape(encodeURIComponent(json)));
+  }
+
+  function importPlanFromHash() {
+    if (!location.hash.startsWith("#plan=")) return false;
+    try {
+      const json = decodeURIComponent(escape(atob(decodeURIComponent(location.hash.slice(6)))));
+      const payload = JSON.parse(json);
+      if (Array.isArray(payload.members) && payload.members.length) state.members = payload.members;
+      state.plan = payload.weekPlan || payload.plan || [];
+      history.replaceState(null, "", location.pathname);
+      return true;
+    } catch (e) {
+      console.warn("Plan-Link ungültig", e);
+      return false;
+    }
+  }
+
+  $("sharePlanBtn").onclick = async () => {
+    const url = `${location.href.split("#")[0]}#plan=${encodeURIComponent(encodePlan())}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "BringFrisch Wochenplan", text: "Unser WG-Wochenplan:", url });
+        return;
+      } catch (e) { /* abgebrochen → kopieren */ }
+    }
+    toast((await copyText(url)) ? "Plan-Link kopiert" : "Kopieren nicht möglich");
+  };
+
+  // ---------------------------------------------------------------------------
+  // Bring! füllen (Übergabe per Teilen / Kopieren)
+  // ---------------------------------------------------------------------------
+  function openHandoff() {
+    const items = toBuyItems();
+    $("handoffSubtitle").textContent = `${items.length} Artikel · Teilen-Menü, Kopieren oder direkt in Bring! einfügen`;
+    $("handoffPreview").textContent = items.map(listLine).join("\n");
+    $("handoffDialog").showModal();
+  }
+
+  $("syncBtn").onclick = () => openHandoff();
+
+  $("shareListBtn").onclick = async () => {
+    const text = toBuyItems().map(listLine).join("\n");
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "BringFrisch Einkaufsliste", text });
+        return;
+      } catch (e) { /* abgebrochen → kopieren */ }
+    }
+    toast((await copyText(text)) ? "Liste kopiert" : "Kopieren nicht möglich");
+  };
+
+  $("copyOnlyBtn").onclick = async () => {
+    const items = toBuyItems();
+    toast((await copyText(items.map(listLine).join("\n"))) ? `${items.length} Artikel kopiert` : "Bitte Text oben markieren und kopieren");
+  };
+
+  $("copyOpenBringBtn").onclick = async () => {
+    await copyText(toBuyItems().map(listLine).join("\n"));
+    toast("Kopiert – Bring! wird geöffnet");
+    setTimeout(() => { location.href = "bring://"; }, 300);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Dialoge & Navigation
+  // ---------------------------------------------------------------------------
+  document.querySelectorAll("dialog").forEach(d => {
+    d.addEventListener("click", e => {
+      if (e.target === d || e.target.closest("[data-close]")) d.close();
+    });
+  });
+
+  function showTab(name) {
+    ["plan", "shop", "season", "wg"].forEach(t => { $(`tab-${t}`).hidden = t !== name; });
+    document.querySelectorAll("nav button").forEach(b => {
+      if (b.dataset.tab === name) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
+    });
+    document.querySelector("main").scrollTop = 0;
+  }
+
+  document.querySelector("nav").addEventListener("click", e => {
+    const b = e.target.closest("[data-tab]");
+    if (b) showTab(b.dataset.tab);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Start
+  // ---------------------------------------------------------------------------
+  const fromLink = importPlanFromHash();
+  if (!fromLink) state.plan = load(KEYS.plan, []);
+  normalizePlan();
+  savePlan();
+  saveMembers();
+
+  renderHeader();
+  renderSeasonHint();
+  setupSeason();
+  renderMembers();
+  refresh();
+  if (fromLink) toast("Wochenplan aus Link übernommen");
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(err => console.warn("Service Worker:", err));
+  }
+})();

@@ -1,10 +1,9 @@
-const CACHE_NAME = 'bringfrisch-cache-v5';
+const CACHE_NAME = 'bringfrisch-cache-v6';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.js',
   './standalone_data.js',
-  './pantry_tracker.js',
   './recipe_importer.js',
   './manifest.json'
 ];
@@ -25,16 +24,11 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Network-First Strategie: Versuche immer das Neueste vom Server zu laden.
-// Nur wenn offline, greife auf den Cache zurück.
+// Network-First: immer das Neueste laden, offline aus dem Cache.
+// Nur Dateien der eigenen Seite cachen (keine Sync-Aufrufe an den Worker).
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
-
-  // API-Calls niemals aus dem statischen Cache bedienen
-  if (url.pathname.startsWith('/api/')) {
-    return;
-  }
+  if (new URL(event.request.url).origin !== self.location.origin) return;
 
   event.respondWith(
     fetch(event.request)

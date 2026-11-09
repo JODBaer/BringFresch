@@ -1,5 +1,6 @@
-// BringFrisch: Rezept-Importer & Foto-Erfassung
-// Wandelt Fotos von Kochbüchern / Menükarten oder Rezept-URLs in swipebare Wochentagskarten um.
+// BringFrisch: Eigene Rezepte (von Hand oder mit Web-Link von Betty Bossi, Swissmilk, Fooby, Migusto …)
+
+const UNIT_PATTERN = "kg|g|dl|ml|cl|l|el|tl|stk|stück|bund|prise|glas|dose|becher|pck|packung|tranchen|kopf|rolle|zehe|zehen|portion";
 
 class RecipeImporter {
   constructor() {
@@ -8,134 +9,84 @@ class RecipeImporter {
   }
 
   loadCustomRecipes() {
-    const raw = localStorage.getItem(this.customRecipesKey);
-    if (raw) {
-      try {
-        return JSON.parse(raw);
-      } catch (e) {
-        console.warn("Custom recipes load error", e);
-      }
+    try {
+      const raw = localStorage.getItem(this.customRecipesKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.warn("Eigene Rezepte konnten nicht geladen werden", e);
+      return [];
     }
-    return [];
   }
 
   saveCustomRecipes() {
     localStorage.setItem(this.customRecipesKey, JSON.stringify(this.customRecipes));
   }
 
-  /**
-   * Erstellt ein Wochentagsrezept aus einem abfotografierten Text oder einer Notiz.
-   */
-  createRecipeFromText(title, rawIngredientsText, instructions = "", diet = "vegi", costEstimate = 3.50) {
-    const lines = rawIngredientsText.split("\n").map(l => l.trim()).filter(Boolean);
-    const ingredients = [];
-
-    lines.forEach(line => {
-      // Regex für Mengen wie 500g, 2 Stk, 1 dl, etc.
-      const match = line.match(/^([0-9.,]+)?\s*(g|kg|dl|ml|el|tl|stk|bund|prise|glas|dose)?\s*(.+)$/i);
-      if (match) {
-        const amount = match[1] || "1";
-        const unit = match[2] || "Stk";
-        const name = match[3] || line;
-        
-        let bring_cat = "Sonstiges";
-        const lowerName = name.toLowerCase();
-        if (/rüebli|lauch|kartoffel|wirz|salat|zwiebel|kürbis|gemüse|tomate|pilz/i.test(lowerName)) {
-          bring_cat = "Obst & Gemüse";
-        } else if (/käse|quark|milch|butter|rahm|joghurt|ei/i.test(lowerName)) {
-          bring_cat = "Milch & Käse";
-        } else if (/fleisch|hack|schinken|poulet|rind/i.test(lowerName)) {
-          bring_cat = "Fleisch & Fisch";
-        } else if (/brot|teig/i.test(lowerName)) {
-          bring_cat = "Brot & Gebäck";
-        } else if (/nudel|teigwaren|reis|mehl|linse/i.test(lowerName)) {
-          bring_cat = "Vorrat & Konserven";
-        }
-
-        ingredients.push({
-          name: name.trim(),
-          amount: amount.trim(),
-          unit: unit.trim(),
-          bring_cat: bring_cat
-        });
-      } else {
-        ingredients.push({
-          name: line,
-          amount: "1",
-          unit: "Stk",
-          bring_cat: "Sonstiges"
-        });
-      }
-    });
-
-    const newRecipe = {
-      id: "custom-" + Date.now(),
-      title: title || "Foto-Rezept (Kochbuch / Menü)",
-      category: "schweizerisch",
-      diet: diet,
-      prep_time_min: 30,
-      cost_per_person_chf: parseFloat(costEstimate) || 3.50,
-      primary_vegetables: ["Saisongemüse nach Wahl"],
-      ingredients: ingredients,
-      instructions: instructions || "Nach Kochbuch-/Foto-Anleitung zubereiten.",
-      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-      health_tip: "Eigenes Lieblingsrezept aus Kochbuch / Menükarte."
-    };
-
-    this.customRecipes.push(newRecipe);
-    this.saveCustomRecipes();
-    return newRecipe;
+  // Erkennt die Supermarkt-Abteilung grob am Namen
+  guessCategory(name) {
+    const n = name.toLowerCase();
+    if (/rüebli|lauch|kartoffel|wirz|salat|zwiebel|kürbis|gemüse|tomate|pilz|randen|sellerie|knoblauch|apfel|zitrone|kräuter|petersilie|spinat|kohl|fenchel|zucchetti|peperoni/.test(n)) return "Obst & Gemüse";
+    if (/käse|quark|milch|butter|rahm|joghurt|\bei\b|eier|mozzarella|feta|halloumi/.test(n)) return "Milch & Käse";
+    if (/fleisch|hack|schinken|poulet|rind|speck|wurst|lachs|fisch|kalb|schwein/.test(n)) return "Fleisch & Fisch";
+    if (/brot|teig|zopf/.test(n)) return "Brot & Gebäck";
+    if (/nudel|teigwaren|pasta|spaghetti|hörnli|reis|mehl|linse|bohne|kichererbse|dose|polenta|couscous/.test(n)) return "Vorrat & Konserven";
+    return "Sonstiges";
   }
 
-  /**
-   * Analysiert eine Rezept-URL (Betty Bossi, Swissmilk, Fooby, Chefkoch, etc.)
-   * und leitet daraus Domain und einen sauberen Rezepttitel ab.
-   */
+  // "500 g Kartoffeln" / "2 Stk Zwiebeln" / "1 Bund Schnittlauch" / "Salz"
+  parseIngredients(text) {
+    const re = new RegExp(`^([0-9]+(?:[.,][0-9]+)?)?\\s*(?:(${UNIT_PATTERN})\\.?\\s+)?(.+)$`, "i");
+    return (text || "")
+      .split("\n")
+      .map(l => l.trim().replace(/^[-•*]\s*/, ""))
+      .filter(Boolean)
+      .map(line => {
+        const m = line.match(re);
+        const amount = m && m[1] ? m[1].replace(",", ".") : "1";
+        const unit = m && m[2] ? m[2] : "Stk";
+        const name = (m && m[3] ? m[3] : line).trim();
+        return { name, amount, unit, bring_cat: this.guessCategory(name) };
+      });
+  }
+
+  // Leitet aus einer Rezept-URL einen lesbaren Titel ab
   analyzeRecipeUrl(url) {
     if (!url) return { title: "", domain: "" };
     try {
       const u = new URL(url.trim());
       const domain = u.hostname.replace(/^www\./, "");
-      const segments = u.pathname.split("/").filter(s => s && s.length > 2 && !/^(de|fr|it|en|rezepte|rezept|showrezept|recipes)$/i.test(s));
-      
+      const segments = u.pathname.split("/").filter(s => s && s.length > 2 && !/^(de|fr|it|en|rezepte|rezept|showrezept|recipes|rezepte-kochideen)$/i.test(s));
       let candidate = "";
       if (segments.length > 0) {
-        candidate = segments[segments.length - 1];
-        // Dateiendungen wie .html entfernen
-        candidate = candidate.replace(/\.(html|php|asp)$/i, "");
-        // Typische IDs / Hash-Prefixe entfernen (z.B. BB_KUCA130802_0060A-40-de-lauch-waehe)
-        candidate = candidate.replace(/^[A-Z0-9_-]{8,}[-_]/i, "");
-        // Trennzeichen ersetzen
+        candidate = segments[segments.length - 1]
+          .replace(/\.(html|php|asp)$/i, "")
+          .replace(/^[A-Z0-9_-]{8,}[-_]/i, "");
         candidate = decodeURIComponent(candidate).replace(/[-_]+/g, " ").trim();
-        // Groß-/Kleinschreibung formatieren
         candidate = candidate.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
       }
-
-      if (!candidate || candidate.length < 3) {
-        candidate = `Rezept (${domain})`;
-      }
-
-      return { title: candidate, domain: domain };
+      if (!candidate || candidate.length < 3 || /^[A-Z0-9 ]+$/.test(candidate)) candidate = `Rezept von ${domain}`;
+      return { title: candidate, domain };
     } catch (e) {
-      return { title: "Web-Rezept", domain: "" };
+      return { title: "", domain: "" };
     }
   }
 
-  /**
-   * Erstellt ein Rezept aus einer Web-URL und speichert den Link für den Browser.
-   */
-  createRecipeFromUrl(url, title, rawIngredientsText = "", diet = "vegi", costEstimate = 3.50) {
-    let cleanTitle = title;
-    if (!cleanTitle && url) {
-      const analysis = this.analyzeRecipeUrl(url);
-      cleanTitle = analysis.title;
-    }
-    if (!cleanTitle) cleanTitle = "Web-Rezept aus Browser";
-
-    const recipe = this.createRecipeFromText(cleanTitle, rawIngredientsText, "Zubereitung siehe Originalrezept im Browser.", diet, costEstimate);
-    recipe.source_url = url.trim();
-    recipe.is_web_recipe = true;
-    recipe.health_tip = `Direkt verlinkt mit Rezeptseite (${url ? new URL(url).hostname : 'Web'}).`;
+  createCustomRecipe({ title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "" }) {
+    const cleanUrl = (url || "").trim();
+    const recipe = {
+      id: "custom-" + Date.now(),
+      title: (title || "").trim() || this.analyzeRecipeUrl(cleanUrl).title || "Eigenes Rezept",
+      category: "eigenes",
+      diet,
+      servings: Math.max(1, parseInt(servings, 10) || 4),
+      prep_time_min: 30,
+      ingredients: this.parseIngredients(ingredientsText),
+      instructions: instructions.trim(),
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      is_custom: true
+    };
+    if (cleanUrl) recipe.source_url = cleanUrl;
+    this.customRecipes.push(recipe);
     this.saveCustomRecipes();
     return recipe;
   }
@@ -147,5 +98,3 @@ class RecipeImporter {
 }
 
 window.recipeImporter = new RecipeImporter();
-
-

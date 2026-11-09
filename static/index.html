@@ -1,1042 +1,406 @@
 <!DOCTYPE html>
-<html lang="de" class="h-full bg-slate-950 text-slate-100">
+<html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>BringFrisch | Schweizer Saisongemüse & WG-Menüplan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>BringFrisch</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#020617">
-  
-  <!-- Apple iPhone / iOS PWA Optimierung -->
+  <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="BringFrisch">
   <meta name="format-detection" content="telephone=no">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><text x='50%' y='68%' dominant-baseline='middle' text-anchor='middle' font-size='60'>🥬</text></svg>">
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23fafaf9'/><text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' font-size='58'>🥬</text></svg>">
   <style>
+    /* Alpine Minimalist: tags Schneeweiss, nachts Granit (folgt der Handy-Einstellung).
+       Alpengrün nur für die Hauptaktion und Markierungen. */
     :root {
-      --sat: env(safe-area-inset-top, 0px);
-      --sab: env(safe-area-inset-bottom, 0px);
+      --bg: #fafaf9; --surface: #ffffff; --fg: #1c1917; --muted: #78716c; --line: #e7e5e4;
+      --chip-off: #d6d3d1; --accent: #15803d; --on-accent: #ffffff; --nav: #ffffff;
+      --radius: 14px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color-scheme: light;
     }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #18181b; --surface: #202024; --fg: #f5f5f4; --muted: #a1a1aa; --line: #2e2e33;
+        --chip-off: #45454d; --accent: #1f9d55; --on-accent: #ffffff; --nav: #1c1c20;
+        color-scheme: dark;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      padding-top: var(--sat);
+      margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px;
+      -webkit-tap-highlight-color: transparent; font-variant-numeric: tabular-nums;
+      display: flex; flex-direction: column; overflow: hidden;
     }
-    .safe-bottom-nav {
-      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+
+    /* Kopfzeile */
+    .top {
+      padding: calc(env(safe-area-inset-top, 0px) + 14px) max(18px, env(safe-area-inset-right, 0px)) 10px max(18px, env(safe-area-inset-left, 0px));
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
     }
-    .hide-scrollbar::-webkit-scrollbar {
-      display: none;
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+    .brand span { color: var(--accent); }
+    .week { color: var(--muted); font-size: 12.5px; }
+    .ghost {
+      border: 1px solid var(--line); background: var(--surface); border-radius: 10px;
+      padding: 7px 11px; font-size: 13px; font-weight: 600;
     }
-    .hide-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+
+    /* Inhalt */
+    main {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 4px max(14px, env(safe-area-inset-right, 0px)) 20px max(14px, env(safe-area-inset-left, 0px));
     }
-    .card-swipe-animation {
-      transition: transform 0.25s ease, opacity 0.25s ease;
+    .tab { display: flex; flex-direction: column; gap: 14px; max-width: 640px; margin: 0 auto; }
+    .label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
+      color: var(--muted); margin: 0; padding: 0 4px; display: flex; justify-content: space-between; gap: 8px;
     }
-    /* Theme 1: Swiss Market Fresh (Light Mode Override) */
-    body.theme-light {
-      background-color: #f8fafc !important;
-      color: #0f172a !important;
+    .label small { text-transform: none; letter-spacing: 0; font-weight: 500; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+    .muted { color: var(--muted); }
+    .hint { font-size: 12.5px; color: var(--muted); padding: 0 4px; line-height: 1.5; margin: 0; }
+
+    /* Matrix-Wochenplan */
+    .days { overflow: hidden; }
+    .day {
+      display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center;
+      gap: 8px; padding: 10px 10px 10px 12px; border-top: 1px solid var(--line);
     }
-    body.theme-light header,
-    body.theme-light nav {
-      background-color: rgba(255, 255, 255, 0.95) !important;
-      border-color: #e2e8f0 !important;
-      color: #0f172a !important;
+    .day:first-child { border-top: 0; }
+    .d { font-size: 12px; font-weight: 800; color: var(--muted); }
+    .day.today .d { color: var(--accent); }
+    .title-btn {
+      border: 0; background: none; padding: 4px 0; text-align: left; min-width: 0;
+      font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px;
     }
-    body.theme-light .bg-slate-900 {
-      background-color: #ffffff !important;
-      border-color: #e2e8f0 !important;
-      color: #0f172a !important;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    .title-btn .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .title-btn .caret { color: var(--muted); font-weight: 400; flex-shrink: 0; }
+    .src { font-size: 12px; text-decoration: none; flex-shrink: 0; }
+    .chips { display: flex; gap: 3px; align-items: center; }
+    .chip {
+      min-width: 26px; height: 26px; padding: 0 4px; border-radius: 7px; border: 0;
+      font-size: 11.5px; font-weight: 800; background: var(--fg); color: var(--bg);
     }
-    body.theme-light .bg-slate-950,
-    body.theme-light .bg-slate-950\/60 {
-      background-color: #f1f5f9 !important;
-      border-color: #cbd5e1 !important;
-      color: #1e293b !important;
+    .chip.off { background: transparent; color: var(--chip-off); box-shadow: inset 0 0 0 1px var(--chip-off); }
+    .buf {
+      margin-left: 3px; border: 1px dashed var(--chip-off); background: none; color: var(--muted);
+      font: 700 11.5px var(--mono); height: 26px; padding: 0 4px; border-radius: 7px; width: auto;
+      -webkit-appearance: none; appearance: none; text-align: center;
     }
-    body.theme-light .text-white {
-      color: #0f172a !important;
+
+    .basket-line {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 14px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius);
+      text-align: left; width: 100%;
     }
-    body.theme-light .text-slate-300,
-    body.theme-light .text-slate-200 {
-      color: #334155 !important;
+    .basket-line b { font-size: 14.5px; display: block; }
+    .basket-line small { color: var(--muted); font-size: 12.5px; }
+    .basket-line .chev { color: var(--muted); font-size: 22px; }
+
+    /* Einkaufsliste */
+    .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; }
+    .seg button {
+      border: 0; background: none; border-radius: 10px; padding: 8px 4px; font-size: 12.5px; font-weight: 600; color: var(--muted);
     }
-    body.theme-light .text-slate-400 {
-      color: #64748b !important;
+    .seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+    .aisle h3 {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted);
+      margin: 0; padding: 12px 14px 4px;
     }
-    /* Theme 3: Swiss Brutalist Matrix */
-    body.theme-swiss {
-      background-color: #09090b !important;
+    .item { display: flex; justify-content: space-between; gap: 12px; padding: 9px 14px; border-top: 1px solid var(--line); font-size: 14px; }
+    .aisle h3 + .item { border-top: 0; }
+    .item .amt { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .item .tag { font-size: 11px; color: var(--muted); margin-left: 6px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .row > * { flex: 1; }
+    .empty { padding: 22px 14px; text-align: center; color: var(--muted); font-size: 13.5px; }
+
+    /* Saison */
+    .season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .veg { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
+    .veg b { font-size: 13.5px; }
+    .veg small { color: var(--muted); font-size: 11.5px; }
+    .news { padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+    .news b { font-size: 14.5px; }
+    .news p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+
+    /* WG */
+    .member { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+    .member:first-child { border-top: 0; }
+    .member b { font-size: 14.5px; }
+    select, input[type="text"], input[type="url"], input[type="number"], textarea {
+      border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 10px; font-size: 14.5px; width: 100%;
     }
-    body.theme-swiss .bg-slate-900 {
-      background-color: #18181b !important;
-      border-color: #27272a !important;
+    textarea { min-height: 120px; resize: vertical; font-family: var(--mono); font-size: 13px; }
+    .member select { width: auto; padding: 6px 8px; font-size: 13px; }
+    .icon-btn { border: 0; background: none; color: var(--muted); font-size: 16px; padding: 6px; }
+    .add-member { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+    .add-member select { width: auto; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { padding: 7px 4px; text-align: center; }
+    th { font-size: 11px; color: var(--muted); font-weight: 700; }
+    td:first-child, th:first-child { text-align: left; padding-left: 12px; font-weight: 600; white-space: nowrap; }
+    tr + tr td { border-top: 1px solid var(--line); }
+    .att { width: 30px; height: 30px; border-radius: 8px; border: 0; font-weight: 800; background: var(--fg); color: var(--bg); }
+    .att.off { background: transparent; color: var(--chip-off); box-shadow: inset 0 0 0 1px var(--chip-off); }
+    .att.guest { background: transparent; color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); font-family: var(--mono); }
+
+    /* Buttons */
+    .btn {
+      border: 1px solid var(--line); background: var(--surface); border-radius: 12px;
+      padding: 11px 14px; font-size: 14px; font-weight: 600; text-align: center;
+    }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+    .btn.dark { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+
+    /* Hauptaktion & Navigation */
+    .dock { background: var(--nav); border-top: 1px solid var(--line); }
+    .cta {
+      display: flex; justify-content: center; align-items: baseline; gap: 8px;
+      width: calc(100% - 28px); max-width: 612px; margin: 10px auto 0;
+      background: var(--accent); color: var(--on-accent); border: 0; border-radius: var(--radius);
+      padding: 15px; font-size: 15.5px; font-weight: 700;
+    }
+    .cta small { opacity: 0.85; font-weight: 600; font-size: 13.5px; }
+    .cta:disabled { opacity: 0.45; }
+    nav {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      padding: 6px max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+      max-width: 640px; margin: 0 auto; width: 100%;
+    }
+    nav button { border: 0; background: none; padding: 8px 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    nav button::before { content: ""; width: 18px; height: 3px; border-radius: 2px; background: transparent; }
+    nav button[aria-current="page"] { color: var(--fg); }
+    nav button[aria-current="page"]::before { background: var(--accent); }
+
+    /* Bottom-Sheets */
+    dialog {
+      border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 640px; max-height: 88vh;
+      background: var(--surface); color: var(--fg); border-radius: 20px 20px 0 0;
+    }
+    dialog::backdrop { background: rgba(12, 10, 9, 0.45); }
+    .sheet { display: flex; flex-direction: column; max-height: 88vh; }
+    .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 16px 10px; }
+    .sheet-head h2 { font-size: 17px; margin: 0; }
+    .sheet-head p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+    .sheet-body { overflow-y: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; }
+    .field small { font-weight: 400; color: var(--muted); }
+    .recipe { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .recipe-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .recipe-head b { font-size: 14px; }
+    .recipe-head small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .pill { font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+    .filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+    .filters button { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .staple { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 6px 11px; font-size: 13px; }
+    .staple.empty-stock { color: var(--accent); border-color: var(--accent); text-decoration: line-through; }
+    .preview { font-family: var(--mono); font-size: 12.5px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 180px; overflow-y: auto; white-space: pre-wrap; margin: 0; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+      background: var(--fg); color: var(--bg); padding: 11px 16px; border-radius: 12px; font-size: 14px; font-weight: 600;
+      max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,0.18); z-index: 50; text-align: center;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .toast { animation: rise .2s ease-out; }
+      @keyframes rise { from { opacity: 0; transform: translate(-50%, 8px); } }
     }
   </style>
 </head>
-<body class="h-full flex flex-col font-sans antialiased overflow-hidden">
-
-  <!-- Top App Bar -->
-  <header class="flex-none bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-2.5 z-30 flex items-center justify-between">
-    <div class="flex items-center space-x-2.5">
-      <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shadow-inner">
-        🥬
-      </div>
-      <div>
-        <div class="flex items-center space-x-1.5">
-          <h1 class="text-base font-bold tracking-tight text-white">BringFrisch</h1>
-          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">100% SERVERLESS</span>
-        </div>
-        <p class="text-[11px] text-slate-400" id="headerSubtext">Schweizer Saisongemüse & 3-Teile WG-Planer</p>
-      </div>
+<body>
+  <header class="top">
+    <div>
+      <h1 class="brand">Bring<span>Frisch</span></h1>
+      <div class="week" id="weekLabel"></div>
     </div>
-    
-    <!-- WG Badge / Switcher -->
-    <button id="wgHeaderBtn" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs text-slate-300 border border-slate-700 px-2.5 py-1.5 rounded-lg transition">
-      <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
-      <span id="headerWgName" class="font-medium">WG Limmat</span>
-    </button>
+    <button class="ghost" id="newWeekBtn" type="button">🎲 Neue Woche</button>
   </header>
 
-  <!-- Main Scrollable Screen -->
-  <main class="flex-1 overflow-y-auto hide-scrollbar pb-24 relative" id="mainContainer">
+  <main>
+    <!-- 1. Plan -->
+    <section class="tab" id="tab-plan">
+      <p class="label">Wochenplan <small>Menü antippen zum Wechseln</small></p>
+      <div class="card days" id="days"></div>
+      <button class="basket-line" id="basketLine" type="button"></button>
+      <p class="hint" id="seasonHint"></p>
+    </section>
 
-    <!-- TAB 1: WOCHENPLAN & SWIPE-GUIDE -->
-    <section id="tabPlan" class="p-3.5 space-y-3 max-w-2xl mx-auto">
-      
-      <!-- UX CO-DESIGNER BAR: 3 AUFSTELLUNGEN & 3 DESIGNS ZUM AUSSUCHEN -->
-      <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-2.5 shadow-md space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-            <span>✨ UX Co-Designer:</span>
-            <span class="text-slate-400 font-normal">Wähle deine Aufstellung & Optik</span>
-          </span>
-          <!-- 3 Farb-Designs (Themes) -->
-          <div class="flex items-center gap-1">
-            <button id="themeBtnLight" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 transition" title="Design 1: Helles Schweizer Markt-Design">☀️ Hell</button>
-            <button id="themeBtnDark" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500 text-slate-950 transition" title="Design 2: Dark Culinary Studio">🌙 Dark</button>
-            <button id="themeBtnSwiss" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 transition" title="Design 3: Swiss Minimalist">🇨🇭 Swiss</button>
-          </div>
-        </div>
-
-        <!-- 3 Verschiedene Kachel-Aufstellungen -->
-        <div class="grid grid-cols-3 gap-1.5">
-          <button id="layoutBtnBento" class="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-emerald-500 text-slate-950 shadow flex flex-col items-center justify-center transition">
-            <span>1. Bento-Kacheln</span>
-            <span class="text-[9px] opacity-80 font-normal">2-Spalten Wand</span>
-          </button>
-          <button id="layoutBtnLego" class="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white flex flex-col items-center justify-center transition">
-            <span>2. Lego 3-Teile</span>
-            <span class="text-[9px] opacity-80 font-normal">Baukasten-Kacheln</span>
-          </button>
-          <button id="layoutBtnMatrix" class="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white flex flex-col items-center justify-center transition">
-            <span>3. Split-Matrix</span>
-            <span class="text-[9px] opacity-80 font-normal">Plan + Live-Korb</span>
-          </button>
-        </div>
+    <!-- 2. Einkauf -->
+    <section class="tab" id="tab-shop" hidden>
+      <p class="label">Einkaufsliste <small id="shopSummary"></small></p>
+      <div class="card seg" role="group" aria-label="Filter">
+        <button type="button" data-filter="toBuy" aria-pressed="true">Kaufen <span id="cntToBuy">0</span></button>
+        <button type="button" data-filter="onBring" aria-pressed="false">Auf Bring! <span id="cntOnBring">0</span></button>
+        <button type="button" data-filter="staples" aria-pressed="false">Vorrat <span id="cntStaples">0</span></button>
       </div>
-
-      <!-- Smart Freezer / Altes Hackfleisch Alert Banner -->
-      <div id="freezerAlertBanner" class="hidden bg-gradient-to-r from-amber-950/70 via-slate-900 to-amber-950/70 border border-amber-500/40 rounded-2xl p-3 flex items-start space-x-2.5 shadow-lg">
-        <div class="text-xl flex-shrink-0">🧊</div>
-        <div class="flex-1 text-xs">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-amber-300" id="freezerAlertTitle">Altes Hackfleisch im Tiefkühler!</span>
-            <span class="text-[10px] text-slate-400" id="freezerAlertAge">vor 25 Tagen</span>
-          </div>
-          <p class="text-slate-300 text-[11px] mt-0.5" id="freezerAlertMsg">Verbrauchen, bevor es Gefrierbrand bekommt.</p>
-          <button id="applyFreezerRecipeBtn" class="mt-2 text-[11px] font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 px-2.5 py-1 rounded-lg flex items-center space-x-1 transition">
-            <i data-lucide="utensils" class="w-3 h-3"></i>
-            <span id="freezerBtnLabel">Diese Woche für Ghackets mit Hörnli nutzen</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Top Action Toolbar (Sauber, ohne Duplikate!) -->
-      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-sm gap-1.5 flex-wrap">
-        <div class="flex items-center space-x-1">
-          <button id="viewGridBtn" class="py-1.5 px-2.5 text-xs font-bold rounded-xl bg-emerald-500 text-slate-950 shadow-md flex items-center space-x-1 transition">
-            <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
-            <span>Wochen-Ansicht</span>
-          </button>
-          <button id="viewSingleBtn" class="py-1.5 px-2.5 text-xs font-bold rounded-xl text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition">
-            <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
-            <span>Rezept-Karte</span>
-          </button>
-        </div>
-        <div class="flex items-center space-x-1.5">
-          <button id="openAllMenusBtn" class="text-xs text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 px-2.5 py-1.5 rounded-xl font-bold flex items-center space-x-1 transition" title="Alle Menüs durchsuchen & Tagen zuweisen">
-            <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
-            <span>Menüs</span>
-          </button>
-          <button id="openAddRecipeLinkBtn" class="text-xs text-cyan-300 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 px-2.5 py-1.5 rounded-xl font-bold flex items-center space-x-1 transition" title="Rezept via Link aus dem Browser hinzufügen">
-            <i data-lucide="link" class="w-3.5 h-3.5"></i>
-            <span>+ Link</span>
-          </button>
-          <button id="regenWholeWeekBtnTop" class="text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 p-1.5 rounded-xl transition" title="Ganze Woche neu würfeln">
-            <i data-lucide="dices" class="w-4 h-4 text-amber-400"></i>
-          </button>
-          <button id="quickSyncBringBtn" class="text-xs text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-xl font-extrabold flex items-center space-x-1 transition shadow-md active:scale-95" title="Jetzt in Bring! übertragen (100% Serverless)">
-            <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
-            <span>Bring! Sync</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Reste-Puffer Info Banner (+2 Portionen für Zmittag) -->
-      <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-800/40 rounded-2xl p-2.5 flex items-center justify-between text-xs">
-        <div class="flex items-center space-x-2">
-          <span class="text-base">🍲</span>
-          <div>
-            <span class="font-bold text-white">Standard: +2 Portionen für Zmittag-Reste</span>
-            <p class="text-[10px] text-slate-400">Automatisch +2 Portionen einkalkuliert, damit am nächsten Tag Reste da sind.</p>
-          </div>
-        </div>
-        <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg flex-shrink-0">Aktiv ✓</span>
-      </div>
-
-      <!-- VIEW 1: DIE 7-TAGE KACHEL-ÜBERSICHT (Standardansicht) -->
-      <div id="weekGridSection" class="space-y-3">
-        <div id="weekCardsContainer" class="space-y-3">
-          <!-- Dynamisch generierte 7 Wochentagskacheln mit Menü, Personen & Reste-Verteilung -->
-        </div>
-      </div>
-
-      <!-- VIEW 2: SWIPE / SINGLE-DAY DETAIL VIEW -->
-      <div id="singleCardSection" class="hidden space-y-3.5">
-        <!-- Tag-Navigation (Mo-So Bar) -->
-        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-sm">
-          <div id="daySelector" class="flex w-full space-x-1 overflow-x-auto hide-scrollbar">
-            <!-- Dynamisch: Mo, Di, Mi, Do, Fr, Sa, So -->
-          </div>
-        </div>
-
-        <!-- Swipe / Active Day Card -->
-        <div id="dayCardWrapper" class="relative min-h-[420px]">
-          <div id="activeCard" class="bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl relative card-swipe-animation">
-            
-            <div class="flex items-start justify-between">
-              <span id="cardDayBadge" class="text-xs uppercase font-extrabold tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Montag
-              </span>
-              <div class="flex items-center space-x-2">
-                <span id="cardDietBadge" class="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
-                  Vegi
-                </span>
-                <span id="cardCostBadge" class="text-[11px] font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                  CHF 2.80 / P.
-                </span>
-              </div>
-            </div>
-
-            <div class="flex items-start justify-between mt-3 gap-2">
-              <h2 id="cardTitle" class="text-xl font-bold text-white leading-snug">
-                Klassische Älplermagronen mit Apfelmus
-              </h2>
-              <a id="cardSourceLink" href="#" target="_blank" rel="noopener" class="hidden text-xs text-cyan-400 hover:text-cyan-300 flex items-center space-x-1 bg-cyan-950/40 border border-cyan-800/40 px-2 py-1 rounded-lg flex-shrink-0" title="Rezept im Browser öffnen">
-                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                <span>Browser</span>
-              </a>
-            </div>
-
-            <div class="flex items-center space-x-3 text-xs text-slate-400 mt-2">
-              <span class="flex items-center space-x-1">
-                <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
-                <span id="cardPrepTime">25 Min.</span>
-              </span>
-              <span class="flex items-center space-x-1">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
-                <span id="cardSeasonFokus">Schweizer Kartoffeln & Zwiebeln</span>
-              </span>
-            </div>
-
-            <!-- Wer isst mit heute? (Tages-Esser & Diät-Anpassung) -->
-            <div class="mt-3.5 p-3 rounded-2xl bg-slate-800/70 border border-slate-700/70 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
-                  <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
-                  <span>Wer isst heute mit?</span>
-                </span>
-                <span id="dayEaterSummary" class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-mono">
-                  3 Personen • VEGI
-                </span>
-              </div>
-              <!-- Mitbewohner Check-Chips für diesen Tag -->
-              <div id="dayEatersList" class="flex flex-wrap gap-1.5 pt-0.5">
-                <!-- Dynamisch: [x] Jonas (Vegi) [x] Anna (Vegan) [ ] Lukas (Fleisch) -->
-              </div>
-            </div>
-
-            <!-- Koch-Zuweisung WG -->
-            <div class="mt-2.5 p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                  👨‍🍳
-                </div>
-                <span class="text-xs text-slate-300" id="cardCookName">Koch: Offen / WG</span>
-              </div>
-              <button id="assignCookBtn" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 active:scale-95 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
-                Zuweisen
-              </button>
-            </div>
-
-            <!-- Zutaten-Auszug -->
-            <div class="mt-4">
-              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Hauptzutaten</h4>
-              <ul id="cardIngredients" class="space-y-1.5 text-xs text-slate-200">
-                <!-- Dynamisch -->
-              </ul>
-            </div>
-
-            <!-- Gesundheitstipp -->
-            <div class="mt-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-900/60 text-[11px] text-emerald-300 flex items-start space-x-2">
-              <i data-lucide="heart-pulse" class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"></i>
-              <span id="cardHealthTip">Ausgewogen mit Schweizer Lagerkartoffeln und ungesüsstem Apfelmus.</span>
-            </div>
-
-            <!-- Swipe Action Buttons -->
-            <div class="mt-5 grid grid-cols-2 gap-3">
-              <button id="shuffleDayBtn" class="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-slate-800 hover:bg-slate-750 active:scale-95 border border-slate-700 text-slate-300 font-semibold text-xs transition">
-                <i data-lucide="refresh-cw" class="w-4 h-4 text-amber-400"></i>
-                <span>Anderes Rezept</span>
-              </button>
-              <button id="keepDayBtn" class="flex items-center justify-center space-x-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold text-xs shadow-lg shadow-emerald-900/30 transition">
-                <i data-lucide="check" class="w-4 h-4"></i>
-                <span>Gericht behalten</span>
-              </button>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Quick Action Toolbar -->
-        <div class="grid grid-cols-3 gap-2 pt-1">
-          <button id="regenWholeWeekBtn" class="text-[11px] text-slate-300 hover:text-white flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-slate-900 border border-slate-800">
-            <i data-lucide="dices" class="w-3.5 h-3.5 text-amber-400"></i>
-            <span>Neu würfeln</span>
-          </button>
-          <button id="openImportModalBtn" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-cyan-950/30 border border-cyan-800/40">
-            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-            <span>Foto-Rezept</span>
-          </button>
-          <button id="downloadIcsBtn" class="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center justify-center space-x-1.5 py-2 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-            <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-            <span>In Kalender</span>
-          </button>
-        </div>
+      <div class="card" id="shopList"></div>
+      <div class="row">
+        <button class="btn" id="openStaplesBtn" type="button">Grundvorrat verwalten</button>
+        <button class="btn" id="copyListBtn" type="button">Liste kopieren</button>
       </div>
     </section>
 
-    <!-- TAB 2: EINKAUFSLISTE & BRING! SYNC -->
-    <section id="tabShopping" class="p-4 space-y-4 max-w-lg mx-auto hidden">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-white">Einkaufsliste</h2>
-          <p class="text-xs text-slate-400" id="shoppingSummary">7 Tage Menüplan, Mengen zusammengefasst</p>
-        </div>
-        <!-- Personenanzahl Regler -->
-        <div class="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5">
-          <span class="text-xs text-slate-400">Portionen:</span>
-          <button id="decreasePersonsBtn" class="w-6 h-6 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold text-xs">-</button>
-          <span id="personsCount" class="text-xs font-bold text-white">2</span>
-          <button id="increasePersonsBtn" class="w-6 h-6 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold text-xs">+</button>
-        </div>
+    <!-- 3. Saison -->
+    <section class="tab" id="tab-season" hidden>
+      <p class="label">Schweizer Saison <small>VSGP · Swisspatat</small></p>
+      <select id="monthSelect" aria-label="Monat"></select>
+      <div class="card news">
+        <b id="newsHeadline"></b>
+        <p id="newsTip"></p>
       </div>
-
-      <!-- Bring! Direct Sync Box -->
-      <div class="bg-gradient-to-r from-red-950/40 to-slate-900 border border-red-900/40 rounded-2xl p-4 flex flex-col space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2.5">
-            <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black text-white text-xs shadow-md">
-              b!
-            </div>
-            <div>
-              <div class="flex items-center space-x-1.5">
-                <span class="text-xs font-bold text-white">Bring! Einkaufsliste</span>
-                <span id="bringStatusBadge" class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold cursor-pointer">Nicht verbunden</span>
-              </div>
-              <p class="text-[11px] text-slate-400" id="bringListName">Klicke auf das Zahnrad zum Verbinden</p>
-            </div>
-          </div>
-          <button id="bringSettingsBtn" class="text-xs bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 p-2 rounded-xl flex items-center space-x-1 transition" title="Bring! Account verbinden & Liste wählen">
-            <i data-lucide="settings" class="w-3.5 h-3.5 text-red-400"></i>
-            <span class="text-[11px] font-semibold">Verbinden</span>
-          </button>
-        </div>
-        
-        <div class="grid grid-cols-2 gap-2">
-          <button id="syncToBringBtn" class="py-2.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs shadow-lg shadow-red-950/50 flex items-center justify-center space-x-1.5 transition">
-            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
-            <span id="syncBtnText">Nach Bring! (API-Sync)</span>
-          </button>
-          <button id="copyListBtn" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 active:scale-95 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center justify-center space-x-1.5 transition">
-            <i data-lucide="copy" class="w-4 h-4 text-emerald-400"></i>
-            <span>Als Text kopieren</span>
-          </button>
-        </div>
-        <div class="flex items-center justify-between p-2 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px]">
-          <div class="flex items-center space-x-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-slate-300 font-medium" id="bringApiStatusInfo">Bring! API: Persönlicher Sync bereit</span>
-          </div>
-          <button id="bringReconnectBtn" class="text-[10px] text-red-400 hover:text-red-300 font-semibold underline">
-            Login / Liste ändern
-          </button>
-        </div>
-      </div>
-
-      <!-- Grundvorrat Zuhause Filter (Salz, Pfeffer, Öl, Mehl, Bouillon) -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" id="excludeStaplesToggle" checked class="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-emerald-500">
-            <span class="text-xs font-bold text-slate-200">Grundzutaten zuhause ausblenden</span>
-          </label>
-          <button id="openStaplesManagerBtn" class="text-[10px] text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg flex items-center space-x-1 font-semibold transition">
-            <i data-lucide="sliders-horizontal" class="w-3 h-3"></i>
-            <span id="staplesCounterBadge">Vorräte anpassen</span>
-          </button>
-        </div>
-        <p class="text-[11px] text-slate-400 leading-tight">
-          Standardmässig vorhanden: Salz, Pfeffer, Aromat, Speiseöl, Essig, Mehl, Bouillon, Senf, Gewürze etc. werden nicht nach Bring! exportiert.
-        </p>
-      </div>
-
-      <!-- Live Filter Tabs für Einkaufsliste -->
-      <div class="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-xl p-1 text-[11px]">
-        <button id="filterTabToBuy" class="flex-1 py-1 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition">
-          🛒 Zu kaufen (<span id="countToBuy">0</span>)
-        </button>
-        <button id="filterTabOnBring" class="flex-1 py-1 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition">
-          ✅ Auf Bring! (<span id="countOnBring">0</span>)
-        </button>
-        <button id="filterTabStaples" class="flex-1 py-1 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition">
-          🧂 Zuhause (<span id="countStaples">0</span>)
-        </button>
-      </div>
-
-      <!-- Aggregierte Zutatenliste nach Kategorien -->
-      <div id="shoppingListContainer" class="space-y-3">
-        <!-- Dynamische Kategorien & Checkboxen -->
-      </div>
+      <p class="label">Frisch vom Feld</p>
+      <div class="season-grid" id="fieldGrid"></div>
+      <p class="label">Schweizer Lagerware</p>
+      <div class="season-grid" id="storageGrid"></div>
     </section>
 
-    <!-- TAB 3: QUITTUNGS-SCANNER & FEHL-CHECK -->
-    <section id="tabReceipt" class="p-4 space-y-4 max-w-lg mx-auto hidden">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-white">Quittung einscannen</h2>
-          <p class="text-xs text-slate-400">Migros, Coop, Aldi, Lidl, Denner abgleichen</p>
-        </div>
-        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">WG-Kasse</span>
-      </div>
-
-      <!-- Kamera & Upload Card -->
-      <div class="border-2 border-dashed border-slate-700/80 rounded-3xl p-6 text-center bg-slate-900/60 hover:border-emerald-500/50 transition">
-        <input type="file" id="receiptFileInput" accept="image/*" capture="environment" class="hidden">
-        <div class="flex flex-col items-center justify-center space-y-3">
-          <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <i data-lucide="camera" class="w-7 h-7"></i>
-          </div>
-          <div>
-            <p class="text-sm font-semibold text-white">Kassenbon fotografieren</p>
-            <p class="text-xs text-slate-400 mt-0.5">Automatischer Abgleich mit der Einkaufsliste</p>
-          </div>
-          <div class="flex items-center space-x-2 pt-1">
-            <button id="triggerCameraBtn" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold text-xs shadow-md shadow-emerald-950/40">
-              Foto aufnehmen
-            </button>
-            <button id="loadMockReceiptBtn" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-semibold text-xs border border-slate-700">
-              Musterbon laden
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Diff / Ergebnis Card -->
-      <div id="receiptResultCard" class="space-y-3 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
-          <div>
-            <span class="text-xs text-slate-400">Total auf Quittung</span>
-            <p class="text-lg font-extrabold text-white" id="receiptTotalSpent">CHF 0.00</p>
-          </div>
-          <div class="flex space-x-3 text-xs">
-            <div class="text-right">
-              <span class="text-emerald-400 font-bold" id="receiptFoundCount">0</span>
-              <p class="text-slate-400 text-[10px]">Gekauft</p>
-            </div>
-            <div class="text-right">
-              <span class="text-red-400 font-bold" id="receiptMissingCount">0</span>
-              <p class="text-slate-400 text-[10px]">Fehlt noch</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Was fehlt noch? -->
-        <div class="bg-red-950/20 border border-red-900/30 rounded-2xl p-3.5 space-y-2">
-          <h4 class="text-xs font-bold text-red-300 flex items-center space-x-1.5">
-            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
-            <span>Fehlt noch im Einkaufswagen</span>
-          </h4>
-          <ul id="receiptMissingList" class="space-y-1 text-xs text-slate-300">
-            <!-- Dynamisch -->
-          </ul>
-        </div>
-
-        <!-- Was wurde erfolgreich gekauft? -->
-        <div class="bg-emerald-950/20 border border-emerald-900/30 rounded-2xl p-3.5 space-y-2">
-          <h4 class="text-xs font-bold text-emerald-300 flex items-center space-x-1.5">
-            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
-            <span>Bereits gekauft & abgehakt</span>
-          </h4>
-          <ul id="receiptFoundList" class="space-y-1 text-xs text-slate-300">
-            <!-- Dynamisch -->
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 4: SAISONKALENDER CH & REGIONALE MÄRKTE (gemuese.ch & Hofläden) -->
-    <section id="tabSeason" class="p-4 space-y-4 max-w-lg mx-auto hidden">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-white">Saison & Regionale Märkte</h2>
-          <p class="text-xs text-slate-400">Direkt vom Schweizer Gemüsebauern</p>
-        </div>
-        <div class="flex items-center space-x-1.5">
-          <!-- Monats-Sync Button -->
-          <button id="syncSeasonMonthBtn" class="text-[11px] text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl font-bold flex items-center space-x-1 transition active:scale-95" title="Auf aktuellen Kalendermonat synchronisieren">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-emerald-400"></i>
-            <span>Monat-Sync</span>
-          </button>
-          <!-- Monats-Filter Dropdown -->
-          <select id="seasonMonthSelect" class="bg-slate-900 border border-slate-800 text-xs text-emerald-400 font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-500">
-            <option value="1">Januar</option>
-            <option value="2">Februar</option>
-            <option value="3">März</option>
-            <option value="4">April</option>
-            <option value="5">Mai</option>
-            <option value="6">Juni</option>
-            <option value="7">Juli</option>
-            <option value="8">August</option>
-            <option value="9">September</option>
-            <option value="10">Oktober</option>
-            <option value="11" selected>November</option>
-            <option value="12">Dezember</option>
+    <!-- 4. WG -->
+    <section class="tab" id="tab-wg" hidden>
+      <p class="label">Mitbewohner</p>
+      <div class="card">
+        <div id="members"></div>
+        <form class="add-member" id="addMemberForm">
+          <input type="text" id="newMemberName" placeholder="Name" aria-label="Name" required>
+          <select id="newMemberDiet" aria-label="Ernährung">
+            <option value="fleisch">Fleisch</option>
+            <option value="vegi">Vegi</option>
+            <option value="vegan">Vegan</option>
           </select>
-        </div>
+          <button class="btn dark" type="submit">+</button>
+        </form>
       </div>
 
-      <!-- Automatischer Monats-Sync Banner -->
-      <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-800/40 rounded-2xl p-2.5 flex items-center justify-between text-xs">
-        <div class="flex items-center space-x-2">
-          <span class="text-base">🔄</span>
-          <div>
-            <div class="flex items-center space-x-1.5">
-              <span class="font-bold text-white">Monatlicher Auto-Sync aktiv</span>
-              <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold" id="seasonCurrentMonthBadge">November</span>
-            </div>
-            <p class="text-[10px] text-slate-400">Jeden Monat werden automatisch die aktuellen VSGP-Gemüsesorten & Ernte-News synchronisiert.</p>
-          </div>
-        </div>
-        <span class="text-[9px] text-slate-400 font-mono" id="seasonLastSyncTime">Auto-Sync ✓</span>
-      </div>
+      <p class="label">Wer isst wann? <small>+ Gäste pro Tag</small></p>
+      <div class="card table-wrap"><table id="attendance"></table></div>
 
-      <!-- Unterreiter: Saisontabelle vs. Regionale Märkte (Wetzikon, Rapperswil) -->
-      <div class="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-xl p-1 text-[11px]">
-        <button id="seasonSubTabVegetables" class="flex-1 py-1.5 px-2 rounded-lg bg-emerald-500 text-slate-950 font-bold transition shadow-sm">
-          🌱 Saisongemüse
-        </button>
-        <button id="seasonSubTabMarkets" class="flex-1 py-1.5 px-2 rounded-lg text-slate-400 hover:text-white font-medium transition">
-          📍 Märkte & Hofläden
-        </button>
-      </div>
-
-      <!-- BEREICH 1: Saisongemüse & Bauern-News -->
-      <div id="seasonVegetablesView" class="space-y-3.5">
-        <!-- Bauern-News Box -->
-        <div id="seasonNewsCard" class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-800/40 rounded-2xl p-4 space-y-2">
-          <div class="flex items-center space-x-2">
-            <span class="text-base">📢</span>
-            <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Aktuell von den Schweizer Gemüsebauern</span>
-          </div>
-          <h3 id="seasonNewsHeadline" class="text-sm font-bold text-white leading-snug">
-            Herbst-Endspurt: Lauch, Wirz und frischer Nüsslisalat
-          </h3>
-          <p id="seasonNewsTip" class="text-xs text-slate-300 leading-relaxed">
-            Die Schweizer Gemüsebauern lagern die Ernte in kontrollierten Kühlhäusern ein. Schweizer Lauch und Federkohl trotzen den ersten Frösten.
-          </p>
-          <div class="pt-1 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/60">
-            <span>Highlight: <b id="seasonNewsHighlight" class="text-emerald-300">Lauch & Wirz</b></span>
-            <span class="text-[10px] text-slate-500">Quelle: gemuese.ch</span>
-          </div>
-        </div>
-
-        <!-- Saisongemüse Liste -->
-        <div id="seasonalItemsGrid" class="grid grid-cols-2 gap-2.5">
-          <!-- Dynamisch -->
-        </div>
-      </div>
-
-      <!-- BEREICH 2: Regionale Märkte & Hofläden (Wetzikon, Rapperswil etc.) -->
-      <div id="seasonMarketsView" class="space-y-3.5 hidden">
-        <div class="bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border border-amber-900/30 rounded-2xl p-3.5 text-xs text-slate-300 space-y-1">
-          <div class="font-bold text-amber-300 flex items-center space-x-1.5">
-            <i data-lucide="map-pin" class="w-4 h-4"></i>
-            <span>Märkte & Hofläden in deiner Region</span>
-          </div>
-          <p class="text-[11px] text-slate-400">
-            Kaufe frisches Schweizer Gemüse direkt beim Bauern in Wetzikon, Rapperswil-Jona und im Zürcher Oberland / Linthgebiet.
-          </p>
-        </div>
-
-        <!-- Filter-Pills nach Region -->
-        <div class="flex items-center space-x-1.5 overflow-x-auto hide-scrollbar text-[11px]" id="marketRegionPills">
-          <!-- Dynamisch: Alle, Wetzikon, Rapperswil, Uster -->
-        </div>
-
-        <!-- Märkte-Liste -->
-        <div id="regionalMarketsList" class="space-y-3">
-          <!-- Dynamische Marktkarten -->
-        </div>
-      </div>
+      <p class="label">Plan teilen</p>
+      <p class="hint">Schickt den aktuellen Wochenplan als Link (z.B. per WhatsApp). Wer den Link öffnet, bekommt den Plan aufs eigene Handy.</p>
+      <button class="btn" id="sharePlanBtn" type="button">🔗 Plan-Link teilen</button>
     </section>
-
-    <!-- TAB 5: VORRAT & TIEFKÜHLER («Altes Hackfleisch») -->
-    <section id="tabPantry" class="p-4 space-y-4 max-w-lg mx-auto hidden">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-white">Tiefkühler & Vorrat</h2>
-          <p class="text-xs text-slate-400">Verhindert Food Waste & erinnert an Vorräte</p>
-        </div>
-        <button id="addPantryItemBtn" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-xl flex items-center space-x-1">
-          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-          <span>Einfrieren</span>
-        </button>
-      </div>
-
-      <!-- Tiefkühl-Liste -->
-      <div id="pantryItemsList" class="space-y-2.5">
-        <!-- Dynamisch -->
-      </div>
-    </section>
-
-    <!-- TAB 6: WG & EINSTELLUNGEN -->
-    <section id="tabSettings" class="p-4 space-y-4 max-w-lg mx-auto hidden">
-      <div>
-        <h2 class="text-lg font-bold text-white">WG & Ernährungsfilter</h2>
-        <p class="text-xs text-slate-400">Passe BringFrisch an deine WG an</p>
-      </div>
-
-      <!-- WG Gruppe teilen -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">WG-Gruppe teilen</h3>
-        <div class="flex items-center space-x-2">
-          <input type="text" id="wgIdInput" value="wg-limmat-4" class="bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 flex-1 focus:outline-none focus:border-emerald-500">
-          <button id="wgSaveBtn" class="bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white px-3 py-2 rounded-xl transition">
-            Beitreten
-          </button>
-        </div>
-        <p class="text-[11px] text-slate-400">Alle Mitbewohner mit diesem WG-Code sehen denselben Wochenplan und können Gerichte mitentscheiden.</p>
-      </div>
-
-      <!-- WG Wochen-Anwesenheit & Diäten Matrix -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
-            <i data-lucide="calendar-range" class="w-3.5 h-3.5 text-emerald-400"></i>
-            <span>Wochen-Anwesenheit & Diät-Matrix</span>
-          </h3>
-          <span class="text-[10px] text-emerald-400 font-mono font-semibold">Mo–So</span>
-        </div>
-        <p class="text-[11px] text-slate-400 leading-tight">
-          Hake an, wer an welchen Tagen mitisst. Die App passt die Portionen und die Diät jedes Tages automatisch an!
-        </p>
-
-        <!-- Interaktive Matrix Tabelle -->
-        <div class="overflow-x-auto hide-scrollbar border border-slate-800 rounded-xl bg-slate-950/60 p-1.5">
-          <table class="w-full text-center text-xs" id="attendanceMatrixTable">
-            <!-- Dynamisch generierte Zeilen für alle Mitbewohner x Mo..So -->
-          </table>
-        </div>
-      </div>
-
-      <!-- Dezentraler P2P / Mesh Sync ohne Localhost -->
-      <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-800/40 rounded-2xl p-4 space-y-2.5">
-        <div class="flex items-center space-x-2">
-          <span class="text-base">🔗</span>
-          <div>
-            <h3 class="text-xs font-bold text-white">Dezentraler P2P-Sync (Ohne Localhost!)</h3>
-            <p class="text-[11px] text-slate-400">Teile den Wochenplan direkt per Link oder QR-Code</p>
-          </div>
-        </div>
-        <p class="text-[11px] text-slate-300 leading-relaxed">
-          Du musst zuhause keinen PC oder Server laufen lassen: Sende den synchronisierten WG-Plan einfach per WhatsApp/Signal-Link an deine Mitbewohner. Beim Öffnen wird der Plan sofort auf deren Handys gespeichert!
-        </p>
-        <button id="shareP2pPlanBtn" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-1.5">
-          <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
-          <span>WG-Plan per Link / WhatsApp teilen</span>
-        </button>
-      </div>
-
-      <!-- WG-Mitbewohner & persönliche Diäten -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
-            <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
-            <span>Mitbewohner & persönliche Diät</span>
-          </h3>
-          <button id="addMemberBtn" class="text-[10px] text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg font-semibold transition">
-            + Mitbewohner
-          </button>
-        </div>
-        <p class="text-[11px] text-slate-400">
-          Wähle für jeden Wochentag aus, wer mitisst. Das Menü passt sich automatisch an die Diät aller anwesenden Esser an!
-        </p>
-        <div id="membersListContainer" class="space-y-2">
-          <!-- Dynamische Liste der WG-Mitglieder -->
-        </div>
-      </div>
-
-      <!-- Ernährungsform -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Ernährungsstil</h3>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <button class="diet-btn py-2 px-3 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-semibold" data-diet="vegi">
-            🥗 Vegetarisch
-          </button>
-          <button class="diet-btn py-2 px-3 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold" data-diet="vegan">
-            🌱 Vegan
-          </button>
-          <button class="diet-btn py-2 px-3 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold" data-diet="fleisch">
-            🥩 Mit Fleisch
-          </button>
-          <button class="diet-btn py-2 px-3 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold" data-diet="schweizerisch">
-            🇨🇭 Klassiker
-          </button>
-        </div>
-      </div>
-
-      <!-- Standalone Info -->
-      <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1 text-xs text-slate-300">
-        <div class="flex items-center space-x-1.5 font-bold text-emerald-400">
-          <i data-lucide="smartphone" class="w-4 h-4"></i>
-          <span>100% Autonom auf dem Smartphone</span>
-        </div>
-        <p class="text-[11px] text-slate-400 leading-relaxed">
-          Diese App benötigt keinen eigenen Server zu Hause. Alle Rezepte, Schweizer Saisondaten und Vorräte werden lokal in deinem Handy-Browser gespeichert.
-        </p>
-      </div>
-    </section>
-
   </main>
 
-  <!-- MODAL: ALLE MENÜS & REZEPTE (KATALOG ZUM ANKLICKEN & WOCHENTAG-ZUWEISEN) -->
-  <div id="allMenusModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 max-w-md w-full max-h-[90vh] flex flex-col space-y-3 shadow-2xl">
-      <div class="flex items-center justify-between flex-none">
-        <div class="flex items-center space-x-2">
-          <span class="text-xl">📖</span>
-          <div>
-            <h3 class="text-sm font-bold text-white">Alle Menüs & Rezepte</h3>
-            <p class="text-[11px] text-slate-400" id="allMenusSubtitle">Klicke auf [Mo–So], um das Menü dem Tag zuzuweisen</p>
-          </div>
-        </div>
-        <button id="closeAllMenusModalBtn" class="text-slate-400 hover:text-white p-1">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
-
-      <!-- Suche & Filter -->
-      <div class="space-y-2 flex-none">
-        <div class="relative">
-          <input type="text" id="menuCatalogSearch" placeholder="Menü oder Zutat suchen (z.B. Lauch, Rösti, Risotto)..." class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:border-emerald-500">
-          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5"></i>
-        </div>
-        <div class="flex space-x-1 overflow-x-auto hide-scrollbar text-[10px]" id="menuCatalogFilters">
-          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-950 font-bold" data-filter="all">Alle</button>
-          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold" data-filter="vegi">Vegi</button>
-          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold" data-filter="vegan">Vegan</button>
-          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold" data-filter="schweizerisch">Schweizerisch</button>
-          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold" data-filter="fleisch">Mit Fleisch</button>
-          <button class="catalog-filter-btn px-2.5 py-1 rounded-lg bg-slate-800 text-cyan-300 font-semibold" data-filter="links">🌐 Mit Web-Link</button>
-        </div>
-      </div>
-
-      <!-- Rezept-Liste -->
-      <div class="flex-1 overflow-y-auto hide-scrollbar space-y-2.5 pr-0.5" id="menuCatalogList">
-        <!-- Dynamische Kacheln aller Rezepte mit [Mo..So] Zuweisungs-Buttons -->
-      </div>
-    </div>
+  <div class="dock">
+    <button class="cta" id="syncBtn" type="button">🛒 Bring! füllen <small id="ctaCount"></small></button>
+    <nav aria-label="Hauptnavigation">
+      <button type="button" data-tab="plan" aria-current="page">Plan</button>
+      <button type="button" data-tab="shop">Einkauf</button>
+      <button type="button" data-tab="season">Saison</button>
+      <button type="button" data-tab="wg">WG</button>
+    </nav>
   </div>
 
-  <!-- MODAL: MENÜ VIA LINK AUS DEM BROWSER HINZUFÜGEN -->
-  <div id="addRecipeLinkModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 max-w-sm w-full space-y-3 shadow-2xl">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-          <div class="w-8 h-8 rounded-xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center font-bold">
-            🌐
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-white">Menü via Link hinzufügen</h3>
-            <p class="text-[11px] text-slate-400">Betty Bossi, Swissmilk, Fooby & Web</p>
-          </div>
-        </div>
-        <button id="closeAddRecipeLinkModalBtn" class="text-slate-400 hover:text-white p-1">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
+  <!-- Menü-Katalog -->
+  <dialog id="catalogDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>Menü wählen</h2><p id="catalogSubtitle"></p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
-
-      <div class="space-y-2 text-xs">
-        <div>
-          <label class="text-[10px] font-bold text-slate-300 block mb-1">Web-Link / URL aus dem Browser</label>
-          <div class="flex items-center space-x-1.5">
-            <input type="url" id="newRecipeUrlInput" placeholder="https://www.bettybossi.ch/..." class="flex-1 bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-500">
-            <button id="analyzeUrlBtn" class="bg-slate-700 hover:bg-slate-600 text-cyan-300 text-[11px] font-bold px-2 py-1.5 rounded-xl transition flex-shrink-0">
-              Analysieren
-            </button>
-          </div>
+      <div class="sheet-body">
+        <div class="row">
+          <button class="btn" type="button" id="randomPickBtn">🎲 Zufällig</button>
+          <button class="btn" type="button" id="newRecipeBtn">+ Eigenes Rezept</button>
         </div>
-
-        <div>
-          <label class="text-[10px] font-bold text-slate-300 block mb-1">Menüname</label>
-          <input type="text" id="newRecipeTitleInput" placeholder="z.B. Knusprige Lauchwähe mit Bergkäse" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none">
+        <input type="text" id="catalogSearch" placeholder="Suchen (Titel oder Zutat)" aria-label="Rezepte suchen">
+        <div class="filters" id="catalogFilters">
+          <button type="button" data-filter="all" aria-pressed="true">Alle</button>
+          <button type="button" data-filter="vegi" aria-pressed="false">Vegi</button>
+          <button type="button" data-filter="fleisch" aria-pressed="false">Fleisch</button>
+          <button type="button" data-filter="season" aria-pressed="false">Saison</button>
+          <button type="button" data-filter="custom" aria-pressed="false">Eigene</button>
         </div>
+        <div id="catalogList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </dialog>
 
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-[10px] font-bold text-slate-300 block mb-1">Ernährungsform</label>
-            <select id="newRecipeDietSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2 py-1.5 focus:outline-none">
-              <option value="vegi">Vegetarisch</option>
+  <!-- Eigenes Rezept -->
+  <dialog id="recipeDialog">
+    <form class="sheet" id="recipeForm">
+      <div class="sheet-head">
+        <div><h2>Eigenes Rezept</h2><p>Von Hand oder mit Link (Betty Bossi, Swissmilk, Fooby, Migusto …)</p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body">
+        <label class="field">Link <small>optional, Titel wird erkannt</small>
+          <input type="url" id="recipeUrl" placeholder="https://www.bettybossi.ch/…">
+        </label>
+        <label class="field">Titel
+          <input type="text" id="recipeTitle" placeholder="z.B. Mamas Lauchgratin" required>
+        </label>
+        <div class="row">
+          <label class="field">Ernährung
+            <select id="recipeDiet">
+              <option value="vegi">Vegi</option>
+              <option value="fleisch">Fleisch</option>
               <option value="vegan">Vegan</option>
-              <option value="schweizerisch">Schweizerisch</option>
-              <option value="fleisch">Mit Fleisch</option>
             </select>
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-slate-300 block mb-1">Direkt zuweisen</label>
-            <select id="newRecipeDaySelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2 py-1.5 focus:outline-none">
-              <option value="-1">Nur in Menü-Katalog</option>
-              <option value="0">Montag</option>
-              <option value="1">Dienstag</option>
-              <option value="2">Mittwoch</option>
-              <option value="3">Donnerstag</option>
-              <option value="4">Freitag</option>
-              <option value="5">Samstag</option>
-              <option value="6">Sonntag</option>
-            </select>
-          </div>
+          </label>
+          <label class="field">Portionen
+            <input type="number" id="recipeServings" min="1" max="20" value="4">
+          </label>
         </div>
+        <label class="field">Zutaten <small>eine pro Zeile: Menge Einheit Name</small>
+          <textarea id="recipeIngredients" placeholder="500 g Lauch&#10;2 Stk Zwiebeln&#10;2 dl Halbrahm&#10;150 g Reibkäse"></textarea>
+        </label>
+        <label class="field">Zubereitung <small>optional</small>
+          <textarea id="recipeInstructions" style="min-height:70px;font-family:var(--font)"></textarea>
+        </label>
+        <button class="btn dark" type="submit">Speichern &amp; einplanen</button>
+      </div>
+    </form>
+  </dialog>
 
-        <div>
-          <label class="text-[10px] font-bold text-slate-300 block mb-1">Zutaten (optional, z.B. für Einkaufsliste)</label>
-          <textarea id="newRecipeIngredientsInput" rows="3" placeholder="500g Schweizer Lauch&#10;200g Bergkäse gerieben&#10;1 Pck Wähenteig" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none font-mono"></textarea>
-        </div>
-
-        <button id="saveNewRecipeLinkBtn" class="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-950/50 transition flex items-center justify-center space-x-1.5">
-          <i data-lucide="check" class="w-3.5 h-3.5"></i>
-          <span>Rezept speichern & zuweisen</span>
-        </button>
+  <!-- Grundvorrat -->
+  <dialog id="staplesDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>Grundvorrat</h2><p>Was zuhause ist, kommt nicht auf die Liste. Antippen = «leer».</p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div id="staplesList" style="display:flex;flex-direction:column;gap:10px"></div>
+        <form class="row" id="addStapleForm">
+          <input type="text" id="newStaple" placeholder="Weitere Grundzutat" aria-label="Weitere Grundzutat" required>
+          <button class="btn dark" type="submit" style="flex:0 0 auto">+</button>
+        </form>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- MODAL: FOTO-REZEPT / URL IMPORT -->
-  <div id="recipeImportModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white flex items-center space-x-1.5">
-          <i data-lucide="camera" class="w-4 h-4 text-cyan-400"></i>
-          <span>Rezept erfassen</span>
-        </h3>
-        <button id="closeImportModalBtn" class="text-slate-400 hover:text-white">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
+  <!-- Bring! Übergabe (Fallback ohne Sync) -->
+  <dialog id="handoffDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>An Bring! übergeben</h2><p id="handoffSubtitle"></p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
-      <p class="text-xs text-slate-400">Aus Kochbuch fotografieren oder von Betty Bossi / Swissmilk einfügen.</p>
-      
-      <div class="space-y-2">
-        <input type="text" id="importRecipeTitle" placeholder="Gerichtsname (z.B. Omas Lauch-Eintopf)" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none">
-        <textarea id="importRecipeIngredients" rows="4" placeholder="Zutaten (z.B.&#10;500g Rüebli&#10;1 Stk Lauch&#10;200g Bergkäse)" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none font-mono"></textarea>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2 pt-1">
-        <button id="captureRecipePhotoBtn" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-semibold text-xs flex items-center justify-center space-x-1">
-          <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-          <span>Foto wählen</span>
-        </button>
-        <button id="saveImportRecipeBtn" class="py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-lg shadow-cyan-950/50">
-          <i data-lucide="check" class="w-3.5 h-3.5"></i>
-          <span>Rezept speichern</span>
-        </button>
+      <div class="sheet-body">
+        <pre class="preview" id="handoffPreview"></pre>
+        <button class="btn primary" type="button" id="shareListBtn">Teilen …</button>
+        <div class="row">
+          <button class="btn" type="button" id="copyOpenBringBtn">Kopieren &amp; Bring! öffnen</button>
+          <button class="btn" type="button" id="copyOnlyBtn">Nur kopieren</button>
+        </div>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- MODAL: GRUNDVORRAT VERWALTEN (Salz, Pfeffer, Öl, Gewürze, Aromat etc.) -->
-  <div id="staplesManagerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
-      <div class="flex items-center justify-between flex-none">
-        <div class="flex items-center space-x-2">
-          <span class="text-xl">🧂</span>
-          <div>
-            <h3 class="text-sm font-bold text-white">Mein Grundvorrat</h3>
-            <p class="text-[11px] text-slate-400">Tippe auf ein Item, wenn es leer ist!</p>
-          </div>
-        </div>
-        <button id="closeStaplesModalBtn" class="text-slate-400 hover:text-white p-1">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto hide-scrollbar space-y-3 pr-1" id="staplesListContainer">
-        <!-- Dynamische Chips nach Kategorien (Gewürze, Öle, Saucen, Backen) -->
-      </div>
-
-      <div class="pt-2 border-t border-slate-800 flex-none space-y-2">
-        <div class="flex items-center space-x-1.5">
-          <input type="text" id="newStapleInput" placeholder="Neue Grundzutat (z.B. Sojasauce)" class="bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-1.5 flex-1 focus:outline-none">
-          <button id="addNewStapleBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition">
-            + Hinzufügen
-          </button>
-        </div>
-        <button id="saveStaplesModalBtn" class="w-full py-2 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition">
-          Fertig
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: SERVERLESS BRING! HUB & LISTEN-SYNC -->
-  <div id="bringSettingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-md w-full space-y-3.5 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-          <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center font-black text-white text-xs shadow-md">
-            b!
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-white">Bring! Serverless Sync-Hub</h3>
-            <p class="text-[11px] text-slate-400">100% ohne eigenen Server – direkt aufs Smartphone</p>
-          </div>
-        </div>
-        <button id="closeBringModalBtn" class="text-slate-400 hover:text-white p-1">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
-
-      <!-- Feedback Banner -->
-      <div id="bringLoginFeedback" class="hidden p-2.5 rounded-xl text-xs flex items-center space-x-1.5">
-        <!-- Dynamische Erfolgs- / Fehlermeldung -->
-      </div>
-
-      <!-- SERVERLESS SOFORT-EXPORT (Funktioniert immer auf iPhone, Android & GitHub Pages!) -->
-      <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-emerald-500/30 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-extrabold text-emerald-400 uppercase tracking-wider">⚡ Serverless Sofort-Übergabe</span>
-          <span id="serverlessItemCountBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">Bereit</span>
-        </div>
-        <p class="text-[11px] text-slate-300 leading-relaxed">
-          Alle Zutaten (Basis + individuelle Proteine für Lukas/Jonas/Anna + Salat, ohne Grundvorrat) sind fertig berechnet:
-        </p>
-        <div id="serverlessPreviewBox" class="max-h-32 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl p-2 text-[11px] font-mono text-slate-300 space-y-0.5">
-          <!-- Wird dynamisch mit den aktuellen Einkaufsartikeln gefüllt -->
-        </div>
-
-        <div class="grid grid-cols-1 gap-2 pt-1">
-          <button id="serverlessNativeShareBtn" class="w-full py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 transition active:scale-95">
-            <span>📲 1-Klick an Bring! / iPhone Teilen-Menü senden</span>
-          </button>
-          <div class="grid grid-cols-2 gap-2">
-            <button id="serverlessOpenBringAppBtn" class="py-2 px-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow flex items-center justify-center gap-1.5 transition active:scale-95">
-              <span>🚀 Kopieren & Bring! App</span>
-            </button>
-            <button id="serverlessCopyOnlyBtn" class="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95">
-              <span>📋 Liste kopieren</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Optionaler Cloud / Local Backend Login (Ausklappbar) -->
-      <details class="text-xs text-slate-400 pt-1 border-t border-slate-800">
-        <summary class="cursor-pointer font-semibold hover:text-white py-1">🔌 Optional: Direkter Bring! API-Server Login (falls Backend aktiv)</summary>
-        <div class="space-y-2.5 pt-2">
-          <div>
-            <label class="text-[11px] font-bold text-slate-300 block mb-1">Bring! E-Mail</label>
-            <input type="email" id="bringEmailInput" placeholder="deine@email.com" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none focus:border-red-500">
-          </div>
-          <div>
-            <label class="text-[11px] font-bold text-slate-300 block mb-1">Passwort</label>
-            <input type="password" id="bringPasswordInput" placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none focus:border-red-500">
-          </div>
-          <button id="bringLoginBtn" class="w-full py-2.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-1.5">
-            <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
-            <span id="bringLoginBtnText">Mit Backend-API verbinden</span>
-          </button>
-
-          <!-- Alternativer Token Login -->
-          <div class="mt-2 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-2">
-            <input type="text" id="bringTokenInput" placeholder="Optional: Bearer Token" class="w-full bg-slate-900 border border-slate-700 text-[10px] text-white rounded-lg px-2.5 py-1.5 font-mono">
-            <button id="bringTokenLoginBtn" class="w-full py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold text-xs rounded-lg transition">
-              Mit Token verbinden
-            </button>
-          </div>
-
-          <!-- Listen-Auswahl Dropdown -->
-          <div id="bringListSelectSection" class="pt-2 border-t border-slate-800 space-y-1.5">
-            <label class="text-[11px] font-bold text-slate-300 block">Ziel-Einkaufsliste in Bring!</label>
-            <select id="bringListSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-emerald-400 font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500">
-              <option value="">(Wird nach Backend-Verbindung geladen)</option>
-            </select>
-          </div>
-        </div>
-      </details>
-    </div>
-  </div>
-
-  <!-- Bottom Navigation Bar (Mobile Tab Bar mit iPhone Home-Bar Safe Area) -->
-  <nav class="flex-none bg-slate-900/95 backdrop-blur border-t border-slate-800 px-2 py-2 z-30 flex items-center justify-around fixed bottom-0 left-0 right-0 max-w-lg mx-auto safe-bottom-nav">
-    <button class="nav-tab active flex flex-col items-center space-y-1 text-emerald-400 transition" data-target="tabPlan">
-      <i data-lucide="calendar" class="w-4 h-4"></i>
-      <span class="text-[9px] font-medium">Menüplan</span>
-    </button>
-    <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabShopping">
-      <i data-lucide="shopping-cart" class="w-4 h-4"></i>
-      <span class="text-[9px] font-medium">Einkauf</span>
-    </button>
-    <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabPantry">
-      <i data-lucide="snowflake" class="w-4 h-4"></i>
-      <span class="text-[9px] font-medium">Tiefkühl</span>
-    </button>
-    <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabReceipt">
-      <i data-lucide="receipt" class="w-4 h-4"></i>
-      <span class="text-[9px] font-medium">Kassenbon</span>
-    </button>
-    <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabSeason">
-      <i data-lucide="sprout" class="w-4 h-4"></i>
-      <span class="text-[9px] font-medium">Saison</span>
-    </button>
-    <button class="nav-tab flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-200 transition" data-target="tabSettings">
-      <i data-lucide="sliders" class="w-4 h-4"></i>
-      <span class="text-[9px] font-medium">WG & Diät</span>
-    </button>
-  </nav>
-
-  <!-- App Scripts (Standalone Data & Modules - Relative Paths for GitHub Pages) -->
   <script src="standalone_data.js"></script>
-  <script src="pantry_tracker.js"></script>
   <script src="recipe_importer.js"></script>
   <script src="app.js"></script>
 </body>

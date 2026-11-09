@@ -2,99 +2,8 @@
 // Läuft 100% autonom direkt im Browser auf jedem Smartphone (iOS / Android)
 
 window.BRINGFRISCH_DATA = {
-  version: "2.2.0",
-  regional_markets: [
-    {
-      region: "Wetzikon & Pfäffikersee",
-      icon: "🥬",
-      markets: [
-        {
-          name: "Wochenmarkt Wetzikon",
-          type: "Wochenmarkt",
-          location: "Marktplatz / Kronenwiese, 8620 Wetzikon",
-          schedule: "Jeden Samstag 08:00 – 12:00 Uhr",
-          highlights: "Frisches Gemüse von Zürcher Oberländer Bauern, Käse & Setzlinge",
-          maps_url: "https://www.google.com/maps/search/?api=1&query=Marktplatz+Kronenwiese+Wetzikon",
-          website: "https://www.wetzikon.ch"
-        },
-        {
-          name: "Juckerhof Seegräben (Hofladen)",
-          type: "Hofladen & Direktverkauf",
-          location: "Dorfstrasse 23, 8607 Seegräben (bei Wetzikon)",
-          schedule: "Täglich geöffnet: 09:00 – 18:00 Uhr",
-          highlights: "Riesiges Kürbisangebot, Äpfel, Beeren, Spargeln & hofeigenes Saisongemüse",
-          maps_url: "https://www.google.com/maps/search/?api=1&query=Juckerhof+Seegräben",
-          website: "https://www.juckerfarm.ch/erlebnishoefe/juckerhof/"
-        },
-        {
-          name: "Biohof Dürstelen (Gossau ZH / Wetzikon)",
-          type: "Bio-Hofladen",
-          location: "Dürstelenstr. 80, 8625 Gossau ZH",
-          schedule: "Dienstag, Freitag & Samstag",
-          highlights: "100% Bio Knospe Gemüse, Wurzelgemüse, Salate & Eier",
-          maps_url: "https://www.google.com/maps/search/?api=1&query=Biohof+Dürstelen+Gossau+ZH",
-          website: "https://www.duerstelen.ch"
-        }
-      ]
-    },
-    {
-      region: "Rapperswil-Jona & Obersee",
-      icon: "🍎",
-      markets: [
-        {
-          name: "Wochenmarkt Rapperswil",
-          type: "Wochenmarkt",
-          location: "Hauptplatz & Fischmarktplatz, 8640 Rapperswil",
-          schedule: "Freitagvormittag 07:30 – 11:30 Uhr",
-          highlights: "Frisches Saisongemüse aus dem Linthgebiet, Beeren, Brot & Blumen",
-          maps_url: "https://www.google.com/maps/search/?api=1&query=Hauptplatz+Rapperswil",
-          website: "https://www.rapperswil-jona.ch"
-        },
-        {
-          name: "Bächlihof Jona (Jucker Farm)",
-          type: "Hofladen & Direktverkauf",
-          location: "Blaubrunnenstrasse 70, 8645 Jona",
-          schedule: "Täglich geöffnet: 09:00 – 18:00 Uhr",
-          highlights: "Frisches Schweizer Gemüse, Hofbäckerei, Heidelbeeren & Kürbisse",
-          maps_url: "https://www.google.com/maps/search/?api=1&query=Bächlihof+Jona",
-          website: "https://www.juckerfarm.ch/erlebnishoefe/baechlihof/"
-        },
-        {
-          name: "Hofladen Frischgemüse Linthebene",
-          type: "Hofladen",
-          location: "Grynau / Uznach & Benken (Linthgebiet)",
-          schedule: "Montag bis Samstag",
-          highlights: "Karotten, Lauch, Wirz, Kabis und Kartoffeln direkt ab Feld",
-          maps_url: "https://www.google.com/maps/search/?api=1&query=Gemüsebau+Linthgebiet",
-          website: "https://www.vomhof.ch"
-        }
-      ]
-    },
-    {
-      region: "Uster & Zürcher Oberland",
-      icon: "🥕",
-      markets: [
-        {
-          name: "Wochenmarkt Uster",
-          type: "Wochenmarkt",
-          location: "Stadthausplatz, 8610 Uster",
-          schedule: "Jeden Samstag 07:30 – 12:00 Uhr",
-          highlights: "Gemüsestände regionaler Produzenten, Pilze, Alpkäse & Früchte",
-          maps_url: "https://www.google.com/maps/search/?api=1&query=Stadthausplatz+Uster",
-          website: "https://www.uster.ch"
-        },
-        {
-          name: "Vom Hof (Schweizer Bauernverband)",
-          type: "Hofladen-Finder CH",
-          location: "Ganze Schweiz / Umkreis-Suche",
-          schedule: "Online Hofladen-Finder",
-          highlights: "Finde jeden Hofladen und jedes Selbstbedienungs-Hüttli in deiner Nähe",
-          maps_url: "https://www.vomhof.ch",
-          website: "https://www.vomhof.ch"
-        }
-      ]
-    }
-  ],
+  version: "3.0.0",
+  // Alle Rezeptmengen gelten für 4 Portionen (recipe.servings, Standard 4)
   pantry_staples: [
     { id: "salz", name: "Speisesalz / Jodsalz", category: "Gewürze", in_stock: true, keywords: ["salz", "jodsalz", "speisesalz"] },
     { id: "pfeffer", name: "Schwarzer Pfeffer", category: "Gewürze", in_stock: true, keywords: ["pfeffer"] },
@@ -127,6 +36,44 @@ window.BRINGFRISCH_DATA = {
     { id: "maizena", name: "Maizena / Speisestärke", category: "Backen & Vorrat", in_stock: true, keywords: ["maizena", "speisestärke"] },
 
     { id: "knoblauch", name: "Knoblauch", category: "Grundzutaten", in_stock: true, keywords: ["knoblauch"] }
+  ],
+  // VSGP / Swisspatat Saisondaten: field_months = Freiland, storage_months = Schweizer Lagerware
+  season_items: [
+    {"id": "baerlauch", "name": "Bärlauch (Wildgemüse)", "category": "Wildgemüse", "field_months": [3, 4, 5], "storage_months": []},
+    {"id": "spargeln_gruen", "name": "Schweizer Grünspargeln", "category": "Stängelgemüse", "field_months": [4, 5, 6], "storage_months": []},
+    {"id": "spargeln_weiss", "name": "Schweizer Bleichspargeln", "category": "Stängelgemüse", "field_months": [4, 5, 6], "storage_months": []},
+    {"id": "rhabarber", "name": "Schweizer Rhabarber", "category": "Stängelgemüse", "field_months": [4, 5, 6], "storage_months": []},
+    {"id": "radiesli", "name": "Radiesli (Radieschen)", "category": "Wurzelgemüse", "field_months": [4, 5, 6, 7, 8, 9, 10], "storage_months": []},
+    {"id": "kohlrabi", "name": "Kohlrabi", "category": "Kohlgemüse", "field_months": [5, 6, 7, 8, 9, 10, 11], "storage_months": []},
+    {"id": "fenchel", "name": "Schweizer Fenchel", "category": "Knollengemüse", "field_months": [5, 6, 7, 8, 9, 10, 11], "storage_months": []},
+    {"id": "blumenkohl", "name": "Schweizer Blumenkohl", "category": "Kohlgemüse", "field_months": [5, 6, 7, 8, 9, 10, 11], "storage_months": []},
+    {"id": "brokkoli", "name": "Schweizer Brokkoli", "category": "Kohlgemüse", "field_months": [5, 6, 7, 8, 9, 10, 11], "storage_months": []},
+    {"id": "zucchini", "name": "Schweizer Zucchini (Courgettes)", "category": "Fruchtgemüse", "field_months": [5, 6, 7, 8, 9, 10], "storage_months": []},
+    {"id": "tomaten", "name": "Schweizer Tomaten (Strauch/Cherry)", "category": "Fruchtgemüse", "field_months": [5, 6, 7, 8, 9, 10], "storage_months": []},
+    {"id": "gurken", "name": "Schweizer Salatgurken", "category": "Fruchtgemüse", "field_months": [4, 5, 6, 7, 8, 9, 10], "storage_months": []},
+    {"id": "peperoni", "name": "Schweizer Peperoni (Paprika)", "category": "Fruchtgemüse", "field_months": [6, 7, 8, 9, 10], "storage_months": []},
+    {"id": "auberginen", "name": "Schweizer Auberginen", "category": "Fruchtgemüse", "field_months": [6, 7, 8, 9, 10], "storage_months": []},
+    {"id": "buschbohnen", "name": "Schweizer Buschbohnen (Grüne Bohnen)", "category": "Hülsenfrüchte", "field_months": [6, 7, 8, 9, 10], "storage_months": []},
+    {"id": "zuckermais", "name": "Schweizer Zuckermais", "category": "Fruchtgemüse", "field_months": [8, 9, 10], "storage_months": []},
+    {"id": "kuerbis", "name": "Schweizer Kürbis (Knirps / Butternut)", "category": "Fruchtgemüse", "field_months": [8, 9, 10, 11], "storage_months": [12, 1, 2]},
+    {"id": "ruebli", "name": "Schweizer Speiserüebli (Karotten)", "category": "Wurzelgemüse", "field_months": [6, 7, 8, 9, 10, 11], "storage_months": [12, 1, 2, 3, 4, 5]},
+    {"id": "kartoffeln_fest", "name": "Schweizer Speisekartoffeln (festkochend)", "category": "Knollengemüse", "field_months": [6, 7, 8, 9, 10], "storage_months": [11, 12, 1, 2, 3, 4, 5]},
+    {"id": "kartoffeln_mehlig", "name": "Schweizer Speisekartoffeln (mehligkochend)", "category": "Knollengemüse", "field_months": [7, 8, 9, 10], "storage_months": [11, 12, 1, 2, 3, 4, 5, 6]},
+    {"id": "lauch", "name": "Schweizer Lauch (Porree)", "category": "Zwiebelgemüse", "field_months": [6, 7, 8, 9, 10, 11, 12], "storage_months": [1, 2, 3, 4]},
+    {"id": "wirz", "name": "Schweizer Wirz (Wirsing)", "category": "Kohl", "field_months": [6, 7, 8, 9, 10, 11], "storage_months": [12, 1, 2, 3, 4]},
+    {"id": "weisskabis", "name": "Schweizer Weisskabis (Kopfkohl)", "category": "Kohl", "field_months": [6, 7, 8, 9, 10, 11], "storage_months": [12, 1, 2, 3, 4, 5]},
+    {"id": "rotkabis", "name": "Schweizer Rotkabis (Rotkohl)", "category": "Kohl", "field_months": [7, 8, 9, 10, 11], "storage_months": [12, 1, 2, 3, 4, 5]},
+    {"id": "federkohl", "name": "Schweizer Federkohl (Grünkohl / Kale)", "category": "Kohl", "field_months": [10, 11, 12, 1, 2], "storage_months": []},
+    {"id": "randen", "name": "Schweizer Randen (Rote Bete)", "category": "Wurzelgemüse", "field_months": [7, 8, 9, 10, 11], "storage_months": [12, 1, 2, 3, 4, 5]},
+    {"id": "pastinaken", "name": "Schweizer Pastinaken", "category": "Wurzelgemüse", "field_months": [9, 10, 11, 12], "storage_months": [1, 2, 3, 4]},
+    {"id": "sellerie", "name": "Schweizer Knollensellerie", "category": "Wurzelgemüse", "field_months": [8, 9, 10, 11], "storage_months": [12, 1, 2, 3, 4, 5]},
+    {"id": "chicoree", "name": "Schweizer Chicorée", "category": "Salat & Treibgemüse", "field_months": [10, 11, 12, 1, 2, 3], "storage_months": [4]},
+    {"id": "nuesslisalat", "name": "Schweizer Nüsslisalat (Feldsalat)", "category": "Salat", "field_months": [1, 2, 3, 9, 10, 11, 12], "storage_months": []},
+    {"id": "spinat", "name": "Schweizer Blattspinat", "category": "Blattgemüse", "field_months": [3, 4, 5, 6, 9, 10, 11], "storage_months": []},
+    {"id": "zwiebeln", "name": "Schweizer Speisezwiebeln (Gelb & Rot)", "category": "Zwiebelgemüse", "field_months": [6, 7, 8, 9], "storage_months": [10, 11, 12, 1, 2, 3, 4, 5]},
+    {"id": "schweizer_kaese", "name": "Schweizer Bergkäse / Gruyère / Emmentaler", "category": "Milchprodukt", "field_months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "storage_months": []},
+    {"id": "schweizer_quark", "name": "Schweizer Magerquark / Kräuterquark", "category": "Milchprodukt", "field_months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "storage_months": []},
+    {"id": "schweizer_butter", "name": "Schweizer Butter / Bratbutter", "category": "Milchprodukt", "field_months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "storage_months": []}
   ],
   months: [
     "Januar", "Februar", "März", "April", "Mai", "Juni",
