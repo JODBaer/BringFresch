@@ -264,6 +264,22 @@
     return `${Math.round(amount * 10) / 10} ${u}`.trim();
   }
 
+  // Einkaufsnamen aufräumen: «Schweizer», Klammern, «à ca. 400 g» wandern in die Zusatzinfo (wie die Menge)
+  const SYNONYMS = { "speisekartoffeln": "Kartoffeln", "festkochende kartoffeln": "Kartoffeln", "mehligkochende kartoffeln": "Kartoffeln", "zwiebeln": "Zwiebel" };
+  const TAP_WATER = /^(lauwarmes|kaltes|heisses|warmes|kochendes)?\s*(liter\s+)?wasser$/i;
+  function cleanIngredient(raw) {
+    let name = String(raw || "").trim();
+    const notes = [];
+    name = name.replace(/\*+/g, "").trim();
+    name = name.replace(/\s*\(([^)]*)\)/g, (_, x) => { if (x.trim()) notes.push(x.trim()); return ""; });
+    name = name.replace(/\s+(à|a)\s+(ca\.?\s*)?\d.*$/i, m => { notes.push(m.trim()); return ""; });
+    if (/^schweizer\s+/i.test(name)) { name = name.replace(/^schweizer\s+/i, ""); notes.unshift("Schweizer"); }
+    name = name.replace(/^(stängel|stängeli|liter|zweig|zweige|zweiglein|prise|bund)\s+/i, "").trim();
+    name = SYNONYMS[name.toLowerCase()] || name;
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    return { name, note: notes.join(", "), skip: TAP_WATER.test(name) };
+  }
+
   function computeShopping() {
     const stapleKeywords = [];
     state.staples.forEach(s => {
@@ -272,11 +288,13 @@
     const onBring = state.bringItems.map(n => n.toLowerCase().trim());
     const agg = {};
 
-    function add(name, unit, amount, cat) {
-      if (!name || !(amount > 0)) return;
+    function add(rawName, unit, amount, cat) {
+      const { name, note, skip } = cleanIngredient(rawName);
+      if (!name || skip || !(amount > 0)) return;
       const key = `${name.toLowerCase()}__${(unit || "").toLowerCase()}`;
       if (agg[key]) {
         agg[key].amount += amount;
+        if (note) agg[key].notes.add(note);
         return;
       }
       const lower = name.toLowerCase();
@@ -284,6 +302,7 @@
         name,
         unit: unit || "",
         amount,
+        notes: new Set(note ? [note] : []),
         cat: cat || "Sonstiges",
         isStaple: stapleKeywords.some(k => lower.includes(k)),
         isOnBring: onBring.some(b => b === lower || b.includes(lower) || lower.includes(b))
@@ -313,7 +332,10 @@
       add("Nüsslisalat / Saisonsalat", "g", 50 * portions, "Obst & Gemüse");
     });
 
-    state.shopping = Object.values(agg).map(it => ({ ...it, spec: formatAmount(it.amount, it.unit) }));
+    state.shopping = Object.values(agg).map(({ notes, ...it }) => {
+      const info = [...new Set([...notes].join(", ").split(", "))].filter(Boolean).join(", ");
+      return { ...it, spec: [formatAmount(it.amount, it.unit), info].filter(Boolean).join(", ") };
+    });
   }
 
   const toBuyItems = () => state.shopping.filter(it => !it.isStaple && !it.isOnBring);
