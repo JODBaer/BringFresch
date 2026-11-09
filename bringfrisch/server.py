@@ -212,6 +212,17 @@ class BringFrischServer(SimpleHTTPRequestHandler):
         elif path == "/api/bring/sync":
             items = body.get("items", [])
             list_uuid = body.get("list_uuid")
+            email = body.get("email")
+            password = body.get("password")
+            token = body.get("token")
+            # Stateless Phone-First Sync: Wenn das Phone Credentials mitschickt, direkt einloggen & pushen!
+            if (email and password) or token:
+                login_res = self.bring_client.login(email, password, list_uuid, token)
+                if not login_res.get("success"):
+                    self.send_json(login_res)
+                    return
+                if not list_uuid:
+                    list_uuid = login_res.get("list_uuid")
             res = self.bring_client.push_items_to_list(items, list_uuid)
             self.send_json(res)
             return

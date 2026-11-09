@@ -227,19 +227,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let isBringConnected = false;
 
-  async function checkBringStatus() {
+  // Phone-First LocalStorage Credentials (damit alles auf dem Phone gespeichert bleibt!)
+  function getSavedPhoneBringCreds() {
     try {
-      const res = await fetch("/api/bring/status");
+      return JSON.parse(localStorage.getItem("bringfrisch_phone_bring_creds") || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function savePhoneBringCreds(creds) {
+    const current = getSavedPhoneBringCreds();
+    const merged = { ...current, ...creds };
+    localStorage.setItem("bringfrisch_phone_bring_creds", JSON.stringify(merged));
+  }
+
+  async function fetchSyncBridge(path, options = {}) {
+    // Versucht zuerst relativen Pfad (wenn lokal gestartet), sonst localhost:8080 Sync-Brücke
+    const urls = [path, `http://localhost:8080${path}`];
+    let lastErr = null;
+    for (const u of urls) {
+      try {
+        const res = await fetch(u, options);
+        if (res.ok) return res;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("Sync-Brücke nicht erreichbar");
+  }
+
+  async function checkBringStatus() {
+    const phoneCreds = getSavedPhoneBringCreds();
+    if (bringEmailInput && phoneCreds.email) bringEmailInput.value = phoneCreds.email;
+    if (bringPasswordInput && phoneCreds.password) bringPasswordInput.value = phoneCreds.password;
+
+    try {
+      const res = await fetchSyncBridge("/api/bring/status");
       const data = await res.json();
-      isBringConnected = data.is_connected && !data.is_mock;
+      isBringConnected = (data.is_connected && !data.is_mock) || !!(phoneCreds.email && phoneCreds.password);
 
       if (isBringConnected) {
         if (bringStatusBadge) {
-          bringStatusBadge.textContent = "Verbunden";
+          bringStatusBadge.textContent = "Sync Bereit ✓";
           bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
         }
         if (bringListName) {
-          bringListName.textContent = `Liste: ${data.list_name || 'WG-Einkauf'}`;
+          bringListName.textContent = `Liste: ${data.list_name || phoneCreds.list_name || 'WG-Einkauf'}`;
         }
         if (bringEmailInput && data.email) {
           bringEmailInput.value = data.email;
@@ -247,21 +281,28 @@ document.addEventListener("DOMContentLoaded", () => {
         loadBringLists();
       } else {
         if (bringStatusBadge) {
-          bringStatusBadge.textContent = "Nicht verbunden";
-          bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold cursor-pointer";
+          bringStatusBadge.textContent = "Phone-Sync";
+          bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold cursor-pointer";
         }
         if (bringListName) {
-          bringListName.textContent = "Klicke auf 'Verbinden' für Bring!";
+          bringListName.textContent = "Bereit für 1-Klick Bring!-Übergabe";
         }
       }
     } catch (e) {
-      console.warn("Bring status check error", e);
+      // Reine Phone-PWA Ansicht ohne laufenden lokalen Server
+      if (bringStatusBadge) {
+        bringStatusBadge.textContent = "PWA Modus";
+        bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold cursor-pointer";
+      }
+      if (bringListName) {
+        bringListName.textContent = "100% Phone-PWA • 1-Klick Bring! Übergabe bereit";
+      }
     }
   }
 
   async function loadBringLists() {
     try {
-      const res = await fetch("/api/bring/lists");
+      const res = await fetchSyncBridge("/api/bring/lists");
       const data = await res.json();
       const lists = data.lists || [];
       if (bringListSelect && lists.length > 0) {
@@ -273,12 +314,100 @@ document.addEventListener("DOMContentLoaded", () => {
           bringListSelect.appendChild(opt);
         });
       }
-    } catch (e) {
-      console.warn("Load lists error", e);
+    } catch (e) {}
+  }
+
+  const serverlessPreviewBox = document.getElementById("serverlessPreviewBox");
+  const serverlessItemCountBadge = document.getElementById("serverlessItemCountBadge");
+  const serverlessNativeShareBtn = document.getElementById("serverlessNativeShareBtn");
+  const serverlessOpenBringAppBtn = document.getElementById("serverlessOpenBringAppBtn");
+  const serverlessCopyOnlyBtn = document.getElementById("serverlessCopyOnlyBtn");
+
+  function getMissingExportItems() {
+    return state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
+  }
+
+  function buildBringExportText(items) {
+    return items.map(it => {
+      const amt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
+      return `${it.name} (${amt} ${it.unit})`;
+    }).join("\n");
+  }
+
+  function refreshServerlessHubPreview() {
+    const items = getMissingExportItems();
+    if (serverlessItemCountBadge) {
+      serverlessItemCountBadge.textContent = `${items.length} Zutaten bereit`;
+    }
+    if (serverlessPreviewBox) {
+      if (items.length === 0) {
+        serverlessPreviewBox.innerHTML = `<div class="text-slate-500 py-2 text-center">Alle Artikel sind bereits erledigt oder im Vorrat!</div>`;
+      } else {
+        serverlessPreviewBox.innerHTML = items.map(it => {
+          const amt = it.amount === parseInt(it.amount) ? it.amount : it.amount.toFixed(1);
+          return `<div class="flex items-center justify-between border-b border-slate-800/60 py-0.5">
+            <span class="truncate pr-2">• ${it.name}</span>
+            <span class="text-emerald-400 font-bold flex-shrink-0">${amt} ${it.unit}</span>
+          </div>`;
+        }).join("");
+      }
     }
   }
 
+  if (serverlessNativeShareBtn) {
+    serverlessNativeShareBtn.onclick = async () => {
+      const items = getMissingExportItems();
+      const text = buildBringExportText(items);
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {}
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `BringFrisch Einkaufsliste (${state.wgId})`,
+            text: text
+          });
+          showBringFeedback(`✅ ${items.length} Zutaten erfolgreich ans Teilen-Menü übergeben!`, true);
+          return;
+        } catch (err) {}
+      }
+      showBringFeedback(`✅ ${items.length} Zutaten kopiert! Jetzt in Bring! oder WhatsApp einfügen.`, true);
+    };
+  }
+
+  if (serverlessOpenBringAppBtn) {
+    serverlessOpenBringAppBtn.onclick = async () => {
+      const items = getMissingExportItems();
+      const text = buildBringExportText(items);
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {}
+      showBringFeedback(`✅ ${items.length} Zutaten kopiert! Öffne Bring!-App...`, true);
+      setTimeout(() => {
+        window.location.href = "bring://";
+        setTimeout(() => {
+          window.open("https://web.getbring.com/app/lists/0", "_blank");
+        }, 900);
+      }, 300);
+    };
+  }
+
+  if (serverlessCopyOnlyBtn) {
+    serverlessCopyOnlyBtn.onclick = async () => {
+      const items = getMissingExportItems();
+      const text = buildBringExportText(items);
+      try {
+        await navigator.clipboard.writeText(text);
+        showBringFeedback(`✅ ${items.length} Zutaten in die Zwischenablage kopiert!`, true);
+      } catch (e) {
+        showBringFeedback("⚠️ Bitte Text aus der Box oben markieren und kopieren.", false);
+      }
+    };
+  }
+
   function openBringModal() {
+    refreshServerlessHubPreview();
     if (bringSettingsModal) {
       bringSettingsModal.classList.remove("hidden");
       if (bringLoginFeedback) bringLoginFeedback.classList.add("hidden");
@@ -303,9 +432,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      bringLoginBtnText.textContent = "Verbinde mit Bring!...";
+      // Immer lokal auf dem Phone sichern!
+      savePhoneBringCreds({ email, password });
+      bringLoginBtnText.textContent = "Verbinde mit Sync-Brücke...";
       try {
-        const res = await fetch("/api/bring/login", {
+        const res = await fetchSyncBridge("/api/bring/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
@@ -314,8 +445,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (data.success) {
           isBringConnected = true;
+          savePhoneBringCreds({ email, password, list_uuid: data.list_uuid, list_name: data.list_name });
           showBringFeedback(`✅ Verbunden als ${data.email}!`, true);
-          bringLoginBtnText.textContent = "Verknüpft";
+          bringLoginBtnText.textContent = "Verknüpft ✓";
           
           if (data.lists && bringListSelect) {
             bringListSelect.innerHTML = "";
@@ -329,7 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           if (bringStatusBadge) {
-            bringStatusBadge.textContent = "Verbunden";
+            bringStatusBadge.textContent = "Sync Bereit ✓";
             bringStatusBadge.className = "text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer";
           }
           if (bringListName) {
@@ -341,11 +473,11 @@ document.addEventListener("DOMContentLoaded", () => {
           }, 1500);
         } else {
           showBringFeedback(`❌ ${data.error || 'Login fehlgeschlagen. Bitte Zugangsdaten prüfen.'}`, false);
-          bringLoginBtnText.textContent = "Jetzt mit Bring! verbinden";
+          bringLoginBtnText.textContent = "Mit Backend-API verbinden";
         }
       } catch (e) {
-        showBringFeedback("❌ Verbindungsfehler zum Server.", false);
-        bringLoginBtnText.textContent = "Jetzt mit Bring! verbinden";
+        showBringFeedback("✅ Zugangsdaten auf dem Phone gespeichert! (Nutze oben den 1-Klick Phone-Export oder starte für API-Push den lokalen Sync-Stecker).", true);
+        bringLoginBtnText.textContent = "Auf Phone gespeichert ✓";
       }
     };
   }
@@ -628,7 +760,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("bringfrisch_current_plan", JSON.stringify(state.weekPlan));
   }
 
-  // 7-Tage Kachel-Übersicht & View Switcher
+  // 7-Tage Kachel-Übersicht, View Switcher & UX Co-Designer (3 Aufstellungen & 3 Themes)
   const weekCardsContainer = document.getElementById("weekCardsContainer");
   const viewGridBtn = document.getElementById("viewGridBtn");
   const viewSingleBtn = document.getElementById("viewSingleBtn");
@@ -636,6 +768,68 @@ document.addEventListener("DOMContentLoaded", () => {
   const singleCardSection = document.getElementById("singleCardSection");
   const regenWholeWeekBtnTop = document.getElementById("regenWholeWeekBtnTop");
   const quickSyncBringBtn = document.getElementById("quickSyncBringBtn");
+
+  const layoutBtnBento = document.getElementById("layoutBtnBento");
+  const layoutBtnLego = document.getElementById("layoutBtnLego");
+  const layoutBtnMatrix = document.getElementById("layoutBtnMatrix");
+  const themeBtnLight = document.getElementById("themeBtnLight");
+  const themeBtnDark = document.getElementById("themeBtnDark");
+  const themeBtnSwiss = document.getElementById("themeBtnSwiss");
+
+  state.layoutMode = localStorage.getItem("bringfrisch_layout_mode") || "bento"; // "bento", "lego", "matrix"
+  state.themeMode = localStorage.getItem("bringfrisch_theme_mode") || "dark";    // "light", "dark", "swiss"
+
+  function applyThemeMode(theme) {
+    state.themeMode = theme;
+    localStorage.setItem("bringfrisch_theme_mode", theme);
+    document.body.classList.remove("theme-light", "theme-swiss");
+    if (theme === "light") document.body.classList.add("theme-light");
+    if (theme === "swiss") document.body.classList.add("theme-swiss");
+
+    const map = { light: themeBtnLight, dark: themeBtnDark, swiss: themeBtnSwiss };
+    Object.keys(map).forEach(k => {
+      const btn = map[k];
+      if (!btn) return;
+      if (k === theme) {
+        btn.className = "px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500 text-slate-950 shadow transition";
+      } else {
+        btn.className = "px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 transition";
+      }
+    });
+  }
+
+  function applyLayoutMode(layout) {
+    state.layoutMode = layout;
+    localStorage.setItem("bringfrisch_layout_mode", layout);
+    const map = { bento: layoutBtnBento, lego: layoutBtnLego, matrix: layoutBtnMatrix };
+    const labels = {
+      bento: ["1. Bento-Kacheln", "2-Spalten Wand"],
+      lego: ["2. Lego 3-Teile", "Baukasten-Kacheln"],
+      matrix: ["3. Split-Matrix", "Plan + Live-Korb"]
+    };
+    Object.keys(map).forEach(k => {
+      const btn = map[k];
+      if (!btn) return;
+      if (k === layout) {
+        btn.className = "py-1.5 px-2 rounded-xl text-[11px] font-bold bg-emerald-500 text-slate-950 shadow flex flex-col items-center justify-center transition";
+      } else {
+        btn.className = "py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white flex flex-col items-center justify-center transition";
+      }
+      btn.innerHTML = `<span>${labels[k][0]}</span><span class="text-[9px] opacity-80 font-normal">${labels[k][1]}</span>`;
+    });
+    setViewMode("grid");
+  }
+
+  if (themeBtnLight) themeBtnLight.onclick = () => applyThemeMode("light");
+  if (themeBtnDark) themeBtnDark.onclick = () => applyThemeMode("dark");
+  if (themeBtnSwiss) themeBtnSwiss.onclick = () => applyThemeMode("swiss");
+
+  if (layoutBtnBento) layoutBtnBento.onclick = () => { applyLayoutMode("bento"); };
+  if (layoutBtnLego) layoutBtnLego.onclick = () => { applyLayoutMode("lego"); };
+  if (layoutBtnMatrix) layoutBtnMatrix.onclick = () => { applyLayoutMode("matrix"); };
+
+  // Initial Theme & Layout aktivieren
+  applyThemeMode(state.themeMode);
 
   function setViewMode(mode) {
     if (mode === "grid") {
@@ -674,169 +868,306 @@ document.addEventListener("DOMContentLoaded", () => {
     quickSyncBringBtn.onclick = () => performBringSync();
   }
 
-  // Render 7-Tage Kachel-Übersicht mit 3-Komponenten Menüs ("Alles für Alle")
+  // Render Wochen-Ansicht in 3 wählbaren UX-Aufstellungen:
+  // 1. "bento"  -> 2-Spalten Bento-Kachel-Wand (alle 7 Tage auf einen Blick)
+  // 2. "lego"   -> 3-Teile Lego-Stack (Tages-Baukasten mit 3 grossen Protein-Kacheln)
+  // 3. "matrix" -> Split-Matrix oben + Live-Einkaufs-Kacheln direkt darunter
   function renderWeekGrid() {
     if (!weekCardsContainer || !state.weekPlan || state.weekPlan.length === 0) return;
     weekCardsContainer.innerHTML = "";
 
+    // Tag-Daten vorbereiten
     state.weekPlan.forEach((day, idx) => {
       if (!day.eaters) day.eaters = state.members.map(m => m.id);
       if (day.leftover_buffer === undefined) day.leftover_buffer = 2;
       if (day.extra_guests === undefined) day.extra_guests = 0;
-
       const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
-      const eatersCount = attendingMembers.length;
-      const buffer = day.leftover_buffer;
-      const guests = day.extra_guests;
-      const totalPersons = eatersCount + guests + buffer || 4;
-      day.person_count = totalPersons;
+      day.person_count = attendingMembers.length + day.extra_guests + day.leftover_buffer || 4;
       day.effective_diet = calculateEffectiveDiet(day.eaters);
+    });
 
-      // Individuelle Proteine ermitteln
-      const meatEaters = attendingMembers.filter(m => m.diet === "fleisch");
-      const vegiEaters = attendingMembers.filter(m => m.diet === "vegi");
-      const veganEaters = attendingMembers.filter(m => m.diet === "vegan");
+    if (state.layoutMode === "bento") {
+      // =========================================================================
+      // AUFSTELLUNG 1: BENTO-KACHEL-WAND (2-Spalten Grid für alle 7 Tage)
+      // =========================================================================
+      weekCardsContainer.className = "grid grid-cols-1 sm:grid-cols-2 gap-3";
 
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 shadow-sm hover:border-slate-700 transition";
+      state.weekPlan.forEach((day, idx) => {
+        const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
+        const eatersCount = attendingMembers.length;
+        const buffer = day.leftover_buffer;
+        const totalPersons = day.person_count;
+        const meatEaters = attendingMembers.filter(m => m.diet === "fleisch");
+        const vegiEaters = attendingMembers.filter(m => m.diet === "vegi");
+        const veganEaters = attendingMembers.filter(m => m.diet === "vegan");
 
-      card.innerHTML = `
-        <!-- Tag-Kopfzeile -->
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <span class="text-xs uppercase font-extrabold tracking-wider px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-              ${day.day || DAYS[idx]}
-            </span>
-            <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">
-              ${(day.diet || day.effective_diet).toUpperCase()}
-            </span>
-            ${
-              day.source_url
-                ? `<a href="${day.source_url}" target="_blank" rel="noopener" class="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-0.5 bg-cyan-950/40 border border-cyan-800/40 px-1.5 py-0.5 rounded-md transition" title="Rezept im Browser öffnen">
-                     <i data-lucide="external-link" class="w-3 h-3"></i>
-                     <span>Link</span>
-                   </a>`
-                : ""
-            }
-          </div>
-          <div class="flex items-center space-x-1.5">
-            <button class="grid-cook-btn text-[10px] font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-750 px-2 py-0.5 rounded-md border border-slate-700 flex items-center space-x-1" data-day-idx="${idx}">
-              <span>👨‍🍳</span>
-              <span>${day.cook_assigned || 'Koch?'}</span>
-            </button>
-            <button class="grid-shuffle-btn text-slate-400 hover:text-amber-300 p-1" data-day-idx="${idx}" title="Anderes Saison-Rezept würfeln">
-              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            </button>
-            <button class="grid-detail-btn text-slate-400 hover:text-emerald-400 p-1" data-day-idx="${idx}" title="Tages-Detail öffnen">
-              <i data-lucide="chevron-right" class="w-4 h-4"></i>
-            </button>
-          </div>
-        </div>
+        const card = document.createElement("div");
+        card.className = `bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between space-y-2.5 shadow-sm hover:border-emerald-500/40 transition ${idx === 6 ? "sm:col-span-2" : ""}`;
 
-        <!-- Menütitel & Menü wählen Button -->
-        <div class="flex items-start justify-between gap-2 pt-0.5">
-          <div class="flex-1">
-            <div class="flex items-center space-x-1.5">
-              <span class="text-xs">🍲</span>
-              <h4 class="text-sm font-bold text-white leading-snug">${day.title}</h4>
-            </div>
-            <div class="flex items-center space-x-2.5 text-[10px] text-slate-400 mt-1 pl-4">
-              <span>⏱️ ${day.prep_time_min || 25} Min.</span>
-              <span>💰 CHF ${day.cost_per_person_chf || '2.80'}/P.</span>
-              ${
-                day.source_url
-                  ? `<a href="${day.source_url}" target="_blank" rel="noopener" class="text-cyan-400 hover:underline flex items-center space-x-0.5">
-                       <span>Browser-Rezept</span>
-                       <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
-                     </a>`
-                  : ""
-              }
-            </div>
-          </div>
-          <button class="grid-pick-menu-btn text-[11px] font-semibold text-emerald-300 bg-emerald-950/50 hover:bg-emerald-900/60 active:scale-95 border border-emerald-500/40 px-2.5 py-1.5 rounded-xl transition flex items-center space-x-1 flex-shrink-0" data-day-idx="${idx}">
-            <i data-lucide="book-open" class="w-3.5 h-3.5 text-emerald-400"></i>
-            <span>Menü wählen</span>
-          </button>
-        </div>
-
-        <!-- 3-Komponenten Übersicht ("Alles für Alle") -->
-        <div class="p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1 text-[11px]">
-          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1">
-            <span>✨ 3-Teile Menü (Alles für Alle):</span>
-          </div>
-          <div class="grid grid-cols-1 gap-1 text-[10px]">
-            <div class="text-slate-300 flex items-center space-x-1">
-              <span class="text-emerald-400 font-bold">1. Basis:</span>
-              <span>${day.title} (für alle ${totalPersons} Port. inkl. Reste)</span>
-            </div>
-            <div class="text-slate-300 flex items-center space-x-1 flex-wrap">
-              <span class="text-amber-400 font-bold">2. Proteine:</span>
-              ${
-                meatEaters.length > 0
-                  ? `<span class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 mr-1">🥩 Speck / Steak (${meatEaters.map(m=>m.name).join(', ')})</span>`
-                  : ""
-              }
-              ${
-                vegiEaters.length > 0
-                  ? `<span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 mr-1">🧀 Halloumi / Bergkäse (${vegiEaters.map(m=>m.name).join(', ')})</span>`
-                  : ""
-              }
-              ${
-                veganEaters.length > 0
-                  ? `<span class="px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 mr-1">🌱 Vegan-Käse / Pesto (${veganEaters.map(m=>m.name).join(', ')})</span>`
-                  : ""
-              }
-            </div>
-            <div class="text-slate-300 flex items-center space-x-1">
-              <span class="text-cyan-400 font-bold">3. Beilage:</span>
-              <span>Schweizer Nüsslisalat / Frisches Saisongemüse</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Personen & Reste-Verteilung -->
-        <div class="pt-1.5 border-t border-slate-800/80 space-y-1.5">
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400 font-medium flex items-center space-x-1">
-              <i data-lucide="users" class="w-3 h-3 text-emerald-400"></i>
-              <span>Wer isst heute mit?</span>
-            </span>
-            <div class="flex items-center space-x-1 text-[10px] text-slate-300">
-              <span class="font-bold text-white">${eatersCount}</span> Esser
-              <span>+</span>
-              <span class="text-amber-300 font-bold">${buffer} Reste</span>
-              <span>=</span>
-              <span class="font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">${totalPersons} Port.</span>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-1.5">
-            ${state.members.map(mem => {
-              const isAttending = day.eaters && day.eaters.includes(mem.id);
-              return `
-                <button class="grid-eater-chip text-[10px] px-2 py-0.5 rounded-lg border transition font-medium ${
-                  isAttending
-                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50'
-                    : 'bg-slate-800/60 text-slate-500 border-slate-700/40 line-through opacity-60'
-                }" data-day-idx="${idx}" data-member-id="${mem.id}">
-                  ${isAttending ? '✓' : '–'} ${mem.name} (${mem.diet.substring(0,3).toUpperCase()})
+        card.innerHTML = `
+          <div class="space-y-2">
+            <!-- Kopfzeile -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs uppercase font-extrabold px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                  ${(day.day || DAYS[idx]).substring(0, 2)} • ${day.day || DAYS[idx]}
+                </span>
+                ${day.source_url ? `<a href="${day.source_url}" target="_blank" rel="noopener" class="text-xs text-cyan-400 hover:underline px-1.5 py-0.5 rounded bg-cyan-500/10">🌐 Link</a>` : ""}
+              </div>
+              <div class="flex items-center gap-1">
+                <button class="grid-pick-menu-btn text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-lg transition" data-day-idx="${idx}">
+                  Menü ▾
                 </button>
-              `;
-            }).join("")}
-
-            <!-- Reste-Puffer Regler (+2 Standard) -->
-            <div class="ml-auto flex items-center space-x-1 bg-slate-800/80 border border-slate-700/60 rounded-lg px-1.5 py-0.5 text-[10px]">
-              <span class="text-slate-400">🍲 Reste:</span>
-              <button class="grid-buffer-btn text-slate-300 hover:text-white px-1 font-bold" data-day-idx="${idx}" data-delta="-1" title="Reste-Portionen verringern">–</button>
-              <span class="font-bold text-amber-300 px-0.5">+${buffer}</span>
-              <button class="grid-buffer-btn text-slate-300 hover:text-white px-1 font-bold" data-day-idx="${idx}" data-delta="1" title="Reste-Portionen erhöhen">+</button>
+                <button class="grid-shuffle-btn text-slate-400 hover:text-amber-300 p-1" data-day-idx="${idx}" title="Neu würfeln">
+                  <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
             </div>
+
+            <!-- Titel -->
+            <div>
+              <h4 class="text-sm font-bold text-white leading-snug">${day.title}</h4>
+              <div class="text-xs text-slate-400 mt-0.5">⏱️ ${day.prep_time_min || 25} Min • 💰 CHF ${day.cost_per_person_chf || '2.80'}/P.</div>
+            </div>
+
+            <!-- 3-Teile Bento-Badges -->
+            <div class="p-2 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1 text-xs">
+              <div class="text-slate-300 truncate"><span class="text-emerald-400 font-bold">🍚 Basis:</span> ${day.title} (${totalPersons}P)</div>
+              <div class="flex flex-wrap gap-1 pt-0.5">
+                ${meatEaters.length > 0 ? `<span class="px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 border border-orange-500/30 text-[10px] font-semibold">🥩 ${meatEaters.map(m=>m.name).join(', ')}</span>` : ""}
+                ${vegiEaters.length > 0 ? `<span class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-semibold">🧀 ${vegiEaters.map(m=>m.name).join(', ')}</span>` : ""}
+                ${veganEaters.length > 0 ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold">🌱 ${veganEaters.map(m=>m.name).join(', ')}</span>` : ""}
+                <span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px] font-semibold">🥗 Salat</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fusszeile: Esser & Reste -->
+          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
+            <div class="flex flex-wrap gap-1">
+              ${state.members.map(mem => {
+                const isAttending = day.eaters && day.eaters.includes(mem.id);
+                const icon = mem.diet === "fleisch" ? "🥩" : (mem.diet === "vegan" ? "🌱" : "🧀");
+                return `
+                  <button class="grid-eater-chip text-xs px-2 py-0.5 rounded-lg border transition font-bold ${
+                    isAttending
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50"
+                      : "bg-slate-800/50 text-slate-500 border-slate-700/40 line-through opacity-50"
+                  }" data-day-idx="${idx}" data-member-id="${mem.id}">
+                    ${icon} ${mem.name}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+            <div class="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-0.5 text-xs">
+              <button class="grid-buffer-btn text-slate-300 hover:text-white px-1 font-bold" data-day-idx="${idx}" data-delta="-1">–</button>
+              <span class="font-bold text-amber-300">+${buffer}</span>
+              <button class="grid-buffer-btn text-slate-300 hover:text-white px-1 font-bold" data-day-idx="${idx}" data-delta="1">+</button>
+            </div>
+          </div>
+        `;
+        weekCardsContainer.appendChild(card);
+      });
+
+    } else if (state.layoutMode === "lego") {
+      // =========================================================================
+      // AUFSTELLUNG 2: 3-TEILE LEGO-STACK (Grosse modulare Baustein-Kacheln)
+      // =========================================================================
+      weekCardsContainer.className = "space-y-3";
+      const idx = state.activeDayIndex || 0;
+      const day = state.weekPlan[idx] || state.weekPlan[0];
+      const attendingMembers = state.members.filter(m => day.eaters && day.eaters.includes(m.id));
+      const buffer = day.leftover_buffer;
+      const totalPersons = day.person_count;
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "space-y-3";
+      wrapper.innerHTML = `
+        <!-- Wochentag-Leiste -->
+        <div class="grid grid-cols-7 gap-1.5 bg-slate-900 border border-slate-800 p-1.5 rounded-2xl">
+          ${state.weekPlan.map((d, dIdx) => `
+            <button class="lego-day-pill py-2 rounded-xl text-xs font-extrabold transition flex flex-col items-center ${
+              dIdx === idx ? "bg-emerald-500 text-slate-950 shadow-md" : "bg-slate-800/60 text-slate-400 hover:text-white"
+            }" data-day-idx="${dIdx}">
+              <span>${DAYS[dIdx].substring(0, 2)}</span>
+              <span class="text-[9px] font-mono opacity-80">${d.person_count}P</span>
+            </button>
+          `).join("")}
+        </div>
+
+        <!-- Hauptkarte mit 3 gestapelten Lego-Kacheln -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 space-y-3.5 shadow-lg">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="text-xs font-extrabold uppercase text-emerald-400">${day.day || DAYS[idx]} • 3-Teile Lego-Baukasten</span>
+              <h3 class="text-lg font-extrabold text-white mt-0.5">${day.title}</h3>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button class="grid-pick-menu-btn text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" data-day-idx="${idx}">
+                📖 Menü wählen
+              </button>
+              <button class="grid-shuffle-btn p-2 rounded-xl bg-slate-800 text-amber-400 border border-slate-700" data-day-idx="${idx}" title="Zufalls-Rezept">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- LEGO-KACHEL 1: GEMEINSAME BASIS -->
+          <div class="p-3.5 rounded-2xl bg-slate-950/70 border-l-4 border-emerald-500 border border-slate-800 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-extrabold text-emerald-400 uppercase">Baustein 1 • Gemeinsame Basis (für alle)</span>
+              <div class="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded-lg px-2 py-0.5 text-xs">
+                <span class="text-slate-400">Reste:</span>
+                <button class="grid-buffer-btn text-slate-200 font-bold px-1" data-day-idx="${idx}" data-delta="-1">–</button>
+                <span class="font-bold text-amber-300">+${buffer}</span>
+                <button class="grid-buffer-btn text-slate-200 font-bold px-1" data-day-idx="${idx}" data-delta="1">+</button>
+              </div>
+            </div>
+            <div class="text-xs text-slate-200 font-semibold">
+              🍚 ${(day.ingredients || []).map(i => `${i.name} (${i.amount}${i.unit})`).join(" • ")}
+            </div>
+            <div class="text-xs text-slate-400">Skaliert automatisch auf <strong>${totalPersons} Gesamt-Portionen</strong> (${attendingMembers.length} Esser + ${buffer} Zmittag-Reste)</div>
+          </div>
+
+          <!-- LEGO-KACHEL 2: 3 PROTEIN-KACHELN NEBENEINANDER (Direkt antippbar!) -->
+          <div class="space-y-1.5">
+            <div class="text-xs font-extrabold text-amber-400 uppercase px-1">
+              Baustein 2 • Individuelle Proteine (Kachel antippen zum Ein-/Ausschalten!)
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              ${state.members.map(mem => {
+                const isAttending = day.eaters && day.eaters.includes(mem.id);
+                const isMeat = mem.diet === "fleisch";
+                const isVegan = mem.diet === "vegan";
+                const emoji = isMeat ? "🥩" : (isVegan ? "🌱" : "🧀");
+                const proteinDesc = isMeat ? "150g Speckwürfeli / Rindssteak" : (isVegan ? "1 Port. Vegan-Käse / Tofu / Pesto" : "100g Schweizer Halloumi / Bergkäse");
+                return `
+                  <button class="grid-eater-chip p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+                    isAttending
+                      ? "bg-emerald-950/40 border-emerald-500/60 text-white shadow-md"
+                      : "bg-slate-950/30 border-slate-800 text-slate-500 opacity-50"
+                  }" data-day-idx="${idx}" data-member-id="${mem.id}">
+                    <div class="flex items-center justify-between w-full">
+                      <span class="text-base">${emoji}</span>
+                      <span class="text-xs font-extrabold px-2 py-0.5 rounded-full ${isAttending ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-slate-400"}">
+                        ${isAttending ? "ISST MIT ✓" : "PAUSIERT"}
+                      </span>
+                    </div>
+                    <div class="mt-2">
+                      <div class="text-sm font-bold">${mem.name} (${mem.diet.toUpperCase()})</div>
+                      <div class="text-xs text-slate-300 mt-0.5">${proteinDesc}</div>
+                    </div>
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <!-- LEGO-KACHEL 3: FRISCHE SCHWEIZER BEILAGE -->
+          <div class="p-3.5 rounded-2xl bg-slate-950/70 border-l-4 border-cyan-500 border border-slate-800 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-extrabold text-cyan-400 uppercase">Baustein 3 • Frische Beilage</div>
+              <div class="text-xs text-slate-200 font-semibold mt-0.5">🥗 Schweizer Nüsslisalat / Saisonsalat (${totalPersons * 50}g)</div>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-xl bg-cyan-500/15 text-cyan-300 font-bold">🇨🇭 VSGP</span>
           </div>
         </div>
       `;
+      weekCardsContainer.appendChild(wrapper);
 
-      weekCardsContainer.appendChild(card);
-    });
+      weekCardsContainer.querySelectorAll(".lego-day-pill").forEach(btn => {
+        btn.onclick = () => {
+          state.activeDayIndex = parseInt(btn.getAttribute("data-day-idx"), 10);
+          renderWeekGrid();
+        };
+      });
+
+    } else {
+      // =========================================================================
+      // AUFSTELLUNG 3: SPLIT-MATRIX (Wochen-Streifen oben + Live-Einkaufs-Kacheln unten)
+      // =========================================================================
+      weekCardsContainer.className = "space-y-4";
+
+      const matrixBox = document.createElement("div");
+      matrixBox.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2";
+      matrixBox.innerHTML = `
+        <div class="flex items-center justify-between px-1">
+          <span class="text-xs font-extrabold uppercase text-emerald-400">1. Kompakte 7-Tage Schnell-Matrix</span>
+          <span class="text-xs text-slate-400">Esser direkt rechts antippen</span>
+        </div>
+        <div class="space-y-1.5">
+          ${state.weekPlan.map((day, idx) => `
+            <div class="flex items-center justify-between bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2 gap-2">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <span class="text-xs font-extrabold text-emerald-400 w-7 flex-shrink-0">${DAYS[idx].substring(0, 2)}</span>
+                <button class="grid-pick-menu-btn text-left text-xs font-bold text-white hover:text-emerald-400 truncate flex-1" data-day-idx="${idx}" title="Klicken zum Menü wechseln">
+                  ${day.title} ▾
+                </button>
+              </div>
+              <div class="flex items-center gap-1 flex-shrink-0">
+                ${state.members.map(mem => {
+                  const isAttending = day.eaters && day.eaters.includes(mem.id);
+                  return `
+                    <button class="grid-eater-chip px-2 py-1 rounded-lg text-xs font-extrabold border transition ${
+                      isAttending
+                        ? "bg-emerald-500 text-slate-950 border-emerald-400"
+                        : "bg-slate-800 text-slate-500 border-slate-700 opacity-50"
+                    }" data-day-idx="${idx}" data-member-id="${mem.id}" title="${mem.name}">
+                      ${mem.name.substring(0, 1)}
+                    </button>
+                  `;
+                }).join("")}
+                <button class="grid-buffer-btn text-xs font-mono font-bold px-1.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30" data-day-idx="${idx}" data-delta="1" title="Reste-Puffer (+1)">
+                  +${day.leftover_buffer}
+                </button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      weekCardsContainer.appendChild(matrixBox);
+
+      // Live Einkaufs-Kacheln direkt darunter rendern!
+      const liveBasketBox = document.createElement("div");
+      liveBasketBox.className = "bg-slate-900 border border-emerald-500/40 rounded-2xl p-3.5 space-y-3 shadow-lg";
+      const toBuyItems = state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
+      const byCat = {};
+      toBuyItems.forEach(it => {
+        const c = it.bring_cat || "Sonstiges";
+        if (!byCat[c]) byCat[c] = [];
+        byCat[c].push(it);
+      });
+
+      liveBasketBox.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs font-extrabold uppercase text-emerald-400">2. Live-Einkaufskorb (Kacheln nach Abteilung)</span>
+            <p class="text-xs text-slate-400">Aktualisiert sich sofort, wenn du oben Personen an-/abwählst!</p>
+          </div>
+          <span class="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300">${toBuyItems.length} Zutaten</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          ${Object.keys(byCat).map(cat => `
+            <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+              <div class="text-xs font-bold text-emerald-400 uppercase flex items-center justify-between">
+                <span>${cat}</span>
+                <span class="text-[10px] text-slate-400 font-mono">${byCat[cat].length}x</span>
+              </div>
+              <div class="space-y-1 max-h-36 overflow-y-auto text-xs">
+                ${byCat[cat].map(item => {
+                  const amt = item.amount === parseInt(item.amount) ? item.amount : item.amount.toFixed(1);
+                  return `<div class="flex items-center justify-between text-slate-200">
+                    <span class="truncate pr-2">• ${item.name}</span>
+                    <span class="font-mono text-emerald-400 font-semibold flex-shrink-0">${amt} ${item.unit}</span>
+                  </div>`;
+                }).join("")}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      weekCardsContainer.appendChild(liveBasketBox);
+    }
 
     if (window.lucide) lucide.createIcons();
 
@@ -855,9 +1186,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         day.effective_diet = calculateEffectiveDiet(day.eaters);
         savePlan();
+        updateShoppingList();
         renderWeekGrid();
         renderAttendanceMatrix();
-        updateShoppingList();
       };
     });
 
@@ -868,10 +1199,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const day = state.weekPlan[dIdx];
         if (!day) return;
         if (day.leftover_buffer === undefined) day.leftover_buffer = 2;
-        day.leftover_buffer = Math.max(0, day.leftover_buffer + delta);
+        day.leftover_buffer = (day.leftover_buffer + delta) > 6 ? 0 : Math.max(0, day.leftover_buffer + delta);
         savePlan();
-        renderWeekGrid();
         updateShoppingList();
+        renderWeekGrid();
       };
     });
 
@@ -895,8 +1226,8 @@ document.addEventListener("DOMContentLoaded", () => {
             cook_assigned: day.cook_assigned
           };
           savePlan();
-          renderWeekGrid();
           updateShoppingList();
+          renderWeekGrid();
         }
       };
     });
@@ -1514,42 +1845,47 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  // Bring! Export (nur noch fehlende Artikel exportieren!)
+  // Bring! Sync (Phone-First + Stateless Sync-Brücke)
   async function performBringSync() {
-    if (!isBringConnected) {
-      openBringModal();
-      showBringFeedback("Bitte verbinde zuerst deinen Bring!-Account mit E-Mail & Passwort oder Bearer-Token!", false);
-      return;
-    }
-
     const itemsToExport = state.shoppingList.filter(it => !it.isOnBring && (!it.isStaple || !state.excludeStaples));
     if (itemsToExport.length === 0) {
       alert("Alles bereits erledigt! Alle Zutaten sind entweder schon auf Bring! oder als Grundvorrat zuhause vorhanden.");
       return;
     }
-    if (syncBtnText) syncBtnText.textContent = "Wird übertragen...";
-    try {
-      const res = await fetch("/api/bring/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: itemsToExport })
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (syncBtnText) syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel exportiert!`;
-        alert(`🎉 Erfolg! ${itemsToExport.length} fehlende Zutaten wurden direkt in deine Bring!-Liste übertragen.`);
-        checkBringStatus();
-      } else {
-        if (syncBtnText) syncBtnText.textContent = "Fehler beim Export";
-        alert(`Bring! Fehler: ${data.errors ? data.errors.join(', ') : 'Synchronisation fehlgeschlagen'}`);
+
+    const phoneCreds = getSavedPhoneBringCreds();
+    // 1. Versuch: Direkt über die lokale Sync-Brücke pushen (falls erreichbar & Credentials vorhanden)
+    if (isBringConnected || (phoneCreds.email && phoneCreds.password)) {
+      if (syncBtnText) syncBtnText.textContent = "Synchronisiere...";
+      try {
+        const res = await fetchSyncBridge("/api/bring/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: itemsToExport,
+            email: phoneCreds.email,
+            password: phoneCreds.password,
+            list_uuid: phoneCreds.list_uuid
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (syncBtnText) syncBtnText.textContent = `✅ ${itemsToExport.length} Artikel in Bring!`;
+          alert(`🎉 Erfolg! ${itemsToExport.length} Zutaten wurden direkt via Sync-Brücke in deine Bring!-Liste übertragen.`);
+          checkBringStatus();
+          setTimeout(() => {
+            if (syncBtnText) syncBtnText.textContent = "Nach Bring! (Nur Fehlendes)";
+          }, 3000);
+          return;
+        }
+      } catch (e) {
+        // Lokaler Sync-Server läuft gerade nicht -> Öffne nahtlos den Phone-Sync-Hub!
       }
-    } catch (e) {
-      if (syncBtnText) syncBtnText.textContent = "Verbindungsfehler";
-      alert("Verbindungsfehler beim Synchronisieren zu Bring!");
     }
-    setTimeout(() => {
-      if (syncBtnText) syncBtnText.textContent = "Nach Bring! (Nur Fehlendes)";
-    }, 3000);
+
+    // 2. Phone-First PWA Sync-Hub öffnen (Funktioniert immer 100% ohne Server!)
+    openBringModal();
+    showBringFeedback(`📲 ${itemsToExport.length} Zutaten bereit! Wähle oben 1-Klick Phone-Übergabe oder verbinde unten die Sync-Brücke.`, true);
   }
 
   if (syncToBringBtn) {
