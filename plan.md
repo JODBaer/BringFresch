@@ -34,6 +34,11 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - **Salate als Hauptgang** (ohne zusätzlichen Beilagensalat): Feigen-Ziegenkäse-Rucola mit Baumnüssen (Aug–Okt), Nüsslisalat mit Ei, Speck und Croûtons (Okt–März), Randen-Linsen mit Feta und Apfel (Sep–März), Chicorée-Orangen mit Poulet (Nov–März), Kürbis-Quinoa mit Granatapfel (Sep–Dez, vegan), Wassermelone-Feta-Minze (Jun–Aug), Panzanella (Jul–Sep)
   - **Teigwaren**: Kürbis-Salbei-Penne (Sep–Dez), Carbonara (Jo: Champignons), Lauch-Rahm-Nudeln mit Schinken (Jo: Räuchertofu), Orecchiette mit Rosenkohl, Zitrone, Baumnüssen (Okt–Feb), Bolognese mit Rüebli (Jo: Vegi-Hack), Spinat-Ricotta-Penne (Frühling/Herbst), Cherrytomaten-Burrata-Pasta (Jun–Sep)
   - Regel: Salat-Rezepte bekommen `is_salad: true` → kein extra «Nüsslisalat / Saisonsalat» auf der Liste
+- [ ] **Jeden Monat 2 neue Saison-Gerichte**
+  - Je 1 vegi + 1 Fleisch, mit Gemüse, das in dem Monat Saison hat (VSGP-Liste), von Hand geschrieben (kein Scraping), 4 Portionen
+  - Zum Monatsanfang in `standalone_data.js`, Feld `added: "2026-12"` → in der App als «Neu im Dezember» markiert und in der Wochenwahl bevorzugt (mind. 1 der beiden im Memory)
+  - Ablauf: monatliche Erinnerung/Routine (z.B. geplanter Claude-Auftrag am 1. des Monats → Vorschlag als Commit, Joshua schaut drüber); Wünsche der WG fliessen ein
+  - Startliste Dez–Feb: Rotkabis-Apfel-Gratin / Rindsvoressen mit Wintergemüse · Pastinaken-Risotto / Wirz-Capuns · Lauch-Quiche / Schweinsbraten mit Rosenkohl
 - [ ] **Schütteln zum Mischeln** in der Wochenwahl: Handy schütteln = «Neu mischeln» (nur Gerichte ohne Stimme), mit kleiner Karten-Animation
   - iPhone verlangt eine Erlaubnis für Bewegungssensoren → einmal beim ersten Tippen auf «🔀 Neu mischeln» fragen; Schalter «📳 Schütteln» zum Ein/Aus
   - Entprellen (max. 1× pro 1.5 s), nur solange die Wochenwahl offen ist
