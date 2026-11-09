@@ -37,6 +37,10 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 - [ ] **Schütteln zum Mischeln** in der Wochenwahl: Handy schütteln = «Neu mischeln» (nur Gerichte ohne Stimme), mit kleiner Karten-Animation
   - iPhone verlangt eine Erlaubnis für Bewegungssensoren → einmal beim ersten Tippen auf «🔀 Neu mischeln» fragen; Schalter «📳 Schütteln» zum Ein/Aus
   - Entprellen (max. 1× pro 1.5 s), nur solange die Wochenwahl offen ist
+- [ ] **Datum/Tag aktuell halten** (kleiner Fix)
+  - Beim Zurückkehren in die App (`visibilitychange`) und um Mitternacht neu zeichnen: KW, Monat, «heute»-Markierung
+  - **Neue Woche**: Plan der Vorwoche nicht stillschweigend weiterverwenden → Hinweis «Neue Woche – 🃏 Wochenwahl starten» (alter Plan bleibt bis dahin sichtbar, als «KW 46» beschriftet)
+  - Kalender-Abo zeigt dann nicht mehr die Daten der alten Woche
 - [ ] **Beilagen pro Person** beim Menü (z.B. Jo extra Salat, Lukas eine kleine Extraportion Gemüse)
   - Im Plan pro Tag: «+ Beilage» → Person(en) antippen → Beilage wählen: Salat, Gemüse, Brot, Reis/Teigwaren, eigene
   - Menge pro Person (z.B. Salat 80 g, Gemüse 150 g, Brot 1 Stk) kommt automatisch auf die Einkaufsliste, nur wenn die Person an dem Tag mitisst
