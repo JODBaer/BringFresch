@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bringfrisch-cache-v19';
+const CACHE_NAME = 'bringfrisch-cache-v20';
 const STATIC_ASSETS = [
   './',
   './index.html',

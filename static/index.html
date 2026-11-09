@@ -214,6 +214,9 @@
     .duprow input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); flex: 0 0 auto; }
     .duprow span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .duprow small { color: var(--muted); font-size: 12.5px; }
+    html, body { overscroll-behavior-y: contain; } /* eigenes «Herunterziehen» statt Browser-Neuladen */
+    .ptr { position: fixed; top: env(safe-area-inset-top, 0px); left: 50%; margin-left: -110px; width: 220px; z-index: 30; transform: translateY(-60px); text-align: center; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 999px; background: var(--card, var(--bg)); border: 1px solid var(--line); color: var(--muted); pointer-events: none; }
+    .ptr.ready { color: var(--accent); border-color: var(--accent); }
     .bsec h3 { font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 6px; }
     .btiles { display: flex; flex-wrap: wrap; gap: 6px; }
     .btile { border: 1px solid var(--line); background: none; color: inherit; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
@@ -266,6 +269,7 @@
   </style>
 </head>
 <body>
+  <div id="ptr" class="ptr" aria-hidden="true">Zum Synchronisieren ziehen</div>
   <header class="top">
     <div>
       <h1 class="brand">Bring<span>Frisch</span></h1>

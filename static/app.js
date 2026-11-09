@@ -92,7 +92,7 @@
     schedulePlanPush();
   };
   // Grundvorrat gehört der ganzen WG: lokal speichern und (verbunden) an den Server schicken
-  let vorratTimer = null;
+  var vorratTimer = null;
   const saveStaples = () => {
     save(KEYS.staples, state.staples);
     save(VORRAT_UPDATED_KEY, Date.now());
@@ -101,6 +101,7 @@
     if (!online) return;
     clearTimeout(vorratTimer);
     vorratTimer = setTimeout(() => {
+      vorratTimer = null;
       api("/vorrat", { method: "PUT", body: { staples: state.staples } })
         .then(r => save(VORRAT_UPDATED_KEY, r.updated))
         .catch(e => setSyncStatus(e.message, false));
@@ -1410,16 +1411,65 @@
   }
 
   let planPushTimer = null;
+  async function pushPlanNow() {
+    clearTimeout(planPushTimer);
+    const r = await api("/plan", {
+      method: "PUT",
+      body: { week: weekKey(), plan: state.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
+    });
+    save(PLAN_UPDATED_KEY, r.updated);
+  }
   function schedulePlanPush() {
     if (!connected()) return;
     clearTimeout(planPushTimer);
-    planPushTimer = setTimeout(() => {
-      api("/plan", {
-        method: "PUT",
-        body: { week: weekKey(), plan: state.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
-      }).catch(e => setSyncStatus(e.message, false));
-    }, 1500);
+    planPushTimer = setTimeout(() => pushPlanNow().catch(e => setSyncStatus(e.message, false)), 1500);
   }
+
+  // Herunterziehen = jetzt synchronisieren: meine Änderungen hoch, dann den Stand der anderen holen
+  let syncing = false;
+  async function syncNow() {
+    if (!connected()) return toast("Nicht verbunden – im Tab WG den PIN eingeben");
+    if (syncing) return;
+    syncing = true;
+    try {
+      if (planPushTimer) await pushPlanNow();
+      if (vorratTimer) {
+        clearTimeout(vorratTimer);
+        vorratTimer = null;
+        const r = await api("/vorrat", { method: "PUT", body: { staples: state.staples } });
+        save(VORRAT_UPDATED_KEY, r.updated);
+      }
+      await pullShared();
+      if ($("voteDialog").open) await pullVote();
+      toast($("syncStatus").textContent.startsWith("Verbunden") ? "Synchronisiert ✓" : $("syncStatus").textContent);
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      syncing = false;
+    }
+  }
+
+  (function pullToRefresh() {
+    const bar = $("ptr");
+    let startY = null, dist = 0;
+    const reset = () => { startY = null; dist = 0; bar.style.transform = ""; bar.classList.remove("ready"); };
+    window.addEventListener("touchstart", e => {
+      if (window.scrollY > 0 || document.querySelector("dialog[open]") || e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    window.addEventListener("touchmove", e => {
+      if (startY === null) return;
+      dist = Math.max(0, Math.min(110, e.touches[0].clientY - startY));
+      bar.style.transform = `translateY(${dist - 48}px)`;
+      bar.classList.toggle("ready", dist > 70);
+      bar.textContent = dist > 70 ? "Loslassen zum Synchronisieren" : "Zum Synchronisieren ziehen";
+    }, { passive: true });
+    window.addEventListener("touchend", () => {
+      const go = dist > 70;
+      reset();
+      if (go) syncNow();
+    });
+  })();
 
   // Neuerer Plan von einem anderen Handy? Dann übernehmen.
   async function pullShared() {

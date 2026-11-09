@@ -204,7 +204,7 @@ check(!tile("Olivenöl").classList.contains("on"), "gekauftes Olivenöl ist wied
 A2.document.getElementById("staplesDialog").close();
 A2.document.querySelector('#tab-shop .seg [data-filter="staples"]').click();
 await wait(100);
-const row = A2.document.querySelector("#shopList [data-shop]");
+const row = A2.document.querySelector('#shopList [data-shop][aria-pressed="false"]');
 if (row) {
   const nm = row.dataset.shop;
   const before3 = bringList.length;
@@ -228,6 +228,24 @@ const B2 = phone("jo");
 await wait(500);
 const stB = JSON.parse(B2.localStorage.getItem("bringfrisch_user_staples"));
 check(stB.find(x => /Olivenöl/.test(x.name)).in_stock === false, "Handy B übernimmt den WG-Vorrat (Olivenöl leer)");
+
+// Herunterziehen: A ändert etwas und zieht -> sofort beim Server; B zieht -> hat es
+function pull(win) {
+  const ev = (type, y) => { const e = new win.Event(type); Object.defineProperty(e, "touches", { value: y == null ? [] : [{ clientY: y }] }); win.dispatchEvent(e); };
+  ev("touchstart", 10); ev("touchmove", 60); ev("touchmove", 120); ev("touchend");
+}
+A2.document.querySelectorAll("dialog[open]").forEach(d => d.close());
+A2.document.querySelectorAll("#days .day")[3].querySelector(".buf").value = "5";
+A2.document.querySelectorAll("#days .day")[3].querySelector(".buf").dispatchEvent(new A2.Event("change", { bubbles: true }));
+pull(A2);
+await wait(400);
+check(JSON.parse(store.get("plan")).plan[3].leftover_buffer === 5, "Herunterziehen schickt meine Änderung sofort an den Server");
+const B3 = phone("jo");
+await wait(300);
+pull(B3);
+await wait(400);
+check(JSON.parse(B3.localStorage.getItem("bringfrisch_current_plan"))[3].leftover_buffer === 5, "anderes Handy: Herunterziehen holt den neuen Stand");
+check(/Synchronisiert/.test((B3.document.querySelector(".toast") || {}).textContent || ""), "Meldung «Synchronisiert ✓»");
 
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
