@@ -1197,6 +1197,7 @@
     $("syncPin").value = sync.pin || "";
     $("dinnerTime").value = load(DINNER_KEY, "18:30");
     setSyncStatus(connected() ? "Verbinde …" : "Nicht verbunden: Bring! über Teilen/Kopieren", false);
+    if (connected()) loadBringLists();
   }
 
   $("syncForm").addEventListener("submit", async e => {
@@ -1209,6 +1210,40 @@
     if ($("syncStatus").textContent.startsWith("Verbunden")) {
       save(PLAN_UPDATED_KEY, Math.max(load(PLAN_UPDATED_KEY, 0), 1));
       schedulePlanPush();
+      loadBringLists();
+    }
+  });
+
+  // Welche Bring!-Liste? Auswahl gilt für die ganze WG (im Worker gespeichert).
+  async function loadBringLists() {
+    const field = $("bringListField"), sel = $("bringListSelect"), hint = $("bringListHint");
+    if (!field || !connected()) return;
+    try {
+      const { lists, active } = await api("/bring/lists");
+      sel.innerHTML = "";
+      for (const l of lists) {
+        const o = document.createElement("option");
+        o.value = l.uuid;
+        o.textContent = l.name;
+        o.selected = l.uuid === active;
+        sel.appendChild(o);
+      }
+      field.hidden = false;
+      hint.hidden = false;
+    } catch (e) {
+      setSyncStatus(e.message, false);
+    }
+  }
+
+  $("bringListSelect").addEventListener("change", async e => {
+    try {
+      const { name } = await api("/bring/target", { method: "PUT", body: { uuid: e.target.value } });
+      state.bringItems = (await api("/bring/list")).items || [];
+      refresh();
+      toast(`Bring!-Liste: ${name} ✓`);
+    } catch (err) {
+      toast(err.message);
+      loadBringLists();
     }
   });
 

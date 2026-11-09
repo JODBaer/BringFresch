@@ -60,6 +60,7 @@ async function route(request, env, url) {
 
   if (path === "/bring/list" && method === "GET") return json(await bringList(env));
   if (path === "/bring/lists" && method === "GET") return json(await bringLists(env));
+  if (path === "/bring/target" && method === "PUT") return json(await bringSetTarget(env, await body(request)));
   if (path === "/bring/remove" && method === "POST") return json(await bringRemove(env, await body(request)));
   if (path === "/bring/sync" && method === "POST") return json(await bringSync(env, await body(request)));
 
@@ -161,7 +162,8 @@ async function bringLogin(env) {
   }
   if (!res.ok) throw httpError(502, `Bring!-Login fehlgeschlagen (${res.status})`);
   const data = await res.json();
-  const listUuid = env.BRING_LIST_UUID || data.bringListUUID;
+  const chosen = await env.WG.get("bringList");
+  const listUuid = chosen || env.BRING_LIST_UUID || data.bringListUUID;
   if (!data.uuid || !data.access_token || !listUuid) throw httpError(502, "Bring!-Antwort unvollständig");
   return {
     listUuid,
@@ -179,12 +181,22 @@ async function bringLists(env) {
   return { active: s.listUuid, lists: (data.lists || []).map(l => ({ uuid: l.listUuid, name: l.name })) };
 }
 
+// WG wählt in der App, in welche Bring!-Liste geschrieben wird (gilt für alle Handys)
+async function bringSetTarget(env, { uuid }) {
+  const { lists } = await bringLists(env);
+  const hit = lists.find(l => l.uuid === uuid);
+  if (!hit) throw httpError(400, "Liste nicht gefunden – ist sie mit dem Bot-Konto geteilt?");
+  await env.WG.put("bringList", hit.uuid);
+  return { ok: true, active: hit.uuid, name: hit.name };
+}
+
 async function bringList(env) {
   const s = await bringLogin(env);
   const res = await fetch(`${BRING}bringlists/${s.listUuid}`, { headers: s.headers });
   if (!res.ok) throw httpError(502, `Bring!-Liste nicht lesbar (${res.status})`);
   const data = await res.json();
-  return { items: (data.purchase || []).map(p => p.name) };
+  const purchase = (data.items && data.items.purchase) || data.purchase || [];
+  return { items: purchase.map(p => p.name || p.itemId) };
 }
 
 async function bringSync(env, { items }) {

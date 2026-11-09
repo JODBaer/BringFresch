@@ -16,6 +16,7 @@ const env = { WG: KV, WG_PIN: "1234", CAL_TOKEN: "cal-secret", BRING_EMAIL: "bot
 // --- Bring!-Attrappe
 const bringCalls = [];
 const bringList = [{ name: "Milch", specification: "" }];
+const wgPuts = [];
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
   bringCalls.push({ url, init });
@@ -24,6 +25,8 @@ globalThis.fetch = async (url, init = {}) => {
     if (p.get("password") !== "pw") return new Response("", { status: 401 });
     return Response.json({ uuid: "u1", access_token: "tok", bringListUUID: "list-1" });
   }
+  if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home" }, { listUuid: "list-wg", name: "WG" }] });
+  if (url.includes("/bringlists/list-wg") && init.method === "PUT") { wgPuts.push(new URLSearchParams(init.body).get("purchase")); return new Response(null, { status: 204 }); }
   if (url.includes("/bringlists/list-1") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
   if (url.includes("/bringlists/list-1") && init.method === "PUT") {
     const p = new URLSearchParams(init.body);
@@ -69,6 +72,18 @@ env.BRING_PASSWORD = "falsch";
 r = await call("/bring/list");
 check(r.status === 502 && /Bot-Kontos/.test((await r.json()).error), "verständlicher Fehler bei falschem Bot-Passwort");
 env.BRING_PASSWORD = "pw";
+
+// 2b. Liste wählen
+r = await call("/bring/lists");
+let ls = await r.json();
+check(ls.lists.length === 2 && ls.active === "list-1", "Listen des Bot-Kontos + aktive Liste");
+r = await call("/bring/target", { method: "PUT", body: { uuid: "gibts-nicht" } });
+check(r.status === 400, "unbekannte Liste wird abgelehnt");
+r = await call("/bring/target", { method: "PUT", body: { uuid: "list-wg" } });
+check((await r.json()).name === "WG", "WG-Liste gewählt");
+await call("/bring/sync", { method: "POST", body: { items: [{ name: "Zwiebeln", spec: "1 kg" }] } });
+check(wgPuts.includes("Zwiebeln"), "Artikel landen danach in der gewählten Liste");
+store.delete("bringList");
 
 // 3. Wochenwahl
 await call("/week/2026-W46/candidates", { method: "PUT", body: { candidates: ["a", "b", "c"] } });
