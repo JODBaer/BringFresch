@@ -29,7 +29,12 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 
 - [ ] **Redesign Plan-Ansicht – prüfen**: `node tests/layout_check.mjs --shots` (390×844, 375×667, 390×600; iPhone/Android, hell/dunkel) und auf dem echten iPhone/Android ansehen
 - [ ] Redesign für Einkauf, Rezepte & Saison, Einstellungen (folgt separat, gleiche Vorgabe)
-- [ ] Wochenwahl am **Sonntag für die nächste Woche** (Pop-up sagt es schon, die Wahl selbst gilt noch für die laufende Woche)
+- [ ] **Ab Donnerstag die nächste Woche planen** (ersetzt «Wochenwahl am Sonntag»)
+  - Ab Donnerstag oben umschaltbar: «Diese Woche · KW 46» ↔ «Nächste Woche · KW 47» (Wischen oder Tippen auf die KW)
+  - Nächste Woche: ansehen, Wochenwahl starten, Tage tauschen, Esser setzen – eigener Plan pro KW im WG-Server (`plan:<KW>`), die laufende Woche bleibt unberührt
+  - Wochenwahl-Pop-up ab Donnerstag: «Plant schon die nächste Woche» statt erst am Sonntag
+  - Bring! füllen gilt für die angezeigte Woche (z.B. Samstag schon für nächste Woche einkaufen); Kalender-Abo zeigt beide Wochen
+  - Am Montag wird die geplante Woche automatisch zur laufenden (passt zu «Neue Woche: Optionen offen lassen»)
 
 - [ ] **Joshua**: WG-Liste in Bring! mit `allmenbot@gmail.com` teilen, in der App unter Einstellungen → «Bring!-Liste der WG» wählen
 - [x] **Design-Entscheid**: eigene Spezifikation (`docs/design/`) – iPhone Glas, Android Material 3 Expressive, Hellgrün + Pistazie; Plan-Ansicht + Navigation umgesetzt
