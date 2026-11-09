@@ -22,6 +22,7 @@
   const DEFAULT_SYNC_URL = "https://bringfrisch.bringfrisch-worker.workers.dev";
   const SYNC_KEY = "bringfrisch_sync";
   const PLAN_UPDATED_KEY = "bringfrisch_plan_updated";
+  const VORRAT_UPDATED_KEY = "bringfrisch_vorrat_updated";
   const DINNER_KEY = "bringfrisch_dinner_time";
 
   const KEYS = {
@@ -88,7 +89,21 @@
     save(PLAN_UPDATED_KEY, Date.now());
     schedulePlanPush();
   };
-  const saveStaples = () => save(KEYS.staples, state.staples);
+  // Grundvorrat gehört der ganzen WG: lokal speichern und (verbunden) an den Server schicken
+  let vorratTimer = null;
+  const saveStaples = () => {
+    save(KEYS.staples, state.staples);
+    save(VORRAT_UPDATED_KEY, Date.now());
+    let online = false;
+    try { online = connected(); } catch (e) { /* beim Start noch nicht bereit */ }
+    if (!online) return;
+    clearTimeout(vorratTimer);
+    vorratTimer = setTimeout(() => {
+      api("/vorrat", { method: "PUT", body: { staples: state.staples } })
+        .then(r => save(VORRAT_UPDATED_KEY, r.updated))
+        .catch(e => setSyncStatus(e.message, false));
+    }, 800);
+  };
 
   // ---------------------------------------------------------------------------
   // Hilfsfunktionen
@@ -1400,7 +1415,15 @@
   async function pullShared() {
     if (!connected()) return;
     try {
-      const [remote, bring] = await Promise.all([api("/plan"), api("/bring/list")]);
+      const [remote, bring, vorrat] = await Promise.all([api("/plan"), api("/bring/list"), api("/vorrat")]);
+      // Grundvorrat: neuerer Stand gewinnt; hat der Server noch keinen, bekommt er unseren
+      if (Array.isArray(vorrat.staples) && vorrat.updated > load(VORRAT_UPDATED_KEY, 0)) {
+        state.staples = vorrat.staples;
+        save(KEYS.staples, state.staples);
+        save(VORRAT_UPDATED_KEY, vorrat.updated);
+      } else if (!Array.isArray(vorrat.staples) || vorrat.updated < load(VORRAT_UPDATED_KEY, 0)) {
+        saveStaples();
+      }
       setBringList(bring);
       const localUpdated = load(PLAN_UPDATED_KEY, 0);
       if (remote.plan && remote.updated > localUpdated) {

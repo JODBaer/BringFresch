@@ -89,6 +89,17 @@ await call("/bring/sync", { method: "POST", body: { items: [{ name: "Milch", spe
 r = await call("/bring/remove", { method: "POST", body: { names: ["Milch"] } });
 check((await r.json()).notMine.join() === "Milch", "Milch bleibt fremd, auch wenn der Bot die Menge ergänzt");
 
+// 2c. Gemeinsamer Grundvorrat
+r = await call("/vorrat");
+check((await r.json()).staples === null, "Vorrat anfangs leer");
+r = await call("/vorrat", { method: "PUT", body: { staples: [{ id: "salz", name: "Salz", in_stock: false }] } });
+const vu = (await r.json()).updated;
+r = await call("/vorrat");
+const vr = await r.json();
+check(vr.staples[0].in_stock === false && vr.updated === vu, "Vorrat gespeichert (für alle Handys)");
+r = await call("/vorrat", { method: "PUT", body: { staples: "kaputt" } });
+check(r.status === 400, "ungültiger Vorrat abgelehnt");
+
 // 2b. Liste wählen
 r = await call("/bring/lists");
 let ls = await r.json();

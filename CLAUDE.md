@@ -25,6 +25,7 @@ Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 - **Rezeptmengen** gelten für `recipe.servings` (Standard 4).
 - **Alles für alle**: gemeinsame Basis + 150 g Fleisch pro Fleisch-Esser (nicht bei Fleischrezepten) + 100 g Grillkäse pro Vegi + 50 g Salat pro Portion.
 - **Grundvorrat** wie Bring!: gleiche Abteilungen und Artikel (kleine Pillen mit Bring!-Bild). Antippen = direkt auf Bring! (durchgestrichen), nochmals = wieder weg. Was in Bring! gekauft/abgehakt wurde, gilt wieder als «da».
+- **Wahrheit**: Bring! = was auf der Liste steht (BringFrisch baut nur drumherum). Grundvorrat = BringFrisch, gemeinsam für die WG im Worker (`/vorrat`, neuerer Stand gewinnt).
 - **Bot löscht nur Eigenes**: der Worker merkt sich in KV (`bot:<liste>`), was er neu gesetzt hat; nur das nimmt er weg, und nur wenn es noch drauf ist.
 - **Doppelt?** Sind ≥ 90 % schon auf Bring!, fragt «Bring! füllen» nach (nur fehlende / alles nochmals / abbrechen).
 - **Schnelles & Reste** (`quick: true` in `standalone_data.js`): Fertigpizza, Nuggets, Maultaschen, Gnocchi, Dumplings, Resteessen. 2 davon pro Woche im Memory. `vegi_swap` ersetzt den Grillkäse (z.B. Vegi-Nuggets), `no_addons` lässt Extra-Fleisch/-Käse weg, `is_leftovers` = nichts einkaufen.

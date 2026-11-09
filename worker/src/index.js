@@ -10,6 +10,7 @@
 //   GET  /plan                        -> { week, plan, members, updated }
 //   PUT  /plan {week, plan, members}
 //   GET  /recipe?url=…                -> { title, servings, ingredients[], minutes }  (Rezept-Link importieren)
+//   GET/PUT /vorrat                   -> gemeinsamer Grundvorrat der WG
 //   GET  /cal-link                    -> { url } Abo-Link für den Kalender
 //   GET  /cal/:token.ics              -> Kalender-Abo (iCal) mit allen Znacht der Woche
 //
@@ -87,6 +88,16 @@ async function route(request, env, url) {
     if (!Array.isArray(data.plan) || data.plan.length !== 7) throw httpError(400, "plan ungültig");
     const doc = { week: data.week, plan: data.plan, members: data.members || [], dinnerTime: data.dinnerTime || "18:30", updated: Date.now() };
     await env.WG.put("plan", JSON.stringify(doc));
+    return json({ ok: true, updated: doc.updated });
+  }
+
+  // Grundvorrat der WG – Wahrheit liegt in BringFrisch (Bring! sagt nur, was auf der Liste steht)
+  if (path === "/vorrat" && method === "GET") return json((await env.WG.get("vorrat", "json")) || { staples: null, updated: 0 });
+  if (path === "/vorrat" && method === "PUT") {
+    const data = await body(request);
+    if (!Array.isArray(data.staples) || data.staples.length > 300) throw httpError(400, "Vorrat ungültig");
+    const doc = { staples: data.staples, updated: Date.now() };
+    await env.WG.put("vorrat", JSON.stringify(doc));
     return json({ ok: true, updated: doc.updated });
   }
 

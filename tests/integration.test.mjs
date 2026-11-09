@@ -176,6 +176,16 @@ if (row) {
   check(bringList.length === before3, `nochmals antippen nimmt «${nm}» wieder weg`);
 } else check(false, "kein Grundvorrat im Wochenplan zum Testen");
 
+// Grundvorrat gilt für die ganze WG: Handy B sieht, was Handy A als «auf Bring!»/leer markiert hat
+A2.document.getElementById("openStaplesBtn").click();
+await wait(300);
+tile("Olivenöl").click();
+await wait(1500); // Vorrat wird nach 0.8 s an den Server geschickt
+const B2 = phone("jo");
+await wait(500);
+const stB = JSON.parse(B2.localStorage.getItem("bringfrisch_user_staples"));
+check(stB.find(x => /Olivenöl/.test(x.name)).in_stock === false, "Handy B übernimmt den WG-Vorrat (Olivenöl leer)");
+
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 globalThis.fetch = realFetch;
