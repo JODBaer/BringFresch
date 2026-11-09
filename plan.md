@@ -39,8 +39,12 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - Entprellen (max. 1× pro 1.5 s), nur solange die Wochenwahl offen ist
 - [ ] **Datum/Tag aktuell halten** (kleiner Fix)
   - Beim Zurückkehren in die App (`visibilitychange`) und um Mitternacht neu zeichnen: KW, Monat, «heute»-Markierung
-  - **Neue Woche**: Plan der Vorwoche nicht stillschweigend weiterverwenden → Hinweis «Neue Woche – 🃏 Wochenwahl starten» (alter Plan bleibt bis dahin sichtbar, als «KW 46» beschriftet)
-  - Kalender-Abo zeigt dann nicht mehr die Daten der alten Woche
+  - **Neue Woche: Optionen offen lassen**, nichts erzwingen. Eine kleine, wegklickbare Leiste «Neue Woche» mit Auswahl:
+    - **Weiter mit diesem Plan** (gilt dann für die neue Woche, Kalender rückt mit)
+    - **🃏 Wochenwahl starten**
+    - **🎲 Zufällig neu** (wie bisher «Neue Woche»)
+    - **Einzelne Tage tauschen** (Plan bleibt, man ändert nur, was man will)
+  - Ohne Auswahl bleibt alles wie es ist; der Plan ist mit seiner Woche beschriftet (z.B. «KW 46»), damit klar ist, welche gilt
 - [ ] **Beilagen pro Person** beim Menü (z.B. Jo extra Salat, Lukas eine kleine Extraportion Gemüse)
   - Im Plan pro Tag: «+ Beilage» → Person(en) antippen → Beilage wählen: Salat, Gemüse, Brot, Reis/Teigwaren, eigene
   - Menge pro Person (z.B. Salat 80 g, Gemüse 150 g, Brot 1 Stk) kommt automatisch auf die Einkaufsliste, nur wenn die Person an dem Tag mitisst
