@@ -54,8 +54,12 @@ const api = async (p, init = {}) => {
 
 if (CLEANUP) {
   const last = JSON.parse(readFileSync(new URL("./.e2e-items.json", import.meta.url), "utf8"));
-  const d = await api("/bring/remove", { method: "POST", body: JSON.stringify({ names: last.slice(0, 45) }) });
-  check(d.removed > 0, `${d.removed} Test-Artikel von der Bring!-Liste entfernt`);
+  let removed = 0;
+  for (let i = 0; i < last.length; i += 40) {
+    removed += (await api("/bring/remove", { method: "POST", body: JSON.stringify({ names: last.slice(i, i + 40) }) })).removed;
+  }
+  const left = (await api("/bring/list")).items.filter(x => last.includes(x));
+  check(left.length === 0, `${removed} Test-Artikel von der Bring!-Liste entfernt`);
   done();
 }
 
@@ -100,7 +104,10 @@ for (let i = 0; i < 40 && W.document.querySelectorAll("#voteGrid .vcard").length
 const cards = () => [...W.document.querySelectorAll("#voteGrid .vcard")];
 check(cards().length === 14, `${cards().length} Gerichte im Memory`);
 const titles = cards().map(c => c.querySelector(".vt").textContent);
-for (const i of [0, 1, 2]) cards()[i].querySelector("[data-like]").click();
+for (const i of [0, 1, 2]) {
+  const b = cards()[i].querySelector("[data-like]");
+  if (b.getAttribute("aria-pressed") !== "true") b.click(); // schon gewählt (früherer Lauf)? nicht abwählen
+}
 await wait(1500);
 $("voteApplyBtn").click();
 const plan = JSON.parse(W.localStorage.getItem("bringfrisch_current_plan"));

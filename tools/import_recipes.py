@@ -240,6 +240,9 @@ def parse_ingredient(line: str) -> dict | None:
                 unit, rest = UNITS[u], tail.split(" ", 1)[1]
             else:
                 unit, rest = "Stk", tail
+    # "gewaschener, gerüsteter Federkohl" -> "Federkohl" (Zubereitungs-Adjektive vor dem Nomen)
+    rest = re.sub(r"^(?:[a-zäöüß]+,\s+)+", "", rest.strip())
+    rest = re.sub(r"^(?:(?:gewaschen|gerüstet|geschält|gerieben|geputzt)(?:e|er|es|en)\s+)+(?=[A-ZÄÖÜ])", "", rest)
     name = USAGE.sub("", FILLER.sub("", rest.split(",")[0].strip(" .:-"))).strip()
     if not name or EQUIPMENT.fullmatch(name.split()[-1]) or re.match(r"^(ofenfeste|grill-|brat-)", name, re.I):
         return None
