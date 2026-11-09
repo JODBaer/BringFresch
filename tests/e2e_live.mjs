@@ -103,7 +103,9 @@ $("openVoteBtn").click();
 for (let i = 0; i < 40 && W.document.querySelectorAll("#voteGrid .vcard").length < 14; i++) await wait(250);
 const cards = () => [...W.document.querySelectorAll("#voteGrid .vcard")];
 check(cards().length === 14, `${cards().length} Gerichte im Memory`);
+await wait(3000); // Abgleich mit dem Server (Kandidaten + Stimmen der anderen) abwarten
 const titles = cards().map(c => c.querySelector(".vt").textContent);
+log("        gewählt: " + titles.slice(0, 3).join(" | "));
 for (const i of [0, 1, 2]) {
   const b = cards()[i].querySelector("[data-like]");
   if (b.getAttribute("aria-pressed") !== "true") b.click(); // schon gewählt (früherer Lauf)? nicht abwählen

@@ -235,6 +235,12 @@
       day.eaters = !before || (valid.length === 0 && before.length > 0) ? [...ids] : valid;
       if (day.leftover_buffer === undefined) day.leftover_buffer = DEFAULT_BUFFER;
       if (!day.extra_guests) day.extra_guests = 0;
+      // Rezeptdaten aus der aktuellen Datenbank nachziehen (Korrekturen an Zutaten wirken auch auf gespeicherte Pläne)
+      const fresh = day.id != null && allRecipes().find(r => String(r.id) === String(day.id));
+      if (fresh) {
+        const { eaters, leftover_buffer, extra_guests } = day;
+        state.plan[idx] = { ...fresh, day: DAYS[idx], eaters, leftover_buffer, extra_guests };
+      }
     });
   }
 
