@@ -110,7 +110,9 @@ check(ics.includes(`SUMMARY:🍲 ${titles[1].replace(/,/g, "\\,")}`), "Kalender-
 const n = parseInt(A2.document.getElementById("ctaCount").textContent.replace(/\D/g, ""), 10);
 A2.document.getElementById("syncBtn").click();
 await wait(500);
-check(bringList.length === n, `alle ${n} Artikel in Bring! (${bringList.length})`);
+const names = new Set(bringList.map(i => i.name.toLowerCase()));
+check(names.size === bringList.length && bringList.length > 0 && bringList.length <= n, `alle ${n} Positionen in Bring!, gleiche Namen zusammengefasst (${bringList.length} Einträge)`);
+check(bringList.some(i => / \+ /.test(i.specification)) || bringList.length === n, "zusammengefasste Mengen z.B. «2 dl + 100 g»");
 check(bringList.every(i => i.specification && !/\d\.\d{3}/.test(i.specification)), "Mengen sauber formatiert");
 check(/schon auf Bring!/.test(A2.document.getElementById("basketLine").textContent), "Plan-Seite zeigt 'schon auf Bring!'");
 check(parseInt(A2.document.getElementById("ctaCount").textContent.replace(/\D/g, ""), 10) === 0, "nach dem Sync nichts mehr zu kaufen");
