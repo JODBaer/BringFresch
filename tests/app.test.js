@@ -93,7 +93,7 @@ check(d.querySelectorAll("#days .day")[0].querySelectorAll(".chip").length === 5
 // 9. Wochenwahl (Memory)
 d.getElementById("openVoteBtn").click();
 check(d.getElementById("voteDialog").open, "Wochenwahl öffnet");
-const nRec = w.BRINGFRISCH_DATA.recipes.length + (w.recipeImporter.customRecipes.length);
+const nRec = w.BRINGFRISCH_DATA.recipes.length + (w.BRINGFRISCH_IMPORTED || []).length + w.recipeImporter.customRecipes.length;
 const cards = () => [...d.querySelectorAll("#voteGrid .vcard")];
 check(cards().length === Math.min(14, nRec), `Raster zeigt ${Math.min(14, nRec)} Gerichte (${cards().length})`);
 const titleOf = c => c.querySelector(".vt").textContent;

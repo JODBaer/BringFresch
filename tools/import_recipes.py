@@ -85,7 +85,7 @@ SEASON_VEG = {
     "Kürbis": (["kürbis", "butternut", "knirps", "hokkaido"], [8, 9, 10, 11], [8, 9, 10, 11, 12, 1, 2]),
     "Federkohl": (["federkohl", "grünkohl", "kale"], [10, 11, 12, 1, 2], [10, 11, 12, 1, 2]),
     "Rüebli": (["rüebli", "karotte", "möhre"], [6, 7, 8, 9, 10, 11], list(range(1, 13))),
-    "Lauch": (["lauch"], [6, 7, 8, 9, 10, 11, 12], list(range(1, 13))),
+    "Lauch": (["(?<!knob)(?<!schnitt)(?<!bär)lauch"], [6, 7, 8, 9, 10, 11, 12], list(range(1, 13))),
     "Wirz": (["wirz", "wirsing"], [6, 7, 8, 9, 10, 11], [6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4]),
     "Weisskabis": (["weisskabis", "weisskohl", "spitzkabis"], [6, 7, 8, 9, 10, 11], list(range(1, 13))),
     "Rotkabis": (["rotkabis", "rotkohl", "blaukraut"], [7, 8, 9, 10, 11], [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5]),
@@ -94,6 +94,15 @@ SEASON_VEG = {
     "Sellerie": (["knollensellerie", "sellerie"], [8, 9, 10, 11], [8, 9, 10, 11, 12, 1, 2, 3, 4, 5]),
     "Chicorée": (["chicorée", "chicoree"], [10, 11, 12, 1, 2, 3], [10, 11, 12, 1, 2, 3, 4]),
     "Nüsslisalat": (["nüsslisalat", "feldsalat"], [1, 2, 3, 9, 10, 11, 12], [1, 2, 3, 9, 10, 11, 12]),
+    "Rosenkohl": (["rosenkohl"], [10, 11, 12, 1, 2], [10, 11, 12, 1, 2]),
+    "Schwarzwurzeln": (["schwarzwurzel"], [10, 11, 12, 1, 2, 3], [10, 11, 12, 1, 2, 3]),
+    "Topinambur": (["topinambur"], [10, 11, 12, 1, 2, 3], [10, 11, 12, 1, 2, 3]),
+    "Erdbeeren": (["erdbeer"], [5, 6, 7], [5, 6, 7]),
+    "Kirschen": (["kirsche"], [6, 7], [6, 7]),
+    "Aprikosen": (["aprikose"], [7, 8], [7, 8]),
+    "Zwetschgen": (["zwetschge", "pflaume"], [8, 9, 10], [8, 9, 10]),
+    "Melone": (["melone"], [6, 7, 8, 9], [6, 7, 8, 9]),
+    "Beeren": (["heidelbeer", "himbeer", "brombeer"], [6, 7, 8, 9], [6, 7, 8, 9]),
     "Spinat": (["spinat"], [3, 4, 5, 6, 9, 10, 11], [3, 4, 5, 6, 9, 10, 11]),
 }
 # Zeilen mit diesen Wörtern sind Konserven/Gewürze, keine frische Saisonware
@@ -105,7 +114,9 @@ SEASONS = {"winter": [12, 1, 2], "fruehling": [3, 4, 5], "sommer": [6, 7, 8], "h
 MEAT = re.compile(
     r"fleisch|poulet|huhn|hühner|hähnchen|\brind|kalb|schwein|lamm|speck|schinken|hackfleisch|ghackets|gehacktes\b|"
     r"wurst|würste|salami|chorizo|cervelat|wienerli|landjäger|merguez|pancetta|prosciutto|coppa|bündner|mostbröckli|"
-    r"lachs|fisch|thon|thunfisch|crevette|garnele|forelle|egli|dorsch|kabeljau|zander|sardelle|anchovis|"
+    r"lachs|fisch|thon|thunfisch|crevette|krevette|garnele|scampi|forelle|egli|dorsch|kabeljau|zander|sardelle|anchovis|"
+    r"seeteufel|dorade|wolfsbarsch|felchen|saibling|pangasius|muschel|tintenfisch|calamar|sepia|hummer|krabbe|"
+    r"salsiccia|surimi|brät|kebab|gyros|nduja|'nduja|lardo|guanciale|kassler|leberkäse|fleischkäse|"
     r"steak|entrecôte|geschnetzeltes|plätzli|ente\b|truthahn|trute|kaninchen|hirsch|\breh\b|leber|saucisson|kutteln",
     re.I,
 )
@@ -152,8 +163,15 @@ UNITS = {
     "zehe": "Zehe", "zehen": "Zehe", "scheibe": "Scheibe", "scheiben": "Scheibe", "glas": "Glas",
     "kopf": "Kopf", "köpfe": "Kopf", "tranche": "Tranchen", "tranchen": "Tranchen", "rolle": "Rolle",
     "rollen": "Rolle", "handvoll": "Handvoll", "stange": "Stange", "stangen": "Stange", "würfel": "Würfel",
+    "cm": "cm", "pack": "Pck", "tropfen": "Tropfen", "zweiglein": "Zweig", "blatt": "Blatt", "blätter": "Blatt",
 }
 FRACTIONS = {"½": 0.5, "¼": 0.25, "¾": 0.75, "⅓": 1 / 3, "⅔": 2 / 3, "⅛": 0.125}
+# Küchengeräte & Hilfsmittel gehören nicht auf die Einkaufsliste
+EQUIPMENT = re.compile(r"\b(form|gratinform|springform|cakeform|ausstechform|blech|backpapier|alufolie|klarsichtfolie|"
+                       r"brattopf|topf|pfanne|bratpfanne|grillpfanne|schüssel|spiess(chen|li)?|zahnstocher|küchenschnur|"
+                       r"schnur|spritzbeutel|pinsel|thermometer|holzspiesse|muffinförmchen)\b", re.I)
+# "Öl zum Braten", "Butter für die Form", "Kräuter zum Garnieren" -> Zusatz entfernen
+USAGE = re.compile(r"\s+(zum|zur|für (die|das|den)|fürs)\s+.*$", re.I)
 FILLER = re.compile(r"^(ca\.?|circa|etwa|wenig|etwas|einige|evtl\.?|nach belieben|je)\s+", re.I)
 
 AISLES = [
@@ -200,6 +218,9 @@ def parse_ingredient(line: str) -> dict | None:
     if not s or len(s) > 120:
         return None
     s = re.sub(r"\([^)]*\)", "", s).strip()   # "(ca. 600 g)" entfernen
+    s = re.sub(r"([\d½¼¾⅓⅔⅛]+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)", r"\2", s)  # "400 - 500 g" -> "500 g"
+    if EQUIPMENT.search(s.split(",")[0]) and not re.search(r"\b(für|zum)\b", s, re.I):
+        return None
     s = re.sub(r"(\d+)\s+([½¼¾⅓⅔⅛])", lambda m: f"{int(m.group(1)) + FRACTIONS[m.group(2)]:g}", s)  # "1 ½" -> "1.5"
     s = FILLER.sub("", s)
     parts = s.split(" ", 2)
@@ -219,8 +240,8 @@ def parse_ingredient(line: str) -> dict | None:
                 unit, rest = UNITS[u], tail.split(" ", 1)[1]
             else:
                 unit, rest = "Stk", tail
-    name = FILLER.sub("", rest.split(",")[0].strip(" .:-"))
-    if not name:
+    name = USAGE.sub("", FILLER.sub("", rest.split(",")[0].strip(" .:-"))).strip()
+    if not name or EQUIPMENT.fullmatch(name.split()[-1]) or re.match(r"^(ofenfeste|grill-|brat-)", name, re.I):
         return None
     if amount is None:
         amount, unit = 1.0, ""
@@ -326,10 +347,8 @@ def recipe_from_microdata(page: str) -> dict | None:
     p = MicrodataRecipe()
     p.feed(page)
     d = p.data
-    title = " ".join(p.h1).strip()
-    if not title:
-        m = re.search(r'<meta property="og:title" content="([^"]+)"', page)
-        title = html.unescape(m.group(1)) if m else ""
+    m = re.search(r'<meta property="og:title" content="([^"]+)"', page)
+    title = html.unescape(m.group(1)).split(" | ")[0].strip() if m else clean_title(" ".join(p.h1))
     return {
         "name": title,
         "recipeYield": (d.get("recipeYield") or [""])[0],
@@ -338,6 +357,13 @@ def recipe_from_microdata(page: str) -> dict | None:
         "recipeCategory": d.get("recipeCategory", []),
         "keywords": ", ".join(d.get("keywords", [])),
     }
+
+
+def clean_title(t: str) -> str:
+    t = re.sub(r"\s+", " ", t or "").strip()
+    t = re.sub(r"^Navigieren auf [\w.]+\s*", "", t)
+    t = re.sub(r"\s*Fusszeile$", "", t)
+    return t.split(" | ")[0].strip()
 
 
 def extract(page: str) -> dict | None:
@@ -450,7 +476,7 @@ def source_of(url: str) -> str:
 
 def classify(raw: dict) -> dict | str:
     """Gibt ein App-Rezept zurück oder einen Ablehnungsgrund (str)."""
-    name = raw.get("name") or ""
+    name = clean_title(raw.get("name") or "")
     lines = raw.get("ingredients") or []
     cat_kw = f"{raw.get('category', '')} {raw.get('keywords', '')}"
     if NOT_MAIN.search(name) or NOT_MAIN.search(raw.get("category", "")):
@@ -468,7 +494,7 @@ def classify(raw: dict) -> dict | str:
     if not 4 <= len(ingredients) <= 22:
         return f"{len(ingredients)} Zutaten"
 
-    meat_lines = [l for l in lines if MEAT.search(l) and not MEAT_EXCEPTIONS.search(l)]
+    meat_lines = [l for l in lines + [name] if MEAT.search(l) and not MEAT_EXCEPTIONS.search(l)]
     animal_lines = [l for l in lines if ANIMAL.search(l) and not ANIMAL_EXCEPTIONS.search(l)]
     declared = raw.get("diet", "").lower()
     if meat_lines:
@@ -482,7 +508,7 @@ def classify(raw: dict) -> dict | str:
     months = set(range(1, 13))
     field_veg, veg_found = [], []
     for veg, (kws, field, available) in SEASON_VEG.items():
-        hit = any(re.search(re.escape(k), l, re.I) and not NOT_FRESH.search(l) for k in kws for l in lines)
+        hit = any(re.search(k if k.startswith("(?") else re.escape(k), l, re.I) and not NOT_FRESH.search(l) for k in kws for l in lines)
         if hit:
             veg_found.append(veg)
             months &= set(available)
@@ -492,8 +518,19 @@ def classify(raw: dict) -> dict | str:
     seasons = [s for s, ms in SEASONS.items() if len(months & set(ms)) >= 2]
     if not seasons:
         return "passt in keine Saison"
-    # Saison-Stärke: wie viel Freiland-Gemüse ist pro Saison frisch
-    strength = {s: sum(1 for _, f in field_veg if len(f & set(SEASONS[s])) >= 2) for s in seasons}
+    # Saisonwörter im Titel schliessen andere Saisons aus ("Sommerliche Spätzli" nicht im Herbst)
+    title_season = {
+        "winter": r"winter|weihnacht|advent", "fruehling": r"frühling|frühlings|oster|spargel|bärlauch",
+        "sommer": r"sommer|grill|erdbeer", "herbst": r"herbst|kürbis|wild\b|marroni",
+    }
+    named = [s for s, pat in title_season.items() if re.search(pat, name, re.I)]
+    if named:
+        seasons = [s for s in seasons if s in named] or seasons
+    # Saison-Stärke: Freiland-frisch zählt 2, Lagerware 1
+    strength = {}
+    for s in seasons:
+        ms = set(SEASONS[s])
+        strength[s] = sum(2 if len(f & ms) >= 2 else 1 for veg, f in field_veg) + (2 if s in named else 0)
 
     rid = re.sub(r"[^a-z0-9]+", "-", name.lower().translate(str.maketrans("äöüéèàç", "aoueeac"))).strip("-")[:48]
     return {
@@ -539,7 +576,8 @@ def cmd_build(per_season: int = 26):
     for season in SEASONS:
         for diet_group in ("vegi", "fleisch"):
             pool = [r for r in unique if season in r["seasons"] and ((r["diet"] == "fleisch") == (diet_group == "fleisch"))]
-            pool.sort(key=lambda r: (-r["season_strength"].get(season, 0), r["prep_time_min"], r["source"]))
+            is_salad = lambda r: bool(re.search(r"salat|bowl", r["title"], re.I))
+            pool.sort(key=lambda r: (is_salad(r), -r["season_strength"].get(season, 0), r["prep_time_min"] > 60, r["source"]))
             # Quellen abwechseln
             by_src: dict[str, list] = {}
             for r in pool:
@@ -573,6 +611,27 @@ def cmd_build(per_season: int = 26):
     print("Ablehnungsgründe:", dict(sorted(reasons.items(), key=lambda x: -x[1])[:8]))
 
 
+def cmd_merge():
+    """Vorgeschlagene (oder in tools/recipes_selected.json ausgewählte) Rezepte in die App übernehmen."""
+    data = json.loads(STAGING.read_text(encoding="utf-8"))
+    selected_file = ROOT / "recipes_selected.json"
+    if selected_file.exists():
+        ids = set(json.loads(selected_file.read_text(encoding="utf-8")))
+        chosen = [r for r in data["recipes"] if r["id"] in ids]
+    else:
+        chosen = [r for r in data["recipes"] if r["proposed"]]
+    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months")
+    out = [{k: r[k] for k in keep} for r in sorted(chosen, key=lambda r: r["title"])]
+    target = ROOT.parent / "static" / "recipes_imported.js"
+    target.write_text(
+        "// Automatisch erzeugt von tools/import_recipes.py merge – nicht von Hand bearbeiten.\n"
+        "// Nur Fakten (Titel, Portionen, Zutaten); Zubereitung steht auf der verlinkten Originalseite.\n"
+        "window.BRINGFRISCH_IMPORTED = " + json.dumps(out, ensure_ascii=False, indent=0).replace("\n", "") + ";\n",
+        encoding="utf-8",
+    )
+    print(f"{len(out)} Rezepte → {target.relative_to(ROOT.parent)}")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"discover": cmd_discover, "fetch": cmd_fetch, "build": cmd_build}.get(cmd, lambda: print(__doc__))()
+    {"discover": cmd_discover, "fetch": cmd_fetch, "build": cmd_build, "merge": cmd_merge}.get(cmd, lambda: print(__doc__))()

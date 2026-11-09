@@ -165,7 +165,7 @@
   // Rezepte & Wochenplan
   // ---------------------------------------------------------------------------
   function allRecipes() {
-    return [...(DATA.recipes || []), ...((importer && importer.customRecipes) || [])];
+    return [...(DATA.recipes || []), ...(window.BRINGFRISCH_IMPORTED || []), ...((importer && importer.customRecipes) || [])];
   }
 
   // Gemeinsamer Nenner der Anwesenden: vegan > vegi > fleisch
