@@ -157,6 +157,25 @@ A2.document.getElementById("openStaplesBtn").click();
 await wait(300);
 check(!tile("Olivenöl").classList.contains("on"), "gekauftes Olivenöl ist wieder «da»");
 
+// Nach «Bring! füllen»: Grundvorrat in der Einkaufsliste antippen -> doch auf Bring! (z.B. Öl ist leer)
+A2.document.getElementById("staplesDialog").close();
+A2.document.querySelector('#tab-shop .seg [data-filter="staples"]').click();
+await wait(100);
+const row = A2.document.querySelector("#shopList [data-shop]");
+if (row) {
+  const nm = row.dataset.shop;
+  const before3 = bringList.length;
+  row.click();
+  await wait(400);
+  check(bringList.length === before3 + 1, `Grundvorrat «${nm}» nach dem Füllen noch auf Bring! gesetzt`);
+  A2.document.querySelector('#tab-shop .seg [data-filter="onBring"]').click();
+  const back = [...A2.document.querySelectorAll("#shopList [data-shop]")].find(r => r.dataset.shop === nm);
+  check(!!back && back.classList.contains("on"), `«${nm}» steht jetzt unter «Schon auf Bring!» (durchgestrichen)`);
+  back.click();
+  await wait(400);
+  check(bringList.length === before3, `nochmals antippen nimmt «${nm}» wieder weg`);
+} else check(false, "kein Grundvorrat im Wochenplan zum Testen");
+
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 globalThis.fetch = realFetch;

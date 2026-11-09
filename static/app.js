@@ -529,7 +529,7 @@
     $("cntToBuy").textContent = groups.toBuy.length;
     $("cntOnBring").textContent = groups.onBring.length;
     $("cntStaples").textContent = groups.staples.length;
-    $("shopSummary").textContent = `${state.shopping.length} Zutaten diese Woche`;
+    $("shopSummary").textContent = `${state.shopping.length} Zutaten · antippen = auf/von Bring!`;
     document.querySelectorAll("#tab-shop .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === state.shopFilter)));
 
     const items = groups[state.shopFilter];
@@ -547,7 +547,7 @@
     $("shopList").innerHTML = Object.keys(byAisle).sort().map(cat => `
       <div class="aisle">
         <h3>${esc(cat)}</h3>
-        ${byAisle[cat].map(it => `<div class="item"><span>${esc(it.name)}</span><span class="amt">${esc(it.spec)}</span></div>`).join("")}
+        ${byAisle[cat].map(it => `<button type="button" class="item tap-item${it.isOnBring ? " on" : ""}" data-shop="${esc(it.name)}" aria-pressed="${it.isOnBring}"><span>${esc(it.name)}</span><span class="amt">${esc(it.spec)}</span></button>`).join("")}
       </div>`).join("");
   }
 
@@ -1101,17 +1101,12 @@
   };
 
   // ---------------------------------------------------------------------------
-  // Grundvorrat wie in Bring!: Kacheln mit Bring!-Bild, gleiche Abteilungen.
+  // Grundvorrat wie in Bring!: gleiche Abteilungen und Artikel (kleine Pillen).
   // Antippen = auf Bring! (rot), nochmals antippen = wieder weg (nur was der Bot selbst gesetzt hat).
   // ---------------------------------------------------------------------------
   function stapleTarget(st) {
     const name = cleanIngredient(st.name).name;
     return bringItemId(name) || name;
-  }
-  function bringIcon(itemId) {
-    const slug = String(itemId).toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue")
-      .replace(/[éèê]/g, "e").replace(/[àâ]/g, "a").replace(/[\s-]+/g, "_").replace(/[^a-z0-9_]/g, "");
-    return `https://web.getbring.com/assets/images/items/${slug}.png`;
   }
   const onBringNow = name => state.bringItems.some(n => n.toLowerCase() === String(name).toLowerCase());
 
@@ -1134,18 +1129,12 @@
             const red = connected() ? onBringNow(target) : st.in_stock === false;
             const label = known ? window.BRING_CATALOG[target] : target;
             const sub = label.toLowerCase() !== cleanIngredient(st.name).name.toLowerCase() ? st.name : "";
-            const letter = esc(label.charAt(0).toUpperCase());
             return `<button type="button" class="btile${red ? " on" : ""}" data-staple="${idx}" aria-pressed="${red}" title="${esc(st.name)}">
-              <span class="bimg" data-letter="${letter}">${known ? `<img src="${esc(bringIcon(target))}" alt="" loading="lazy">` : letter}</span>
               <span class="bname">${esc(label)}</span>
             </button>`;
           }).join("")}
         </div>
       </section>`).join("");
-    // Bild fehlt (offline / unbekannt) -> Anfangsbuchstabe wie in Bring!
-    $("staplesList").querySelectorAll(".bimg img").forEach(img => {
-      img.addEventListener("error", () => { img.parentNode.textContent = img.parentNode.dataset.letter; }, { once: true });
-    });
     $("staplesHint").textContent = connected()
       ? "Antippen = auf eure Bring!-Liste. Nochmals antippen = wieder weg."
       : "Antippen = «leer», kommt beim nächsten «Bring! füllen» mit.";
@@ -1160,6 +1149,59 @@
     if (connected()) api("/bring/list").then(d => { setBringList(d); renderStaples(); refresh(); }).catch(() => {});
   };
 
+  // Einen Artikel auf Bring! setzen oder wieder wegnehmen – jederzeit, auch nach «Bring! füllen».
+  // Wegnehmen nur, was der Bot selbst gesetzt hat. Rückgabe: "on", "off", "foreign" oder null (Fehler).
+  async function toggleOnBring(target, spec) {
+    try {
+      let result;
+      if (onBringNow(target)) {
+        const r = await api("/bring/remove", { method: "POST", body: { names: [target] } });
+        if (r.notMine && r.notMine.length) {
+          toast(`${target} hat jemand anderes auf Bring! gesetzt – dort abhaken`);
+          result = "foreign";
+        } else {
+          toast(`${target} von Bring! genommen`);
+          result = "off";
+        }
+      } else {
+        await api("/bring/sync", { method: "POST", body: { items: [{ name: target, spec: spec || "" }] } });
+        toast(`${target} auf Bring! ✓`);
+        result = "on";
+      }
+      setBringList(await api("/bring/list"));
+      return result;
+    } catch (err) {
+      toast(`Bring!: ${err.message}`);
+      return null;
+    }
+  }
+
+  // Passender Grundvorrat-Eintrag zu einer Zutat (z.B. «Olivenöl» -> Olivenöl extra vergine)
+  function stapleFor(name) {
+    const lower = name.toLowerCase();
+    return state.staples.find(st => (st.keywords || [st.name.toLowerCase()]).some(k => lower.includes(k.toLowerCase())));
+  }
+
+  $("shopList").addEventListener("click", async e => {
+    const b = e.target.closest("[data-shop]");
+    if (!b || b.disabled) return;
+    const it = state.shopping.find(x => x.name === b.dataset.shop);
+    if (!it) return;
+    const st = it.isStaple || stapleFor(it.name) ? stapleFor(it.name) : null;
+    if (!connected()) {
+      // ohne Server: Grundvorrat als «leer» markieren, kommt beim nächsten Teilen/Kopieren mit
+      if (st) { st.in_stock = st.in_stock === false; saveStaples(); refresh(); }
+      else toast("Ohne WG-Server: «Bring! füllen» → Teilen/Kopieren");
+      return;
+    }
+    b.disabled = true;
+    const [payload] = bringPayload([it]);
+    const r = await toggleOnBring(payload.name, payload.spec);
+    if (st && r === "on") { st.in_stock = false; st.sent = true; saveStaples(); }
+    if (st && r === "off") { st.in_stock = true; st.sent = false; saveStaples(); }
+    refresh();
+  });
+
   $("staplesList").addEventListener("click", async e => {
     const b = e.target.closest("[data-staple]");
     if (!b || b.disabled) return;
@@ -1172,23 +1214,11 @@
       return refresh();
     }
     b.disabled = true;
-    try {
-      if (onBringNow(target)) {
-        const r = await api("/bring/remove", { method: "POST", body: { names: [target] } });
-        if (r.notMine && r.notMine.length) toast(`${target} hat jemand anderes auf Bring! gesetzt – dort abhaken`);
-        else { st.in_stock = true; st.sent = false; toast(`${target} von Bring! genommen`); }
-      } else {
-        const spec = cleanIngredient(st.name).name.toLowerCase() !== target.toLowerCase() ? st.name : "";
-        await api("/bring/sync", { method: "POST", body: { items: [{ name: target, spec }] } });
-        st.in_stock = false;
-        st.sent = true;
-        toast(`${target} auf Bring! ✓`);
-      }
-      saveStaples();
-      setBringList(await api("/bring/list"));
-    } catch (err) {
-      toast(`Bring!: ${err.message}`);
-    }
+    const spec = cleanIngredient(st.name).name.toLowerCase() !== target.toLowerCase() ? st.name : "";
+    const r = await toggleOnBring(target, spec);
+    if (r === "on") { st.in_stock = false; st.sent = true; }
+    if (r === "off") { st.in_stock = true; st.sent = false; }
+    saveStaples();
     renderStaples();
     refresh();
   });
