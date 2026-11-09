@@ -34,6 +34,12 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - **Salate als Hauptgang** (ohne zusätzlichen Beilagensalat): Feigen-Ziegenkäse-Rucola mit Baumnüssen (Aug–Okt), Nüsslisalat mit Ei, Speck und Croûtons (Okt–März), Randen-Linsen mit Feta und Apfel (Sep–März), Chicorée-Orangen mit Poulet (Nov–März), Kürbis-Quinoa mit Granatapfel (Sep–Dez, vegan), Wassermelone-Feta-Minze (Jun–Aug), Panzanella (Jul–Sep)
   - **Teigwaren**: Kürbis-Salbei-Penne (Sep–Dez), Carbonara (Jo: Champignons), Lauch-Rahm-Nudeln mit Schinken (Jo: Räuchertofu), Orecchiette mit Rosenkohl, Zitrone, Baumnüssen (Okt–Feb), Bolognese mit Rüebli (Jo: Vegi-Hack), Spinat-Ricotta-Penne (Frühling/Herbst), Cherrytomaten-Burrata-Pasta (Jun–Sep)
   - Regel: Salat-Rezepte bekommen `is_salad: true` → kein extra «Nüsslisalat / Saisonsalat» auf der Liste
+- [ ] **Auswärts essen: bestellen oder abholen** – zwei neue Menüs
+  - **🍕 Pizza bestellen** und **🥙 Döner holen** (später erweiterbar, z.B. Sushi)
+  - Kauft nichts ein: keine Zutaten, kein Reste-Puffer, kein Beilagensalat (wie Resteessen)
+  - Bring! bleibt unberührt; im Plan und Kalender als «🍕 Pizza bestellen» bzw. «🥙 Döner holen» mit Uhrzeit
+  - Pro Person antippbar wie immer (wer isst mit); optional Notiz pro Person («Jo: vegi», «Lukas: scharf»), damit die Bestellung klar ist
+  - Gehört zum Topf «⚡ schnell / ♻️ Reste» und kann so auch in der Wochenwahl auftauchen (die 2 schnellen Plätze)
 - [ ] **Jeden Monat 2 neue Saison-Gerichte**
   - Je 1 vegi + 1 Fleisch, mit Gemüse, das in dem Monat Saison hat (VSGP-Liste), von Hand geschrieben (kein Scraping), 4 Portionen
   - Zum Monatsanfang in `standalone_data.js`, Feld `added: "2026-12"` → in der App als «Neu im Dezember» markiert und in der Wochenwahl bevorzugt (mind. 1 der beiden im Memory)
