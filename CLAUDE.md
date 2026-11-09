@@ -25,6 +25,8 @@ Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 - **Rezeptmengen** gelten für `recipe.servings` (Standard 4).
 - **Alles für alle**: gemeinsame Basis + 150 g Fleisch pro Fleisch-Esser (nicht bei Fleischrezepten) + 100 g Grillkäse pro Vegi + 50 g Salat pro Portion.
 - **Grundvorrat** wird nicht auf die Liste gesetzt, solange nicht «leer».
+- **Schnelles & Reste** (`quick: true` in `standalone_data.js`): Fertigpizza, Nuggets, Maultaschen, Gnocchi, Dumplings, Resteessen. 2 davon pro Woche im Memory. `vegi_swap` ersetzt den Grillkäse (z.B. Vegi-Nuggets), `no_addons` lässt Extra-Fleisch/-Käse weg, `is_leftovers` = nichts einkaufen.
+- **Einkaufsnamen**: «Schweizer», Klammern, «à ca. 400 g» stehen in der Mengenangabe, nicht im Namen. Leitungswasser kommt nie auf die Liste.
 - **Design**: Matrix-Plan (eine Seite), Alpine Minimalist: Schneeweiss + Alpengrün, Dark Mode automatisch. Joshua entscheidet Design-Fragen gern selbst – live als HTML zeigen.
 
 ## Befehle

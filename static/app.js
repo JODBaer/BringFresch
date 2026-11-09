@@ -311,7 +311,7 @@
 
     state.plan.forEach(day => {
       const portions = portionsFor(day);
-      if (portions === 0) return;
+      if (portions === 0 || day.is_leftovers) return; // Resteessen: nichts einkaufen
       const scale = portions / (day.servings || DEFAULT_SERVINGS);
 
       // 1. Gemeinsame Basis für alle + Reste
@@ -324,8 +324,10 @@
       const meat = present.filter(m => m.diet === "fleisch").length;
       const vegi = present.filter(m => m.diet === "vegi").length;
       const vegan = present.filter(m => m.diet === "vegan").length;
-      if (meat > 0 && day.diet !== "fleisch") add("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meat, "Fleisch & Fisch");
-      if (vegi > 0) add("Schweizer Grillkäse / Halloumi", "g", 100 * vegi, "Milch & Käse");
+      if (meat > 0 && day.diet !== "fleisch" && !day.no_addons) add("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meat, "Fleisch & Fisch");
+      const swap = day.vegi_swap; // z.B. Vegi-Nuggets statt Grillkäse
+      if (vegi > 0 && swap) add(swap.name, swap.unit, swap.amount * vegi, swap.bring_cat);
+      else if (vegi > 0 && !day.no_addons) add("Schweizer Grillkäse / Halloumi", "g", 100 * vegi, "Milch & Käse");
       if (vegan > 0) add("Tofu / veganer Reibkäse", "Portion", vegan, "Milch & Käse");
 
       // 3. Frische Beilage
@@ -551,8 +553,9 @@
   }
 
   // Ersatz-Gericht: zuerst saisonal + gleiche Gruppe, dann saisonal, dann irgendeins
-  function backupRecipe(group, excludeIds) {
-    const all = allRecipes().filter(r => !excludeIds.includes(String(r.id)));
+  // quick = Schnelles/Reste (Pizza, Nuggets, Gnocchi …): eigener Topf, damit sie das Saison-Memory nicht fluten
+  function backupRecipe(group, excludeIds, quick = false) {
+    const all = allRecipes().filter(r => !excludeIds.includes(String(r.id)) && !!r.quick === quick);
     const tiers = [
       all.filter(r => inSeason(r) && dietGroup(r) === group),
       all.filter(r => inSeason(r)),
@@ -564,10 +567,12 @@
   }
 
   // 14 Kandidaten: halb vegi (inkl. vegan), halb Fleisch, saisonal zuerst
+  const QUICK_SLOTS = 2; // pro Woche 2 schnelle Sachen / Resteessen im Memory
   function pickCandidates() {
     const ids = [];
     for (let i = 0; i < GRID_SIZE; i++) {
-      const r = backupRecipe(i % 2 === 0 ? "vegi" : "fleisch", ids);
+      const quick = i >= GRID_SIZE - QUICK_SLOTS;
+      const r = backupRecipe(i % 2 === 0 ? "vegi" : "fleisch", ids, quick) || backupRecipe(i % 2 === 0 ? "vegi" : "fleisch", ids, !quick);
       if (!r) break;
       ids.push(String(r.id));
     }
@@ -658,7 +663,7 @@
           <button class="tap" type="button" data-like="${esc(id)}" aria-pressed="${on}" aria-label="${esc(r.title)} ${on ? "abwählen" : "wählen"}"></button>
           ${on ? `<span class="tick" aria-hidden="true">✓</span>` : ""}
           <span class="vt">${esc(r.title)}</span>
-          <span class="vm">${DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${r.source_url ? ` · <a href="${esc(r.source_url)}" target="_blank" rel="noopener">🌐</a>` : ""}</span>
+          <span class="vm">${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${r.source_url ? ` · <a href="${esc(r.source_url)}" target="_blank" rel="noopener">🌐</a>` : ""}</span>
           ${on ? `<span class="days-pick" role="group" aria-label="Wunschtag">${DAYS.map((d, i) => `<button type="button" data-wish="${esc(id)}" data-day="${i}" aria-pressed="${wish === i}">${d.slice(0, 2)}</button>`).join("")}</span>` : ""}
           <span class="vv">${votersOf(id).map(m => `<span class="mini" title="${esc(m.name)}">${esc(short[m.id])}</span>`).join("")}</span>
         </div>`;
@@ -726,7 +731,8 @@
     let swapped = 0;
     vote.candidates = vote.candidates.map(id => {
       if (votersOf(id).length > 0) return id;
-      const r = backupRecipe(dietGroup(recipeById(id)), vote.candidates);
+      const old = recipeById(id);
+      const r = backupRecipe(dietGroup(old), vote.candidates, !!(old && old.quick));
       if (!r) return id;
       swapped++;
       return String(r.id);

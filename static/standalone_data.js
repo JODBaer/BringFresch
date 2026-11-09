@@ -350,6 +350,106 @@ window.BRINGFRISCH_DATA = {
       instructions: "Chicorée 5 Min. im Salzwasser blanchieren, abtropfen lassen. In Schinkentranchen wickeln, in eine Gratinform legen. Mit Rahm und Käse übergiessen, bei 200°C 20 Min. überbacken. Mit Salzkartoffeln servieren.",
       season_months: [10, 11, 12, 1, 2, 3],
       health_tip: "Wertvolle Bitterstoffe im Chicorée regen die Verdauung und Leberfunktion optimal an."
+    },
+    {
+      id: "resteessen",
+      title: "Resteessen – Kühlschrank leeren",
+      category: "schnell",
+      quick: true,
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 15,
+      ingredients: [
+
+      ],
+      instructions: "Alles, was noch da ist, aufwärmen oder zu einer Pfanne/Rösti/Omelette verarbeiten. Nichts einkaufen.",
+      is_leftovers: true,
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "fertigpizza",
+      title: "Fertigpizza mit Salat",
+      category: "schnell",
+      quick: true,
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 20,
+      ingredients: [
+        { name: "Tiefkühlpizza", amount: "4", unit: "Stk", bring_cat: "Tiefkühl" }
+      ],
+      instructions: "Pizzen nach Packung backen (Fleisch-Fans nehmen Salami/Prosciutto, Jo Margherita/Gemüse). Dazu Salat.",
+      no_addons: true,
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "chicken_nuggets",
+      title: "Chicken Nuggets mit Pommes",
+      category: "schnell",
+      quick: true,
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 25,
+      ingredients: [
+        { name: "Chicken Nuggets", amount: "500", unit: "g", bring_cat: "Tiefkühl" },
+        { name: "Pommes frites", amount: "800", unit: "g", bring_cat: "Tiefkühl" },
+        { name: "Ketchup / Mayo", amount: "1", unit: "Flasche", bring_cat: "Vorrat & Konserven" }
+      ],
+      instructions: "Nuggets und Pommes im Ofen oder Airfryer nach Packung backen. Jo bekommt Vegi-Nuggets.",
+      vegi_swap: { name: "Vegi-Nuggets", amount: 150, unit: "g", bring_cat: "Tiefkühl" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "maultaschen",
+      title: "Maultaschen mit Zwiebeln und Bouillon",
+      category: "schnell",
+      quick: true,
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 20,
+      ingredients: [
+        { name: "Maultaschen", amount: "800", unit: "g", bring_cat: "Kühlregal" },
+        { name: "Zwiebeln", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Gemüsebouillon", amount: "1", unit: "l", bring_cat: "Vorrat & Konserven" },
+        { name: "Schnittlauch", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Maultaschen in Bouillon ziehen lassen oder mit Zwiebeln in Butter anbraten. Mit Schnittlauch servieren.",
+      vegi_swap: { name: "Vegi-Maultaschen", amount: 200, unit: "g", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "gnocchi_tomate",
+      title: "Gnocchi mit Tomatensauce und Mozzarella",
+      category: "schnell",
+      quick: true,
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 20,
+      ingredients: [
+        { name: "Gnocchi", amount: "1", unit: "kg", bring_cat: "Kühlregal" },
+        { name: "Passata / Tomatensauce", amount: "700", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Mozzarella", amount: "250", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Basilikum", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Gnocchi kurz kochen oder in der Pfanne anbraten, mit warmer Tomatensauce mischen, Mozzarella darüber zupfen, Basilikum dazu.",
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "dumplings",
+      title: "Dumplings mit Pak Choi und Sojasauce",
+      category: "schnell",
+      quick: true,
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 20,
+      ingredients: [
+        { name: "Dumplings / Gyoza (Tiefkühl)", amount: "1", unit: "kg", bring_cat: "Tiefkühl" },
+        { name: "Pak Choi", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Frühlingszwiebeln", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" },
+        { name: "Sojasauce", amount: "1", unit: "Flasche", bring_cat: "Vorrat & Konserven" }
+      ],
+      instructions: "Dumplings in der Pfanne anbraten und mit etwas Wasser zugedeckt garen. Pak Choi kurz mitdünsten, mit Sojasauce und Frühlingszwiebeln servieren.",
+      vegi_swap: { name: "Vegi-Dumplings (Tiefkühl)", amount: 250, unit: "g", bring_cat: "Tiefkühl" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     }
   ]
 };

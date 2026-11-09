@@ -127,6 +127,25 @@ const linkDom = new JSDOM(html, { url: `https://jodbaer.github.io/BringFresch/#p
   beforeParse(win) { win.HTMLDialogElement.prototype.showModal = function () { this.open = true; }; win.HTMLDialogElement.prototype.close = function () { this.open = false; }; } });
 check(linkDom.window.document.querySelectorAll("#days .day")[0].querySelectorAll(".chip").length === 1, "Plan-Link wird übernommen");
 
+// 9. Schnelles & Reste
+const R = id => w.BRINGFRISCH_DATA.recipes.find(r => r.id === id);
+const wg = ["joshua", "lukas", "leonie", "jo"];
+const qday = (id, i) => ({ ...R(id), day: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"][i], eaters: wg, leftover_buffer: 0, extra_guests: 0 });
+const qDom = boot({
+  bringfrisch_members: [{ id: "joshua", name: "Joshua", diet: "fleisch" }, { id: "lukas", name: "Lukas", diet: "fleisch" }, { id: "leonie", name: "Leonie", diet: "fleisch" }, { id: "jo", name: "Jo", diet: "vegi" }],
+  bringfrisch_current_plan: [qday("chicken_nuggets", 0), ...[1, 2, 3, 4, 5, 6].map(i => qday("resteessen", i))],
+});
+const qd = qDom.window.document;
+qd.querySelector('[data-tab="shop"]') && qd.querySelector('[data-tab="shop"]').click();
+const qshop = [...qd.querySelectorAll("#shopList .item")].map(i => i.textContent.replace(/\s+/g, " ").trim());
+check(qshop.some(t => /Vegi-Nuggets/.test(t)) && !qshop.some(t => /Grillkäse/.test(t)), `Jo bekommt Vegi-Nuggets statt Grillkäse (${qshop.join(" | ")})`);
+check(!qshop.some(t => /Speckwürfeli/.test(t)), "kein Extra-Fleisch zu Nuggets");
+check(qshop.length <= 6, `Resteessen-Tage kaufen nichts ein (${qshop.length} Zeilen)`);
+check(qshop.every(t => !/^Schweizer /.test(t)), "«Schweizer» steht nicht mehr vor dem Namen");
+qd.getElementById("openVoteBtn").click();
+const quickCards = [...qd.querySelectorAll("#voteGrid .vm")].filter(e => /⚡|♻️/.test(e.textContent)).length;
+check(quickCards === 2, `2 schnelle/Reste-Gerichte im Memory (${quickCards})`);
+
 check(errors.length === 0, `keine JS-Fehler insgesamt ${errors.join(" | ")}`);
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);
