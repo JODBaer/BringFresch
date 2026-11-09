@@ -1172,7 +1172,14 @@
   }
 
   async function syncToBring() {
-    const items = toBuyItems().map(it => ({ name: it.name, spec: it.spec }));
+    // Bring! kennt pro Name nur einen Eintrag: gleiche Namen mit verschiedenen Einheiten zusammenfassen
+    const byName = new Map();
+    for (const it of toBuyItems()) {
+      const k = it.name.toLowerCase();
+      const prev = byName.get(k);
+      byName.set(k, prev ? { name: prev.name, spec: `${prev.spec} + ${it.spec}` } : { name: it.name, spec: it.spec });
+    }
+    const items = [...byName.values()];
     const btn = $("syncBtn");
     btn.disabled = true;
     try {

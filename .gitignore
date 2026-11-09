@@ -30,3 +30,4 @@ tools/recipes_staging.json
 
 # Wrangler lokal
 worker/.wrangler/
+tests/.e2e-items.json
