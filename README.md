@@ -4,6 +4,16 @@ WG-Menüplaner mit Schweizer Saisongemüse. Die WG wählt gemeinsam 7 Znacht fü
 
 **App:** <https://jodbaer.github.io/BringFresch/> (auf dem Handy öffnen → «Zum Home-Bildschirm»)
 
+## Bedienung (Plan)
+
+- **Tag** (Kreis links) antippen = Menü auf-/zuklappen: Zutaten mit Mengen, «Zum Rezept ↗», «Wechseln».
+- **Gericht** antippen = Menü wechseln (Suche, «Beliebt bei euch» oben, eigenes Menü eintippen, «Rückgängig»).
+- **Kreise** = wer mitisst (antippen = an/ab, abwesend = grau mit Strich). **+N** daneben = Reste.
+- **Zahl** rechts = Portionen (Personen + Reste): antippen = +1 (bis +6, dann wieder 0), **▾** = Auswahl.
+- Oben: **Kalender-Symbol** = Wochenwahl (roter Punkt = noch offen), **🛒 Bring!-Chip** = füllen.
+- Unten: Plan · Einkauf · Rezepte & Saison · Einstellungen (⋮-Menü: WG-Einstellungen, Aktualisieren, Wochenwahl, iPhone-/Android-Stil).
+- iPhone bekommt den Glas-Stil, Android Material 3 – automatisch. Design-Vorgabe: [docs/design/](docs/design/).
+
 ## So funktioniert's
 
 1. **🃏 Wochenwahl**: 14 Gerichte – 12 saisonale (halb vegi, halb Fleisch) + 2 schnelle/Reste (⚡ Pizza, Nuggets, Gnocchi … · ♻️ Resteessen). Alle tippen auf dem eigenen Handy ihre Favoriten an, optional mit Wunschtag. «Neu mischeln» tauscht Gerichte ohne Stimme aus.
@@ -27,7 +37,8 @@ Rezepte: 10 Klassiker + 6 schnelle/Reste + 82 Saisonrezepte von Betty Bossi, Mig
 | `static/` | Die App (HTML/JS, läuft offline) – wird auf GitHub Pages veröffentlicht |
 | `worker/` | Cloudflare Worker: Bring!-Sync über Bot-Konto, gemeinsamer Plan/Vorrat/Wochenwahl, Kalender-Abo. Einrichtung: [worker/README.md](worker/README.md) |
 | `tools/` | Rezept-Import (einmalig), Bring!-Katalog (`update_bring_catalog.mjs`), App-Icons (`make_icons.py`), Live-Check (`check_live.ps1`) |
-| `tests/` | `cd tests && npm install && npm test` · echter Durchlauf mit Bring!: `powershell -ExecutionPolicy Bypass -File tests\e2e_live.ps1` |
+| `tests/` | `cd tests && npm install && npm test` · Layout im Browser: `node tests/layout_check.mjs --shots` · echter Durchlauf mit Bring!: `powershell -ExecutionPolicy Bypass -File tests\e2e_live.ps1` |
+| `docs/design/` | Design-Vorgabe der Plan-Ansicht (Spezifikation + lauffähiger Prototyp) |
 
 Ohne Worker funktioniert alles auf einem Handy; Bring! dann über Teilen/Kopieren.
 

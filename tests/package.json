@@ -5,6 +5,7 @@
     "test": "node app.test.js && node integration.test.mjs && node ../worker/test.mjs"
   },
   "devDependencies": {
-    "jsdom": "24.1.3"
+    "jsdom": "24.1.3",
+    "puppeteer-core": "^23.11.1"
   }
 }

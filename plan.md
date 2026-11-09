@@ -27,9 +27,12 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 
 ## Als Nächstes
 
+- [ ] **Redesign Plan-Ansicht – prüfen**: `node tests/layout_check.mjs --shots` (390×844, 375×667, 390×600; iPhone/Android, hell/dunkel) und auf dem echten iPhone/Android ansehen
+- [ ] Redesign für Einkauf, Rezepte & Saison, Einstellungen (folgt separat, gleiche Vorgabe)
+- [ ] Wochenwahl am **Sonntag für die nächste Woche** (Pop-up sagt es schon, die Wahl selbst gilt noch für die laufende Woche)
+
 - [ ] **Joshua**: WG-Liste in Bring! mit `allmenbot@gmail.com` teilen, in der App unter Einstellungen → «Bring!-Liste der WG» wählen
-- [ ] **Design-Entscheid** (Joshua, live): Material 2014 oder 2018, Grün behalten oder Google-Farben – Vorschau: <https://claude.ai/artifact/GJVsoZBRtYx5RFzgP1w6ac>
-  - danach ganze App umstellen, inkl. Android-Sync-Animation (Kreis mit Bogen) und Snackbar mit «Rückgängig»
+- [x] **Design-Entscheid**: eigene Spezifikation (`docs/design/`) – iPhone Glas, Android Material 3 Expressive, Hellgrün + Pistazie; Plan-Ansicht + Navigation umgesetzt
 - [ ] **Mehr Rezepte, von Hand geschrieben** (kein Scraping), je 4 Portionen, mit Saison:
   - **Salate als Hauptgang** (ohne zusätzlichen Beilagensalat): Feigen-Ziegenkäse-Rucola mit Baumnüssen (Aug–Okt), Nüsslisalat mit Ei, Speck und Croûtons (Okt–März), Randen-Linsen mit Feta und Apfel (Sep–März), Chicorée-Orangen mit Poulet (Nov–März), Kürbis-Quinoa mit Granatapfel (Sep–Dez, vegan), Wassermelone-Feta-Minze (Jun–Aug), Panzanella (Jul–Sep)
   - **Teigwaren**: Kürbis-Salbei-Penne (Sep–Dez), Carbonara (Jo: Champignons), Lauch-Rahm-Nudeln mit Schinken (Jo: Räuchertofu), Orecchiette mit Rosenkohl, Zitrone, Baumnüssen (Okt–Feb), Bolognese mit Rüebli (Jo: Vegi-Hack), Spinat-Ricotta-Penne (Frühling/Herbst), Cherrytomaten-Burrata-Pasta (Jun–Sep)

@@ -163,7 +163,6 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = action.label;
-      btn.style.cssText = "margin-left:12px;border:0;background:none;color:inherit;font-weight:800;text-decoration:underline";
       btn.onclick = () => { action.run(); el.remove(); };
       el.appendChild(btn);
     }
@@ -496,33 +495,6 @@
     $("weekLabel").textContent = `KW ${isoWeek(now)} · ${MONTHS[now.getMonth()]}`;
   }
 
-  function renderDays() {
-    const short = initialsMap();
-    const today = todayIndex();
-    $("days").innerHTML = state.plan.map((day, idx) => `
-      <div class="day${idx === today ? " today" : ""}">
-        <span class="d">${DAYS[idx].slice(0, 2)}</span>
-        <button class="title-btn" type="button" data-pick="${idx}" aria-label="Menü am ${DAYS[idx]} wechseln: ${esc(day.title)}">
-          <span class="t">${esc(day.title)}</span><span class="caret">▾</span>
-          ${day.source_url ? `<a class="src" href="${esc(day.source_url)}" target="_blank" rel="noopener" data-link aria-label="Rezept öffnen">🌐</a>` : ""}
-        </button>
-        <span class="chips">
-          ${state.members.map(m => `<button type="button" class="chip${day.eaters.includes(m.id) ? "" : " off"}" data-day="${idx}" data-member="${esc(m.id)}" aria-pressed="${day.eaters.includes(m.id)}" aria-label="${esc(m.name)} am ${DAYS[idx]}">${esc(short[m.id])}</button>`).join("")}
-          <select class="buf" data-buffer="${idx}" aria-label="Reste-Puffer am ${DAYS[idx]}">
-            ${[0, 1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === day.leftover_buffer ? " selected" : ""}>+${n}</option>`).join("")}
-          </select>
-        </span>
-      </div>`).join("");
-  }
-
-  function renderBasketLine() {
-    const n = toBuyItems().length;
-    const staples = state.shopping.filter(it => it.isStaple).length;
-    const onBring = state.shopping.filter(it => it.isOnBring && !it.isStaple).length;
-    const extra = [staples ? `${staples} Grundvorrat ausgeblendet` : "", onBring ? `${onBring} schon auf Bring!` : ""].filter(Boolean).join(" · ");
-    $("basketLine").innerHTML = `<span><b>🛒 Einkaufskorb: ${n} Artikel</b><small>${extra || "Alles für die ganze Woche"}</small></span><span class="chev">›</span>`;
-  }
-
   function renderSeasonHint() {
     const m = currentMonth();
     const names = (DATA.season_items || [])
@@ -531,14 +503,23 @@
     $("seasonHint").textContent = names.length ? `Saison im ${MONTHS[m - 1]}: ${names.slice(0, 8).join(", ")}.` : "";
   }
 
+  // Bring!-Chip oben: ruhig «24 Artikel» · nach Sync «24 für Bring!» (hervorgehoben) · danach «✓ in Bring!»
   function renderCta() {
     const diff = bringDiff();
     const n = diff.missing.length;
     const more = diff.changed.length;
     const wanted = state.shopping.filter(it => !it.isStaple).length;
-    $("ctaCount").textContent = n === 0 && more === 0 && wanted > 0 ? "· alles auf Bring! ✓"
-      : `· ${n} Artikel${more ? ` · ${more} mehr` : ""}`;
-    $("syncBtn").disabled = wanted === 0; // auch bei «alles drauf» antippbar -> fragt nach
+    const allOn = n === 0 && more === 0 && wanted > 0;
+    if (!allOn && chipState === "done") chipState = "quiet";
+    if (n === 0 && chipState === "ready") chipState = "quiet";
+    const chip = $("syncBtn");
+    chip.classList.toggle("ready", chipState === "ready");
+    $("ctaCount").innerHTML = allOn ? "<b>✓</b> in Bring!"
+      : chipState === "ready" ? `<b>${n}</b> für Bring!`
+      : n === 0 && more ? `<b>${more}</b> mehr`
+      : `<b>${n}</b> Artikel${more ? ` · ${more} mehr` : ""}`;
+    chip.setAttribute("aria-label", allOn ? "Alles ist in Bring! – antippen zum Prüfen" : `${n} Artikel für Bring!${more ? `, ${more} mit mehr Menge` : ""} – antippen zum Füllen`);
+    chip.disabled = wanted === 0; // auch bei «alles drauf» antippbar -> fragt nach
   }
 
   // ---------------------------------------------------------------------------
@@ -631,7 +612,6 @@
   function refresh() {
     computeShopping();
     renderDays();
-    renderBasketLine();
     renderCta();
     renderShop();
     renderAttendance();
@@ -647,24 +627,6 @@
     savePlan();
     refresh();
   }
-
-  $("days").addEventListener("click", e => {
-    if (e.target.closest("[data-link]")) return; // Rezept-Link normal öffnen
-    const chip = e.target.closest("[data-member]");
-    if (chip) return toggleEater(+chip.dataset.day, chip.dataset.member);
-    if (e.target.closest("[data-buffer]")) return; // Auswahl läuft über "change"
-    const pick = e.target.closest("[data-pick]");
-    if (pick) openCatalog(+pick.dataset.pick);
-  });
-
-  // Reste-Puffer pro Tag: +0 … +6 Portionen
-  $("days").addEventListener("change", e => {
-    const sel = e.target.closest("[data-buffer]");
-    if (!sel) return;
-    state.plan[+sel.dataset.buffer].leftover_buffer = parseInt(sel.value, 10);
-    savePlan();
-    refresh();
-  });
 
   function planRandomWeek() {
     const previous = state.plan;
@@ -925,10 +887,12 @@
     const previous = state.plan;
     const days = assignDays(top.map(x => x.id));
     const next = [...state.plan];
-    Object.entries(days).forEach(([id, day]) => { next[day] = makeDay(recipeById(id), day, state.plan[day]); });
+    Object.entries(days).forEach(([id, day]) => { next[day] = makeDay(recipeById(id), day, state.plan[day]); countDish(id); });
     state.plan = next;
     savePlan();
     refresh();
+    save(`bringfrisch_wahl_${weekKey()}`, true);
+    markWahl();
     $("voteDialog").close();
     toast(withVotes < PLAN_SIZE ? `Plan übernommen (${PLAN_SIZE - withVotes} ohne Stimme aufgefüllt)` : "Plan übernommen", {
       label: "Rückgängig",
@@ -941,7 +905,6 @@
     planRandomWeek();
   };
 
-  $("basketLine").onclick = () => showTab("shop");
 
   // ---------------------------------------------------------------------------
   // Menü-Katalog
@@ -1046,6 +1009,7 @@
       return;
     }
     assignRecipe(recipe, state.catalogDay);
+    countDish(recipe.id);
     toast(`${DAYS[state.catalogDay]}: ${recipe.title}`);
   }
 
@@ -1441,7 +1405,10 @@
       }
       await pullShared();
       if ($("voteDialog").open) await pullVote();
-      toast($("syncStatus").textContent.startsWith("Verbunden") ? "Synchronisiert ✓" : $("syncStatus").textContent);
+      const okSync = $("syncStatus").textContent.startsWith("Verbunden");
+      const ready = bringDiff().missing.length;
+      if (okSync) setChip(ready ? "ready" : "quiet");
+      toast(okSync ? `Synchronisiert ✓${ready ? ` – ${ready} Artikel bereit für Bring!` : ""}` : $("syncStatus").textContent);
     } catch (e) {
       toast(e.message);
     } finally {
@@ -1449,25 +1416,41 @@
     }
   }
 
+  // Herunterziehen = aktualisieren: Formwechsel-Anzeige (Android) bzw. Glas-Kreis (iPhone)
+  async function runPullSync() {
+    const ptr = $("ptr");
+    ptr.classList.add("spin");
+    ptr.style.transform = "translateY(24px) scale(1)";
+    ptr.style.opacity = "1";
+    try {
+      await syncNow();
+    } finally {
+      ptr.classList.add("done");
+      setTimeout(() => { ptr.className = "ptr g"; ptr.style.cssText = ""; }, 350);
+    }
+  }
   (function pullToRefresh() {
-    const bar = $("ptr");
+    const ptr = $("ptr");
     let startY = null, dist = 0;
-    const reset = () => { startY = null; dist = 0; bar.style.transform = ""; bar.classList.remove("ready"); };
+    const blocked = () => document.querySelector("dialog[open]") || $("msheet").classList.contains("show") || !$("wpop").hidden;
     window.addEventListener("touchstart", e => {
-      if (window.scrollY > 0 || document.querySelector("dialog[open]") || e.touches.length !== 1) return;
+      if (scroller.scrollTop > 0 || blocked() || e.touches.length !== 1 || syncing) return;
       startY = e.touches[0].clientY;
+      dist = 0;
     }, { passive: true });
     window.addEventListener("touchmove", e => {
       if (startY === null) return;
-      dist = Math.max(0, Math.min(110, e.touches[0].clientY - startY));
-      bar.style.transform = `translateY(${dist - 48}px)`;
-      bar.classList.toggle("ready", dist > 70);
-      bar.textContent = dist > 70 ? "Loslassen zum Synchronisieren" : "Zum Synchronisieren ziehen";
+      dist = Math.max(0, e.touches[0].clientY - startY);
+      if (dist > 8 && tapStart) tapStart.moved = true;
+      ptr.style.transform = `translateY(${Math.min(dist, 120) * 0.8 - 48}px) scale(${Math.min(1, 0.6 + dist / 200)}) rotate(${dist * 3}deg)`;
+      ptr.style.opacity = String(Math.min(1, dist / 60));
     }, { passive: true });
     window.addEventListener("touchend", () => {
-      const go = dist > 70;
-      reset();
-      if (go) syncNow();
+      if (startY === null) return;
+      startY = null;
+      if (dist > 70) runPullSync();
+      else { ptr.style.transition = "transform .2s, opacity .2s"; ptr.style.transform = ""; ptr.style.opacity = "0"; setTimeout(() => { ptr.style.transition = ""; }, 220); }
+      dist = 0;
     });
   })();
 
@@ -1605,7 +1588,9 @@
       }
       setBringList(await api("/bring/list"));
       refresh();
-      toast(`${pushed} Artikel in Bring! ✓`, { label: "Rückgängig", run: () => undoBring(undo) });
+      setChip("done");
+      const hidden = state.shopping.filter(it => it.isStaple).length;
+      toast(`${pushed} Artikel in Bring! ✓${hidden ? ` · ${hidden} Grundvorrat ausgeblendet` : ""}`, { label: "Rückgängig", run: () => undoBring(undo) });
     } catch (e) {
       toast(`Bring!: ${e.message}`);
       openHandoff();
@@ -1718,12 +1703,447 @@
       else b.removeAttribute("aria-current");
     });
     document.querySelector("main").scrollTop = 0;
+    if (name === "plan") fitDensity();
   }
 
-  document.querySelector("nav").addEventListener("click", e => {
-    const b = e.target.closest("[data-tab]");
-    if (b) showTab(b.dataset.tab);
+  // ---------------------------------------------------------------------------
+  // Plan-Ansicht (Redesign): Tag = Menü auf/zu · Gericht = wechseln · Kreise = mitessen · Zahl = +1
+  // ---------------------------------------------------------------------------
+  const CHEV = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>`;
+  let openIdx = -1;
+
+  function dayMeta(day) {
+    const kind = day.is_leftovers ? "Reste" : day.quick ? "schnell" : day.diet === "fleisch" ? "Fleisch" : day.diet === "vegan" ? "vegan" : "vegi";
+    return `${kind} · ${day.prep_time_min || 30} Min.`;
+  }
+
+  // Zutaten für die Portionen dieses Tages (gleiche Rechnung wie die Einkaufsliste)
+  function dayIngredients(day) {
+    const portions = portionsFor(day);
+    const scale = (portions || day.servings || DEFAULT_SERVINGS) / (day.servings || DEFAULT_SERVINGS);
+    return (day.ingredients || []).map(ing => {
+      const raw = parseFloat(ing.amount);
+      const amt = Number.isFinite(raw) ? formatAmount(raw * scale, (ing.unit || "").trim()) : "";
+      return { amt, name: cleanIngredient(ing.name).name || ing.name };
+    });
+  }
+
+  const totalLabel = (day, idx) =>
+    `${DAYS[idx]}: für ${portionsFor(day)} kochen (${day.eaters.length + (day.extra_guests || 0)} Personen + ${day.leftover_buffer || 0} Reste). Antippen: plus eins`;
+
+  function rowHTML(day, idx, short, today) {
+    const many = state.members.length >= 5;
+    const ings = dayIngredients(day);
+    const b = day.leftover_buffer || 0;
+    return `<div class="prow${idx === today ? " today" : ""}${idx === openIdx ? " open" : ""}" data-i="${idx}">
+      <div class="phead">
+        <button type="button" class="pday" aria-expanded="${idx === openIdx}" aria-label="${DAYS[idx]}: ganzes Menü zeigen">${DAYS[idx].slice(0, 2)}</button>
+        <div class="dish">
+          <button type="button" class="t" data-pick="${idx}" aria-label="${DAYS[idx]}: ${esc(day.title)} – wechseln">${esc(day.title)}</button>
+          <span class="meta">${esc(dayMeta(day))}</span>
+        </div>
+        <div class="who${many ? " many" : ""}">${state.members.map(m => {
+          const on = day.eaters.includes(m.id);
+          return `<button type="button" class="av${on ? "" : " off"}" data-day="${idx}" data-member="${esc(m.id)}" aria-pressed="${on}" aria-label="${esc(m.name)} isst am ${DAYS[idx]} ${on ? "mit" : "nicht mit"}">${esc(short[m.id])}</button>`;
+        }).join("")}<span class="plus${b ? "" : " zero"}" aria-hidden="true">+${b}</span></div>
+        <div class="tot">
+          <button type="button" class="num" data-inc="${idx}" aria-label="${esc(totalLabel(day, idx))}">${portionsFor(day)}</button>
+          <span class="dd">${CHEV}<select class="buf" data-buffer="${idx}" aria-label="Reste am ${DAYS[idx]}">${[0, 1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === b ? " selected" : ""}>+${n}</option>`).join("")}</select></span>
+        </div>
+      </div>
+      <div class="more"><div><div class="inner">
+        <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
+        <div class="links">${day.source_url ? `<a href="${esc(day.source_url)}" target="_blank" rel="noopener">Zum Rezept ↗</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button></div>
+      </div></div></div>
+    </div>`;
+  }
+
+  function renderDays() {
+    const short = initialsMap();
+    const today = todayIndex();
+    $("days").innerHTML = state.plan.map((day, idx) => rowHTML(day, idx, short, today)).join("");
+  }
+
+  // Auf-/Zuklappen ändert nur Klassen – die anderen Zeilen werden nicht neu gezeichnet
+  function setOpen(i) {
+    openIdx = i;
+    [...$("days").children].forEach((row, k) => {
+      row.classList.toggle("open", k === i);
+      row.querySelector(".pday").setAttribute("aria-expanded", String(k === i));
+    });
+  }
+
+  // Tippen ja, Scrollen nein: Aktion nur, wenn Finger und Liste sich kaum bewegt haben
+  const scroller = $("scroller");
+  let tapStart = null;
+  function trackTaps(el, getScroll) {
+    el.addEventListener("pointerdown", e => { tapStart = { x: e.clientX, y: e.clientY, st: getScroll(), moved: false }; });
+    el.addEventListener("pointermove", e => { if (tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 8) tapStart.moved = true; });
+  }
+  const wasScroll = getScroll => !!tapStart && (tapStart.moved || Math.abs(getScroll() - tapStart.st) > 2);
+  trackTaps($("days"), () => scroller.scrollTop);
+
+  function bumpNum(idx) {
+    const btn = $("days").children[idx] && $("days").children[idx].querySelector(".num");
+    if (!btn) return;
+    btn.classList.remove("pop");
+    void btn.offsetWidth;
+    btn.classList.add("pop");
+  }
+
+  function setBuffer(idx, n) {
+    state.plan[idx].leftover_buffer = n;
+    savePlan();
+    refresh();
+    bumpNum(idx);
+  }
+
+  $("days").addEventListener("click", e => {
+    const row = e.target.closest(".prow");
+    if (!row) return;
+    if (wasScroll(() => scroller.scrollTop)) { e.preventDefault(); return; }
+    if (e.target.closest("a")) return; // «Zum Rezept» normal öffnen
+    const idx = +row.dataset.i;
+    if (e.target.closest(".pday")) return setOpen(openIdx === idx ? -1 : idx);
+    const chip = e.target.closest("[data-member]");
+    if (chip) return toggleEater(idx, chip.dataset.member);
+    if (e.target.closest("[data-inc]")) return setBuffer(idx, ((state.plan[idx].leftover_buffer || 0) + 1) % 7);
+    if (e.target.closest("[data-pick]")) return openMenuSheet(idx, e.target.closest("button"));
   });
+
+  // Reste per Auswahl (▾): +0 … +6
+  $("days").addEventListener("change", e => {
+    const sel = e.target.closest("[data-buffer]");
+    if (sel) setBuffer(+sel.dataset.buffer, parseInt(sel.value, 10));
+  });
+
+  // ---------------------------------------------------------------------------
+  // Dichte: einmal beim Start/Drehen so wählen, dass 7 Tage + ein offener Tag hineinpassen
+  // ---------------------------------------------------------------------------
+  function fitDensity() {
+    if (!$("tab-plan") || $("tab-plan").hidden) return;
+    const root = document.documentElement;
+    const keep = openIdx;
+    root.classList.add("measuring");
+    root.classList.remove("d1", "d2", "d3");
+    // den «längsten» Tag zum Messen öffnen
+    let probe = 0;
+    const size = d => (d.title || "").length + (d.ingredients || []).length * 8;
+    state.plan.forEach((d, i) => { if (size(d) > size(state.plan[probe])) probe = i; });
+    setOpen(probe);
+    const nav = document.querySelector(".bnav");
+    const ok = () => {
+      const last = $("days").lastElementChild;
+      if (!last || !nav) return true;
+      return last.getBoundingClientRect().bottom <= nav.getBoundingClientRect().top - 6;
+    };
+    for (const d of ["d1", "d2", "d3"]) { if (ok()) break; root.classList.add(d); }
+    // Reicht auch d3 nicht (sehr lange Zutatenliste, kleines Handy): Zutaten bekommen eine feste
+    // Höchsthöhe und scrollen im offenen Tag – so bleiben trotzdem alle 7 Tage sichtbar.
+    root.style.removeProperty("--ing-max");
+    if (nav && $("days").lastElementChild) {
+      let allowed = Infinity;
+      state.plan.forEach((_, i) => {
+        setOpen(i);
+        const ing = $("days").children[i].querySelector(".ing");
+        const over = $("days").lastElementChild.getBoundingClientRect().bottom - (nav.getBoundingClientRect().top - 6);
+        if (over > 0 && ing) allowed = Math.min(allowed, ing.getBoundingClientRect().height - over);
+      });
+      if (Number.isFinite(allowed)) root.style.setProperty("--ing-max", Math.max(34, Math.floor(allowed)) + "px");
+    }
+    setOpen(keep);
+    void root.offsetHeight;
+    root.classList.remove("measuring");
+  }
+  let fitTimer = null;
+  window.addEventListener("resize", () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitDensity, 150); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitDensity);
+
+  // App-Leiste (Google): Ton wechselt beim Scrollen
+  scroller.addEventListener("scroll", () => $("appbar").classList.toggle("scrolled", scroller.scrollTop > 4), { passive: true });
+
+  // ---------------------------------------------------------------------------
+  // Menü wechseln: Blatt von unten, «Beliebt bei euch» oben
+  // ---------------------------------------------------------------------------
+  const COUNTS_KEY = "bringfrisch_dish_counts";
+  function dishCounts() {
+    let c = load(COUNTS_KEY, null);
+    if (!c) {
+      c = {};
+      state.plan.forEach(d => { if (d.id != null) c[d.id] = (c[d.id] || 0) + 1; });
+      save(COUNTS_KEY, c);
+    }
+    return c;
+  }
+  function countDish(id) {
+    const c = dishCounts();
+    c[id] = (c[id] || 0) + 1;
+    save(COUNTS_KEY, c);
+  }
+
+  let sheetDay = -1;
+  let sheetReturn = null;
+  const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  const norm = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+  function sheetOptions() {
+    const f = norm($("msearch").value.trim());
+    const counts = dishCounts();
+    const current = state.plan[sheetDay] ? String(state.plan[sheetDay].id) : null;
+    const all = allRecipes().filter(r => String(r.id) !== current && (!f || norm(`${r.title} ${dayMeta(r)}`).includes(f)));
+    const optHTML = r => `<button type="button" class="opt" role="option" data-id="${esc(r.id)}"><span><span class="n">${esc(r.title)}</span><small>${esc(dayMeta(r))}${inSeason(r) ? "" : " · nicht Saison"}</small></span>${counts[r.id] ? `<span class="pop">♥ ${counts[r.id]}×</span>` : ""}</button>`;
+    let h = "";
+    if (!f) {
+      const popular = all.filter(r => counts[r.id]).sort((a, b) => counts[b.id] - counts[a.id]).slice(0, 4);
+      const rest = all.filter(r => !popular.includes(r)).sort((a, b) => (inSeason(b) - inSeason(a)) || a.title.localeCompare(b.title, "de"));
+      if (popular.length) h += `<div class="msec">Beliebt bei euch</div>` + popular.map(optHTML).join("");
+      h += `<div class="msec">Weitere</div>` + rest.map(optHTML).join("");
+    } else {
+      h += all.sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0)).map(optHTML).join("");
+      h += `<button type="button" class="opt" role="option" data-new="1"><span><span class="n">«${esc($("msearch").value.trim())}» eintragen</span><small>eigenes Menü</small></span></button>`;
+    }
+    h += `<button type="button" class="opt more-link" data-catalog="1">Alle Rezepte, Filter &amp; eigenes Rezept …</button>`;
+    $("mlist").innerHTML = h;
+  }
+
+  function fitKeyboard() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const kb = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+    $("msheet").style.setProperty("--kb", kb + "px");
+    $("msheet").style.setProperty("--vvh", vv.height + "px");
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", fitKeyboard);
+    window.visualViewport.addEventListener("scroll", fitKeyboard);
+  }
+
+  function openMenuSheet(idx, from) {
+    sheetDay = idx;
+    sheetReturn = from || null;
+    const day = state.plan[idx];
+    $("msheetTitle").innerHTML = `${esc(DAYS[idx].slice(0, 2))}: Menü wechseln<small>jetzt: ${esc(day.title)}</small>`;
+    $("msearch").value = "";
+    sheetOptions();
+    $("mlist").scrollTop = 0;
+    $("msheet").classList.add("show");
+    $("mscrim").classList.add("show");
+    // Auf dem Handy die Tastatur nicht ungefragt öffnen (sie würde die Liste verdecken)
+    if (!coarse) setTimeout(() => $("msearch").focus(), 60);
+    else { const first = $("mlist").querySelector(".opt"); if (first) first.focus({ preventScroll: true }); }
+  }
+  function closeMenuSheet() {
+    $("msearch").blur();
+    $("msheet").classList.remove("show");
+    $("mscrim").classList.remove("show");
+    if (sheetReturn && sheetReturn.isConnected) sheetReturn.focus({ preventScroll: true });
+  }
+  function pickFromSheet(btn) {
+    const idx = sheetDay;
+    if (btn.dataset.catalog) {
+      closeMenuSheet();
+      state.catalogMode = "day";
+      return openCatalog(idx);
+    }
+    let recipe;
+    if (btn.dataset.new) {
+      recipe = importer.createCustomRecipe({ title: $("msearch").value.trim(), diet: "vegi", servings: DEFAULT_SERVINGS });
+    } else {
+      recipe = allRecipes().find(r => String(r.id) === btn.dataset.id);
+    }
+    if (!recipe) return;
+    const previous = state.plan[idx];
+    state.plan[idx] = makeDay(recipe, idx, previous);
+    countDish(recipe.id);
+    savePlan();
+    refresh();
+    closeMenuSheet();
+    toast(`${DAYS[idx].slice(0, 2)}: ${recipe.title}`, {
+      label: "Rückgängig",
+      run: () => { state.plan[idx] = previous; savePlan(); refresh(); toast("Rückgängig gemacht"); }
+    });
+  }
+  $("msearch").addEventListener("input", sheetOptions);
+  trackTaps($("mlist"), () => $("mlist").scrollTop);
+  $("mlist").addEventListener("click", e => {
+    const b = e.target.closest(".opt");
+    if (!b) return;
+    if (wasScroll(() => $("mlist").scrollTop)) return;
+    pickFromSheet(b);
+  });
+  $("mscrim").onclick = closeMenuSheet;
+  $("msheetClose").onclick = closeMenuSheet;
+  $("msheet").addEventListener("keydown", e => {
+    const opts = [...$("mlist").querySelectorAll(".opt")];
+    const at = opts.indexOf(document.activeElement);
+    if (e.key === "Escape") { e.preventDefault(); closeMenuSheet(); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); (opts[at + 1] || opts[0]).focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); if (at <= 0) $("msearch").focus(); else opts[at - 1].focus(); }
+    else if (e.key === "Enter" && document.activeElement === $("msearch")) {
+      e.preventDefault();
+      if ($("msearch").value.trim() && opts[0]) pickFromSheet(opts[0]); else $("msearch").blur();
+    }
+  });
+  $("msearch").addEventListener("focus", () => setTimeout(() => { fitKeyboard(); $("msearch").scrollIntoView({ block: "nearest" }); }, 250));
+  $("msearch").addEventListener("blur", () => setTimeout(fitKeyboard, 250));
+
+  // ---------------------------------------------------------------------------
+  // Rahmen: Formen, Stil (iPhone/Android), Bring!-Chip, Wochenwahl-Pop-up, Navigation, Scrollbalken
+  // ---------------------------------------------------------------------------
+  // Ausdrucksstarke Formen: Keks (9 Wellen, «heute») und Blume (6 Blätter, Ladeanzeige)
+  (function shapes() {
+    const enc = svg => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    const shape = (waves, amp) => {
+      let d = "";
+      for (let k = 0; k <= 200; k++) {
+        const a = k / 200 * Math.PI * 2;
+        const r = 50 - amp + amp * Math.cos(waves * a);
+        d += (k ? "L" : "M") + (50 + r * Math.cos(a)).toFixed(2) + " " + (50 + r * Math.sin(a)).toFixed(2);
+      }
+      return enc(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="${d}Z"/></svg>`);
+    };
+    document.documentElement.style.setProperty("--cookie", shape(9, 4));
+    document.documentElement.style.setProperty("--flower", shape(6, 9));
+  })();
+
+  const OS_KEY = "bf-os";
+  function currentOs() { return document.documentElement.classList.contains("m3") ? "m3" : "glass"; }
+  function setOs(v) {
+    document.documentElement.classList.remove("m3", "glass");
+    document.documentElement.classList.add(v);
+    try { localStorage.setItem(OS_KEY, v); } catch (e) { /* ohne Speicher: nur für diese Sitzung */ }
+    $("menuOsLabel").textContent = v === "glass" ? "Android-Stil" : "iPhone-Stil";
+    fitDensity();
+  }
+  $("menuOsLabel").textContent = currentOs() === "glass" ? "Android-Stil" : "iPhone-Stil";
+
+  // Bring!-Chip: ruhig «24 Artikel» · nach Sync hervorgehoben «24 für Bring!» · nach dem Füllen «✓ in Bring!»
+  let chipState = "quiet";
+  function setChip(stateName) {
+    chipState = stateName;
+    renderCta();
+    if (stateName === "ready") {
+      const c = $("syncBtn");
+      c.classList.remove("bump");
+      void c.offsetWidth;
+      c.classList.add("bump");
+    }
+  }
+
+  // Wochenwahl-Pop-up: beim Start, wenn für diese Woche noch nichts gewählt ist
+  function wahlDone() {
+    const v = load(VOTE_KEY, null);
+    const me = load(ME_KEY, null);
+    if (load(`bringfrisch_wahl_${weekKey()}`, false)) return true;
+    return !!(v && v.week === weekKey() && me && v.votes && v.votes[me] && (v.votes[me].likes || []).length);
+  }
+  function markWahl() { $("openVoteBtn").classList.toggle("due", !wahlDone()); }
+  function openWahlPop() {
+    const isSunday = new Date().getDay() === 0;
+    $("wpopText").textContent = isSunday
+      ? `Es ist Sonntag – Zeit für die nächste Woche. Wählt jetzt eure Gerichte.`
+      : `Für KW ${isoWeek(new Date())} ist noch nichts gewählt. Stellt den Plan in einer Minute zusammen – der Rest füllt sich von selbst.`;
+    const pop = $("wpop");
+    pop.hidden = false;
+    pop.style.cssText = "";
+    requestAnimationFrame(() => requestAnimationFrame(() => { pop.classList.add("show"); $("wscrim").classList.add("show"); }));
+    setTimeout(() => $("wgo").focus({ preventScroll: true }), 350);
+  }
+  // Pop-up fliegt in das Kalender-Symbol oben (FLIP)
+  function dockWahlPop(then) {
+    const pop = $("wpop");
+    const btn = $("openVoteBtn");
+    $("wscrim").classList.remove("show");
+    const finish = () => { pop.classList.remove("show"); pop.hidden = true; markWahl(); if (then) then(); };
+    const a = pop.getBoundingClientRect();
+    const b = btn.getBoundingClientRect();
+    if (!pop.animate || !a.width || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
+    const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+    const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+    const anim = pop.animate([
+      { transform: getComputedStyle(pop).transform, opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${b.width / a.width}, ${b.height / a.height})`, opacity: 0, borderRadius: "999px" }
+    ], { duration: 520, easing: "cubic-bezier(.3,0,.1,1)" });
+    anim.onfinish = () => {
+      finish();
+      if (btn.animate) btn.animate([{ transform: "scale(1)" }, { transform: "scale(1.18)" }, { transform: "scale(1)" }], { duration: 420, easing: "cubic-bezier(.34,1.45,.5,1)" });
+    };
+  }
+  $("wgo").onclick = () => dockWahlPop(openVote);
+  $("wlater").onclick = () => dockWahlPop();
+  $("wscrim").onclick = () => dockWahlPop();
+  $("wpop").addEventListener("keydown", e => { if (e.key === "Escape") dockWahlPop(); });
+
+  // Navigation: Symbole animieren; «Einstellungen» öffnet das ⋮-Menü
+  const navMenu = $("navMenu");
+  function closeNavMenu() { navMenu.classList.remove("show"); $("moreBtn").setAttribute("aria-expanded", "false"); }
+  document.querySelector(".bnav").addEventListener("click", e => {
+    const b = e.target.closest("[data-tab]");
+    if (!b) return;
+    b.classList.remove("anim");
+    void b.offsetWidth;
+    b.classList.add("anim");
+    clearTimeout(b._anim);
+    b._anim = setTimeout(() => b.classList.remove("anim"), 2300);
+    if (b.id === "moreBtn") {
+      e.stopPropagation();
+      const open = !navMenu.classList.contains("show");
+      navMenu.classList.toggle("show", open);
+      b.setAttribute("aria-expanded", String(open));
+      return;
+    }
+    closeNavMenu();
+    showTab(b.dataset.tab);
+  });
+  document.addEventListener("click", e => { if (!navMenu.contains(e.target) && e.target.id !== "moreBtn" && !e.target.closest("#moreBtn")) closeNavMenu(); });
+  $("menuSettings").onclick = () => { closeNavMenu(); showTab("wg"); };
+  $("menuRefresh").onclick = () => { closeNavMenu(); runPullSync(); };
+  $("menuVote").onclick = () => { closeNavMenu(); openVote(); };
+  $("menuOs").onclick = () => { closeNavMenu(); setOs(currentOs() === "glass" ? "m3" : "glass"); };
+
+  // Unsichtbarer Scrollbalken: Greifstreifen rechts, feiner Balken nur beim Scrollen/Ziehen
+  (function scrollGrip() {
+    const bar = $("sbar");
+    const thumb = $("sthumb");
+    let hideT = null;
+    let dragging = false;
+    let off = 0;
+    function update(show) {
+      const max = scroller.scrollHeight - scroller.clientHeight;
+      bar.hidden = max < 4;
+      if (max < 4) return;
+      const h = bar.clientHeight;
+      const tH = Math.max(36, h * scroller.clientHeight / scroller.scrollHeight);
+      thumb.style.height = tH + "px";
+      thumb.style.top = ((h - tH) * scroller.scrollTop / max) + "px";
+      if (show) { bar.classList.add("on"); clearTimeout(hideT); hideT = setTimeout(() => bar.classList.remove("on"), 900); }
+    }
+    scroller.addEventListener("scroll", () => update(true), { passive: true });
+    window.addEventListener("resize", () => update(false));
+    if (window.ResizeObserver) new ResizeObserver(() => update(false)).observe(scroller);
+    function move(e) {
+      if (!dragging) return;
+      const r = bar.getBoundingClientRect();
+      const tH = thumb.offsetHeight;
+      const max = scroller.scrollHeight - scroller.clientHeight;
+      const y = Math.min(Math.max(e.clientY - r.top - off, 0), r.height - tH);
+      scroller.scrollTop = max * y / Math.max(1, r.height - tH);
+    }
+    bar.addEventListener("pointerdown", e => {
+      dragging = true;
+      if (bar.setPointerCapture) bar.setPointerCapture(e.pointerId);
+      bar.classList.add("drag", "on");
+      const tr = thumb.getBoundingClientRect();
+      off = e.clientY >= tr.top && e.clientY <= tr.bottom ? e.clientY - tr.top : thumb.offsetHeight / 2;
+      move(e);
+    });
+    bar.addEventListener("pointermove", move);
+    const end = () => { dragging = false; bar.classList.remove("drag"); update(true); };
+    bar.addEventListener("pointerup", end);
+    bar.addEventListener("pointercancel", end);
+    update(false);
+  })();
+
 
   // ---------------------------------------------------------------------------
   // Start
@@ -1745,6 +2165,9 @@
   renderMembers();
   renderSyncSettings();
   refresh();
+  fitDensity();
+  markWahl();
+  if (!wahlDone()) setTimeout(openWahlPop, 500);
   if (fromLink) toast("Wochenplan aus Link übernommen");
   else pullShared();
 

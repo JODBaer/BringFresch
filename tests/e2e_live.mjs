@@ -137,7 +137,7 @@ const added = after.filter(x => !before.includes(x));
 // gleiche Namen mit verschiedenen Einheiten werden zu einem Bring!-Eintrag zusammengefasst
 check(added.length > 0 && after.length >= added.length, `Bring!-Liste hat jetzt ${after.length} Artikel (${added.length} neu, ${n} Positionen in der App)`);
 log("        " + after.slice(0, 40).join(", "));
-check(/alles auf Bring/.test($("ctaCount").textContent), "App: danach «alles auf Bring! ✓»");
+check(/✓ in Bring!/.test($("ctaCount").textContent), "App: danach «✓ in Bring!»");
 writeFileSync(new URL("./.e2e-items.json", import.meta.url), JSON.stringify(added));
 
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));

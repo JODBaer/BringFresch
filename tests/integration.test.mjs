@@ -120,8 +120,7 @@ const catalog = A2.BRING_CATALOG || {};
 const known = bringList.filter(i => catalog[i.name]);
 check(known.length / bringList.length >= 0.8, `${known.length}/${bringList.length} Einträge sind Bring!-Katalogartikel (mit Bild): ${bringList.slice(0, 6).map(i => i.name + " [" + i.specification + "]").join(", ")}`);
 check(bringList.every(i => i.specification && !/\d\.\d{3}/.test(i.specification)), "Mengen sauber formatiert");
-check(/schon auf Bring!/.test(A2.document.getElementById("basketLine").textContent), "Plan-Seite zeigt 'schon auf Bring!'");
-check(/alles auf Bring/.test(A2.document.getElementById("ctaCount").textContent), "nach dem Sync: «alles auf Bring! ✓»");
+check(/✓ in Bring!/.test(A2.document.getElementById("ctaCount").textContent), "nach dem Füllen: Chip «✓ in Bring!»");
 
 // Nochmals «Bring! füllen»: alles schon drauf, nichts geändert -> nichts senden, nicht fragen
 const before2 = bringList.length;
@@ -133,8 +132,8 @@ check(!A2.document.getElementById("dupDialog").open && bringList.length === befo
 const p2 = JSON.parse(A2.localStorage.getItem("bringfrisch_current_plan"));
 const firstIng = p2[0].ingredients[0];
 const specBefore = JSON.stringify(bringList.map(i => [i.name, i.specification]));
-A2.document.querySelectorAll("#days .day")[0].querySelector(".buf").value = "6";
-A2.document.querySelectorAll("#days .day")[0].querySelector(".buf").dispatchEvent(new A2.Event("change", { bubbles: true }));
+A2.document.querySelectorAll("#days .prow")[0].querySelector(".buf").value = "6";
+A2.document.querySelectorAll("#days .prow")[0].querySelector(".buf").dispatchEvent(new A2.Event("change", { bubbles: true }));
 await wait(100);
 check(/mehr/.test(A2.document.getElementById("ctaCount").textContent), `Knopf zeigt «mehr» (${A2.document.getElementById("ctaCount").textContent})`);
 A2.document.getElementById("syncBtn").click();
@@ -156,17 +155,15 @@ void firstIng;
 // Fremder Eintrag: Artikel wurde gekauft, dann trägt Leonie ihn mit eigener Menge neu ein
 const victim = bringList[0].name;
 bringList.splice(0, 1);
-A2.document.getElementById("syncBtn").click(); // App sieht: fehlt -> würde senden … aber erst Liste neu laden
+A2.document.querySelectorAll("dialog[open]").forEach(dl => dl.close());
+A2.document.getElementById("openStaplesBtn").click(); // App lädt die Liste neu: Server merkt «gekauft» und vergisst den Eintrag
 await wait(400);
-A2.document.querySelector(".toast button") && A2.document.querySelector(".toast button").click(); // rückgängig
-await wait(400);
-const vi = bringList.findIndex(i => i.name === victim);
-if (vi >= 0) bringList.splice(vi, 1);
+A2.document.getElementById("staplesDialog").close();
 bringList.push({ name: victim, specification: "1 Pack (Leonie)" });
 A2.document.getElementById("syncBtn").click();
 await wait(400);
 const rowF = [...A2.document.querySelectorAll("#dupList .duprow")].find(r => r.textContent.includes(victim));
-check(!!rowF && /von jemand anderem/.test(rowF.textContent) && !rowF.querySelector("input").checked, `fremder Eintrag «${victim}» wird gefragt, nicht vorausgewählt`);
+check(!!rowF && /von jemand anderem/.test(rowF.textContent) && !rowF.querySelector("input").checked, `fremder Eintrag «${victim}» wird gefragt, nicht vorausgewählt${rowF ? "" : " [Dialog: " + A2.document.getElementById("dupDialog").open + " / " + A2.document.getElementById("dupList").textContent.replace(/s+/g, " ").slice(0, 300) + " / Toast: " + ((A2.document.querySelector(".toast") || {}).textContent || "") + "]"}`);
 rowF.querySelector("input").checked = true;
 A2.document.getElementById("dupSendBtn").click();
 await wait(400);
@@ -231,19 +228,21 @@ check(stB.find(x => /Olivenöl/.test(x.name)).in_stock === false, "Handy B über
 
 // Herunterziehen: A ändert etwas und zieht -> sofort beim Server; B zieht -> hat es
 function pull(win) {
+  if (!win.document.getElementById("wpop").hidden) win.document.getElementById("wlater").click(); // Wochenwahl-Pop-up «Später»
   const ev = (type, y) => { const e = new win.Event(type); Object.defineProperty(e, "touches", { value: y == null ? [] : [{ clientY: y }] }); win.dispatchEvent(e); };
   ev("touchstart", 10); ev("touchmove", 60); ev("touchmove", 120); ev("touchend");
 }
 A2.document.querySelectorAll("dialog[open]").forEach(d => d.close());
-A2.document.querySelectorAll("#days .day")[3].querySelector(".buf").value = "5";
-A2.document.querySelectorAll("#days .day")[3].querySelector(".buf").dispatchEvent(new A2.Event("change", { bubbles: true }));
+A2.document.querySelectorAll("#days .prow")[3].querySelector(".buf").value = "5";
+A2.document.querySelectorAll("#days .prow")[3].querySelector(".buf").dispatchEvent(new A2.Event("change", { bubbles: true }));
 pull(A2);
-await wait(400);
+await wait(800);
 check(JSON.parse(store.get("plan")).plan[3].leftover_buffer === 5, "Herunterziehen schickt meine Änderung sofort an den Server");
 const B3 = phone("jo");
 await wait(300);
+await wait(600);
 pull(B3);
-await wait(400);
+await wait(800);
 check(JSON.parse(B3.localStorage.getItem("bringfrisch_current_plan"))[3].leftover_buffer === 5, "anderes Handy: Herunterziehen holt den neuen Stand");
 check(/Synchronisiert/.test((B3.document.querySelector(".toast") || {}).textContent || ""), "Meldung «Synchronisiert ✓»");
 

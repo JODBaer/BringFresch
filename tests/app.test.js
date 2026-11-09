@@ -35,9 +35,9 @@ const check = (cond, msg) => { console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`);
 const dom = boot({ bringfrisch_members: [{ id: "m1", name: "Jonas", diet: "vegi" }, { id: "m2", name: "Anna", diet: "vegan" }], bringfrisch_phone_bring_creds: { password: "x" } });
 const w = dom.window, d = w.document;
 check(errors.length === 0, `keine JS-Fehler beim Start ${errors.join(" | ")}`);
-const rows = d.querySelectorAll("#days .day");
+const rows = d.querySelectorAll("#days .prow");
 check(rows.length === 7, `7 Tage im Plan (${rows.length})`);
-const chips = [...rows[0].querySelectorAll(".chip")].map(c => c.textContent);
+const chips = [...rows[0].querySelectorAll(".av")].map(c => c.textContent);
 check(chips.join(" ") === "J L Le Jo", `Kürzel J L Le Jo (${chips.join(" ")})`);
 check(w.localStorage.getItem("bringfrisch_phone_bring_creds") === null, "alte Bring!-Zugangsdaten gelöscht");
 const members = JSON.parse(w.localStorage.getItem("bringfrisch_members"));
@@ -46,13 +46,32 @@ check(members.map(m => m.name).join(",") === "Joshua,Lukas,Leonie,Jo", "Platzhal
 const count = () => parseInt(d.getElementById("ctaCount").textContent.replace(/\D/g, ""), 10);
 const before = count();
 check(before > 0, `Einkaufskorb hat Artikel (${before})`);
-check(/Einkaufskorb: \d+ Artikel/.test(d.getElementById("basketLine").textContent), "Zusammenfassungszeile sichtbar");
+check(/\d+ Artikel/.test(d.getElementById("syncBtn").textContent), "Bring!-Chip oben zeigt die Anzahl");
+check(!d.getElementById("basketLine"), "keine eigene Einkaufskorb-Karte mehr");
+
+// 1b. Redesign: Tag = Menü auf/zu, nur eine Zeile offen, Zahl = Personen + Reste, antippen = +1
+const row0 = () => d.querySelectorAll("#days .prow")[0];
+row0().querySelector(".pday").click();
+check(row0().classList.contains("open") && d.querySelectorAll("#days .prow.open").length === 1, "Tag antippen klappt das Menü auf");
+check(row0().querySelectorAll(".ing li").length > 0 && /Wechseln/.test(row0().querySelector(".links").textContent), "Zutaten + «Wechseln» im offenen Menü");
+const sameNode = d.querySelectorAll("#days .prow")[1];
+d.querySelectorAll("#days .prow")[2].querySelector(".pday").click();
+check(d.querySelectorAll("#days .prow")[1] === sameNode && !row0().classList.contains("open"), "Aufklappen zeichnet die anderen Zeilen nicht neu");
+d.querySelectorAll("#days .prow")[2].querySelector(".pday").click();
+const p0 = JSON.parse(w.localStorage.getItem("bringfrisch_current_plan"))[0];
+const numBefore = +row0().querySelector(".num").textContent;
+check(numBefore === p0.eaters.length + (p0.extra_guests || 0) + p0.leftover_buffer, `Zahl = Personen + Reste (${numBefore})`);
+row0().querySelector(".num").click();
+check(+row0().querySelector(".num").textContent === numBefore + 1 && /\+3/.test(row0().querySelector(".plus").textContent), "Zahl antippen = +1 Reste, Hochzahl +3");
+for (let k = 0; k < 4; k++) row0().querySelector(".num").click();
+check(JSON.parse(w.localStorage.getItem("bringfrisch_current_plan"))[0].leftover_buffer === 0, "nach +6 wieder +0");
+for (let k = 0; k < 2; k++) row0().querySelector(".num").click();
 
 // 2. Esser abwählen → Plan + Liste aktualisieren sich
 const plan0 = () => JSON.parse(w.localStorage.getItem("bringfrisch_current_plan"));
-rows[0].querySelector(".chip").click();
+d.querySelectorAll("#days .prow")[0].querySelector(".av").click();
 check(plan0()[0].eaters.length === 3, "Esser-Chip schaltet Anwesenheit");
-check(d.querySelectorAll("#days .day")[0].querySelector(".chip").classList.contains("off"), "Chip neu gezeichnet (nicht veraltet)");
+check(d.querySelectorAll("#days .prow")[0].querySelector(".av").classList.contains("off"), "Chip neu gezeichnet (nicht veraltet)");
 
 // 3. Reste-Puffer 0…6
 const sel = d.querySelectorAll("#days .buf")[1];
@@ -66,7 +85,27 @@ check(shop.length > 0, `Einkaufsliste gerendert (${shop.length} Zeilen)`);
 check(shop.every(s => !/\d\.\d{3,}/.test(s)), "keine krummen Mengen wie 333.3333");
 
 // 5. Katalog → Rezept zuweisen
+// Menü wechseln: Blatt mit Suche, «Beliebt bei euch», eigenes Menü
 d.querySelector("#days [data-pick='2']").click();
+check(d.getElementById("msheet").classList.contains("show"), "Gericht antippen öffnet «Menü wechseln»");
+check(/Beliebt bei euch/.test(d.getElementById("mlist").textContent) && /♥ \d+×/.test(d.getElementById("mlist").textContent), "«Beliebt bei euch» mit ♥ n×");
+d.getElementById("msearch").value = "Älpler";
+d.getElementById("msearch").dispatchEvent(new w.Event("input"));
+const hit = d.querySelector("#mlist .opt[data-id]");
+const hitTitle = hit.querySelector(".n").textContent;
+hit.click();
+check(plan0()[2].title === hitTitle && !d.getElementById("msheet").classList.contains("show"), `Suche + Wahl setzt Menü (${hitTitle})`);
+check(/Rückgängig/.test((d.querySelector(".toast") || {}).textContent || ""), "Hinweis mit «Rückgängig»");
+d.querySelector(".toast button").click();
+check(plan0()[2].title !== hitTitle, "Rückgängig stellt das alte Menü her");
+d.querySelector("#days [data-pick='4']").click();
+d.getElementById("msearch").value = "Pizza bestellen";
+d.getElementById("msearch").dispatchEvent(new w.Event("input"));
+d.querySelector("#mlist .opt[data-new]").click();
+check(plan0()[4].title === "Pizza bestellen", "eigenes Menü eintippen");
+
+d.querySelector("#days [data-pick='2']").click();
+d.querySelector("#mlist [data-catalog]").click();
 check(d.getElementById("catalogDialog").open, "Katalog öffnet");
 const assign = d.querySelector("#catalogList [data-assign]");
 const title = assign.closest(".recipe").querySelector("b").textContent;
@@ -75,6 +114,7 @@ check(plan0()[2].title === title, `Rezept für Mi eingeplant (${title})`);
 
 // 6. Eigenes Rezept
 d.querySelector("#days [data-pick='3']").click();
+d.querySelector("#mlist [data-catalog]").click();
 d.getElementById("newRecipeBtn").click();
 d.getElementById("recipeTitle").value = "Testgratin";
 d.getElementById("recipeServings").value = "2";
@@ -87,7 +127,7 @@ check(p.ingredients[2].name === "Gemüsebouillon" && p.ingredients[2].unit === "
 // 7. Mitbewohner hinzufügen
 d.getElementById("newMemberName").value = "Mia";
 d.getElementById("addMemberForm").dispatchEvent(new w.Event("submit", { cancelable: true }));
-check(d.querySelectorAll("#days .day")[0].querySelectorAll(".chip").length === 5, "neue Person erscheint im Plan");
+check(d.querySelectorAll("#days .prow")[0].querySelectorAll(".av").length === 5, "neue Person erscheint im Plan");
 
 
 // 9. Wochenwahl (Memory)
@@ -125,7 +165,7 @@ const shareDom = boot();
 const payload = Buffer.from(JSON.stringify({ v: 2, members: [{ id: "a", name: "Alex", diet: "vegi" }], weekPlan: plan0() })).toString("base64");
 const linkDom = new JSDOM(html, { url: `https://jodbaer.github.io/BringFresch/#plan=${encodeURIComponent(payload)}`, runScripts: "dangerously", virtualConsole: vc,
   beforeParse(win) { win.HTMLDialogElement.prototype.showModal = function () { this.open = true; }; win.HTMLDialogElement.prototype.close = function () { this.open = false; }; } });
-check(linkDom.window.document.querySelectorAll("#days .day")[0].querySelectorAll(".chip").length === 1, "Plan-Link wird übernommen");
+check(linkDom.window.document.querySelectorAll("#days .prow")[0].querySelectorAll(".av").length === 1, "Plan-Link wird übernommen");
 
 // 9. Schnelles & Reste
 const R = id => w.BRINGFRISCH_DATA.recipes.find(r => r.id === id);

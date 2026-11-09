@@ -19,3 +19,6 @@
 | 15 | Zutaten auf Bring!-Katalognamen abbilden, genaue Sorte in die Mengenangabe | Bring!-Bilder und -Abteilungen; eigene Bilder hochladen kann die API nicht |
 | 16 | Grundvorrat-Pillen klein, durchgestrichen, ohne Bild | Von Joshua so gewählt («durchgestrichen ist gutes Design und die Grösse auch») |
 | 17 | Neue Rezepte von Hand schreiben statt scrapen | Siehe #10; Fakten + kurze eigene Anleitung |
+| 18 | Plan-Ansicht nach eigener Spezifikation: iPhone = Glas, Android = Material 3 Expressive, gleiche Bedienung | Fühlt sich auf beiden Handys «zuhause» an; Vorgabe in `docs/design/` |
+| 19 | Schrift Roboto Flex lokal statt von Google Fonts | App bleibt offline und ohne fremde Server (#11) |
+| 20 | Mit offenem Tag bleiben alle 7 Tage sichtbar; Dichte nur beim Start/Drehen ändern | Ruhige Ansicht, nichts springt beim Aufklappen |
