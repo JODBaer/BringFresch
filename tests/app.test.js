@@ -13,7 +13,7 @@ const vc = new VirtualConsole();
 vc.on("jsdomError", e => errors.push(e.message));
 vc.on("error", e => errors.push(String(e)));
 
-function boot(preset) {
+function boot(preset, fakeNow) {
   return new JSDOM(html, {
     url: "https://jodbaer.github.io/BringFresch/",
     runScripts: "dangerously",
@@ -24,6 +24,10 @@ function boot(preset) {
       win.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new win.Event("close")); } };
       win.navigator.clipboard = { writeText: async () => {} };
       Object.entries(preset || {}).forEach(([k, v]) => win.localStorage.setItem(k, JSON.stringify(v)));
+      if (fakeNow) { // feste Uhrzeit, z.B. Donnerstag
+        const Real = win.Date;
+        win.Date = class extends Real { constructor(...a) { super(...(a.length ? a : [fakeNow])); } static now() { return new Real(fakeNow).getTime(); } };
+      }
     }
   });
 }
@@ -185,6 +189,37 @@ check(qshop.every(t => !/^Schweizer /.test(t)), "«Schweizer» steht nicht mehr 
 qd.getElementById("openVoteBtn").click();
 const quickCards = [...qd.querySelectorAll("#voteGrid .vm")].filter(e => /⚡|♻️/.test(e.textContent)).length;
 check(quickCards === 2, `2 schnelle/Reste-Gerichte im Memory (${quickCards})`);
+
+// 10. Ab Donnerstag: nächste Woche planen
+const wed = boot({}, "2026-11-11T12:00:00");
+check(wed.window.document.getElementById("weekChip").hidden, "Mittwoch: kein Wochen-Chip");
+const thuDom = boot({ "bringfrisch_wahl_2026-W46": true }, "2026-11-12T12:00:00");
+const td = thuDom.window.document;
+const chip = td.getElementById("weekChip");
+check(!chip.hidden && /KW 47/.test(chip.textContent), `Donnerstag: Chip «KW 47 →» (${chip.textContent})`);
+check(td.getElementById("openVoteBtn").classList.contains("due"), "roter Punkt: nächste Woche noch offen");
+const curTitles = [...td.querySelectorAll("#days .prow .t")].map(e => e.textContent).join("|");
+const heightBefore = td.querySelectorAll("#days .prow").length;
+chip.click();
+check(/KW 47 · nächste Woche/.test(td.getElementById("weekLabel").textContent), "Kopfzeile: KW 47 · nächste Woche");
+check(td.querySelectorAll("#days .prow").length === heightBefore && td.querySelectorAll("#days .prow.empty").length === 7, "nächste Woche: 7 offene Tage, gleiches Raster");
+check(!td.querySelector("#days .prow.today"), "kein «heute» in der nächsten Woche");
+check(/^0 Artikel/.test(td.getElementById("ctaCount").textContent), `offene Tage kaufen nichts (${td.getElementById("ctaCount").textContent})`);
+td.querySelectorAll("#days .prow")[0].querySelector(".t").click();
+td.querySelector("#mlist [data-id]") && td.querySelector("#mlist [data-id]").click();
+const nd = JSON.parse(thuDom.window.localStorage.getItem("bringfrisch_next_plan"));
+check(nd && nd.week === "2026-W47" && !nd.plan[0].empty, "Menü für nächsten Montag gewählt und gespeichert");
+check([...td.querySelectorAll("#days .prow .t")].map(e => e.textContent).join("|") !== curTitles, "angezeigte Woche ist die nächste");
+td.getElementById("openVoteBtn").click();
+check(/KW 47/.test(td.getElementById("voteSubtitle").textContent), "Wochenwahl gilt für KW 47");
+td.getElementById("voteDialog").close();
+chip.click();
+check([...td.querySelectorAll("#days .prow .t")].map(e => e.textContent).join("|") === curTitles, "zurück: laufende Woche unverändert");
+check(JSON.parse(thuDom.window.localStorage.getItem("bringfrisch_current_plan"))[0].title === curTitles.split("|")[0], "laufender Plan nicht überschrieben");
+// Montag darauf: geplante Woche wird zur laufenden
+const nextPlan = nd.plan.map((x, i) => (x.empty ? { ...nd.plan[0], day: x.day } : x));
+const monDom = boot({ bringfrisch_current_plan: JSON.parse(thuDom.window.localStorage.getItem("bringfrisch_current_plan")), bringfrisch_plan_week: "2026-W46", bringfrisch_next_plan: { ...nd, plan: nextPlan } }, "2026-11-16T09:00:00");
+check(JSON.parse(monDom.window.localStorage.getItem("bringfrisch_current_plan"))[0].title === nextPlan[0].title && !monDom.window.localStorage.getItem("bringfrisch_next_plan"), "Montag: geplante Woche wird zur laufenden");
 
 check(errors.length === 0, `keine JS-Fehler insgesamt ${errors.join(" | ")}`);
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

@@ -328,6 +328,15 @@
     .sechead span { font: 800 10px var(--font); letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); }
     .sechead small { font-size: 10px; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .m3 .sechead span { color: var(--primary); }
+    .sechead small { flex: 1; min-width: 0; text-align: right; }
+    /* Wochen-Chip (ab Donnerstag): sitzt in der 12-px-Zeile, verändert die Höhe nicht */
+    .wkchip { position: relative; flex: none; height: 18px; margin: -3px 0; padding: 0 8px; border: 0; border-radius: 9px; cursor: pointer; font: 750 10.5px/18px var(--font); font-stretch: 110%; white-space: nowrap; transition: transform .3s var(--spring); }
+    .wkchip::before { content: ""; position: absolute; inset: -8px -6px; }
+    .wkchip:active { transform: scale(.92); }
+    .glass .wkchip { background: #93c572; color: #1d301d; box-shadow: inset 0 1px 1px var(--rim); }
+    .m3 .wkchip { background: var(--sec-c); color: var(--on-sec-c); }
+    .appbar.nextwk .sub { color: var(--primary); font-weight: 750; }
+    .prow.empty .dish .t { color: var(--fg2); font-weight: 550; }
 
     /* ---------- Tage ---------- */
     .pad { display: flex; flex-direction: column; gap: var(--row-gap); }
@@ -596,7 +605,7 @@
   <main id="scroller">
     <!-- 1. Plan -->
     <section class="tab" id="tab-plan">
-      <div class="sechead"><span>Wochenplan</span><small>Tag = Menü · Gericht = wechseln</small></div>
+      <div class="sechead"><span id="secTitle">Wochenplan</span><small>Tag = Menü · Gericht = wechseln</small><button type="button" class="wkchip" id="weekChip" hidden></button></div>
       <div class="pad" id="days"></div>
       <p class="saison g" id="seasonHint"></p>
     </section>

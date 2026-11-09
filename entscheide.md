@@ -22,3 +22,4 @@
 | 18 | Plan-Ansicht nach eigener Spezifikation: iPhone = Glas, Android = Material 3 Expressive, gleiche Bedienung | Fühlt sich auf beiden Handys «zuhause» an; Vorgabe in `docs/design/` |
 | 19 | Schrift Roboto Flex lokal statt von Google Fonts | App bleibt offline und ohne fremde Server (#11) |
 | 20 | Mit offenem Tag bleiben alle 7 Tage sichtbar; Dichte nur beim Start/Drehen ändern | Ruhige Ansicht, nichts springt beim Aufklappen |
+| 21 | Ab Donnerstag die nächste Woche planen: Chip «KW 47 →» in der Abschnittszeile, eigener Plan pro KW | Am Wochenende schon einkaufen; Chip im Design der Vorgabe (Pistazie/Sekundär-Container), ändert die Höhe nicht, alle 7 Tage bleiben sichtbar. Wochenwahl pro Woche gespeichert, kein Raster geht verloren. Am Montag wird die geplante Woche zur laufenden, sonst bleibt der Plan stehen |

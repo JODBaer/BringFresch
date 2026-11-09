@@ -46,13 +46,14 @@ const errors = [];
 const vc = new VirtualConsole();
 vc.on("jsdomError", e => errors.push(e.message));
 
-function phone(me) {
+function phone(me, fakeNow) {
   const dom = new JSDOM(html, {
     url: "https://jodbaer.github.io/BringFresch/", runScripts: "dangerously", pretendToBeVisual: true, virtualConsole: vc,
     beforeParse(w) {
       w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
       w.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new w.Event("close")); } };
       w.navigator.clipboard = { writeText: async () => {} };
+      if (fakeNow) { const Real = w.Date; w.Date = class extends Real { constructor(...a) { super(...(a.length ? a : [fakeNow])); } static now() { return Real.now(); } }; }
       w.localStorage.setItem("bringfrisch_sync", JSON.stringify({ url: WORKER_URL, pin: "4711" }));
       w.localStorage.setItem("bringfrisch_me", JSON.stringify(me));
       w.fetch = async (u, init = {}) => {
@@ -247,6 +248,27 @@ pull(B3);
 await wait(800);
 check(JSON.parse(B3.localStorage.getItem("bringfrisch_current_plan"))[3].leftover_buffer === 5, "anderes Handy: Herunterziehen holt den neuen Stand");
 check(/Synchronisiert/.test((B3.document.querySelector(".toast") || {}).textContent || ""), "Meldung «Synchronisiert ✓»");
+
+// Ab Donnerstag: Joshua plant die nächste Woche, Jo sieht sie nach dem Synchronisieren
+const T = "2026-11-12T12:00:00";
+const N1 = phone("joshua", T);
+await wait(400);
+const wpop = N1.document.getElementById("wpop");
+if (!wpop.hidden) N1.document.getElementById("wlater").click();
+N1.document.getElementById("weekChip").click();
+N1.document.querySelectorAll("#days .prow")[1].querySelector(".t").click();
+const pickN = N1.document.querySelector("#mlist .opt[data-id]");
+const nextTitle = pickN.querySelector(".n").textContent;
+pickN.click();
+await wait(1900); // nächste Woche wird nach 1.5 s an den Worker gesendet
+check(!!store.get("plan:2026-W47") && JSON.parse(store.get("plan:2026-W47")).plan[1].title === nextTitle, `nächste Woche im WG-Server (${nextTitle})`);
+const curTitle = JSON.parse(store.get("plan")).plan[1].title;
+check(curTitle !== nextTitle || JSON.parse(store.get("plan")).week !== "2026-W47", "laufender WG-Plan bleibt unberührt");
+const N2 = phone("jo", T);
+await wait(500);
+if (!N2.document.getElementById("wpop").hidden) N2.document.getElementById("wlater").click();
+N2.document.getElementById("weekChip").click();
+check(N2.document.querySelectorAll("#days .prow")[1].querySelector(".t").textContent === nextTitle, "Jo sieht Joshuas Plan für nächste Woche");
 
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

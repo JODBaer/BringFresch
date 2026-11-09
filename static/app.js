@@ -81,7 +81,22 @@
     catalogMode: "day"
   };
 
+  // Nächste Woche (ab Donnerstag): eigener Plan pro KW. state.plan ist immer die angezeigte Woche.
+  const NEXT_KEY = "bringfrisch_next_plan"; // { week, plan, updated }
+  const PLAN_WEEK_KEY = "bringfrisch_plan_week"; // KW, zu der der gespeicherte Plan gehört
+  let viewNext = false; // zeigt gerade die nächste Woche
+  let curPlan = null; // Plan der laufenden Woche, solange die nächste angezeigt wird
+  let nextDoc = load(NEXT_KEY, null);
+  const currentPlan = () => (viewNext ? curPlan : state.plan);
+  const otherPlan = () => (viewNext ? curPlan : nextDoc && nextDoc.plan);
+
   const savePlan = () => {
+    if (viewNext) {
+      nextDoc = { week: nextWeekKey(), plan: state.plan, updated: Date.now() };
+      save(NEXT_KEY, nextDoc);
+      scheduleNextPush();
+      return;
+    }
     save(KEYS.plan, state.plan);
     save(PLAN_UPDATED_KEY, Date.now());
     schedulePlanPush();
@@ -242,11 +257,14 @@
 
   // Esser-IDs bereinigen (z.B. nach Mitbewohner-Wechsel) und Standardwerte setzen
   function normalizePlan() {
+    state.plan = normalizeWeek(state.plan);
+  }
+  function normalizeWeek(plan) {
     const ids = new Set(state.members.map(m => m.id));
-    if (!Array.isArray(state.plan) || state.plan.length !== 7 || state.plan.some(d => !d || !d.title)) {
-      state.plan = generateWeek();
+    if (!Array.isArray(plan) || plan.length !== 7 || plan.some(d => !d || !d.title)) {
+      plan = generateWeek();
     }
-    state.plan.forEach((day, idx) => {
+    plan.forEach((day, idx) => {
       day.day = DAYS[idx];
       const before = Array.isArray(day.eaters) ? day.eaters : null;
       const valid = before ? before.filter(id => ids.has(id)) : null;
@@ -257,9 +275,10 @@
       const fresh = day.id != null && allRecipes().find(r => String(r.id) === String(day.id));
       if (fresh) {
         const { eaters, leftover_buffer, extra_guests } = day;
-        state.plan[idx] = { ...fresh, day: DAYS[idx], eaters, leftover_buffer, extra_guests };
+        plan[idx] = { ...fresh, day: DAYS[idx], eaters, leftover_buffer, extra_guests };
       }
     });
+    return plan;
   }
 
   function portionsFor(day) {
@@ -448,7 +467,7 @@
 
     state.plan.forEach(day => {
       const portions = portionsFor(day);
-      if (portions === 0 || day.is_leftovers) return; // Resteessen: nichts einkaufen
+      if (portions === 0 || day.is_leftovers || day.empty) return; // Resteessen / noch offen: nichts einkaufen
       const scale = portions / (day.servings || DEFAULT_SERVINGS);
 
       // 1. Gemeinsame Basis für alle + Reste
@@ -492,7 +511,15 @@
   // ---------------------------------------------------------------------------
   function renderHeader() {
     const now = new Date();
-    $("weekLabel").textContent = `KW ${isoWeek(now)} · ${MONTHS[now.getMonth()]}`;
+    const kwNow = isoWeek(now);
+    const kwNext = isoWeek(plusWeek());
+    $("weekLabel").textContent = viewNext ? `KW ${kwNext} · nächste Woche` : `KW ${kwNow} · ${MONTHS[now.getMonth()]}`;
+    $("appbar").classList.toggle("nextwk", viewNext);
+    $("secTitle").textContent = viewNext ? `Nächste Woche` : "Wochenplan";
+    const chip = $("weekChip");
+    chip.hidden = !canPlanNext();
+    chip.textContent = viewNext ? `← KW ${kwNow}` : `KW ${kwNext} →`;
+    chip.setAttribute("aria-label", viewNext ? `Zurück zu dieser Woche (KW ${kwNow})` : `Nächste Woche planen (KW ${kwNext})`);
   }
 
   function renderSeasonHint() {
@@ -534,7 +561,7 @@
     $("cntToBuy").textContent = groups.toBuy.length;
     $("cntOnBring").textContent = groups.onBring.length;
     $("cntStaples").textContent = groups.staples.length;
-    $("shopSummary").textContent = `${state.shopping.length} Zutaten · antippen = auf/von Bring!`;
+    $("shopSummary").textContent = `${viewNext ? `Nächste Woche (KW ${isoWeek(plusWeek())}) · ` : ""}${state.shopping.length} Zutaten · antippen = auf/von Bring!`;
     document.querySelectorAll("#tab-shop .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === state.shopFilter)));
 
     const items = groups[state.shopFilter];
@@ -651,7 +678,57 @@
   const dietGroup = r => (r.diet === "fleisch" ? "fleisch" : "vegi");
 
   function weekKey(date = new Date()) {
-    return `${date.getFullYear()}-W${String(isoWeek(date)).padStart(2, "0")}`;
+    // ISO-Jahr (Donnerstag der Woche), damit KW 1 am Jahreswechsel stimmt
+    const thu = new Date(date);
+    thu.setDate(thu.getDate() + 3 - ((thu.getDay() + 6) % 7));
+    return `${thu.getFullYear()}-W${String(isoWeek(date)).padStart(2, "0")}`;
+  }
+  function plusWeek(date = new Date()) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + 7);
+    return d;
+  }
+  const nextWeekKey = () => weekKey(plusWeek());
+  const canPlanNext = () => todayIndex() >= 3; // ab Donnerstag
+  const shownWeek = () => (viewNext ? nextWeekKey() : weekKey());
+
+  // Noch nicht geplanter Tag der nächsten Woche: kauft nichts, Gericht antippen = wählen
+  function emptyDay(idx) {
+    return { id: null, title: "noch offen", empty: true, day: DAYS[idx], ingredients: [], eaters: state.members.map(m => m.id), leftover_buffer: DEFAULT_BUFFER, extra_guests: 0 };
+  }
+  const isOpenWeek = plan => !Array.isArray(plan) || plan.every(d => d && d.empty);
+  function nextPlan() {
+    if (nextDoc && nextDoc.week === nextWeekKey() && Array.isArray(nextDoc.plan) && nextDoc.plan.length === 7) return normalizeWeek(nextDoc.plan);
+    return DAYS.map((_, i) => emptyDay(i));
+  }
+  function setCurrentPlan(plan) {
+    if (viewNext) curPlan = plan;
+    else state.plan = plan;
+    save(KEYS.plan, plan);
+  }
+
+  // Woche wechseln: nur Inhalt und Beschriftung ändern sich, das Raster bleibt stehen
+  function setWeekView(next) {
+    next = !!next && canPlanNext();
+    if (next === viewNext) return;
+    if (next) {
+      curPlan = state.plan;
+      viewNext = true;
+      state.plan = nextPlan();
+    } else {
+      viewNext = false;
+      state.plan = curPlan || state.plan;
+      curPlan = null;
+    }
+    openIdx = -1;
+    renderHeader();
+    refresh();
+    fitDensity();
+    markWahl();
+    const days = $("days");
+    if (days.animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      days.animate([{ transform: `translateX(${next ? 28 : -28}px)`, opacity: 0.25 }, { transform: "none", opacity: 1 }], { duration: 280, easing: "cubic-bezier(.3,0,.1,1)" });
+    }
   }
 
   function shuffled(list) {
@@ -690,17 +767,19 @@
     return ids;
   }
 
+  const voteKey = week => `${VOTE_KEY}_${week}`;
   function loadVote() {
-    const saved = load(VOTE_KEY, null);
-    if (saved && saved.week === weekKey() && Array.isArray(saved.candidates)) {
+    const week = shownWeek();
+    const saved = load(voteKey(week), null);
+    if (saved && saved.week === week && Array.isArray(saved.candidates)) {
       saved.candidates = saved.candidates.filter(id => recipeById(id));
       return saved;
     }
-    return { week: weekKey(), candidates: pickCandidates(), votes: {} };
+    return { week, candidates: pickCandidates(), votes: {} };
   }
 
   let vote = null;
-  const saveVote = () => save(VOTE_KEY, vote);
+  const saveVote = () => save(voteKey(vote.week), vote);
 
   // Mit dem Worker abgleichen: Kandidaten + Stimmen aller holen, eigene Stimme bleibt lokal führend
   async function pullVote() {
@@ -761,7 +840,7 @@
   function renderVote() {
     const short = initialsMap();
     const mine = myVote();
-    $("voteSubtitle").textContent = `KW ${isoWeek(new Date())} · ${GRID_SIZE} Saison-Gerichte, die Top ${PLAN_SIZE} kommen in den Plan`;
+    $("voteSubtitle").textContent = `KW ${+vote.week.split("W")[1]}${viewNext ? " (nächste Woche)" : ""} · ${GRID_SIZE} Saison-Gerichte, die Top ${PLAN_SIZE} kommen in den Plan`;
     $("voteMe").innerHTML = state.members.map(m => `<option value="${esc(m.id)}"${m.id === myId() ? " selected" : ""}>${esc(m.name)}</option>`).join("");
     $("voteMine").textContent = `${mine.likes.length} gewählt`;
 
@@ -803,7 +882,12 @@
   }
   $("voteDialog").addEventListener("close", () => clearInterval(votePoll));
 
-  $("openVoteBtn").onclick = openVote;
+  // Kalender-Symbol: ab Donnerstag geht es zur nächsten Woche, solange dort noch nichts gewählt ist
+  function openVoteFor() {
+    if (canPlanNext() && !viewNext && !wahlDone(nextWeekKey())) setWeekView(true);
+    openVote();
+  }
+  $("openVoteBtn").onclick = openVoteFor;
 
   $("voteMe").onchange = () => {
     save(ME_KEY, $("voteMe").value);
@@ -891,7 +975,7 @@
     state.plan = next;
     savePlan();
     refresh();
-    save(`bringfrisch_wahl_${weekKey()}`, true);
+    save(`bringfrisch_wahl_${vote.week}`, true);
     markWahl();
     $("voteDialog").close();
     toast(withVotes < PLAN_SIZE ? `Plan übernommen (${PLAN_SIZE - withVotes} ohne Stimme aufgefüllt)` : "Plan übernommen", {
@@ -1247,7 +1331,7 @@
     }
     const id = b.dataset.remove;
     state.members = state.members.filter(m => m.id !== id);
-    state.plan.forEach(d => { d.eaters = d.eaters.filter(x => x !== id); });
+    [state.plan, otherPlan()].filter(Boolean).forEach(p => p.forEach(d => { d.eaters = d.eaters.filter(x => x !== id); }));
     saveMembers();
     savePlan();
     renderMembers();
@@ -1260,7 +1344,7 @@
     if (!name) return;
     const id = name.toLowerCase().replace(/[^a-z0-9äöü]+/g, "-") + "-" + Date.now().toString(36);
     state.members.push({ id, name, diet: $("newMemberDiet").value });
-    state.plan.forEach(d => d.eaters.push(id));
+    [state.plan, otherPlan()].filter(Boolean).forEach(p => p.forEach(d => d.eaters.push(id)));
     saveMembers();
     savePlan();
     $("newMemberName").value = "";
@@ -1379,9 +1463,26 @@
     clearTimeout(planPushTimer);
     const r = await api("/plan", {
       method: "PUT",
-      body: { week: weekKey(), plan: state.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
+      body: { week: weekKey(), plan: currentPlan(), members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
     });
     save(PLAN_UPDATED_KEY, r.updated);
+  }
+  let nextPushTimer = null;
+  async function pushNextNow() {
+    clearTimeout(nextPushTimer);
+    nextPushTimer = null;
+    if (!nextDoc) return;
+    const r = await api(`/plan/${nextDoc.week}`, {
+      method: "PUT",
+      body: { plan: nextDoc.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
+    });
+    nextDoc.updated = r.updated;
+    save(NEXT_KEY, nextDoc);
+  }
+  function scheduleNextPush() {
+    if (!connected()) return;
+    clearTimeout(nextPushTimer);
+    nextPushTimer = setTimeout(() => pushNextNow().catch(e => setSyncStatus(e.message, false)), 1500);
   }
   function schedulePlanPush() {
     if (!connected()) return;
@@ -1397,6 +1498,7 @@
     syncing = true;
     try {
       if (planPushTimer) await pushPlanNow();
+      if (nextPushTimer) await pushNextNow();
       if (vorratTimer) {
         clearTimeout(vorratTimer);
         vorratTimer = null;
@@ -1458,7 +1560,10 @@
   async function pullShared() {
     if (!connected()) return;
     try {
-      const [remote, bring, vorrat] = await Promise.all([api("/plan"), api("/bring/list"), api("/vorrat")]);
+      const [remote, bring, vorrat, remoteNext] = await Promise.all([
+        api("/plan"), api("/bring/list"), api("/vorrat"),
+        canPlanNext() ? api(`/plan/${nextWeekKey()}`).catch(() => null) : null
+      ]);
       // Grundvorrat: neuerer Stand gewinnt; hat der Server noch keinen, bekommt er unseren
       if (Array.isArray(vorrat.staples) && vorrat.updated > load(VORRAT_UPDATED_KEY, 0)) {
         state.staples = vorrat.staples;
@@ -1469,16 +1574,32 @@
       }
       setBringList(bring);
       const localUpdated = load(PLAN_UPDATED_KEY, 0);
-      if (remote.plan && remote.updated > localUpdated) {
+      // Neue Woche, und ein anderes Handy hat sie schon geplant: dieser Plan wird zur laufenden Woche
+      const promoted = remote.week && remote.week < weekKey() ? await api(`/plan/${weekKey()}`).catch(() => null) : null;
+      if (promoted && !isOpenWeek(promoted.plan) && promoted.updated > localUpdated) {
+        setCurrentPlan(normalizeWeek(promoted.plan));
+        save(PLAN_UPDATED_KEY, Date.now());
+        await pushPlanNow();
+        toast("Neue Woche: euer geplanter Plan gilt jetzt");
+      } else if (remote.plan && remote.updated > localUpdated) {
         if (Array.isArray(remote.members) && remote.members.length) state.members = remote.members;
-        state.plan = remote.plan;
-        normalizePlan();
-        save(KEYS.plan, state.plan);
+        setCurrentPlan(normalizeWeek(remote.plan));
         save(KEYS.members, state.members);
         save(PLAN_UPDATED_KEY, remote.updated);
         renderMembers();
         toast("Wochenplan der WG geladen");
       }
+      // Nächste Woche: neuerer Stand gewinnt
+      const localNext = nextDoc && nextDoc.week === nextWeekKey() ? nextDoc.updated || 0 : 0;
+      if (remoteNext && Array.isArray(remoteNext.plan) && remoteNext.updated > localNext) {
+        nextDoc = { week: nextWeekKey(), plan: normalizeWeek(remoteNext.plan), updated: remoteNext.updated };
+        save(NEXT_KEY, nextDoc);
+        if (viewNext) state.plan = nextDoc.plan;
+      } else if (remoteNext && localNext > (remoteNext.updated || 0)) {
+        scheduleNextPush();
+      }
+      renderHeader();
+      markWahl();
       refresh();
       setSyncStatus("Verbunden ✓", true);
     } catch (e) {
@@ -1713,6 +1834,7 @@
   let openIdx = -1;
 
   function dayMeta(day) {
+    if (day.empty) return "Antippen oder Wochenwahl";
     const kind = day.is_leftovers ? "Reste" : day.quick ? "schnell" : day.diet === "fleisch" ? "Fleisch" : day.diet === "vegan" ? "vegan" : "vegi";
     return `${kind} · ${day.prep_time_min || 30} Min.`;
   }
@@ -1735,7 +1857,7 @@
     const many = state.members.length >= 5;
     const ings = dayIngredients(day);
     const b = day.leftover_buffer || 0;
-    return `<div class="prow${idx === today ? " today" : ""}${idx === openIdx ? " open" : ""}" data-i="${idx}">
+    return `<div class="prow${idx === today ? " today" : ""}${idx === openIdx ? " open" : ""}${day.empty ? " empty" : ""}" data-i="${idx}">
       <div class="phead">
         <button type="button" class="pday" aria-expanded="${idx === openIdx}" aria-label="${DAYS[idx]}: ganzes Menü zeigen">${DAYS[idx].slice(0, 2)}</button>
         <div class="dish">
@@ -1752,7 +1874,7 @@
         </div>
       </div>
       <div class="more"><div><div class="inner">
-        <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
+        <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
         <div class="links">${day.source_url ? `<a href="${esc(day.source_url)}" target="_blank" rel="noopener">Zum Rezept ↗</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button></div>
       </div></div></div>
     </div>`;
@@ -1760,7 +1882,7 @@
 
   function renderDays() {
     const short = initialsMap();
-    const today = todayIndex();
+    const today = viewNext ? -1 : todayIndex();
     $("days").innerHTML = state.plan.map((day, idx) => rowHTML(day, idx, short, today)).join("");
   }
 
@@ -1984,7 +2106,7 @@
       if ($("msearch").value.trim() && opts[0]) pickFromSheet(opts[0]); else $("msearch").blur();
     }
   });
-  $("msearch").addEventListener("focus", () => setTimeout(() => { fitKeyboard(); $("msearch").scrollIntoView({ block: "nearest" }); }, 250));
+  $("msearch").addEventListener("focus", () => setTimeout(() => { fitKeyboard(); if ($("msearch").scrollIntoView) $("msearch").scrollIntoView({ block: "nearest" }); }, 250));
   $("msearch").addEventListener("blur", () => setTimeout(fitKeyboard, 250));
 
   // ---------------------------------------------------------------------------
@@ -2031,17 +2153,19 @@
   }
 
   // Wochenwahl-Pop-up: beim Start, wenn für diese Woche noch nichts gewählt ist
-  function wahlDone() {
-    const v = load(VOTE_KEY, null);
+  function wahlDone(week = shownWeek()) {
+    if (load(`bringfrisch_wahl_${week}`, false)) return true;
+    if (week === nextWeekKey() && nextDoc && nextDoc.week === week && Array.isArray(nextDoc.plan) && nextDoc.plan.every(d => !d.empty)) return true;
+    const v = load(voteKey(week), null);
     const me = load(ME_KEY, null);
-    if (load(`bringfrisch_wahl_${weekKey()}`, false)) return true;
-    return !!(v && v.week === weekKey() && me && v.votes && v.votes[me] && (v.votes[me].likes || []).length);
+    return !!(v && v.week === week && me && v.votes && v.votes[me] && (v.votes[me].likes || []).length);
   }
-  function markWahl() { $("openVoteBtn").classList.toggle("due", !wahlDone()); }
+  // Roter Punkt: Mo–Mi für diese Woche, ab Donnerstag für die nächste
+  const wahlDue = () => (canPlanNext() ? !wahlDone(nextWeekKey()) : !wahlDone(weekKey()));
+  function markWahl() { $("openVoteBtn").classList.toggle("due", wahlDue()); }
   function openWahlPop() {
-    const isSunday = new Date().getDay() === 0;
-    $("wpopText").textContent = isSunday
-      ? `Es ist Sonntag – Zeit für die nächste Woche. Wählt jetzt eure Gerichte.`
+    $("wpopText").textContent = canPlanNext()
+      ? `Ab Donnerstag könnt ihr schon die nächste Woche planen. Für KW ${isoWeek(plusWeek())} ist noch nichts gewählt.`
       : `Für KW ${isoWeek(new Date())} ist noch nichts gewählt. Stellt den Plan in einer Minute zusammen – der Rest füllt sich von selbst.`;
     const pop = $("wpop");
     pop.hidden = false;
@@ -2069,7 +2193,7 @@
       if (btn.animate) btn.animate([{ transform: "scale(1)" }, { transform: "scale(1.18)" }, { transform: "scale(1)" }], { duration: 420, easing: "cubic-bezier(.34,1.45,.5,1)" });
     };
   }
-  $("wgo").onclick = () => dockWahlPop(openVote);
+  $("wgo").onclick = () => dockWahlPop(openVoteFor);
   $("wlater").onclick = () => dockWahlPop();
   $("wscrim").onclick = () => dockWahlPop();
   $("wpop").addEventListener("keydown", e => { if (e.key === "Escape") dockWahlPop(); });
@@ -2098,7 +2222,24 @@
   document.addEventListener("click", e => { if (!navMenu.contains(e.target) && e.target.id !== "moreBtn" && !e.target.closest("#moreBtn")) closeNavMenu(); });
   $("menuSettings").onclick = () => { closeNavMenu(); showTab("wg"); };
   $("menuRefresh").onclick = () => { closeNavMenu(); runPullSync(); };
-  $("menuVote").onclick = () => { closeNavMenu(); openVote(); };
+  $("menuVote").onclick = () => { closeNavMenu(); openVoteFor(); };
+
+  // Woche wechseln: Chip in der Abschnittszeile oder seitlich über die Tage wischen
+  $("weekChip").onclick = () => setWeekView(!viewNext);
+  (function weekSwipe() {
+    let sx = null, sy = 0;
+    $("days").addEventListener("touchstart", e => {
+      sx = canPlanNext() && e.touches.length === 1 ? e.touches[0].clientX : null;
+      sy = sx === null ? 0 : e.touches[0].clientY;
+    }, { passive: true });
+    $("days").addEventListener("touchend", e => {
+      if (sx === null) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx, dy = t.clientY - sy;
+      sx = null;
+      if (Math.abs(dx) > 70 && Math.abs(dy) < 40) setWeekView(dx < 0);
+    }, { passive: true });
+  })();
   $("menuOs").onclick = () => { closeNavMenu(); setOs(currentOs() === "glass" ? "m3" : "glass"); };
 
   // Unsichtbarer Scrollbalken: Greifstreifen rechts, feiner Balken nur beim Scrollen/Ziehen
@@ -2150,8 +2291,27 @@
   // ---------------------------------------------------------------------------
   const fromLink = importPlanFromHash();
   if (!fromLink) state.plan = load(KEYS.plan, []);
+  // Neue Woche: die schon geplante nächste Woche wird zur laufenden, sonst bleibt der Plan stehen
+  const planWeek = load(PLAN_WEEK_KEY, null);
+  const rolled = !fromLink && planWeek && planWeek < weekKey() && nextDoc && nextDoc.week === weekKey() && !isOpenWeek(nextDoc.plan);
+  if (rolled) state.plan = nextDoc.plan;
+  if (nextDoc && nextDoc.week <= weekKey()) {
+    nextDoc = null;
+    try { localStorage.removeItem(NEXT_KEY); } catch (e) { /* egal */ }
+  }
+  save(PLAN_WEEK_KEY, weekKey());
+  // Alte Wochenwahlen aufräumen (je Woche gespeichert)
+  try {
+    Object.keys(localStorage).forEach(k => {
+      const m = /^bringfrisch_(?:week_vote_|wahl_)(\d{4}-W\d{2})$/.exec(k);
+      if (m && m[1] < weekKey()) localStorage.removeItem(k);
+    });
+    const oldVote = load(VOTE_KEY, null);
+    if (oldVote && oldVote.week === weekKey() && !load(voteKey(oldVote.week), null)) save(voteKey(oldVote.week), oldVote);
+    localStorage.removeItem(VOTE_KEY);
+  } catch (e) { /* ohne Speicher */ }
   normalizePlan();
-  if (fromLink) {
+  if (fromLink || rolled) {
     savePlan(); // per Link empfangener Plan gilt als neueste Version
     saveMembers();
   } else {
@@ -2167,7 +2327,7 @@
   refresh();
   fitDensity();
   markWahl();
-  if (!wahlDone()) setTimeout(openWahlPop, 500);
+  if (wahlDue()) setTimeout(openWahlPop, 500);
   if (fromLink) toast("Wochenplan aus Link übernommen");
   else pullShared();
 

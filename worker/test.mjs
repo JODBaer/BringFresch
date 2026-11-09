@@ -134,6 +134,16 @@ check(ics.includes("SUMMARY:🍲 Lauchwähe\\, mit Käseguss"), "Titel korrekt e
 check(ics.includes("Es essen: Joshua\\, Jo"), "wer isst steht in der Beschreibung");
 check(ics.split("\r\n").every(l => new TextEncoder().encode(l).length <= 75), "Zeilen nach RFC 5545 gefaltet");
 
+// 4b. Nächste Woche (ab Donnerstag geplant): eigener Plan, im Kalender dabei, offene Tage ohne Termin
+const nextPlan = plan.map((d, i) => (i < 2 ? { ...d, title: `Nächste ${i}` } : { title: "noch offen", empty: true, eaters: ["joshua"] }));
+r = await call("/plan/2026-W47", { method: "PUT", body: { plan: nextPlan, members: [{ id: "joshua", name: "Joshua" }] } });
+check(r.status === 200, "Plan für KW 47 gespeichert");
+const got = await (await call("/plan/2026-W47")).json();
+check(got.week === "2026-W47" && got.plan[0].title === "Nächste 0", "Plan KW 47 lesbar");
+check((await (await call("/plan")).json()).week === "2026-W46", "laufender Plan bleibt KW 46");
+const ics2 = await (await call("/cal/cal-secret.ics", { pin: null })).text();
+check((ics2.match(/BEGIN:VEVENT/g) || []).length === 8 && ics2.includes("DTSTART;TZID=Europe/Zurich:20261116T183000"), "Kalender zeigt auch die nächste Woche (nur geplante Tage)");
+
 // 5. Rezept-Link
 r = await call("/recipe?url=" + encodeURIComponent("https://www.bettybossi.ch/de/rezepte/rezept/zwiebelsuppe-10010500/"));
 const rec = await r.json();

@@ -11,6 +11,7 @@ WG-Menüplaner mit Schweizer Saisongemüse. Die WG wählt gemeinsam 7 Znacht fü
 - **Kreise** = wer mitisst (antippen = an/ab, abwesend = grau mit Strich). **+N** daneben = Reste.
 - **Zahl** rechts = Portionen (Personen + Reste): antippen = +1 (bis +6, dann wieder 0), **▾** = Auswahl.
 - Oben: **Kalender-Symbol** = Wochenwahl (roter Punkt = noch offen), **🛒 Bring!-Chip** = füllen.
+- **Ab Donnerstag** steht rechts über den Tagen **«KW 47 →»**: antippen (oder seitlich wischen) = nächste Woche planen. Tage sind zuerst «noch offen», Wochenwahl, Bring! und Kalender gelten für die angezeigte Woche. Am Montag wird sie automatisch zur laufenden.
 - Unten: Plan · Einkauf · Rezepte & Saison · Einstellungen (⋮-Menü: WG-Einstellungen, Aktualisieren, Wochenwahl, iPhone-/Android-Stil).
 - iPhone bekommt den Glas-Stil, Android Material 3 – automatisch. Design-Vorgabe: [docs/design/](docs/design/).
 

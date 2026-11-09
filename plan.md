@@ -23,18 +23,14 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 - [x] «Bring! füllen»: Fehlendes einfach senden, bei schon Vorhandenem pro Artikel nachfragen (z.B. 2. Rezept mit Rahm), danach «Rückgängig»
 - [x] Herunterziehen = sofort synchronisieren
 - [x] Untere Navigation mit Icons (Plan · Einkauf · Rezepte & Saison · Einstellungen), Homescreen-Icon
+- [x] Redesign Plan-Ansicht + Navigation live (iPhone Glas / Android Material 3 Expressive)
 - [x] Tests: App (jsdom), 2-Handy-Integration, Worker offline, `tools/check_live` (Kette), `tests/e2e_live` (echtes Bring!)
 
 ## Als Nächstes
 
 - [ ] **Redesign Plan-Ansicht – prüfen**: `node tests/layout_check.mjs --shots` (390×844, 375×667, 390×600; iPhone/Android, hell/dunkel) und auf dem echten iPhone/Android ansehen
 - [ ] Redesign für Einkauf, Rezepte & Saison, Einstellungen (folgt separat, gleiche Vorgabe)
-- [ ] **Ab Donnerstag die nächste Woche planen** (ersetzt «Wochenwahl am Sonntag»)
-  - Ab Donnerstag oben umschaltbar: «Diese Woche · KW 46» ↔ «Nächste Woche · KW 47» (Wischen oder Tippen auf die KW)
-  - Nächste Woche: ansehen, Wochenwahl starten, Tage tauschen, Esser setzen – eigener Plan pro KW im WG-Server (`plan:<KW>`), die laufende Woche bleibt unberührt
-  - Wochenwahl-Pop-up ab Donnerstag: «Plant schon die nächste Woche» statt erst am Sonntag
-  - Bring! füllen gilt für die angezeigte Woche (z.B. Samstag schon für nächste Woche einkaufen); Kalender-Abo zeigt beide Wochen
-  - Am Montag wird die geplante Woche automatisch zur laufenden (passt zu «Neue Woche: Optionen offen lassen»)
+- [x] **Ab Donnerstag die nächste Woche planen**: Chip «KW 47 →» in der Abschnittszeile (oder seitlich wischen), Tage zuerst «noch offen», Wochenwahl/Bring!/Kalender für die angezeigte Woche, am Montag wird sie zur laufenden
 
 - [ ] **Joshua**: WG-Liste in Bring! mit `allmenbot@gmail.com` teilen, in der App unter Einstellungen → «Bring!-Liste der WG» wählen
 - [x] **Design-Entscheid**: eigene Spezifikation (`docs/design/`) – iPhone Glas, Android Material 3 Expressive, Hellgrün + Pistazie; Plan-Ansicht + Navigation umgesetzt

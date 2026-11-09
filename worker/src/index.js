@@ -9,6 +9,7 @@
 //   PUT  /week/:week/vote/:member {likes:[ids], days:{id:dayIdx}}
 //   GET  /plan                        -> { week, plan, members, updated }
 //   PUT  /plan {week, plan, members}
+//   GET/PUT /plan/:week               -> Plan einer bestimmten Woche (ab Donnerstag: nächste Woche planen)
 //   GET  /recipe?url=…                -> { title, servings, ingredients[], minutes }  (Rezept-Link importieren)
 //   GET/PUT /vorrat                   -> gemeinsamer Grundvorrat der WG
 //   GET  /cal-link                    -> { url } Abo-Link für den Kalender
@@ -88,6 +89,17 @@ async function route(request, env, url) {
     if (!Array.isArray(data.plan) || data.plan.length !== 7) throw httpError(400, "plan ungültig");
     const doc = { week: data.week, plan: data.plan, members: data.members || [], dinnerTime: data.dinnerTime || "18:30", updated: Date.now() };
     await env.WG.put("plan", JSON.stringify(doc));
+    return json({ ok: true, updated: doc.updated });
+  }
+
+  // Plan einer bestimmten Woche (die nächste Woche wird ab Donnerstag schon geplant)
+  const planWeek = path.match(/^\/plan\/(\d{4}-W\d{2})$/);
+  if (planWeek && method === "GET") return json((await env.WG.get(`plan:${planWeek[1]}`, "json")) || { plan: null });
+  if (planWeek && method === "PUT") {
+    const data = await body(request);
+    if (!Array.isArray(data.plan) || data.plan.length !== 7) throw httpError(400, "plan ungültig");
+    const doc = { week: planWeek[1], plan: data.plan, members: data.members || [], dinnerTime: data.dinnerTime || "18:30", updated: Date.now() };
+    await env.WG.put(`plan:${planWeek[1]}`, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 35 });
     return json({ ok: true, updated: doc.updated });
   }
 
@@ -342,16 +354,39 @@ function stamp(d) {
 async function calendar(env, token) {
   if (!env.CAL_TOKEN || !timingSafeEqual(token, env.CAL_TOKEN.trim())) return new Response("Not found", { status: 404 });
   const doc = (await env.WG.get("plan", "json")) || {};
-  const monday = mondayOf(doc.week);
+  const nextKey = weekAfter(doc.week);
+  const next = nextKey ? await env.WG.get(`plan:${nextKey}`, "json") : null;
   const lines = [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//BringFrisch//WG-Znacht//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
     "X-WR-CALNAME:BringFrisch Znacht", "X-WR-TIMEZONE:Europe/Zurich", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H",
   ];
+  for (const d of [doc, next]) if (d) lines.push(...events(d));
+  lines.push("END:VCALENDAR");
+  return new Response(lines.join("\r\n") + "\r\n", {
+    headers: { "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "max-age=300" },
+  });
+}
+
+// KW nach der angegebenen ("2026-W46" -> "2026-W47")
+function weekAfter(weekKey) {
+  const monday = mondayOf(weekKey);
+  if (!monday) return null;
+  const thu = new Date(monday);
+  thu.setUTCDate(monday.getUTCDate() + 7 + 3);
+  const jan1 = new Date(Date.UTC(thu.getUTCFullYear(), 0, 1));
+  const week = Math.floor((thu - jan1) / 86400000 / 7) + 1;
+  return `${thu.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+// Termine einer Woche (noch offene Tage bekommen keinen)
+function events(doc) {
+  const lines = [];
+  const monday = mondayOf(doc.week);
   if (monday && Array.isArray(doc.plan)) {
     const names = Object.fromEntries((doc.members || []).map(m => [m.id, m.name]));
     const [hh, mm] = (doc.dinnerTime || "18:30").split(":").map(Number);
     doc.plan.forEach((day, i) => {
-      if (!day || !day.title) return;
+      if (!day || !day.title || day.empty) return; // noch offen: kein Termin
       const eaters = (day.eaters || []).map(id => names[id] || id);
       if (eaters.length === 0 && !day.extra_guests) return; // niemand zuhause
       const date = new Date(monday);
@@ -381,10 +416,7 @@ async function calendar(env, token) {
       );
     });
   }
-  lines.push("END:VCALENDAR");
-  return new Response(lines.join("\r\n") + "\r\n", {
-    headers: { "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "max-age=300" },
-  });
+  return lines;
 }
 
 // ---------------------------------------------------------------------------------------------
