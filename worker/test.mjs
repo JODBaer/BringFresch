@@ -26,11 +26,14 @@ globalThis.fetch = async (url, init = {}) => {
     return Response.json({ uuid: "u1", access_token: "tok", bringListUUID: "list-1" });
   }
   if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home" }, { listUuid: "list-wg", name: "WG" }] });
+  if (url.includes("/bringlists/list-wg") && (init.method || "GET") === "GET") return Response.json({ items: { purchase: wgPuts.map(n => ({ itemId: n })) } });
   if (url.includes("/bringlists/list-wg") && init.method === "PUT") { wgPuts.push(new URLSearchParams(init.body).get("purchase")); return new Response(null, { status: 204 }); }
   if (url.includes("/bringlists/list-1") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
   if (url.includes("/bringlists/list-1") && init.method === "PUT") {
     const p = new URLSearchParams(init.body);
-    bringList.push({ name: p.get("purchase"), specification: p.get("specification") });
+    if (p.get("remove")) { const i = bringList.findIndex(x => x.name === p.get("remove")); if (i >= 0) bringList.splice(i, 1); return new Response(null, { status: 204 }); }
+    const ex = bringList.find(x => x.name === p.get("purchase"));
+    if (ex) ex.specification = p.get("specification"); else bringList.push({ name: p.get("purchase"), specification: p.get("specification") });
     return new Response(null, { status: 204 });
   }
   if (url.startsWith("https://www.bettybossi.ch/")) {
@@ -72,6 +75,19 @@ env.BRING_PASSWORD = "falsch";
 r = await call("/bring/list");
 check(r.status === 502 && /Bot-Kontos/.test((await r.json()).error), "verständlicher Fehler bei falschem Bot-Passwort");
 env.BRING_PASSWORD = "pw";
+
+// 2a. Nur eigene Artikel wegnehmen
+r = await call("/bring/list");
+let lst = await r.json();
+check(lst.mine.includes("Rüebli") && !lst.mine.includes("Milch"), "Bot kennt seine eigenen Artikel (Rüebli ja, Milch nein)");
+bringList.splice(bringList.findIndex(x => x.name === "Lauch"), 1); // jemand hat Lauch in Bring! abgehakt
+r = await call("/bring/remove", { method: "POST", body: { names: ["Rüebli", "Milch", "Lauch"] } });
+const rm = await r.json();
+check(rm.removed === 1 && rm.notMine.join() === "Milch" && rm.gone.join() === "Lauch", "entfernt nur Eigenes, lässt Milch (von jemand anderem), Lauch schon weg");
+check(!bringList.some(x => x.name === "Rüebli") && bringList.some(x => x.name === "Milch"), "Rüebli weg, Milch bleibt");
+await call("/bring/sync", { method: "POST", body: { items: [{ name: "Milch", spec: "2 l" }] } });
+r = await call("/bring/remove", { method: "POST", body: { names: ["Milch"] } });
+check((await r.json()).notMine.join() === "Milch", "Milch bleibt fremd, auch wenn der Bot die Menge ergänzt");
 
 // 2b. Liste wählen
 r = await call("/bring/lists");

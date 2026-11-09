@@ -24,7 +24,9 @@ Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 - **Portionen** = Esser + Gäste + Reste-Puffer (Standard +2, wählbar +0…+6). Niemand zuhause → kein Kochen.
 - **Rezeptmengen** gelten für `recipe.servings` (Standard 4).
 - **Alles für alle**: gemeinsame Basis + 150 g Fleisch pro Fleisch-Esser (nicht bei Fleischrezepten) + 100 g Grillkäse pro Vegi + 50 g Salat pro Portion.
-- **Grundvorrat** wird nicht auf die Liste gesetzt, solange nicht «leer».
+- **Grundvorrat** wie Bring!: gleiche Abteilungen und Artikel (kleine Pillen mit Bring!-Bild). Antippen = direkt auf Bring! (durchgestrichen), nochmals = wieder weg. Was in Bring! gekauft/abgehakt wurde, gilt wieder als «da».
+- **Bot löscht nur Eigenes**: der Worker merkt sich in KV (`bot:<liste>`), was er neu gesetzt hat; nur das nimmt er weg, und nur wenn es noch drauf ist.
+- **Doppelt?** Sind ≥ 90 % schon auf Bring!, fragt «Bring! füllen» nach (nur fehlende / alles nochmals / abbrechen).
 - **Schnelles & Reste** (`quick: true` in `standalone_data.js`): Fertigpizza, Nuggets, Maultaschen, Gnocchi, Dumplings, Resteessen. 2 davon pro Woche im Memory. `vegi_swap` ersetzt den Grillkäse (z.B. Vegi-Nuggets), `no_addons` lässt Extra-Fleisch/-Käse weg, `is_leftovers` = nichts einkaufen.
 - **Bring!-Bilder**: Namen werden auf den Bring!-Katalog (`static/bring_catalog.js`, erzeugt von `tools/update_bring_catalog.mjs`) abgebildet, z.B. Butternuss-Kürbis → Kürbis; die genaue Sorte steht in der Mengenangabe. Unbekanntes (v.a. Gewürze) bleibt eigener Artikel. Eigene Bilder hochladen kann die Bring!-API nicht.
 - **Einkaufsnamen**: «Schweizer», Klammern, «à ca. 400 g» stehen in der Mengenangabe, nicht im Namen. Leitungswasser kommt nie auf die Liste.

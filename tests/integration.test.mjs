@@ -29,7 +29,10 @@ globalThis.fetch = async (url, init = {}) => {
   if (url.endsWith("/bringauth")) return Response.json({ uuid: "u", access_token: "t", bringListUUID: "L" });
   if (url.endsWith("/bringlists/L") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
   if (url.endsWith("/bringlists/L") && init.method === "PUT") {
-    const p = new URLSearchParams(init.body); bringList.push({ name: p.get("purchase"), specification: p.get("specification") });
+    const p = new URLSearchParams(init.body);
+    if (p.get("remove")) { const i = bringList.findIndex(x => x.name === p.get("remove")); if (i >= 0) bringList.splice(i, 1); return new Response(null, { status: 204 }); }
+    const ex = bringList.find(x => x.name === p.get("purchase"));
+    if (ex) ex.specification = p.get("specification"); else bringList.push({ name: p.get("purchase"), specification: p.get("specification") });
     return new Response(null, { status: 204 });
   }
   return new Response("?", { status: 599 });
@@ -118,7 +121,41 @@ const known = bringList.filter(i => catalog[i.name]);
 check(known.length / bringList.length >= 0.8, `${known.length}/${bringList.length} Einträge sind Bring!-Katalogartikel (mit Bild): ${bringList.slice(0, 6).map(i => i.name + " [" + i.specification + "]").join(", ")}`);
 check(bringList.every(i => i.specification && !/\d\.\d{3}/.test(i.specification)), "Mengen sauber formatiert");
 check(/schon auf Bring!/.test(A2.document.getElementById("basketLine").textContent), "Plan-Seite zeigt 'schon auf Bring!'");
-check(parseInt(A2.document.getElementById("ctaCount").textContent.replace(/\D/g, ""), 10) === 0, "nach dem Sync nichts mehr zu kaufen");
+check(/alles auf Bring/.test(A2.document.getElementById("ctaCount").textContent), "nach dem Sync: «alles auf Bring! ✓»");
+
+// Nochmals «Bring! füllen»: alles schon drauf -> App fragt statt doppelt zu senden
+const before2 = bringList.length;
+A2.document.getElementById("syncBtn").click();
+await wait(300);
+check(A2.document.getElementById("dupDialog").open, "zweites «Bring! füllen» fragt nach (alles schon auf Bring!)");
+A2.document.getElementById("dupCancelBtn").click();
+await wait(100);
+check(bringList.length === before2, "Abbrechen sendet nichts doppelt");
+
+// Grundvorrat wie Bring!: antippen = drauf, nochmals = wieder weg
+bringList.push({ name: "Salz", specification: "von Leonie" }); // jemand anderes
+A2.document.getElementById("openStaplesBtn").click();
+await wait(300);
+const tile = name => [...A2.document.querySelectorAll("#staplesList .btile")].find(t => t.querySelector(".bname").textContent === name);
+check(!!tile("Pfeffer") && !!tile("Olivenöl"), "Vorrat zeigt Bring!-Artikel (Pfeffer, Olivenöl)");
+check(A2.document.querySelectorAll("#staplesList .bsec h3")[0].textContent.length > 0, "Vorrat in Bring!-Abteilungen");
+tile("Pfeffer").click();
+await wait(300);
+check(bringList.some(x => x.name === "Pfeffer") && tile("Pfeffer").classList.contains("on"), "Pfeffer antippen -> auf Bring!, Kachel rot");
+tile("Pfeffer").click();
+await wait(300);
+check(!bringList.some(x => x.name === "Pfeffer") && !tile("Pfeffer").classList.contains("on"), "nochmals antippen -> wieder weg");
+check(tile("Salz").classList.contains("on"), "Salz (von Leonie) ist rot");
+tile("Salz").click();
+await wait(300);
+check(bringList.some(x => x.name === "Salz"), "Bot nimmt Salz von Leonie NICHT weg");
+tile("Olivenöl").click();
+await wait(300);
+bringList.splice(bringList.findIndex(x => x.name === "Olivenöl"), 1); // in Bring! gekauft/abgehakt
+A2.document.getElementById("staplesDialog").close();
+A2.document.getElementById("openStaplesBtn").click();
+await wait(300);
+check(!tile("Olivenöl").classList.contains("on"), "gekauftes Olivenöl ist wieder «da»");
 
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

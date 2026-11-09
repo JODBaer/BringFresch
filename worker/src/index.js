@@ -190,51 +190,77 @@ async function bringSetTarget(env, { uuid }) {
   return { ok: true, active: hit.uuid, name: hit.name };
 }
 
-async function bringList(env) {
-  const s = await bringLogin(env);
+async function bringPurchase(s) {
   const res = await fetch(`${BRING}bringlists/${s.listUuid}`, { headers: s.headers });
   if (!res.ok) throw httpError(502, `Bring!-Liste nicht lesbar (${res.status})`);
   const data = await res.json();
   const purchase = (data.items && data.items.purchase) || data.purchase || [];
-  return { items: purchase.map(p => p.name || p.itemId) };
+  return purchase.map(p => p.name || p.itemId);
+}
+
+// Was hat der Bot selbst auf die Liste gesetzt? Nur das darf er wieder wegnehmen.
+const ownKey = s => `bot:${s.listUuid}`;
+async function loadOwn(env, s) {
+  return (await env.WG.get(ownKey(s), "json")) || {};
+}
+
+async function bringList(env) {
+  const s = await bringLogin(env);
+  const items = await bringPurchase(s);
+  const own = await loadOwn(env, s);
+  const onList = new Set(items.map(n => n.toLowerCase()));
+  return { items, mine: Object.values(own).filter(n => onList.has(n.toLowerCase())) };
+}
+
+function bringPut(s, params) {
+  return fetch(`${BRING}bringlists/${s.listUuid}`, {
+    method: "PUT",
+    headers: { ...s.headers, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+    body: new URLSearchParams(params),
+  });
 }
 
 async function bringSync(env, { items }) {
   if (!Array.isArray(items) || items.length === 0) throw httpError(400, "Keine Artikel");
   if (items.length > MAX_ITEMS) throw httpError(400, `Maximal ${MAX_ITEMS} Artikel pro Aufruf`);
   const s = await bringLogin(env);
+  const before = new Set((await bringPurchase(s)).map(n => n.toLowerCase()));
+  const own = await loadOwn(env, s);
   let pushed = 0;
   const errors = [];
   for (const it of items) {
     const name = String(it.name || "").trim().slice(0, 80);
     if (!name) continue;
-    const res = await fetch(`${BRING}bringlists/${s.listUuid}`, {
-      method: "PUT",
-      headers: { ...s.headers, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-      body: new URLSearchParams({ purchase: name, specification: String(it.spec || "").slice(0, 80) }),
-    });
-    if (res.ok) pushed++;
-    else errors.push(`${name}: ${res.status}`);
+    const res = await bringPut(s, { purchase: name, specification: String(it.spec || "").slice(0, 80) });
+    if (res.ok) {
+      pushed++;
+      if (!before.has(name.toLowerCase())) own[name.toLowerCase()] = name; // neu vom Bot -> gehört ihm
+    } else errors.push(`${name}: ${res.status}`);
   }
+  await env.WG.put(ownKey(s), JSON.stringify(own));
   return { ok: errors.length === 0, pushed, errors };
 }
 
-// Artikel wieder von der Liste nehmen (für Tests / Aufräumen)
+// Artikel wieder wegnehmen – aber nur, was der Bot selbst gesetzt hat und noch drauf ist.
+// Von anderen Gesetztes bleibt; schon Weggenommenes (gekauft/gelöscht) wird nur vergessen.
 async function bringRemove(env, { names }) {
   if (!Array.isArray(names) || names.length === 0 || names.length > MAX_ITEMS) throw httpError(400, "Keine Artikel");
   const s = await bringLogin(env);
+  const onList = new Set((await bringPurchase(s)).map(n => n.toLowerCase()));
+  const own = await loadOwn(env, s);
   let removed = 0;
+  const notMine = [], gone = [];
   for (const n of names) {
     const name = String(n || "").trim().slice(0, 80);
+    const k = name.toLowerCase();
     if (!name) continue;
-    const res = await fetch(`${BRING}bringlists/${s.listUuid}`, {
-      method: "PUT",
-      headers: { ...s.headers, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-      body: new URLSearchParams({ remove: name }),
-    });
-    if (res.ok) removed++;
+    if (!onList.has(k)) { gone.push(name); delete own[k]; continue; }
+    if (!own[k]) { notMine.push(name); continue; }
+    const res = await bringPut(s, { remove: name });
+    if (res.ok) { removed++; delete own[k]; }
   }
-  return { ok: true, removed };
+  await env.WG.put(ownKey(s), JSON.stringify(own));
+  return { ok: true, removed, notMine, gone };
 }
 
 // ---------------------------------------------------------------------------------------------

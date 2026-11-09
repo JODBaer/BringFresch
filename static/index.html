@@ -206,8 +206,16 @@
     .filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
     .filters button { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; white-space: nowrap; }
     .filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-    .staple { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 6px 11px; font-size: 13px; }
-    .staple.empty-stock { color: var(--accent); border-color: var(--accent); text-decoration: line-through; }
+    /* Grundvorrat: Bring!-Abteilungen und -Artikel, kleine Pillen; auf Bring! = durchgestrichen */
+    .bsec h3 { font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 6px; }
+    .btiles { display: flex; flex-wrap: wrap; gap: 6px; }
+    .btile { border: 1px solid var(--line); background: none; color: inherit; border-radius: 999px; padding: 4px 11px 4px 5px; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .btile.on { color: var(--accent); border-color: var(--accent); text-decoration: line-through; }
+    .btile:disabled { opacity: .6; }
+    .bimg { width: 20px; height: 20px; display: grid; place-items: center; font-size: 11px; font-weight: 700; border-radius: 50%; background: var(--line); flex: 0 0 auto; }
+    .bimg:has(img) { background: none; }
+    .bimg img { width: 20px; height: 20px; object-fit: contain; }
+    .bsub { font-size: 11px; color: var(--muted); }
     .preview { font-family: var(--mono); font-size: 12.5px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 180px; overflow-y: auto; white-space: pre-wrap; margin: 0; }
 
     /* Wochenwahl (Memory) */
@@ -453,15 +461,30 @@
   <dialog id="staplesDialog">
     <div class="sheet">
       <div class="sheet-head">
-        <div><h2>Grundvorrat</h2><p>Was zuhause ist, kommt nicht auf die Liste. Antippen = «leer».</p></div>
+        <div><h2>Grundvorrat</h2><p id="staplesHint">Antippen = auf eure Bring!-Liste. Nochmals antippen = wieder weg.</p></div>
         <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
       <div class="sheet-body">
-        <div id="staplesList" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div id="staplesList" style="display:flex;flex-direction:column;gap:14px"></div>
         <form class="row" id="addStapleForm">
-          <input type="text" id="newStaple" placeholder="Weitere Grundzutat" aria-label="Weitere Grundzutat" required>
+          <input type="text" id="newStaple" list="bringNames" placeholder="Weiterer Artikel (wie in Bring!)" aria-label="Weiterer Artikel" required>
+          <datalist id="bringNames"></datalist>
           <button class="btn dark" type="submit" style="flex:0 0 auto">+</button>
         </form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Schon fast alles auf Bring! -->
+  <dialog id="dupDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>Schon auf Bring!</h2><p id="dupText"></p></div>
+      </div>
+      <div class="sheet-body" style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn primary" type="button" id="dupMissingBtn">Nur fehlende</button>
+        <button class="btn" type="button" id="dupAllBtn">Alles nochmals</button>
+        <button class="btn" type="button" id="dupCancelBtn">Abbrechen</button>
       </div>
     </div>
   </dialog>

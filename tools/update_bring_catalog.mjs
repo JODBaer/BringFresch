@@ -7,14 +7,21 @@ const res = await fetch("https://web.getbring.com/locale/catalog.de-CH.json");
 if (!res.ok) throw new Error(`HTTP ${res.status}`);
 const { catalog } = await res.json();
 const items = {};
+const sections = {};
 const NON_FOOD = /Haushalt|Pflege|Tierbedarf|Baumarkt/;
 for (const s of catalog.sections) {
   if (NON_FOOD.test(s.sectionId)) continue; // nur Lebensmittel (sonst wird «Sesamsamen» zu Garten-Samen)
-  for (const it of s.items) if (!/^(Zigar|Bring!|Vielen Dank)/.test(it.itemId)) items[it.itemId] = it.name; // itemId (Bring-intern) -> Anzeigename de-CH
+  for (const it of s.items) {
+    if (/^(Zigar|Bring!|Vielen Dank)/.test(it.itemId)) continue;
+    items[it.itemId] = it.name; // itemId (Bring-intern) -> Anzeigename de-CH
+    sections[it.itemId] = s.name; // Abteilung wie in Bring!
+  }
 }
 const out = new URL("../static/bring_catalog.js", import.meta.url);
 writeFileSync(out,
   "// Automatisch erzeugt von tools/update_bring_catalog.mjs – nicht von Hand bearbeiten.\n" +
   "// Bring!-Katalog de-CH (nur Lebensmittel): itemId -> Anzeigename. Katalog-Artikel haben in Bring! ein Bild.\n" +
-  "window.BRING_CATALOG = " + JSON.stringify(items) + ";\n", "utf8");
+  "window.BRING_CATALOG = " + JSON.stringify(items) + ";\n" +
+  "window.BRING_SECTIONS = " + JSON.stringify(sections) + ";\n" +
+  "window.BRING_SECTION_ORDER = " + JSON.stringify(catalog.sections.map(s => s.name).filter(n => !NON_FOOD.test(n))) + ";\n", "utf8");
 console.log(`${Object.keys(items).length} Katalog-Artikel -> static/bring_catalog.js`);

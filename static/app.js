@@ -71,6 +71,7 @@
     plan: [],
     shopping: [],
     bringItems: [],
+    bringMine: [], // vom Bot gesetzt -> darf er wieder wegnehmen
     shopFilter: "toBuy",
     catalogDay: 0,
     catalogFilter: "all",
@@ -450,6 +451,13 @@
       add("Nüsslisalat / Saisonsalat", "g", 50 * portions, "Obst & Gemüse");
     });
 
+    // Leerer Grundvorrat kommt auf die Liste, auch wenn ihn diese Woche kein Rezept braucht
+    state.staples.forEach(st => {
+      if (st.in_stock !== false) return;
+      const { name } = cleanIngredient(st.name);
+      if (!Object.values(agg).some(it => it.name.toLowerCase() === name.toLowerCase())) add(st.name, "", 1, "Grundvorrat");
+    });
+
     state.shopping = Object.values(agg).map(({ notes, ...it }) => {
       const info = [...new Set([...notes].join(", ").split(", "))].filter(Boolean).join(", ");
       return { ...it, spec: [formatAmount(it.amount, it.unit), info].filter(Boolean).join(", ") };
@@ -504,8 +512,9 @@
 
   function renderCta() {
     const n = toBuyItems().length;
-    $("ctaCount").textContent = `· ${n} Artikel`;
-    $("syncBtn").disabled = n === 0;
+    const wanted = state.shopping.filter(it => !it.isStaple).length;
+    $("ctaCount").textContent = n === 0 && wanted > 0 ? "· alles auf Bring! ✓" : `· ${n} Artikel`;
+    $("syncBtn").disabled = wanted === 0; // auch bei «alles drauf» antippbar -> fragt nach
   }
 
   // ---------------------------------------------------------------------------
@@ -1091,29 +1100,95 @@
     toast(ok ? `${items.length} Artikel kopiert` : "Kopieren nicht möglich");
   };
 
+  // ---------------------------------------------------------------------------
+  // Grundvorrat wie in Bring!: Kacheln mit Bring!-Bild, gleiche Abteilungen.
+  // Antippen = auf Bring! (rot), nochmals antippen = wieder weg (nur was der Bot selbst gesetzt hat).
+  // ---------------------------------------------------------------------------
+  function stapleTarget(st) {
+    const name = cleanIngredient(st.name).name;
+    return bringItemId(name) || name;
+  }
+  function bringIcon(itemId) {
+    const slug = String(itemId).toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue")
+      .replace(/[éèê]/g, "e").replace(/[àâ]/g, "a").replace(/[\s-]+/g, "_").replace(/[^a-z0-9_]/g, "");
+    return `https://web.getbring.com/assets/images/items/${slug}.png`;
+  }
+  const onBringNow = name => state.bringItems.some(n => n.toLowerCase() === String(name).toLowerCase());
+
   function renderStaples() {
-    const byCat = {};
-    state.staples.forEach((s, idx) => (byCat[s.category || "Grundzutaten"] = byCat[s.category || "Grundzutaten"] || []).push({ ...s, idx }));
-    $("staplesList").innerHTML = Object.keys(byCat).map(cat => `
-      <div>
-        <p class="label" style="padding:0 0 6px">${esc(cat)}</p>
-        <div class="row" style="gap:6px">
-          ${byCat[cat].map(s => `<button type="button" class="staple${s.in_stock === false ? " empty-stock" : ""}" data-staple="${s.idx}" aria-pressed="${s.in_stock !== false}" style="flex:0 0 auto">${esc(s.name)}</button>`).join("")}
+    const order = window.BRING_SECTION_ORDER || [];
+    const groups = {};
+    state.staples.forEach((st, idx) => {
+      const target = stapleTarget(st);
+      const known = !!(window.BRING_CATALOG || {})[target];
+      const sec = (known && (window.BRING_SECTIONS || {})[target]) || "Eigene Artikel";
+      (groups[sec] = groups[sec] || []).push({ st, idx, target, known });
+    });
+    const rank = sec => (order.indexOf(sec) + 1) || 99;
+    const secs = Object.keys(groups).sort((a, b) => rank(a) - rank(b));
+    $("staplesList").innerHTML = secs.map(sec => `
+      <section class="bsec">
+        <h3>${esc(sec)}</h3>
+        <div class="btiles">
+          ${groups[sec].map(({ st, idx, target, known }) => {
+            const red = connected() ? onBringNow(target) : st.in_stock === false;
+            const label = known ? window.BRING_CATALOG[target] : target;
+            const sub = label.toLowerCase() !== cleanIngredient(st.name).name.toLowerCase() ? st.name : "";
+            const letter = esc(label.charAt(0).toUpperCase());
+            return `<button type="button" class="btile${red ? " on" : ""}" data-staple="${idx}" aria-pressed="${red}" title="${esc(st.name)}">
+              <span class="bimg" data-letter="${letter}">${known ? `<img src="${esc(bringIcon(target))}" alt="" loading="lazy">` : letter}</span>
+              <span class="bname">${esc(label)}</span>
+            </button>`;
+          }).join("")}
         </div>
-      </div>`).join("");
+      </section>`).join("");
+    // Bild fehlt (offline / unbekannt) -> Anfangsbuchstabe wie in Bring!
+    $("staplesList").querySelectorAll(".bimg img").forEach(img => {
+      img.addEventListener("error", () => { img.parentNode.textContent = img.parentNode.dataset.letter; }, { once: true });
+    });
+    $("staplesHint").textContent = connected()
+      ? "Antippen = auf eure Bring!-Liste. Nochmals antippen = wieder weg."
+      : "Antippen = «leer», kommt beim nächsten «Bring! füllen» mit.";
   }
 
   $("openStaplesBtn").onclick = () => {
+    if (!$("bringNames").children.length) {
+      $("bringNames").innerHTML = Object.values(window.BRING_CATALOG || {}).sort().map(n => `<option value="${esc(n)}">`).join("");
+    }
     renderStaples();
     $("staplesDialog").showModal();
+    if (connected()) api("/bring/list").then(d => { setBringList(d); renderStaples(); refresh(); }).catch(() => {});
   };
 
-  $("staplesList").addEventListener("click", e => {
+  $("staplesList").addEventListener("click", async e => {
     const b = e.target.closest("[data-staple]");
-    if (!b) return;
-    const s = state.staples[+b.dataset.staple];
-    s.in_stock = s.in_stock === false;
-    saveStaples();
+    if (!b || b.disabled) return;
+    const st = state.staples[+b.dataset.staple];
+    const target = stapleTarget(st);
+    if (!connected()) {
+      st.in_stock = st.in_stock === false;
+      saveStaples();
+      renderStaples();
+      return refresh();
+    }
+    b.disabled = true;
+    try {
+      if (onBringNow(target)) {
+        const r = await api("/bring/remove", { method: "POST", body: { names: [target] } });
+        if (r.notMine && r.notMine.length) toast(`${target} hat jemand anderes auf Bring! gesetzt – dort abhaken`);
+        else { st.in_stock = true; st.sent = false; toast(`${target} von Bring! genommen`); }
+      } else {
+        const spec = cleanIngredient(st.name).name.toLowerCase() !== target.toLowerCase() ? st.name : "";
+        await api("/bring/sync", { method: "POST", body: { items: [{ name: target, spec }] } });
+        st.in_stock = false;
+        st.sent = true;
+        toast(`${target} auf Bring! ✓`);
+      }
+      saveStaples();
+      setBringList(await api("/bring/list"));
+    } catch (err) {
+      toast(`Bring!: ${err.message}`);
+    }
     renderStaples();
     refresh();
   });
@@ -1296,7 +1371,7 @@
     if (!connected()) return;
     try {
       const [remote, bring] = await Promise.all([api("/plan"), api("/bring/list")]);
-      state.bringItems = bring.items || [];
+      setBringList(bring);
       const localUpdated = load(PLAN_UPDATED_KEY, 0);
       if (remote.plan && remote.updated > localUpdated) {
         if (Array.isArray(remote.members) && remote.members.length) state.members = remote.members;
@@ -1315,17 +1390,59 @@
     }
   }
 
+  // Bring!-Stand übernehmen. Vorrat, den der Bot gesetzt hat und der jetzt weg ist, wurde gekauft -> wieder «da».
+  function setBringList(data) {
+    state.bringItems = (data && data.items) || [];
+    state.bringMine = (data && data.mine) || [];
+    const on = new Set(state.bringItems.map(n => n.toLowerCase()));
+    let changed = false;
+    state.staples.forEach(st => {
+      if (st.sent && !on.has(stapleTarget(st).toLowerCase())) {
+        st.sent = false;
+        st.in_stock = true;
+        changed = true;
+      }
+    });
+    if (changed) saveStaples();
+  }
+
+  // Fast alles schon auf Bring!? Dann fragen statt doppelt senden.
+  function askDuplicate(on, total, missing) {
+    return new Promise(resolve => {
+      const dlg = $("dupDialog");
+      $("dupText").textContent = missing
+        ? `${on} von ${total} Artikeln sind schon auf Bring!. Nur die ${missing} fehlenden hinzufügen – oder alles nochmals (Mengen werden ergänzt)?`
+        : `Alle ${total} Artikel sind schon auf Bring!. Nochmals senden (Mengen werden ergänzt)?`;
+      $("dupMissingBtn").hidden = !missing;
+      $("dupMissingBtn").textContent = `Nur ${missing} fehlende`;
+      const done = v => { dlg.close(); resolve(v); };
+      $("dupMissingBtn").onclick = () => done("missing");
+      $("dupAllBtn").onclick = () => done("all");
+      $("dupCancelBtn").onclick = () => done(null);
+      dlg.showModal();
+    });
+  }
+
   async function syncToBring() {
-    const items = bringPayload(toBuyItems());
     const btn = $("syncBtn");
     btn.disabled = true;
     try {
+      setBringList(await api("/bring/list")); // aktueller Stand – vielleicht hat schon jemand gefüllt
+      refresh();
+      const wanted = state.shopping.filter(it => !it.isStaple);
+      const missing = toBuyItems();
+      const on = wanted.length - missing.length;
+      let pick = "missing";
+      if (wanted.length && on / wanted.length >= 0.9) pick = await askDuplicate(on, wanted.length, missing.length);
+      if (!pick) return;
+      const items = bringPayload(pick === "all" ? wanted : missing);
+      if (!items.length) return toast("Nichts zu senden");
       let pushed = 0;
       for (let i = 0; i < items.length; i += 40) {
         const res = await api("/bring/sync", { method: "POST", body: { items: items.slice(i, i + 40) } });
         pushed += res.pushed || 0;
       }
-      state.bringItems = (await api("/bring/list")).items || [];
+      setBringList(await api("/bring/list"));
       refresh();
       toast(`${pushed} Artikel in Bring! ✓`);
     } catch (e) {
@@ -1382,7 +1499,7 @@
   $("bringListSelect").addEventListener("change", async e => {
     try {
       const { name } = await api("/bring/target", { method: "PUT", body: { uuid: e.target.value } });
-      state.bringItems = (await api("/bring/list")).items || [];
+      setBringList(await api("/bring/list"));
       refresh();
       toast(`Bring!-Liste: ${name} ✓`);
     } catch (err) {
