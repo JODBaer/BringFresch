@@ -19,7 +19,7 @@
   ];
 
   // Adresse des Cloudflare Workers (nach dem ersten Deploy hier eintragen; in der App änderbar)
-  const DEFAULT_SYNC_URL = "";
+  const DEFAULT_SYNC_URL = "https://bringfrisch.bringfrisch-worker.workers.dev";
   const SYNC_KEY = "bringfrisch_sync";
   const PLAN_UPDATED_KEY = "bringfrisch_plan_updated";
   const DINNER_KEY = "bringfrisch_dinner_time";

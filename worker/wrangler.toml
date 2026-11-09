@@ -6,7 +6,7 @@ compatibility_date = "2025-09-01"
 # Einmalig anlegen: npx wrangler kv namespace create WG  -> die ausgegebene id hier eintragen.
 [[kv_namespaces]]
 binding = "WG"
-id = "REPLACE_WITH_KV_ID"
+id = "477e6573755e423fba0e3e8410fbb8cc"
 
 # Secrets (nicht hier eintragen!):
 #   npx wrangler secret put BRING_EMAIL      # E-Mail des Bring!-Bot-Kontos
