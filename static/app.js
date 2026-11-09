@@ -18,6 +18,12 @@
     { id: "jo", name: "Jo", diet: "vegi" }
   ];
 
+  // Adresse des Cloudflare Workers (nach dem ersten Deploy hier eintragen; in der App änderbar)
+  const DEFAULT_SYNC_URL = "";
+  const SYNC_KEY = "bringfrisch_sync";
+  const PLAN_UPDATED_KEY = "bringfrisch_plan_updated";
+  const DINNER_KEY = "bringfrisch_dinner_time";
+
   const KEYS = {
     plan: "bringfrisch_current_plan",
     members: "bringfrisch_members",
@@ -67,11 +73,20 @@
     bringItems: [],
     shopFilter: "toBuy",
     catalogDay: 0,
-    catalogFilter: "all"
+    catalogFilter: "all",
+    catalogMode: "day"
   };
 
-  const savePlan = () => save(KEYS.plan, state.plan);
-  const saveMembers = () => save(KEYS.members, state.members);
+  const savePlan = () => {
+    save(KEYS.plan, state.plan);
+    save(PLAN_UPDATED_KEY, Date.now());
+    schedulePlanPush();
+  };
+  const saveMembers = () => {
+    save(KEYS.members, state.members);
+    save(PLAN_UPDATED_KEY, Date.now());
+    schedulePlanPush();
+  };
   const saveStaples = () => save(KEYS.staples, state.staples);
 
   // ---------------------------------------------------------------------------
@@ -478,7 +493,7 @@
     refresh();
   });
 
-  $("newWeekBtn").onclick = () => {
+  function planRandomWeek() {
     const previous = state.plan;
     state.plan = generateWeek();
     savePlan();
@@ -487,6 +502,266 @@
       label: "Rückgängig",
       run: () => { state.plan = previous; savePlan(); refresh(); }
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wochenwahl (Memory): 14 Saison-Gerichte, alle tippen Favoriten an, Top 7 → Plan
+  // ---------------------------------------------------------------------------
+  const VOTE_KEY = "bringfrisch_week_vote";
+  const ME_KEY = "bringfrisch_me";
+  const GRID_SIZE = 14;
+  const PLAN_SIZE = 7;
+
+  const recipeById = id => allRecipes().find(r => String(r.id) === String(id));
+  const dietGroup = r => (r.diet === "fleisch" ? "fleisch" : "vegi");
+
+  function weekKey(date = new Date()) {
+    return `${date.getFullYear()}-W${String(isoWeek(date)).padStart(2, "0")}`;
+  }
+
+  function shuffled(list) {
+    const a = [...list];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Ersatz-Gericht: zuerst saisonal + gleiche Gruppe, dann saisonal, dann irgendeins
+  function backupRecipe(group, excludeIds) {
+    const all = allRecipes().filter(r => !excludeIds.includes(String(r.id)));
+    const tiers = [
+      all.filter(r => inSeason(r) && dietGroup(r) === group),
+      all.filter(r => inSeason(r)),
+      all.filter(r => dietGroup(r) === group),
+      all
+    ];
+    const tier = tiers.find(t => t.length) || [];
+    return tier[Math.floor(Math.random() * tier.length)];
+  }
+
+  // 14 Kandidaten: halb vegi (inkl. vegan), halb Fleisch, saisonal zuerst
+  function pickCandidates() {
+    const ids = [];
+    for (let i = 0; i < GRID_SIZE; i++) {
+      const r = backupRecipe(i % 2 === 0 ? "vegi" : "fleisch", ids);
+      if (!r) break;
+      ids.push(String(r.id));
+    }
+    return ids;
+  }
+
+  function loadVote() {
+    const saved = load(VOTE_KEY, null);
+    if (saved && saved.week === weekKey() && Array.isArray(saved.candidates)) {
+      saved.candidates = saved.candidates.filter(id => recipeById(id));
+      return saved;
+    }
+    return { week: weekKey(), candidates: pickCandidates(), votes: {} };
+  }
+
+  let vote = null;
+  const saveVote = () => save(VOTE_KEY, vote);
+
+  // Mit dem Worker abgleichen: Kandidaten + Stimmen aller holen, eigene Stimme bleibt lokal führend
+  async function pullVote() {
+    if (!connected() || !vote) return;
+    try {
+      const remote = await api(`/week/${vote.week}`);
+      if (!remote.candidates) {
+        await api(`/week/${vote.week}/candidates`, { method: "PUT", body: { candidates: vote.candidates } });
+      } else {
+        vote.candidates = remote.candidates.filter(id => recipeById(id));
+      }
+      const me = myId();
+      Object.entries(remote.votes || {}).forEach(([member, v]) => {
+        if (member !== me || !vote.votes[me]) vote.votes[member] = v;
+      });
+      saveVote();
+      if ($("voteDialog").open) renderVote();
+    } catch (e) {
+      setSyncStatus(e.message, false);
+    }
+  }
+
+  let votePushTimer = null;
+  function pushMyVote() {
+    if (!connected()) return;
+    clearTimeout(votePushTimer);
+    votePushTimer = setTimeout(() => {
+      api(`/week/${vote.week}/vote/${encodeURIComponent(myId())}`, { method: "PUT", body: myVote() }).catch(e => setSyncStatus(e.message, false));
+    }, 500);
+  }
+
+  function pushCandidates() {
+    if (!connected()) return;
+    api(`/week/${vote.week}/candidates`, { method: "PUT", body: { candidates: vote.candidates } }).catch(e => setSyncStatus(e.message, false));
+  }
+
+  function myId() {
+    const saved = load(ME_KEY, null);
+    return state.members.some(m => m.id === saved) ? saved : state.members[0].id;
+  }
+
+  function myVote() {
+    const id = myId();
+    vote.votes[id] = vote.votes[id] || { likes: [], days: {} };
+    return vote.votes[id];
+  }
+
+  function votersOf(recipeId) {
+    return state.members.filter(m => ((vote.votes[m.id] || {}).likes || []).includes(recipeId));
+  }
+
+  function ranking() {
+    return vote.candidates
+      .map((id, order) => ({ id, order, voters: votersOf(id) }))
+      .sort((a, b) => b.voters.length - a.voters.length || a.order - b.order);
+  }
+
+  function renderVote() {
+    const short = initialsMap();
+    const mine = myVote();
+    $("voteSubtitle").textContent = `KW ${isoWeek(new Date())} · ${GRID_SIZE} Saison-Gerichte, die Top ${PLAN_SIZE} kommen in den Plan`;
+    $("voteMe").innerHTML = state.members.map(m => `<option value="${esc(m.id)}"${m.id === myId() ? " selected" : ""}>${esc(m.name)}</option>`).join("");
+    $("voteMine").textContent = `${mine.likes.length} gewählt`;
+
+    $("voteGrid").innerHTML = vote.candidates.map(id => {
+      const r = recipeById(id);
+      const on = mine.likes.includes(id);
+      const wish = mine.days[id];
+      return `
+        <div class="vcard${on ? " on" : ""}">
+          <button class="tap" type="button" data-like="${esc(id)}" aria-pressed="${on}" aria-label="${esc(r.title)} ${on ? "abwählen" : "wählen"}"></button>
+          ${on ? `<span class="tick" aria-hidden="true">✓</span>` : ""}
+          <span class="vt">${esc(r.title)}</span>
+          <span class="vm">${DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${r.source_url ? ` · <a href="${esc(r.source_url)}" target="_blank" rel="noopener">🌐</a>` : ""}</span>
+          ${on ? `<span class="days-pick" role="group" aria-label="Wunschtag">${DAYS.map((d, i) => `<button type="button" data-wish="${esc(id)}" data-day="${i}" aria-pressed="${wish === i}">${d.slice(0, 2)}</button>`).join("")}</span>` : ""}
+          <span class="vv">${votersOf(id).map(m => `<span class="mini" title="${esc(m.name)}">${esc(short[m.id])}</span>`).join("")}</span>
+        </div>`;
+    }).join("");
+
+    const voted = state.members.filter(m => ((vote.votes[m.id] || {}).likes || []).length > 0);
+    $("voteWho").textContent = `${voted.length} von ${state.members.length} haben gewählt`;
+    $("voteRank").innerHTML = ranking().map((x, k) => {
+      const r = recipeById(x.id);
+      return `<div class="rank-row${k < PLAN_SIZE ? "" : " out"}">
+        <span class="n">${k + 1}</span><span class="t">${esc(r.title)}</span>
+        <span class="vv">${x.voters.map(m => `<span class="mini">${esc(short[m.id])}</span>`).join("")}</span>
+      </div>`;
+    }).join("");
+  }
+
+  let votePoll = null;
+  function openVote() {
+    vote = loadVote();
+    saveVote();
+    renderVote();
+    $("voteDialog").showModal();
+    pullVote();
+    clearInterval(votePoll);
+    if (connected()) votePoll = setInterval(pullVote, 15000); // Stimmen der anderen live nachladen
+  }
+  $("voteDialog").addEventListener("close", () => clearInterval(votePoll));
+
+  $("openVoteBtn").onclick = openVote;
+
+  $("voteMe").onchange = () => {
+    save(ME_KEY, $("voteMe").value);
+    renderVote();
+  };
+
+  $("voteGrid").addEventListener("click", e => {
+    const wish = e.target.closest("[data-wish]");
+    if (wish) {
+      const mine = myVote();
+      const day = +wish.dataset.day;
+      if (mine.days[wish.dataset.wish] === day) delete mine.days[wish.dataset.wish];
+      else mine.days[wish.dataset.wish] = day;
+      saveVote();
+      pushMyVote();
+      renderVote();
+      return;
+    }
+    const like = e.target.closest("[data-like]");
+    if (!like) return;
+    const mine = myVote();
+    const id = like.dataset.like;
+    if (mine.likes.includes(id)) {
+      mine.likes = mine.likes.filter(x => x !== id);
+      delete mine.days[id];
+    } else {
+      mine.likes.push(id);
+    }
+    saveVote();
+    pushMyVote();
+    renderVote();
+  });
+
+  // Nur Gerichte ohne Stimme werden durch saisonale Reserve ersetzt
+  $("voteShuffleBtn").onclick = () => {
+    let swapped = 0;
+    vote.candidates = vote.candidates.map(id => {
+      if (votersOf(id).length > 0) return id;
+      const r = backupRecipe(dietGroup(recipeById(id)), vote.candidates);
+      if (!r) return id;
+      swapped++;
+      return String(r.id);
+    });
+    saveVote();
+    pushCandidates();
+    renderVote();
+    toast(swapped ? `${swapped} Gerichte neu gemischelt` : "Alle Gerichte haben schon Stimmen");
+  };
+
+  $("voteAddBtn").onclick = () => {
+    state.catalogMode = "vote";
+    $("voteDialog").close();
+    openCatalog(0);
+  };
+
+  // Faire Tagesverteilung: Gericht auf Tag, an dem seine Fans zuhause sind (+2 je Fan), Wunschtag +3
+  function assignDays(recipeIds) {
+    const score = (id, day) => votersOf(id).reduce((s, m) => {
+      const v = vote.votes[m.id];
+      return s + (state.plan[day].eaters.includes(m.id) ? 2 : 0) + (v.days[id] === day ? 3 : 0);
+    }, 0);
+    const pairs = [];
+    recipeIds.forEach(id => DAYS.forEach((_, day) => pairs.push({ id, day, s: score(id, day) })));
+    pairs.sort((a, b) => b.s - a.s || a.day - b.day);
+    const result = {};
+    const usedDays = new Set();
+    pairs.forEach(p => {
+      if (result[p.id] === undefined && !usedDays.has(p.day)) {
+        result[p.id] = p.day;
+        usedDays.add(p.day);
+      }
+    });
+    return result; // recipeId -> dayIdx
+  }
+
+  $("voteApplyBtn").onclick = () => {
+    const top = ranking().slice(0, PLAN_SIZE);
+    const withVotes = top.filter(x => x.voters.length > 0).length;
+    if (withVotes === 0) return toast("Noch niemand hat gewählt");
+    const previous = state.plan;
+    const days = assignDays(top.map(x => x.id));
+    const next = [...state.plan];
+    Object.entries(days).forEach(([id, day]) => { next[day] = makeDay(recipeById(id), day, state.plan[day]); });
+    state.plan = next;
+    savePlan();
+    refresh();
+    $("voteDialog").close();
+    toast(withVotes < PLAN_SIZE ? `Plan übernommen (${PLAN_SIZE - withVotes} ohne Stimme aufgefüllt)` : "Plan übernommen", {
+      label: "Rückgängig",
+      run: () => { state.plan = previous; savePlan(); refresh(); }
+    });
+  };
+
+  $("voteRandomBtn").onclick = () => {
+    $("voteDialog").close();
+    planRandomWeek();
   };
 
   $("basketLine").onclick = () => showTab("shop");
@@ -500,9 +775,14 @@
     refresh();
   }
 
+  // Katalog dient zwei Zwecken: Gericht für einen Tag wählen ("day") oder zur Wochenwahl hinzufügen ("vote")
   function openCatalog(dayIdx) {
     state.catalogDay = dayIdx;
-    $("catalogSubtitle").textContent = `für ${DAYS[dayIdx]} · ${state.plan[dayIdx].eaters.length} Esser`;
+    const forVote = state.catalogMode === "vote";
+    $("catalogSubtitle").textContent = forVote
+      ? "Gericht zur Wochenwahl hinzufügen"
+      : `für ${DAYS[dayIdx]} · ${state.plan[dayIdx].eaters.length} Esser`;
+    $("randomPickBtn").hidden = forVote;
     $("catalogSearch").value = "";
     renderCatalog();
     $("catalogDialog").showModal();
@@ -523,7 +803,7 @@
       }
       return true;
     });
-    const day = DAYS[state.catalogDay].slice(0, 2);
+    const actionLabel = state.catalogMode === "vote" ? "Zur Wochenwahl" : `Für ${DAYS[state.catalogDay].slice(0, 2)} einplanen`;
     $("catalogList").innerHTML = list.length === 0
       ? `<div class="empty">Keine Rezepte gefunden.</div>`
       : list.map(r => {
@@ -538,7 +818,7 @@
             ${r.source_url ? `<a class="pill" href="${esc(r.source_url)}" target="_blank" rel="noopener">🌐 Rezept</a>` : ""}
           </div>
           <div class="row">
-            <button class="btn dark" type="button" data-assign="${esc(r.id)}">Für ${day} einplanen</button>
+            <button class="btn dark" type="button" data-assign="${esc(r.id)}">${actionLabel}</button>
             ${custom ? `<button class="btn" type="button" data-delete="${esc(r.id)}" style="flex:0 0 auto">Löschen</button>` : ""}
           </div>
         </div>`;
@@ -558,9 +838,10 @@
     if (assign) {
       const recipe = allRecipes().find(r => String(r.id) === assign.dataset.assign);
       if (!recipe) return;
-      assignRecipe(recipe, state.catalogDay);
+      const mode = state.catalogMode;
+      state.catalogMode = "day";
       $("catalogDialog").close();
-      toast(`${DAYS[state.catalogDay]}: ${recipe.title}`);
+      useRecipe(recipe, mode);
       return;
     }
     const del = e.target.closest("[data-delete]");
@@ -573,6 +854,30 @@
       importer.deleteCustomRecipe(del.dataset.delete);
       renderCatalog();
       toast("Rezept gelöscht");
+    }
+  });
+
+  function useRecipe(recipe, mode) {
+    if (mode === "vote") {
+      const id = String(recipe.id);
+      if (!vote.candidates.includes(id)) vote.candidates.push(id);
+      saveVote();
+      pushCandidates();
+      renderVote();
+      $("voteDialog").showModal();
+      toast(`${recipe.title} ist in der Wochenwahl`);
+      return;
+    }
+    assignRecipe(recipe, state.catalogDay);
+    toast(`${DAYS[state.catalogDay]}: ${recipe.title}`);
+  }
+
+  // Schliessen ohne Auswahl: im Wochenwahl-Modus zurück zur Wochenwahl
+  $("catalogDialog").addEventListener("close", () => {
+    if (state.catalogMode === "vote" && !$("recipeDialog").open) {
+      state.catalogMode = "day";
+      renderVote();
+      $("voteDialog").showModal();
     }
   });
 
@@ -591,13 +896,23 @@
   $("newRecipeBtn").onclick = () => {
     $("recipeForm").reset();
     $("recipeServings").value = DEFAULT_SERVINGS;
-    $("catalogDialog").close();
     $("recipeDialog").showModal();
+    $("catalogDialog").close();
   };
 
-  $("recipeUrl").addEventListener("change", () => {
+  $("recipeDialog").addEventListener("close", () => {
+    if (state.catalogMode === "vote") {
+      state.catalogMode = "day";
+      renderVote();
+      $("voteDialog").showModal();
+    }
+  });
+
+  $("recipeUrl").addEventListener("change", async () => {
+    const link = $("recipeUrl").value.trim();
+    if (await importFromLink(link)) return;
     const title = $("recipeTitle");
-    if (!title.value.trim()) title.value = importer.analyzeRecipeUrl($("recipeUrl").value).title;
+    if (!title.value.trim()) title.value = importer.analyzeRecipeUrl(link).title;
   });
 
   $("recipeForm").addEventListener("submit", e => {
@@ -610,9 +925,10 @@
       ingredientsText: $("recipeIngredients").value,
       instructions: $("recipeInstructions").value
     });
-    assignRecipe(recipe, state.catalogDay);
+    const mode = state.catalogMode;
+    state.catalogMode = "day";
     $("recipeDialog").close();
-    toast(`Gespeichert und für ${DAYS[state.catalogDay]} eingeplant`);
+    useRecipe(recipe, mode);
   });
 
   // ---------------------------------------------------------------------------
@@ -766,7 +1082,7 @@
     $("handoffDialog").showModal();
   }
 
-  $("syncBtn").onclick = () => openHandoff();
+  $("syncBtn").onclick = () => (connected() ? syncToBring() : openHandoff());
 
   $("shareListBtn").onclick = async () => {
     const text = toBuyItems().map(listLine).join("\n");
@@ -789,6 +1105,145 @@
     toast("Kopiert – Bring! wird geöffnet");
     setTimeout(() => { location.href = "bring://"; }, 300);
   };
+
+  // ---------------------------------------------------------------------------
+  // Verbindung zum Cloudflare Worker (Bring!-Sync, gemeinsamer Plan, Wochenwahl, Kalender)
+  // ---------------------------------------------------------------------------
+  let sync = { url: DEFAULT_SYNC_URL, pin: "", ...(load(SYNC_KEY, {}) || {}) };
+  if (!sync.url) sync.url = DEFAULT_SYNC_URL;
+
+  function connected() {
+    return !!(sync.url && sync.pin);
+  }
+
+  async function api(path, { method = "GET", body } = {}) {
+    const res = await fetch(sync.url.replace(/\/+$/, "") + path, {
+      method,
+      headers: { "X-WG-PIN": sync.pin, ...(body ? { "Content-Type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* keine JSON-Antwort */ }
+    if (!res.ok) throw new Error(data.error || `Verbindungsfehler (${res.status})`);
+    return data;
+  }
+
+  function setSyncStatus(text, ok) {
+    const el = $("syncStatus");
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = ok ? "var(--accent)" : "var(--muted)";
+  }
+
+  let planPushTimer = null;
+  function schedulePlanPush() {
+    if (!connected()) return;
+    clearTimeout(planPushTimer);
+    planPushTimer = setTimeout(() => {
+      api("/plan", {
+        method: "PUT",
+        body: { week: weekKey(), plan: state.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
+      }).catch(e => setSyncStatus(e.message, false));
+    }, 1500);
+  }
+
+  // Neuerer Plan von einem anderen Handy? Dann übernehmen.
+  async function pullShared() {
+    if (!connected()) return;
+    try {
+      const [remote, bring] = await Promise.all([api("/plan"), api("/bring/list")]);
+      state.bringItems = bring.items || [];
+      const localUpdated = load(PLAN_UPDATED_KEY, 0);
+      if (remote.plan && remote.updated > localUpdated) {
+        if (Array.isArray(remote.members) && remote.members.length) state.members = remote.members;
+        state.plan = remote.plan;
+        normalizePlan();
+        save(KEYS.plan, state.plan);
+        save(KEYS.members, state.members);
+        save(PLAN_UPDATED_KEY, remote.updated);
+        renderMembers();
+        toast("Wochenplan der WG geladen");
+      }
+      refresh();
+      setSyncStatus("Verbunden ✓", true);
+    } catch (e) {
+      setSyncStatus(e.message, false);
+    }
+  }
+
+  async function syncToBring() {
+    const items = toBuyItems().map(it => ({ name: it.name, spec: it.spec }));
+    const btn = $("syncBtn");
+    btn.disabled = true;
+    try {
+      let pushed = 0;
+      for (let i = 0; i < items.length; i += 40) {
+        const res = await api("/bring/sync", { method: "POST", body: { items: items.slice(i, i + 40) } });
+        pushed += res.pushed || 0;
+      }
+      state.bringItems = (await api("/bring/list")).items || [];
+      refresh();
+      toast(`${pushed} Artikel in Bring! ✓`);
+    } catch (e) {
+      toast(`Bring!: ${e.message}`);
+      openHandoff();
+    } finally {
+      renderCta();
+    }
+  }
+
+  function renderSyncSettings() {
+    $("syncUrl").value = sync.url || "";
+    $("syncPin").value = sync.pin || "";
+    $("dinnerTime").value = load(DINNER_KEY, "18:30");
+    setSyncStatus(connected() ? "Verbinde …" : "Nicht verbunden: Bring! über Teilen/Kopieren", false);
+  }
+
+  $("syncForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    sync = { url: $("syncUrl").value.trim(), pin: $("syncPin").value.trim() };
+    save(SYNC_KEY, sync);
+    if (!connected()) return setSyncStatus("Adresse und PIN eingeben", false);
+    setSyncStatus("Verbinde …", false);
+    await pullShared();
+    if ($("syncStatus").textContent.startsWith("Verbunden")) {
+      save(PLAN_UPDATED_KEY, Math.max(load(PLAN_UPDATED_KEY, 0), 1));
+      schedulePlanPush();
+    }
+  });
+
+  $("dinnerTime").addEventListener("change", () => {
+    save(DINNER_KEY, $("dinnerTime").value || "18:30");
+    schedulePlanPush();
+  });
+
+  $("calendarBtn").onclick = async () => {
+    if (!connected()) return toast("Zuerst mit dem WG-Server verbinden");
+    try {
+      const { url } = await api("/cal-link");
+      await copyText(url);
+      toast("Kalender-Link kopiert – wird geöffnet");
+      setTimeout(() => { location.href = url.replace(/^https:/, "webcal:"); }, 400);
+    } catch (e) {
+      toast(e.message);
+    }
+  };
+
+  // Rezept-Link: Zutaten und Portionen direkt von der Rezeptseite holen
+  async function importFromLink(link) {
+    if (!connected() || !link) return false;
+    try {
+      const r = await api(`/recipe?url=${encodeURIComponent(link)}`);
+      if (!$("recipeTitle").value.trim()) $("recipeTitle").value = r.title || "";
+      $("recipeServings").value = r.servings || DEFAULT_SERVINGS;
+      if (!$("recipeIngredients").value.trim()) $("recipeIngredients").value = (r.ingredients || []).join("\n");
+      toast(`${(r.ingredients || []).length} Zutaten übernommen`);
+      return true;
+    } catch (e) {
+      toast(e.message);
+      return false;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Dialoge & Navigation
@@ -819,15 +1274,22 @@
   const fromLink = importPlanFromHash();
   if (!fromLink) state.plan = load(KEYS.plan, []);
   normalizePlan();
-  savePlan();
-  saveMembers();
+  if (fromLink) {
+    savePlan(); // per Link empfangener Plan gilt als neueste Version
+    saveMembers();
+  } else {
+    save(KEYS.plan, state.plan); // nur lokal sichern, Zeitstempel bleibt (sonst wäre der WG-Plan nie "neuer")
+    save(KEYS.members, state.members);
+  }
 
   renderHeader();
   renderSeasonHint();
   setupSeason();
   renderMembers();
+  renderSyncSettings();
   refresh();
   if (fromLink) toast("Wochenplan aus Link übernommen");
+  else pullShared();
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(err => console.warn("Service Worker:", err));

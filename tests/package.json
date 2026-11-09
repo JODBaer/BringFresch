@@ -1,0 +1,10 @@
+{
+  "name": "bringfrisch-tests",
+  "private": true,
+  "scripts": {
+    "test": "node app.test.js && node integration.test.mjs && node ../worker/test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "24.1.3"
+  }
+}

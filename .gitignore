@@ -20,3 +20,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+
+# Rezept-Import Cache (nur lokal)
+tools/.cache/
+
+# Test-Abhängigkeiten
+node_modules/

@@ -210,6 +210,38 @@
     .staple.empty-stock { color: var(--accent); border-color: var(--accent); text-decoration: line-through; }
     .preview { font-family: var(--mono); font-size: 12.5px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 180px; overflow-y: auto; white-space: pre-wrap; margin: 0; }
 
+    /* Wochenwahl (Memory) */
+    dialog.full { max-height: 100vh; height: 100%; border-radius: 0; margin: 0 auto; }
+    dialog.full .sheet { max-height: 100vh; height: 100%; }
+    .vote-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .vote-bar select { width: auto; }
+    .vote-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .vcard {
+      position: relative; text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius);
+      padding: 10px; display: flex; flex-direction: column; gap: 6px; min-height: 124px; min-width: 0;
+    }
+    .vcard.on { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+    .vcard .vt { font-size: 13px; font-weight: 700; line-height: 1.3; padding-right: 22px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .vcard .vm { font-size: 11.5px; color: var(--muted); }
+    .vcard .vv { display: flex; gap: 3px; flex-wrap: wrap; margin-top: auto; min-height: 20px; }
+    .vcard .tick {
+      position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 13px; font-weight: 800;
+    }
+    .vcard .tap { position: absolute; inset: 0; border: 0; background: none; border-radius: var(--radius); }
+    .vcard a, .vcard .days-pick { position: relative; z-index: 1; }
+    .mini { min-width: 20px; height: 20px; border-radius: 6px; font-size: 10px; font-weight: 800; display: inline-grid; place-items: center; background: var(--fg); color: var(--bg); padding: 0 3px; }
+    .days-pick { display: flex; gap: 2px; }
+    .days-pick button { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; font-size: 10.5px; font-weight: 700; padding: 3px 0; flex: 1; color: var(--muted); }
+    .days-pick button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+    .rank-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 13.5px; }
+    .rank-row:first-child { border-top: 0; }
+    .rank-row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rank-row.out { color: var(--muted); }
+    .rank-row .n { font-weight: 800; color: var(--accent); }
+    .rank-row.out .n { color: var(--muted); }
+    .rank-row .vv { display: flex; gap: 3px; }
+
     .toast {
       position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
       background: var(--fg); color: var(--bg); padding: 11px 16px; border-radius: 12px; font-size: 14px; font-weight: 600;
@@ -227,7 +259,7 @@
       <h1 class="brand">Bring<span>Frisch</span></h1>
       <div class="week" id="weekLabel"></div>
     </div>
-    <button class="ghost" id="newWeekBtn" type="button">🎲 Neue Woche</button>
+    <button class="ghost" id="openVoteBtn" type="button">🃏 Wochenwahl</button>
   </header>
 
   <main>
@@ -287,6 +319,27 @@
       <p class="label">Wer isst wann? <small>+ Gäste pro Tag</small></p>
       <div class="card table-wrap"><table id="attendance"></table></div>
 
+      <p class="label">WG-Server <small id="syncStatus"></small></p>
+      <form class="card" id="syncForm" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+        <p class="hint" style="padding:0">Damit «Bring! füllen» direkt in eure Bring!-Liste schreibt und alle zusammen wählen können. Adresse und PIN bekommt ihr einmal von Joshua.</p>
+        <label class="field">Adresse
+          <input type="url" id="syncUrl" placeholder="https://bringfrisch.….workers.dev" autocomplete="off">
+        </label>
+        <label class="field">WG-PIN
+          <input type="text" id="syncPin" inputmode="numeric" autocomplete="off">
+        </label>
+        <button class="btn dark" type="submit">Verbinden</button>
+      </form>
+
+      <p class="label">Kalender</p>
+      <div class="card" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+        <p class="hint" style="padding:0">Alle Znacht der Woche als Kalender-Abo (iPhone, Google, Outlook). Änderungen im Plan erscheinen automatisch. Wer mitisst, markiert das hier in der App.</p>
+        <label class="field">Znacht um
+          <input type="time" id="dinnerTime" value="18:30">
+        </label>
+        <button class="btn" type="button" id="calendarBtn">📅 Kalender abonnieren</button>
+      </div>
+
       <p class="label">Plan teilen</p>
       <p class="hint">Schickt den aktuellen Wochenplan als Link (z.B. per WhatsApp). Wer den Link öffnet, bekommt den Plan aufs eigene Handy.</p>
       <button class="btn" id="sharePlanBtn" type="button">🔗 Plan-Link teilen</button>
@@ -324,6 +377,33 @@
           <button type="button" data-filter="custom" aria-pressed="false">Eigene</button>
         </div>
         <div id="catalogList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Wochenwahl: 14 Gerichte, jede Person tippt Favoriten an -->
+  <dialog id="voteDialog" class="full">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>Wochenwahl</h2><p id="voteSubtitle"></p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="vote-bar">
+          <label for="voteMe" class="muted" style="font-size:13px">Ich bin</label>
+          <select id="voteMe"></select>
+          <span class="muted" style="font-size:12.5px" id="voteMine"></span>
+        </div>
+        <p class="hint" style="padding:0">Tippe an, was du diese Woche essen willst. Optional: Wunschtag wählen.</p>
+        <div class="vote-grid" id="voteGrid"></div>
+        <div class="row">
+          <button class="btn" type="button" id="voteShuffleBtn">🔀 Neu mischeln</button>
+          <button class="btn" type="button" id="voteAddBtn">+ Gericht</button>
+        </div>
+        <p class="label" style="padding-top:6px">WG-Ranking <small id="voteWho"></small></p>
+        <div class="card" id="voteRank"></div>
+        <button class="btn primary" type="button" id="voteApplyBtn">7 Gerichte in den Plan übernehmen</button>
+        <button class="btn" type="button" id="voteRandomBtn">🎲 Einfach zufällig planen</button>
       </div>
     </div>
   </dialog>
