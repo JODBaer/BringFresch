@@ -11,6 +11,7 @@ const worker = (await import("file:///" + path.join(root, "..", "worker", "src",
 let fails = 0;
 const check = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
+const waitFor = async (cond, ms) => { const t0 = Date.now(); while (!cond() && Date.now() - t0 < ms) await wait(50); };
 
 // KV + Bring!-Attrappe
 const store = new Map();
@@ -112,7 +113,7 @@ check(ics.includes(`SUMMARY:🍲 ${titles[1].replace(/,/g, "\\,")}`), "Kalender-
 // Bring! füllen über den Worker
 const n = parseInt(A2.document.getElementById("ctaCount").textContent.replace(/\D/g, ""), 10);
 A2.document.getElementById("syncBtn").click();
-await wait(500);
+await waitFor(() => /✓ in Bring!/.test(A2.document.getElementById("ctaCount").textContent), 4000); // ein Aufruf pro Artikel, je nach Woche verschieden lang
 const names = new Set(bringList.map(i => i.name.toLowerCase()));
 check(names.size === bringList.length && bringList.length > 0 && bringList.length <= n, `alle ${n} Positionen in Bring!, gleiche Namen zusammengefasst (${bringList.length} Einträge)`);
 check(bringList.some(i => / \+ /.test(i.specification)) || bringList.length === n, "zusammengefasste Mengen z.B. «2 dl + 100 g»");
@@ -120,7 +121,7 @@ const catalog = A2.BRING_CATALOG || {};
 const known = bringList.filter(i => catalog[i.name]);
 check(known.length / bringList.length >= 0.8, `${known.length}/${bringList.length} Einträge sind Bring!-Katalogartikel (mit Bild): ${bringList.slice(0, 6).map(i => i.name + " [" + i.specification + "]").join(", ")}`);
 check(bringList.every(i => i.specification && !/\d\.\d{3}/.test(i.specification)), "Mengen sauber formatiert");
-check(/✓ in Bring!/.test(A2.document.getElementById("ctaCount").textContent), "nach dem Füllen: Chip «✓ in Bring!»");
+check(/✓ in Bring!/.test(A2.document.getElementById("ctaCount").textContent), `nach dem Füllen: Chip «✓ in Bring!» (${A2.document.getElementById("ctaCount").textContent}, ${bringList.length} Einträge)`);
 
 // Nochmals «Bring! füllen»: alles schon drauf, nichts geändert -> nichts senden, nicht fragen
 const before2 = bringList.length;
@@ -162,8 +163,9 @@ A2.document.getElementById("staplesDialog").close();
 bringList.push({ name: victim, specification: "1 Pack (Leonie)" });
 A2.document.getElementById("syncBtn").click();
 await wait(400);
-const rowF = [...A2.document.querySelectorAll("#dupList .duprow")].find(r => r.textContent.includes(victim));
-check(!!rowF && /von jemand anderem/.test(rowF.textContent) && !rowF.querySelector("input").checked, `fremder Eintrag «${victim}» wird gefragt, nicht vorausgewählt${rowF ? "" : " [Dialog: " + A2.document.getElementById("dupDialog").open + " / " + A2.document.getElementById("dupList").textContent.replace(/s+/g, " ").slice(0, 300) + " / Toast: " + ((A2.document.querySelector(".toast") || {}).textContent || "") + "]"}`);
+// nach dem Artikelnamen suchen, nicht im ganzen Text («für Kürbis-Risotto» steht auch bei Rahm)
+const rowF = [...A2.document.querySelectorAll("#dupList .duprow")].find(r => r.querySelector("b").textContent === victim);
+check(!!rowF && /von jemand anderem/.test(rowF.textContent) && !rowF.querySelector("input").checked, `fremder Eintrag «${victim}» wird gefragt, nicht vorausgewählt`);
 rowF.querySelector("input").checked = true;
 A2.document.getElementById("dupSendBtn").click();
 await wait(400);
