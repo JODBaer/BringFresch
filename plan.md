@@ -85,6 +85,13 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - Nicht speichern, sondern rechnen: Rest = N − gekochte Tage seit «zuletzt gekauft» → keine Konflikte zwischen den Handys
   - Vorschlag, wenn Rest ≤ 2 oder der Plan der Woche mehr braucht: «Olivenöl reicht noch für ~2 Znacht, geplant sind 4 → auf Bring!?» (ein Tipp, wie heute die Pille)
   - In Bring! gekauft/abgehakt = wieder voll; von Hand korrigierbar («noch voll» / «fast leer»)
+- [ ] **Bug melden** in den Einstellungen: ein Knopf, der direkt ein GitHub-Issue eröffnet, mit Bildschirmfoto
+  - Issue über den WG-Server anlegen (GitHub-Token mit nur «Issues: schreiben» als Secret im Worker, nie in der App); App schickt Titel, Text, Version, Handy-Stil, aktuelle Seite, WG-Name (kein PIN)
+  - Bildschirmfoto: der Browser darf den Bildschirm nicht einfach fotografieren (iPhone gar nicht). Darum: Foto/Screenshot aus der Galerie auswählen (Datei-Feld), der Worker lädt es ins Issue
+  - Einfachste Stufe ohne Server: Knopf öffnet `github.com/jodbaer/BringFresch/issues/new` mit vorausgefülltem Titel/Text (Version, Seite); Foto hängt man dort selbst an (braucht GitHub-Konto)
+  - Schutz: nur verbundene Handys (WG-PIN), höchstens ein paar Meldungen pro Stunde
+- [ ] **Hell / Dunkel / Automatisch** zum Umschalten (pro Handy, Einstellungen → Stil); heute folgt der Dunkelmodus nur dem System. Die 10 `prefers-color-scheme`-Stellen im CSS und `applyTheme` müssen auf den Schalter hören
+- [ ] **Gäste im Plan sichtbar**: «+1 Gast» bei den Kreisen (heute nur unter Einstellungen → Wer isst wann; die Zahl rechts zählt sie mit, man sieht aber nicht warum)
 - [ ] **Praxistest**: eine echte Woche mit Lukas, Leonie und Jo planen, einkaufen, Feedback sammeln
 - [ ] Danach entscheiden: Mengen der Protein-Zusätze (150 g Fleisch / 100 g Käse pro Person), Rezeptauswahl, evtl. Koch-Zuteilung
 
