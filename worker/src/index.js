@@ -601,10 +601,11 @@ async function recipeImage(env, link) {
   const send = (buf, type) => new Response(buf, { headers: { "Content-Type": type, "Cache-Control": "private, max-age=2592000" } });
   const hit = await kv.getWithMetadata(key, "arrayBuffer");
   if (hit && hit.value != null) {
-    if (hit.metadata && hit.metadata.none) throw httpError(404, "Kein Bild");
+    // kein Bild = 204 (kein Fehler: der Browser meldet 404 sonst als Fehler in der Konsole)
+    if (hit.metadata && hit.metadata.none) return new Response(null, { status: 204 });
     return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg");
   }
-  const none = async () => { await kv.put(key, "", { metadata: { none: true }, expirationTtl: 7 * 86400 }); return json({ ok: false, error: "Kein Bild" }, 404); };
+  const none = async () => { await kv.put(key, "", { metadata: { none: true }, expirationTtl: 7 * 86400 }); return new Response(null, { status: 204 }); };
   const UA = { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)" };
   let html = "";
   try {

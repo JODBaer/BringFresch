@@ -247,7 +247,9 @@
     /* Bild von der Rezeptseite (im WG-Server abgelegt), oben randlos; ohne Bild verschwindet die Fläche */
     .vcard .vimg { margin: -10px -10px 2px; aspect-ratio: 16 / 10; border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; background: var(--line) center / cover no-repeat; transition: opacity .3s; opacity: .5; }
     .vcard .vimg.ok { opacity: 1; }
-    .vcard .vimg.none { display: none; }
+    .vcard .vimg { display: grid; place-items: center; }
+    .vcard .vimg.none { opacity: 1; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+    .vcard .vimg.none::after { content: attr(data-emoji); font-size: 40px; line-height: 1; filter: saturate(.85); }
     .vcard .tick { z-index: 1; box-shadow: 0 0 0 2px var(--surface); }
     .mini { min-width: 20px; height: 20px; border-radius: 6px; font-size: 10px; font-weight: 800; display: inline-grid; place-items: center; background: var(--fg); color: var(--bg); padding: 0 3px; }
     .days-pick { display: flex; gap: 2px; }

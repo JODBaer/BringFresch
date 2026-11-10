@@ -215,7 +215,7 @@ r = await call("/img?url=" + encodeURIComponent(IMG_PAGE));
 check(r.status === 200 && (await r.arrayBuffer()).byteLength === 6 && imgFetches === 1, "zweites Mal aus dem Speicher (kein neuer Abruf)");
 r = await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/rezepte/2/ohne"));
 await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/rezepte/2/ohne"));
-check(r.status === 404 && imgFetches === 2, "Seite ohne Bild: 404, und der Server fragt nicht nochmals");
+check(r.status === 204 && imgFetches === 2, "Seite ohne Bild: 204 (leer, kein Fehler), und der Server fragt nicht nochmals");
 check((await call("/img?url=" + encodeURIComponent("http://localhost/x"))).status === 400, "nur normale https-Seiten");
 await backup(env, new Date("2026-11-10T03:00:00Z"));
 check(!Object.keys(JSON.parse(store.get("backup:2026-11-10")).keys).some(k => k.startsWith("img:")), "Bilder nicht in der täglichen Sicherung");

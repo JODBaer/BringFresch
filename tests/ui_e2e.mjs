@@ -237,11 +237,17 @@ async function settle(P, h = null) {
 // Antippen wie mit dem Finger: Element muss sichtbar, ruhig (bewegt sich nicht mehr) und nicht verdeckt sein –
 // sonst wäre es auch für einen Menschen nicht sicher tippbar.
 async function tap(P, sel) {
-  const h = typeof sel === "string" ? await P.page.waitForSelector(sel, { visible: true, timeout: 6000 }).catch(() => null) : sel;
+  let h = typeof sel === "string" ? await P.page.waitForSelector(sel, { visible: true, timeout: 6000 }).catch(() => null) : sel;
   if (!h) throw new Error(`nicht sichtbar: ${sel}`);
   let hit = { cover: "?" };
   const t0 = Date.now();
   for (let attempt = 0; Date.now() - t0 < 6000; attempt++) {
+    // Liste neu gezeichnet (z.B. Grundvorrat nach dem Bring!-Abgleich)? Dann das neue Element nehmen, wie ein Mensch es sieht.
+    // (Ein abgehängtes Element misst 0×0 – der Punkt läge auf dem Hintergrund des Dialogs: «nicht tippbar: <dialog>».)
+    if (typeof sel === "string" && !(await h.evaluate(el => el.isConnected).catch(() => false))) {
+      h = await P.page.waitForSelector(sel, { visible: true, timeout: 3000 }).catch(() => null);
+      if (!h) throw new Error(`nicht mehr sichtbar: ${sel}`);
+    }
     await settle(P, h);
     hit = await h.evaluate(async (el, attempt) => {
       const frame = () => new Promise(r => requestAnimationFrame(() => r()));
