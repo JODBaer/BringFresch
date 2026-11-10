@@ -38,10 +38,36 @@ Rezepte: 10 Klassiker + 6 schnelle/Reste + 82 Saisonrezepte von Betty Bossi, Mig
 | `static/` | Die App (HTML/JS, läuft offline) – wird auf GitHub Pages veröffentlicht |
 | `worker/` | Cloudflare Worker: Bring!-Sync über Bot-Konto, gemeinsamer Plan/Vorrat/Wochenwahl, Kalender-Abo. Einrichtung: [worker/README.md](worker/README.md) |
 | `tools/` | Rezept-Import (einmalig), Bring!-Katalog (`update_bring_catalog.mjs`), App-Icons (`make_icons.py`), Live-Check (`check_live.ps1`) |
-| `tests/` | `cd tests && npm install && npm test` · Layout im Browser: `node tests/layout_check.mjs --shots` · echter Durchlauf mit Bring!: `powershell -ExecutionPolicy Bypass -File tests\e2e_live.ps1` |
+| `tests/` | Automatische Tests, siehe [Tests](#tests) |
 | `docs/design/` | Design-Vorgabe der Plan-Ansicht (Spezifikation + lauffähiger Prototyp) |
 
 Ohne Worker funktioniert alles auf einem Handy; Bring! dann über Teilen/Kopieren.
+
+## Tests
+
+Ein Befehl, ohne Internet, jedes Mal gleich (feste Uhr Di 10.11.2026, fester Zufall, Bring! und WG-Server nachgebaut). Braucht Node 22 und Edge oder Chrome:
+
+```bash
+cd tests && npm ci && npm run ci        # Syntax, App, 2 Handys + Worker, Worker, Layout im Browser
+npm run ci -- --shots                    # dazu Bildschirmfotos in tests/shots/
+npm run ci -- --no-layout                # ohne Browser
+```
+
+Am Schluss steht `PASS: alles grün` oder `FAIL: …` (dann Exit-Code 1). Anderer Browser: `BROWSER=/pfad/zu/chrome`.
+
+| Wo | Was |
+|---|---|
+| lokal | `npm run ci` (einzeln: `npm test`, `npm run layout`) |
+| GitHub Actions | nur bei einem Release-Tag `v*` (oder von Hand: Actions → Run workflow): dieselben Tests, danach GitHub Pages – nur wenn alles grün ist |
+| nur von Hand | echte Durchläufe mit Bring! und WG-Server: `tests\e2e_live.ps1`, `tools\check_live.ps1` (brauchen Zugangsdaten, nie in CI) |
+
+**Release** (neue App-Version veröffentlichen) – ein normaler Push auf `main` veröffentlicht nichts:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+Fortschritt unter GitHub → Actions. Rote Tests = keine neue Version; die Bildschirmfotos liegen dann als Artefakt «layout-shots» beim Lauf.
 
 ## Kosten
 

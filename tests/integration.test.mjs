@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 const require = createRequire(import.meta.url);
 const { JSDOM, VirtualConsole } = require("jsdom");
+const { fixWindow, STANDARD_NOW } = require("./determinism.js");
 
 const root = process.argv[2] || path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..", "static");
 const worker = (await import("file:///" + path.join(root, "..", "worker", "src", "index.js").replace(/\\/g, "/"))).default;
@@ -54,7 +55,8 @@ function phone(me, fakeNow) {
       w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
       w.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new w.Event("close")); } };
       w.navigator.clipboard = { writeText: async () => {} };
-      if (fakeNow) { const Real = w.Date; w.Date = class extends Real { constructor(...a) { super(...(a.length ? a : [fakeNow])); } static now() { return Real.now(); } }; }
+      // festes Datum (Standard Dienstag KW 46) + fester Zufall; Date.now() läuft echt (Worker: neuerer Stand gewinnt)
+      fixWindow(w, { now: fakeNow || STANDARD_NOW, realNow: true });
       w.localStorage.setItem("bringfrisch_sync", JSON.stringify({ url: WORKER_URL, pin: "4711" }));
       w.localStorage.setItem("bringfrisch_me", JSON.stringify(me));
       w.fetch = async (u, init = {}) => {
