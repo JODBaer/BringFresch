@@ -340,6 +340,25 @@
     return { name, note: notes.join(", "), skip: TAP_WATER.test(name) };
   }
 
+  // Wort-Abgleich (Grundvorrat): ganze Wörter statt Teilwörter. «Mehl» passt auf «Weissmehl»-Stichwort nur als Wort,
+  // nie auf «Mehlig kochende Kartoffeln»; «Pfeffer» nie auf «Pfefferminze». Gleiche Ware in anderer Form zählt
+  // (Knoblauch -> Knoblauchzehen, Zimt -> Zimtpulver, Lorbeer -> Lorbeerblätter). Was nach «mit/aus/in …» steht, zählt nicht
+  // («Frischkäse mit Kräutern» ist kein Kraut). Bindestrich-Wörter zählen mit dem Grundwort hinten (Madras-Curry = Curry,
+  // Chili-Öl = Öl). «A und B» braucht beides im Vorrat, «A oder B» / «A / B» eines. Im Zweifel lieber auf der Liste
+  // (sichtbar) als still weggelassen.
+  const WORD_FORM = /^(n|e|en|s|zehe|zehen|pulver|flocken|blatt|blätter|zweig|zweige|zweiglein)$/;
+  const wordsOf = s => String(s || "").toLowerCase().replace(/\s+(in|am|an|mit|aus|zum|ohne|für|nach)\s+.*$/, "").split(/[^a-z0-9äöüàâçéèêëïîôûß-]+/).map(t => t.replace(/^.*-(?=[^-])/, "").replace(/-+$/, "")).filter(Boolean);
+  function hasWord(name, key) {
+    const k = wordsOf(key), w = wordsOf(name);
+    if (!k.length) return false;
+    const last = k.length - 1;
+    for (let i = 0; i + k.length <= w.length; i++) {
+      if (k.every((x, j) => w[i + j] === x || (j === last && w[i + j].startsWith(x) && WORD_FORM.test(w[i + j].slice(x.length))))) return true;
+    }
+    return false;
+  }
+  const inStaples = (name, keywords) => String(name).split(/\s+(?:und|&)\s+/i).every(part => keywords.some(k => hasWord(part, k)));
+
   // ---------------------------------------------------------------------------
   // Bring!-Katalog: Namen auf bekannte Bring!-Artikel abbilden, damit sie ein Bild bekommen.
   // «Butternuss-Kürbis» -> Kürbis (Zusatz «Butternuss-Kürbis» in der Mengenangabe)
@@ -477,8 +496,9 @@
         notes: new Set(note ? [note] : []),
         from: new Set(from ? [from] : []),
         cat: cat || "Sonstiges",
-        isStaple: stapleKeywords.some(k => lower.includes(k)),
-        isOnBring: onBring.some(b => b === lower || b.includes(lower) || lower.includes(b) || bringLower.includes(b))
+        isStaple: inStaples(lower, stapleKeywords),
+        // gleicher Name oder gleicher Bring!-Artikel – keine Teilwörter («Butter» deckt nicht «Butternuss-Kürbis»)
+        isOnBring: onBring.some(b => b === lower || bringLower.includes(b))
       };
     }
 
@@ -1504,7 +1524,7 @@
   // Passender Grundvorrat-Eintrag zu einer Zutat (z.B. «Olivenöl» -> Olivenöl extra vergine)
   function stapleFor(name) {
     const lower = name.toLowerCase();
-    return state.staples.find(st => (st.keywords || [st.name.toLowerCase()]).some(k => lower.includes(k.toLowerCase())));
+    return state.staples.find(st => (st.keywords || [st.name.toLowerCase()]).some(k => hasWord(lower, k)));
   }
 
   $("shopList").addEventListener("click", async e => {

@@ -58,15 +58,15 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 <main>
 <header style="display:flex;flex-direction:column;gap:10px">
   <h1>BringFrisch Architektur-Review</h1>
-  <p class="lead">Stand 10.11.2026, Version 1.5.2. Gelesen: App, Worker, Tests, CI, Plan und Entscheide. Tests lokal ausgeführt: grün.</p>
+  <p class="lead">Stand 10.11.2026, Version 1.5.2, abgeglichen mit <code>main</code> bis <code>c2e3b74</code>. Gelesen: App, Worker, Tests, CI, Plan und Entscheide. Schritt 0 ist gebaut, alle Tests grün.</p>
 </header>
 
 <section>
   <h2>Kurzurteil</h2>
   <div class="verdict">
     <div><b>Grundaufbau</b><span>Passt, bleibt</span><small>PWA ohne Framework + ein Worker ist für eine WG die richtige Grösse.</small></div>
-    <div><b>Grösste Schwäche</b><span>app.js: alles in einer Datei</span><small>2985 Zeilen, Regeln, Ansicht und Sync vermischt. Regeln lassen sich nur über den Browser testen.</small></div>
-    <div><b>Zuerst flicken</b><span>2 Abgleich-Fehler, 1 Lücke</span><small>Zutaten fallen wegen Teilwort-Treffern von der Liste; erste WG hat keine PIN-Sperre.</small></div>
+    <div><b>Grösste Schwäche</b><span>app.js: alles in einer Datei</span><small>3025 Zeilen, Regeln, Ansicht und Sync vermischt. Regeln lassen sich nur über den Browser testen.</small></div>
+    <div><b>Schritt 0</b><span>Erledigt</span><small>Teilwort-Treffer behoben und mit Test über alle 449 Zutaten abgesichert; PIN-Sperre gilt jetzt auch für die erste WG.</small></div>
     <div><b>Flutter / Hosting</b><span>Nicht wechseln</span><small>Entscheid 23 stimmt weiterhin. Cloudflare Free ist die günstigste passende Variante.</small></div>
   </div>
 </section>
@@ -101,16 +101,16 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
       </g>
       <g fill="currentColor" font-size="13">
         <text x="36" y="94" font-weight="700">Handy (PWA)</text>
-        <text x="46" y="134" font-weight="700">app.js · 2985 Zeilen</text>
+        <text x="46" y="134" font-weight="700">app.js · 3025 Zeilen</text>
         <text x="46" y="154" font-size="12">Regeln + Ansicht + Sync</text>
         <text x="46" y="211">localStorage · ~15 Schlüssel</text>
         <text x="46" y="267">Service Worker · Network-First</text>
         <text x="450" y="36" text-anchor="middle" font-weight="700">GitHub Pages</text>
         <text x="450" y="53" text-anchor="middle" font-size="12">static/ (nur Dateien)</text>
         <text x="450" y="156" text-anchor="middle" font-weight="700">Cloudflare Worker</text>
-        <text x="450" y="176" text-anchor="middle" font-size="12">index.js · 647 Zeilen</text>
+        <text x="450" y="176" text-anchor="middle" font-size="12">index.js · ~730 Zeilen</text>
         <text x="450" y="196" text-anchor="middle" font-size="12">PIN · Routen · Kalender</text>
-        <text x="450" y="216" text-anchor="middle" font-size="12">Rezept-Import · Sicherung</text>
+        <text x="450" y="216" text-anchor="middle" font-size="12">Rezept-Import · Bilder</text>
         <text x="450" y="392" text-anchor="middle" font-weight="700">GitHub Actions</text>
         <text x="450" y="409" text-anchor="middle" font-size="12">Tests, dann Deploy</text>
         <text x="140" y="392" text-anchor="middle" font-weight="700">Kalender-App</text>
@@ -118,7 +118,7 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
         <text x="780" y="123" text-anchor="middle" font-weight="700">Bring! API</text>
         <text x="780" y="140" text-anchor="middle" font-size="12">inoffiziell, Bot-Konto</text>
         <text x="780" y="201" text-anchor="middle" font-weight="700">KV-Speicher</text>
-        <text x="780" y="218" text-anchor="middle" font-size="12">Plan, Wahl, Vorrat, Einst.</text>
+        <text x="780" y="218" text-anchor="middle" font-size="12">Plan, Wahl, Vorrat, Bilder</text>
         <text x="780" y="279" text-anchor="middle" font-weight="700">Rezept-Webseiten</text>
         <text x="780" y="296" text-anchor="middle" font-size="12">schema.org, auf Knopfdruck</text>
         <g font-size="11.5">
@@ -148,19 +148,19 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
   <table>
     <thead><tr><th>Wo</th><th>Was</th><th>Folge</th><th>Gewicht</th></tr></thead>
     <tbody>
-      <tr><td><code>computeShopping</code><br>Vorrat-Abgleich</td><td>Vorrat-Stichwörter werden als Teilwort gesucht (<code>lower.includes(k)</code>).</td><td>«Mehlig kochende Kartoffeln» zählt als Mehl und fehlt auf der Liste (Spargel-Ofenrösti). Ebenso Pfefferminze = Pfeffer, Currypaste = Currypulver, Essiggurke = Essig, Chilischote = Chiliflocken, Kräuterquark = Kräuter.</td><td><span class="pill hoch">hoch</span></td></tr>
-      <tr><td><code>computeShopping</code><br>Bring!-Abgleich</td><td>«Schon auf Bring!» prüft ebenfalls Teilwörter in beide Richtungen.</td><td>Steht «Butter» auf Bring!, gelten Butternuss-Kürbis und Butterblätterteig als vorhanden. «Rahm» deckt Doppelrahm und Rahmquark ab, «Milch» die Kokosmilch.</td><td><span class="pill hoch">hoch</span></td></tr>
-      <tr><td>Worker<br><code>requireWg</code></td><td>Die Sperre nach 10 falschen PINs gilt nur für weitere WGs. Bei der ersten WG (Allmen) wird nicht gezählt.</td><td>Der PIN der eigenen WG lässt sich unbegrenzt durchprobieren. PINs dürfen 4 Zeichen kurz sein.</td><td><span class="pill hoch">hoch</span></td></tr>
+      <tr><td><code>computeShopping</code><br>Vorrat-Abgleich</td><td>Vorrat-Stichwörter werden als Teilwort gesucht (<code>lower.includes(k)</code>).</td><td>«Mehlig kochende Kartoffeln» zählt als Mehl und fehlt auf der Liste (Spargel-Ofenrösti). Ebenso Pfefferminze = Pfeffer, Currypaste = Currypulver, Essiggurke = Essig, Chilischote = Chiliflocken, Kräuterquark = Kräuter.</td><td><span class="pill tief">behoben</span></td></tr>
+      <tr><td><code>computeShopping</code><br>Bring!-Abgleich</td><td>«Schon auf Bring!» prüft ebenfalls Teilwörter in beide Richtungen.</td><td>Steht «Butter» auf Bring!, gelten Butternuss-Kürbis und Butterblätterteig als vorhanden. «Milch» deckt die Kokosmilch ab. Betraf den Einkauf-Tab und Teilen/Kopieren, nicht «Bring! füllen».</td><td><span class="pill tief">behoben</span></td></tr>
+      <tr><td>Worker<br><code>requireWg</code></td><td>Die Sperre nach 10 falschen PINs gilt nur für weitere WGs. Bei der ersten WG (Allmen) wird nicht gezählt.</td><td>Der PIN der eigenen WG liess sich unbegrenzt durchprobieren. Jetzt Sperre pro WG und Absender; unbekannte WG-Namen kosten keine Schreibzugriffe mehr.</td><td><span class="pill tief">behoben</span></td></tr>
       <tr><td>Sync<br>Plan, Vorrat, Einstellungen</td><td>Ganze Dokumente, «neuerer Stand gewinnt». Lokale Änderungen tragen die Handy-Uhr, Server-Stände die Server-Uhr. PUT prüft nicht, worauf die Änderung aufbaut.</td><td>Ändern zwei Handys kurz nacheinander verschiedene Tage, geht eine Änderung still verloren. Eine falsch gestellte Handy-Uhr gewinnt oder verliert immer.</td><td><span class="pill mittel">mittel</span></td></tr>
       <tr><td>Worker<br><code>bringLogin</code></td><td>Jeder Bring!-Aufruf meldet sich neu an. Artikel werden einzeln gesendet (höchstens 45).</td><td>Jedes Herunterziehen kostet einen zusätzlichen Login. Unnötig langsam, und viele Logins sind bei einer inoffiziellen API ein Risiko.</td><td><span class="pill mittel">mittel</span></td></tr>
       <tr><td><code>sw.js</code></td><td>Network-First ohne Zeitlimit für alle 13 Dateien.</td><td>Bei schwachem Empfang (Laden, Keller) wartet die App aufs Netz, obwohl alles im Cache liegt.</td><td><span class="pill mittel">mittel</span></td></tr>
       <tr><td>App + Worker</td><td>Wochenrechnung (KW, Montag, nächste Woche) gibt es zweimal, einmal je Seite. Vier fast gleiche «neuerer gewinnt»-Abläufe von Hand.</td><td>Ein Fix an einer Stelle fehlt leicht an der anderen.</td><td><span class="pill mittel">mittel</span></td></tr>
       <tr><td><code>index.html</code></td><td>77 KB, davon rund 600 Zeilen CSS und 7 Dialoge in einer Datei.</td><td>Parallele Chats kollidieren hier am ehesten.</td><td><span class="pill tief">tief</span></td></tr>
-      <tr><td>Worker<br><code>importRecipe</code></td><td>Der Host wird vor dem Abruf geprüft, Weiterleitungen danach nicht mehr.</td><td>Kleines Risiko, weil Worker ohnehin keine privaten Netze erreichen. Günstig zu schliessen.</td><td><span class="pill tief">tief</span></td></tr>
+      <tr><td>Worker<br><code>importRecipe</code></td><td>Der Host wird vor dem Abruf geprüft, Weiterleitungen danach nicht mehr.</td><td>Gilt auch für die neuen Rezeptbilder (<code>/img</code>). Jede Weiterleitung wird jetzt geprüft.</td><td><span class="pill tief">behoben</span></td></tr>
     </tbody>
   </table>
   </div>
-  <p class="note">Die zwei Abgleich-Fehler sind aus dem Code und den 449 Zutaten der 98 Rezepte hergeleitet, nicht in der laufenden App nachgestellt. Der erste Schritt im Plan ist ein Test, der sie sichtbar macht.</p>
+  <p class="note">Die zwei Abgleich-Fehler sind mit einem Test in der laufenden App nachgestellt (rot mit altem Code, grün mit dem Fix). Neu aus <code>main</code>: Rezeptbilder liegen im KV-Speicher (bis 900 KB pro Bild, nicht in der Sicherung), und die Wochenwahl listet keine Schlüssel mehr.</p>
 </section>
 
 <section>
@@ -185,7 +185,7 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
   <h2>Refactoring-Plan</h2>
   <p>Jeder Schritt ist einzeln releasbar und endet mit grünem <code>npm run ci</code>. Die ausführliche Fassung für die Arbeit liegt im Repo unter <code>docs/refactoring-plan.md</code>.</p>
   <ol class="steps">
-    <li><b>0</b><div><h3>Fehler flicken, ohne Umbau</h3><small>Abgleich auf ganze Wörter statt Teilwörter, mit Test über alle Zutaten. PIN-Sperre auch für die erste WG.</small></div></li>
+    <li><b>0 ✓</b><div><h3>Fehler flicken, ohne Umbau (erledigt)</h3><small>Abgleich auf ganze Wörter statt Teilwörter, mit Test über alle Zutaten. PIN-Sperre auch für die erste WG.</small></div></li>
     <li><b>1</b><div><h3>Sicherheitsnetz</h3><small>Ein Schnappschuss-Test: Einkaufsliste und Bring!-Einträge für jedes der 98 Rezepte. Danach fällt jede ungewollte Änderung beim Verschieben auf.</small></div></li>
     <li><b>2</b><div><h3><code>core/</code> herauslösen</h3><small>Woche, Portionen, Zutaten, Einkauf, Wochenwahl als reine Funktionen. Der Worker benutzt dieselbe Wochenrechnung.</small></div></li>
     <li><b>3</b><div><h3>Ein Zustand, ein Speicher</h3><small><code>store</code> ersetzt <code>state</code> plus die losen Variablen (<code>viewNext</code>, <code>curPlan</code>, <code>nextDoc</code>, <code>sync</code>) und bündelt alle localStorage-Schlüssel.</small></div></li>
@@ -232,7 +232,7 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 
 <section>
   <h2>Hosting</h2>
-  <p>Cloudflare Workers Free passt: kein Kaltstart, keine Kreditkarte, und eine WG braucht einen Bruchteil der Freigrenzen. Die engste Grenze sind die KV-Schreibzugriffe (1000 pro Tag); vier Personen mit gebündelten Änderungen liegen weit darunter.</p>
+  <p>Cloudflare Workers Free passt: kein Kaltstart, keine Kreditkarte, und eine WG braucht einen Bruchteil der Freigrenzen. Die engste Grenze sind die KV-Schreib- und Listen-Aufrufe (1000 pro Tag fürs ganze Konto). Vier Personen liegen darunter, aber der Live-Test der Test-Version zählt mit; das steht bereits als offener Punkt in <code>plan.md</code>.</p>
   <div class="scroll">
   <table>
     <thead><tr><th>Variante</th><th>Kosten</th><th>Haken</th></tr></thead>

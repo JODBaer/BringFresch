@@ -27,7 +27,7 @@ let fails = 0;
 const check = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) fails++; };
 
 // In CI (GitHub Actions, Linux-Container) läuft Chrome nur ohne eigene Sandbox; lokal bleibt sie an.
-const ciArgs = process.env.CI ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
+const ciArgs = process.env.CI || process.platform === "linux" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
 // eigenes Profil pro Lauf: zwei Läufe gleichzeitig (z.B. zwei Worktrees) stören sich sonst
 const profileDir = mkdtempSync(path.join(tmpdir(), "bf-layout-profile-"));
 const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ["--allow-file-access-from-files", "--no-first-run", "--no-default-browser-check", "--disable-gpu", ...ciArgs], userDataDir: profileDir });

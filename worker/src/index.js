@@ -48,7 +48,19 @@ const ALLOWED_ORIGINS = [
   /^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/,
 ];
 // Rezept-Link: jede https-Seite mit Rezeptdaten (schema.org). Nur auf Knopfdruck, eine Seite, nur Fakten.
-const BLOCKED_HOSTS = /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.|\[)|\.(local|internal)$/;
+const BLOCKED_HOSTS = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|\[|\d+$)|\.(local|internal)$/;
+// Fremde Seite holen: nur https und nur normale Hosts – auch nach jeder Weiterleitung geprüft (höchstens 3)
+async function safeFetch(link, headers) {
+  let u = new URL(link);
+  for (let hop = 0; hop < 4; hop++) {
+    if (u.protocol !== "https:" || BLOCKED_HOSTS.test(u.hostname)) throw httpError(400, "Nur normale Webseiten (https://…)");
+    const res = await fetch(u.toString(), { headers, redirect: "manual" });
+    const to = res.status >= 300 && res.status < 400 && res.headers.get("Location");
+    if (!to) return res;
+    u = new URL(to, u);
+  }
+  throw httpError(502, "Zu viele Weiterleitungen");
+}
 const MAX_ITEMS = 45; // Free-Plan: 50 Unteranfragen pro Aufruf (1 Login + 1 Liste + Artikel)
 
 // ---------------------------------------------------------------------------------------------
@@ -220,7 +232,8 @@ function corsHeaders(request) {
 }
 
 // Welche WG fragt? Erste WG: Secret WG_PIN. Weitere: wgs:<name> in KV, PIN als SHA-256(salt:PIN).
-// Nach 10 falschen Versuchen ist die WG 15 Minuten gesperrt (nur Fehlversuche kosten Schreibzugriffe).
+// Nach 10 falschen Versuchen ist die WG für diesen Absender (IP) 15 Minuten gesperrt – auch die erste WG.
+// Nur Fehlversuche bei bekannten WGs kosten Schreibzugriffe (unbekannte Namen schreiben nichts: Gratis-Kontingent).
 export const wgSlug = s => String(s || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 async function requireWg(request, env) {
   const pin = (request.headers.get("X-WG-PIN") || "").trim();
@@ -228,16 +241,27 @@ async function requireWg(request, env) {
   // MAIN_WG darf mehrere Namen haben («allmen,wg1»): der erste gilt, die anderen gehen weiter (alte Handys)
   const aliases = String(env.MAIN_WG || "").split(",").map(wgSlug).filter(Boolean);
   const main = aliases[0] || "";
+  const ip = (request.headers.get("CF-Connecting-IP") || "").slice(0, 45);
+  // Zähler pro WG und Absender: gesperrt -> 429, sonst eine Funktion, die den Fehlversuch festhält
+  const guard = async id => {
+    const key = `fail:${id}:${ip}`;
+    const fails = +(await env.WG.get(key)) || 0;
+    if (fails >= 10) throw httpError(429, "Zu viele falsche Versuche – in 15 Minuten nochmals");
+    return () => env.WG.put(key, String(fails + 1), { expirationTtl: 900 });
+  };
   if (!slug || aliases.includes(slug)) {
-    if (!env.WG_PIN || !timingSafeEqual(pin, env.WG_PIN.trim())) throw httpError(401, slug ? "Falscher WG-Name oder PIN" : "Falscher WG-PIN");
+    const failed = await guard(main || "main");
+    if (!env.WG_PIN || !timingSafeEqual(pin, env.WG_PIN.trim())) {
+      if (env.WG_PIN) await failed();
+      throw httpError(401, slug ? "Falscher WG-Name oder PIN" : "Falscher WG-PIN");
+    }
     return { slug: main || "main", aliases, name: env.MAIN_WG_NAME || main || "WG", prefix: "", main: true, calToken: env.CAL_TOKEN };
   }
-  if (await env.WG.get(`lock:${slug}`)) throw httpError(429, "Zu viele falsche Versuche – in 15 Minuten nochmals");
   const reg = await env.WG.get(`wgs:${slug}`, "json");
-  if (!reg || !pin || !timingSafeEqual(await pinHash(reg.salt, pin), reg.pinHash)) {
-    const fails = (+(await env.WG.get(`fail:${slug}`)) || 0) + 1;
-    if (fails >= 10) await env.WG.put(`lock:${slug}`, "1", { expirationTtl: 900 });
-    await env.WG.put(`fail:${slug}`, String(fails), { expirationTtl: 900 });
+  if (!reg) throw httpError(401, "Falscher WG-Name oder PIN");
+  const failed = await guard(slug);
+  if (!pin || !timingSafeEqual(await pinHash(reg.salt, pin), reg.pinHash)) {
+    await failed();
     throw httpError(401, "Falscher WG-Name oder PIN");
   }
   return { slug, name: reg.name || slug, prefix: `w:${slug}:`, main: false, calToken: reg.calToken };
@@ -608,7 +632,7 @@ async function recipeImage(env, link) {
   const UA = { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)" };
   let html = "";
   try {
-    const res = await fetch(u.toString(), { headers: { ...UA, Accept: "text/html" }, redirect: "follow" });
+    const res = await safeFetch(u.toString(), { ...UA, Accept: "text/html" });
     if (!res.ok) return none();
     html = (await res.text()).slice(0, 2_000_000);
   } catch { return none(); }
@@ -624,7 +648,7 @@ async function recipeImage(env, link) {
   if (imgUrl.protocol !== "https:" || BLOCKED_HOSTS.test(imgUrl.hostname)) return none();
   let buf, type;
   try {
-    const res = await fetch(imgUrl.toString(), { headers: { ...UA, Accept: "image/avif,image/webp,image/jpeg,image/png,image/*" }, redirect: "follow" });
+    const res = await safeFetch(imgUrl.toString(), { ...UA, Accept: "image/avif,image/webp,image/jpeg,image/png,image/*" });
     type = (res.headers.get("Content-Type") || "").split(";")[0].trim();
     if (!res.ok || !/^image\/(jpeg|png|webp|avif|gif)$/.test(type)) return none();
     buf = await res.arrayBuffer();
@@ -649,9 +673,9 @@ async function importRecipe(link) {
   if (u.protocol !== "https:" || BLOCKED_HOSTS.test(u.hostname)) throw httpError(400, "Nur normale Webseiten (https://…)");
   let res;
   try {
-    res = await fetch(u.toString(), { headers: { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)", Accept: "text/html" }, redirect: "follow" });
-  } catch {
-    throw httpError(502, "Seite nicht erreichbar");
+    res = await safeFetch(u.toString(), { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)", Accept: "text/html" });
+  } catch (e) {
+    throw e.status === 400 ? e : httpError(502, "Seite nicht erreichbar");
   }
   if (!res.ok) throw httpError(502, `Seite nicht erreichbar (${res.status}) – Zutaten von Hand einfügen`);
   const html = (await res.text()).slice(0, 3_000_000);

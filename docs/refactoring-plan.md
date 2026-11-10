@@ -1,22 +1,34 @@
 # Refactoring-Plan (Arbeitsfassung für Claude)
 
-Stand 10.11.2026, App 1.5.2. Überblick mit Diagramm: `docs/architektur-review.html`.
-**Noch nichts gebaut.** Reihenfolge einhalten; jeder Schritt ist einzeln releasbar und endet mit `cd tests && npm run ci` grün.
+Stand 10.11.2026, App 1.5.2, abgeglichen mit `main` bis `c2e3b74`. Überblick mit Diagramm: `docs/architektur-review.html`.
+**Schritt 0 ist gebaut**, der Rest noch nicht. Reihenfolge einhalten; jeder Schritt ist einzeln releasbar und endet mit `cd tests && npm run ci` grün.
 Regeln aus `CLAUDE.md` gelten (eigener Worktree, nur eigene Pfade committen, neue Funktion = neuer Schritt in `tests/ui_e2e.mjs`).
 
 ## Ausgangslage (gemessen)
 
 | Datei | Zeilen | Inhalt |
 |---|---|---|
-| `static/app.js` | 2985 (141 KB, 42 KB gzip) | eine IIFE, ~150 Funktionen: Regeln, Ansicht, Sync, Theme |
+| `static/app.js` | 3025 (143 KB, 42 KB gzip) | eine IIFE, ~150 Funktionen: Regeln, Ansicht, Sync, Theme |
 | `static/index.html` | 1049 (77 KB) | ~600 Zeilen CSS, 4 Tabs, 7 Dialoge |
-| `worker/src/index.js` | 647 | Routen, PIN, Bring!, Kalender, Rezept-Import, Sicherung |
-| `tests/ui_e2e.mjs` | 1475 | UI-Test, das wichtigste Sicherheitsnetz |
+| `worker/src/index.js` | ~730 | Routen, PIN, Bring!, Kalender, Rezept-Import, Rezeptbilder (`/img`), Sicherung |
+| `tests/ui_e2e.mjs` | 1486 | UI-Test, das wichtigste Sicherheitsnetz |
 
 Zustand der App liegt verteilt in `state`, in losen Variablen (`viewNext`, `curPlan`, `nextDoc`, `sync`, Timer) und in ~15 localStorage-Schlüsseln.
 Tests laden die App, indem sie `<script src>` in `index.html` durch den Dateiinhalt ersetzen (jsdom, `runScripts`). ES-Module direkt im Browser würden diese Tests brechen.
 
-## Schritt 0 – Fehler flicken (kein Umbau)
+## Schritt 0 – Fehler flicken (kein Umbau) – erledigt
+
+Gebaut (Test zuerst rot gesehen, dann grün):
+- `hasWord` / `inStaples` in `app.js`: ganze Wörter; gleiche Ware in anderer Form zählt (Knoblauchzehen, Zimtpulver, Lorbeerblätter); Bindestrich-Wörter mit Grundwort hinten (Madras-Curry = Curry); nach «mit/aus/in …» zählt nichts; «A und B» braucht beides.
+- «Schon auf Bring!» (Einkauf-Tab, Teilen/Kopieren): gleicher Name oder gleicher Bring!-Artikel. «Bring! füllen» war nicht betroffen (`bringDiff` vergleicht schon genau).
+- `tests/zutaten.test.js` + `tests/snapshots/vorrat_treffer.json` (58 Treffer aus 449 Zutaten), in `npm test` und `npm run ci`.
+- Worker: Sperre pro WG **und Absender (IP)**, auch erste WG; ein Zähler `fail:<wg>:<ip>` statt `fail:` + `lock:`; unbekannte WG-Namen schreiben nichts (schont das KV-Kontingent).
+- Worker: `safeFetch` prüft jede Weiterleitung (Rezept-Link und beide Abrufe von `/img`).
+
+Bewusst geänderte Wirkung: Was nur als Teilwort passte, steht jetzt auf der Einkaufsliste, z.B. Hühner-/Fleisch-/Pilzbouillon, Rohrzucker, Weisswein-/Rotweinessig, Kräutersenf, Paniermehl. Wer das als Vorrat will, ergänzt das Stichwort beim Vorrat-Artikel.
+Bekannt offen: «Chili Crunch» und «Schnittlauch / Frische Kräuter» gelten weiter als Vorrat (Wort passt).
+
+Ursprünglicher Befund:
 
 1. **Vorrat-Abgleich** (`computeShopping`, `isStaple: stapleKeywords.some(k => lower.includes(k))`): Teilwort-Treffer.
    Betroffen laut Rezeptdaten u.a.: «Mehlig kochende Kartoffeln» (→ Mehl), «Pfefferminze» (→ Pfeffer), «Rote/Gelbe/Massaman-Currypaste» (→ Currypulver), «Kleine Essiggurke» (→ Essig), «Chilischote», «Chili Crunch» (→ Chiliflocken), «Kräuterquark», «Kräuterkäse», «Frischkäse mit Kräutern» (→ Kräuter), «Ungesalzene Cashewkerne» (→ Salz), «Paniermehl», «Buchweizenmehl» (→ Weissmehl; hier fachlich klären, ob gewollt).

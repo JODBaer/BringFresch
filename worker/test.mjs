@@ -39,6 +39,9 @@ globalThis.fetch = async (url, init = {}) => {
     if (ex) ex.specification = p.get("specification"); else bringList.push({ name: p.get("purchase"), specification: p.get("specification") });
     return new Response(null, { status: 204 });
   }
+  if (url === "https://fooby.ch/de/weiter") return new Response(null, { status: 302, headers: { Location: "https://fooby.ch/de/rezepte/2/ohne" } });
+  if (url === "https://fooby.ch/de/intern") return new Response(null, { status: 302, headers: { Location: "https://192.168.1.1/admin" } });
+  if (url.startsWith("https://192.168.")) { internFetches++; return new Response("geheim"); }
   if (url === "https://fooby.ch/de/rezepte/1/bild") return new Response(`<html><head><meta property="og:image" content="/img/bild.jpg?w=1200&amp;q=80"></head></html>`);
   if (url === "https://fooby.ch/img/bild.jpg?w=1200&q=80") { imgFetches++; return new Response(new Uint8Array([255, 216, 255, 1, 2, 3]), { headers: { "Content-Type": "image/jpeg" } }); }
   if (url === "https://fooby.ch/de/rezepte/2/ohne") { imgFetches++; return new Response("<html><head><title>ohne Bild</title></head></html>"); }
@@ -57,6 +60,7 @@ globalThis.fetch = async (url, init = {}) => {
   return new Response("not mocked", { status: 599 });
 };
 
+let internFetches = 0;
 const ORIGIN = "https://jodbaer.github.io";
 const call = (path, { method = "GET", pin = "1234", body, origin = ORIGIN, wg } = {}) =>
   worker.fetch(new Request("https://bf.example.workers.dev" + path, {
@@ -294,9 +298,24 @@ store.set("listowner:list-wg", "wg1");
 ls = await (await call("/bring/lists", { wg: "allmen" })).json();
 check(ls.lists.some(l => l.uuid === "list-wg"), "Liste, die unter altem Namen gewählt wurde, bleibt wählbar");
 delete env.MAIN_WG;
+await call("/wg", { wg: "Gibtsnicht", pin: "0000" });
+const snap0 = { has: p => [...store.keys()].some(k => k.startsWith(p)) };
 for (let i = 0; i < 10; i++) await call("/wg", { wg: "Sonnenhof", pin: "0000" });
 r = await sh("/wg");
 check(r.status === 429, "nach 10 falschen PINs ist die WG kurz gesperrt");
+check(!snap0.has("fail:gibtsnicht:"), "unbekannter WG-Name schreibt nichts in den Speicher (Gratis-Kontingent)");
+// Sperre gilt pro Absender: ein anderes Handy (andere IP) kommt weiter rein
+const from = (ip, pin) => worker.fetch(new Request("https://bf.example.workers.dev/wg", { headers: { Origin: ORIGIN, "X-WG-PIN": pin, "CF-Connecting-IP": ip } }), env);
+for (let i = 0; i < 10; i++) await from("203.0.113.9", "0000");
+r = await from("203.0.113.9", "1234");
+check(r.status === 429, "erste WG: nach 10 falschen PINs ist dieser Absender gesperrt (auch mit richtigem PIN)");
+r = await from("198.51.100.7", "1234");
+check(r.status === 200, "erste WG: andere Absender sind nicht mitgesperrt");
+// Rezept-Link: Weiterleitungen werden geprüft
+r = await call("/recipe?url=" + encodeURIComponent("https://fooby.ch/de/intern"));
+check(r.status === 400 && internFetches === 0, `Weiterleitung auf eine interne Adresse wird nicht abgerufen (${r.status})`);
+r = await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/weiter"));
+check(r.status === 404, `normale Weiterleitung wird gefolgt (${r.status})`);
 const b3 = await backup(env, new Date("2026-11-12T03:00:00Z"));
 const snap3 = JSON.parse(store.get("backup:2026-11-12")).keys;
 check(snap3["w:sonnenhof:plan"] && !snap3["lock:sonnenhof"], `Sicherung enthält die zweite WG, keine Sperren (${b3.count})`);
