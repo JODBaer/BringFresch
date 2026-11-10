@@ -1,7 +1,0 @@
-// Test-Seite (Stage) als statische Seite auf Cloudflare: nur der Ordner dist-stage/ (aus tools/build_stage.mjs).
-//   node tools/build_stage.mjs && npx wrangler deploy -c worker/stage-site.jsonc
-{
-  "name": "bringfrisch-test",
-  "compatibility_date": "2025-09-01",
-  "assets": { "directory": "../dist-stage", "not_found_handling": "404-page" }
-}

@@ -1613,8 +1613,9 @@
   // ---------------------------------------------------------------------------
   // Verbindung zum Cloudflare Worker (Bring!-Sync, gemeinsamer Plan, Wochenwahl, Kalender)
   // ---------------------------------------------------------------------------
-  let sync = { url: DEFAULT_SYNC_URL, pin: "", ...(load(SYNC_KEY, {}) || {}) };
-  if (!sync.url) sync.url = DEFAULT_SYNC_URL;
+  let sync = { url: DEFAULT_SYNC_URL, pin: "", wg: "", ...(load(SYNC_KEY, {}) || {}) };
+  // alter Test-Server (bringfrisch-stage) ist im Test-Worker aufgegangen
+  if (!sync.url || /\/\/bringfrisch-stage\./.test(sync.url)) sync.url = DEFAULT_SYNC_URL;
 
   function connected() {
     return !!(sync.url && sync.pin);
@@ -1623,7 +1624,7 @@
   async function api(path, { method = "GET", body } = {}) {
     const res = await fetch(sync.url.replace(/\/+$/, "") + path, {
       method,
-      headers: { "X-WG-PIN": sync.pin, ...(body ? { "Content-Type": "application/json" } : {}) },
+      headers: { "X-WG-PIN": sync.pin, ...(sync.wg ? { "X-WG": sync.wg } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
       body: body ? JSON.stringify(body) : undefined
     });
     let data = {};
@@ -1978,6 +1979,7 @@
 
   function renderSyncSettings() {
     $("syncPin").value = sync.pin || "";
+    $("syncWg").value = sync.wg || "";
     $("dinnerTime").value = load(DINNER_KEY, "18:30");
     setSyncStatus(connected() ? "Verbinde …" : "Nicht verbunden: WG-PIN unter «Mehr» eingeben. Bis dahin Bring! über Teilen/Kopieren.", false);
     if (connected()) loadBringLists(); else $("setMore").open = true;
@@ -1985,7 +1987,9 @@
 
   $("syncForm").addEventListener("submit", async e => {
     e.preventDefault();
-    sync = { url: sync.url || DEFAULT_SYNC_URL, pin: $("syncPin").value.trim() };
+    const wgName = $("syncWg").value.trim();
+    if (wgName !== (sync.wg || "")) forgetWgStand();
+    sync = { url: sync.url || DEFAULT_SYNC_URL, pin: $("syncPin").value.trim(), wg: wgName };
     save(SYNC_KEY, sync);
     if (!connected()) return setSyncStatus("WG-PIN eingeben", false);
     setSyncStatus("Verbinde …", false);
@@ -1996,6 +2000,98 @@
       loadBringLists();
     }
   });
+
+  // Andere WG: der Stand des Servers gilt (sonst landen Plan und Mitbewohner der alten WG in der neuen)
+  function forgetWgStand() {
+    [PLAN_UPDATED_KEY, VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY].forEach(k => save(k, 0));
+    nextDoc = null;
+    try { localStorage.removeItem(NEXT_KEY); } catch (e) { /* egal */ }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Erster Start: WG-Name + PIN, dann «Wer bist du?». Wer schon verbunden ist, sieht das nie.
+  // ---------------------------------------------------------------------------
+  const WELCOME_KEY = "bringfrisch_welcome";
+  const TERMS_KEY = "bringfrisch_terms"; // wann Nutzungsbedingungen/Datenschutz akzeptiert (mit «Verbinden»)
+  const TERMS_VERSION = "2026-11";
+  function openWelcome() {
+    $("welcomeJoin").hidden = false;
+    $("welcomeWho").hidden = true;
+    $("welcomeWg").value = sync.wg || "";
+    $("welcomeStatus").textContent = "";
+    $("welcomeDialog").showModal();
+  }
+  function closeWelcome() {
+    save(WELCOME_KEY, true);
+    $("welcomeDialog").close();
+    renderSyncSettings();
+    refresh();
+    markWahl();
+    if (wahlDue()) setTimeout(openWahlPop, 400);
+  }
+  $("welcomeJoin").addEventListener("submit", async e => {
+    e.preventDefault();
+    const wg = $("welcomeWg").value.trim(), pin = $("welcomePin").value.trim(), status = $("welcomeStatus");
+    if (!wg || !pin) return (status.textContent = "Bitte WG-Name und PIN eingeben");
+    const before = sync;
+    sync = { url: sync.url || DEFAULT_SYNC_URL, pin, wg };
+    status.textContent = "Verbinde …";
+    let remote;
+    try {
+      const info = await api("/wg");
+      remote = await api("/settings");
+      if (info.name) status.textContent = `Verbunden mit ${info.name} ✓`;
+    } catch (err) {
+      sync = before;
+      status.textContent = /Failed to fetch|NetworkError|Load failed/.test(err.message) ? "Keine Verbindung zum WG-Server – Internet?" : err.message;
+      return;
+    }
+    if ((before.wg || "") !== wg) forgetWgStand();
+    save(SYNC_KEY, sync);
+    save(TERMS_KEY, { version: TERMS_VERSION, at: Date.now() });
+    const fresh = !(remote && remote.settings && Array.isArray(remote.settings.members) && remote.settings.members.length);
+    if (!fresh) {
+      applySettings(remote.settings);
+      save(SETTINGS_UPDATED_KEY, remote.updated);
+    }
+    welcomeFresh = fresh;
+    renderWelcomeWho();
+    $("welcomeJoin").hidden = true;
+    $("welcomeWho").hidden = false;
+  });
+  let welcomeFresh = false;
+  function renderWelcomeWho() {
+    $("welcomeWhoText").textContent = welcomeFresh
+      ? "Eure WG ist noch leer – trag dich als Erste:r ein. Die anderen kommen dazu, wenn sie sich verbinden."
+      : "Damit deine Stimmen zu dir gehören. Später änderbar.";
+    $("welcomeMembers").innerHTML = welcomeFresh ? "" : state.members.map(m => `<button class="btn" type="button" data-me="${esc(m.id)}">${esc(m.name)}</button>`).join("");
+  }
+  $("welcomeMembers").addEventListener("click", e => {
+    const b = e.target.closest("[data-me]");
+    if (!b) return;
+    save(ME_KEY, b.dataset.me);
+    closeWelcome();
+    pullShared();
+  });
+  $("welcomeAdd").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("welcomeName").value.trim();
+    if (!name) return $("welcomeName").focus();
+    const id = name.toLowerCase().replace(/[^a-z0-9äöü]+/g, "-") + "-" + Date.now().toString(36);
+    const me = { id, name, diet: $("welcomeDiet").value };
+    // neue WG: nur ich (die Beispiel-WG fällt weg); bestehende WG: ich komme dazu
+    const members = welcomeFresh ? [me] : [...state.members, me];
+    applySettings({ members });
+    if (welcomeFresh) [state.plan, otherPlan()].filter(Boolean).forEach(p => p.forEach(d => { d.eaters = d.empty ? [] : [id]; }));
+    save(ME_KEY, id);
+    saveMembers();
+    save(SETTINGS_UPDATED_KEY, Date.now());
+    await pushSettingsNow();
+    savePlan();
+    closeWelcome();
+    pullShared();
+  });
+  $("welcomeSkip").onclick = () => closeWelcome();
 
   // Welche Bring!-Liste? Auswahl gilt für die ganze WG (im Worker gespeichert).
   async function loadBringLists() {
@@ -2775,7 +2871,9 @@
   refresh();
   fitDensity();
   markWahl();
-  if (wahlDue()) setTimeout(openWahlPop, 500);
+  const welcome = !connected() && !fromLink && !load(WELCOME_KEY, false);
+  if (welcome) openWelcome();
+  else if (wahlDue()) setTimeout(openWahlPop, 500);
   if (fromLink) toast("Wochenplan aus Link übernommen");
   else pullShared();
 

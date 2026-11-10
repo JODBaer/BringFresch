@@ -24,7 +24,7 @@ function boot(preset, fakeNow) {
       win.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
       win.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new win.Event("close")); } };
       win.navigator.clipboard = { writeText: async () => {} };
-      Object.entries(preset || {}).forEach(([k, v]) => win.localStorage.setItem(k, JSON.stringify(v)));
+      Object.entries({ bringfrisch_welcome: true, ...(preset || {}) }).forEach(([k, v]) => win.localStorage.setItem(k, JSON.stringify(v)));
       fixWindow(win, { now: fakeNow || STANDARD_NOW }); // feste Uhrzeit (Standard Dienstag, z.B. Donnerstag) + fester Zufall
     }
   });
@@ -236,6 +236,17 @@ check(JSON.parse(thuDom.window.localStorage.getItem("bringfrisch_current_plan"))
 const nextPlan = nd.plan.map((x, i) => (x.empty ? { ...nd.plan[0], day: x.day } : x));
 const monDom = boot({ bringfrisch_current_plan: JSON.parse(thuDom.window.localStorage.getItem("bringfrisch_current_plan")), bringfrisch_plan_week: "2026-W46", bringfrisch_next_plan: { ...nd, plan: nextPlan } }, "2026-11-16T09:00:00");
 check(JSON.parse(monDom.window.localStorage.getItem("bringfrisch_current_plan"))[0].title === nextPlan[0].title && !monDom.window.localStorage.getItem("bringfrisch_next_plan"), "Montag: geplante Woche wird zur laufenden");
+
+// Erster Start: WG-Name + PIN (mit Hinweis auf Nutzungsbedingungen/Datenschutz), «Ohne WG ausprobieren» schliesst
+const firstDom = boot({ bringfrisch_welcome: false });
+const fd = firstDom.window.document;
+check(fd.getElementById("welcomeDialog").open && !fd.getElementById("welcomeJoin").hidden, "erster Start: Willkommen mit WG-Name + PIN");
+check(!fd.getElementById("wpop").classList.contains("show"), "erster Start: kein Wochenwahl-Pop-up darüber");
+check([...fd.querySelectorAll("#welcomeJoin .legal a")].map(a => a.getAttribute("href")).join() === "rechtliches.html#nutzung,rechtliches.html#datenschutz,rechtliches.html#cookies", "Willkommen: kleine Links Nutzungsbedingungen, Datenschutz, Cookies");
+check(fd.querySelectorAll("#legalLinks a").length === 3, "Einstellungen: Links Nutzungsbedingungen · Datenschutz · Cookies");
+fd.getElementById("welcomeSkip").click();
+check(!fd.getElementById("welcomeDialog").open && firstDom.window.localStorage.getItem("bringfrisch_welcome") === "true", "«Ohne WG ausprobieren» schliesst und merkt es sich");
+check(!boot({ bringfrisch_sync: { pin: "1" }, bringfrisch_welcome: false }).window.document.getElementById("welcomeDialog").open, "schon verbunden: kein Willkommen");
 
 check(errors.length === 0, `keine JS-Fehler insgesamt ${errors.join(" | ")}`);
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

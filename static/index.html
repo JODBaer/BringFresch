@@ -146,6 +146,18 @@
     .sheet-body { overflow-y: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
     .field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; }
     .field small { font-weight: 400; color: var(--muted); }
+    #welcomeDialog, #welcomeDialog .sheet { background: var(--bg); }
+    #welcomeAdd { width: 100%; max-width: none; }
+    .welcome { display: flex; flex-direction: column; gap: 14px; max-width: 420px; margin: 0 auto; padding-top: max(24px, env(safe-area-inset-top)); }
+    .welcome h2 { margin: 8px 0 0; font-size: 26px; }
+    .welcome p { margin: 0; color: var(--muted); line-height: 1.5; }
+    .welcome input, .welcome select { font: inherit; font-size: 16px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+    .welcome-who { display: flex; flex-wrap: wrap; gap: 10px; }
+    .welcome-who .btn { flex: 1 1 40%; padding: 14px; font-size: 16px; }
+    .welcome-status { min-height: 1.2em; font-size: 13px; color: var(--muted); }
+    .linkish { background: none; border: 0; padding: 4px; font: inherit; font-size: 13px; color: var(--muted); text-decoration: underline; cursor: pointer; align-self: center; }
+    .legal { font-size: 11.5px; color: var(--muted); text-align: center; margin: 4px 0 0; }
+    .legal a { color: inherit; }
     .recipe { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
     .recipe-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
     .recipe-head b { font-size: 14px; }
@@ -737,6 +749,8 @@
       <details class="card set-more" id="setMore">
         <summary><span><b>Mehr</b><small>PIN, Wochenwahl, Abgleich, Kalender, wer isst wann, Plan teilen, Stil, Farben</small></span></summary>
         <form class="set-row" id="syncForm">
+          <label for="syncWg">WG-Name<small>Leer lassen = erste WG (wie bisher)</small></label>
+          <input type="text" id="syncWg" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z.B. sonnenhof">
           <label for="syncPin">WG-PIN<small>Einmal pro Handy, dann gemerkt. Bekommt ihr von Joshua.</small></label>
           <div class="set-inline">
             <input type="text" id="syncPin" inputmode="numeric" autocomplete="off">
@@ -790,6 +804,7 @@
           <p class="hint" style="padding:0">BringFrisch ist ein privates, nicht kommerzielles Projekt von Joshua Baer für die eigene WG. Keine Werbung, kein Tracking. Rezepte: nur Fakten (Zutaten, Mengen) mit Link zur Originalseite. Bring! ist eine Marke der Bring! Labs AG; BringFrisch ist nicht mit Bring! verbunden. Kontakt über GitHub.</p>
         </div>
       </div>
+      <p class="legal" id="legalLinks"><a href="rechtliches.html#nutzung">Nutzungsbedingungen</a> · <a href="rechtliches.html#datenschutz">Datenschutz</a> · <a href="rechtliches.html#cookies">Cookies</a></p>
     </section>
   </main>
 
@@ -943,6 +958,44 @@
         <div id="dupList" style="display:flex;flex-direction:column;gap:8px"></div>
         <button class="btn primary" type="button" id="dupSendBtn">Senden</button>
         <button class="btn" type="button" id="dupCancelBtn">Abbrechen – nichts senden</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Erster Start: WG verbinden, dann «Wer bist du?» -->
+  <dialog id="welcomeDialog" class="full">
+    <div class="sheet">
+      <div class="sheet-body">
+        <form class="welcome" id="welcomeJoin">
+          <h2>Willkommen bei BringFrisch 🥕</h2>
+          <p>Einmal den Namen eurer WG und den PIN eingeben – dann seht ihr alle denselben Plan und dieselbe Bring!-Liste.</p>
+          <label class="field">WG-Name
+            <input type="text" id="welcomeWg" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z.B. sonnenhof">
+          </label>
+          <label class="field">PIN
+            <input type="text" id="welcomePin" inputmode="numeric" autocomplete="off">
+          </label>
+          <span class="welcome-status" id="welcomeStatus" role="status"></span>
+          <button class="btn primary" type="submit">Verbinden</button>
+          <p class="legal">Mit «Verbinden» akzeptierst du die <a href="rechtliches.html#nutzung">Nutzungsbedingungen</a> und den <a href="rechtliches.html#datenschutz">Datenschutz</a>. Keine <a href="rechtliches.html#cookies">Cookies</a>, kein Tracking.</p>
+          <button class="linkish" type="button" id="welcomeSkip">Ohne WG ausprobieren</button>
+        </form>
+        <div class="welcome" id="welcomeWho" hidden>
+          <h2>Wer bist du?</h2>
+          <p id="welcomeWhoText">Damit deine Stimmen und dein Plan zu dir gehören. Später änderbar.</p>
+          <div class="welcome-who" id="welcomeMembers"></div>
+          <form class="welcome" id="welcomeAdd" style="padding:0;gap:10px">
+            <label class="field">Nicht dabei? Dein Name
+              <input type="text" id="welcomeName" autocomplete="given-name">
+            </label>
+            <select id="welcomeDiet" aria-label="Ernährung">
+              <option value="fleisch">Fleisch</option>
+              <option value="vegi">Vegi</option>
+              <option value="vegan">Vegan</option>
+            </select>
+            <button class="btn dark" type="submit">Das bin ich</button>
+          </form>
+        </div>
       </div>
     </div>
   </dialog>

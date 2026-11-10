@@ -1,6 +1,6 @@
 # Test-Version: jeder Push auf main (oder von Hand «Run workflow")
 #   1. alle Offline-Tests (wie lokal: cd tests && npm ci && npm run ci)
-#   2. Test-Server + Test-Seite auf Cloudflare aktualisieren
+#   2. Test-Version auf Cloudflare aktualisieren (ein Worker: Seite + Server)
 #        https://bringfrisch-test.bringfrisch-worker.workers.dev  (schreibt nur in die Bring!-Liste «Home» des Bots)
 #   3. Live-Test gegen echtes Bring! («Home»), räumt danach auf
 # Die WG-Version (GitHub Pages) kommt nur mit einem Release-Tag v* (deploy-pages.yml).
@@ -64,15 +64,11 @@ jobs:
       - name: Skip notice
         if: env.CLOUDFLARE_API_TOKEN == ''
         run: echo "::notice::Secret CLOUDFLARE_API_TOKEN fehlt – Test-Version wird nicht aktualisiert."
-      - name: Test-Server (Worker --env stage)
-        if: env.CLOUDFLARE_API_TOKEN != ''
-        working-directory: worker
-        run: npx --yes wrangler@4.159.0 deploy --env stage
-      - name: Test-Seite (dist-stage)
+      - name: Test-Version (Seite + Server = Worker bringfrisch-test)
         if: env.CLOUDFLARE_API_TOKEN != ''
         run: |
           node tools/build_stage.mjs
-          npx --yes wrangler@4.159.0 deploy -c worker/stage-site.jsonc
+          cd worker && npx --yes wrangler@4.159.0 deploy --env stage
 
   live:
     needs: stage

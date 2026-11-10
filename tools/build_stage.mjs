@@ -1,13 +1,13 @@
 // Baut die Test-Seite (Stage) aus static/ nach dist-stage/:
-//   - spricht mit dem Test-Server (bringfrisch-stage), der nur in die Bring!-Liste «Home» des Bots schreibt
+//   - spricht mit dem Test-Worker (bringfrisch-test, gleiche Adresse wie die Seite), der nur in die Bring!-Liste «Home» des Bots schreibt
 //   - heisst «BringFrisch Test» und zeigt oben ein kleines «TEST»-Band, damit man sie nicht verwechselt
 //   node tools/build_stage.mjs
-// Veröffentlichen: npx wrangler pages deploy dist-stage --project-name bringfrisch-stage --branch main
+// Veröffentlichen (Seite + Server in einem): cd worker && npx wrangler deploy --env stage
 import { cpSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const STAGE_WORKER = "https://bringfrisch-stage.bringfrisch-worker.workers.dev";
+export const STAGE_WORKER = "https://bringfrisch-test.bringfrisch-worker.workers.dev";
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const src = path.join(root, "static"), out = path.join(root, "dist-stage");
 

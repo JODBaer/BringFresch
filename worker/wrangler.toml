@@ -2,6 +2,11 @@ name = "bringfrisch"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 
+# Name der ersten WG (beim ersten Start in der App eingeben, mit dem bisherigen WG-PIN).
+# Weitere WGs: node tools/new_wg.mjs (eigener Name + PIN, eigene Daten, eigene Bring!-Liste).
+[vars]
+MAIN_WG = "wg1"
+
 # Tägliche Sicherung der WG-Daten (03:00 UTC), siehe README «Sicherung»
 [triggers]
 crons = ["0 3 * * *"]
@@ -20,12 +25,16 @@ id = "477e6573755e423fba0e3e8410fbb8cc"
 # Optional: BRING_LIST_UUID (sonst Standardliste des Bot-Kontos)
 
 # ---------------------------------------------------------------------------
-# Test-Server (Stage): npx wrangler deploy --env stage
+# Test-Version (ein Worker für Test-Seite UND Test-Server, gleiche Adresse):
+#   node tools/build_stage.mjs && cd worker && npx wrangler deploy --env stage
+#   -> https://bringfrisch-test.bringfrisch-worker.workers.dev
+# Dateien aus dist-stage/ werden direkt ausgeliefert, alles andere (/plan, /bring/…) beantwortet der Worker.
 # Eigener Speicher, schreibt NUR in die Bring!-Liste «Home» des Bots (nie in die WG-Liste).
 # Secrets einmalig: powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1
 [env.stage]
-name = "bringfrisch-stage"
-vars = { ONLY_LIST_NAME = "Home" }
+name = "bringfrisch-test"
+vars = { ONLY_LIST_NAME = "Home", MAIN_WG = "test" }
+assets = { directory = "../dist-stage" }
 
 [[env.stage.kv_namespaces]]
 binding = "WG"

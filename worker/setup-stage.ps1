@@ -1,4 +1,4 @@
-# Einmalig: Zugangsdaten für den TEST-Server (bringfrisch-stage) setzen.
+# Einmalig: Zugangsdaten für den TEST-Server (Worker bringfrisch-test: Test-Seite + Test-Server) setzen.
 #   powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1
 # Fragt E-Mail und Passwort des Bring!-Bots (allmenbot) und einen Test-PIN verdeckt ab.
 # Der Test-PIN ist NICHT der WG-PIN: eigener PIN nur für die Test-Seite und den Live-Test (GitHub-Secret STAGE_PIN).

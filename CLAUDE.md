@@ -18,6 +18,9 @@ WG: Joshua, Lukas, Leonie = Fleisch · Jo = Vegi (keine Veganer).
 
 Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 
+**Mehrere WGs** (ein Worker): Header `X-WG` (Name) + `X-WG-PIN`. Erste WG = `MAIN_WG` (`wrangler.toml`, Secret `WG_PIN`, Daten ohne Präfix); weitere WGs `wgs:<name>` in KV (PIN-Hash, `node tools/new_wg.mjs "Name"`), Daten unter `w:<name>:…`. Gleicher Bring!-Bot; jede weitere WG muss ihre Liste selbst wählen, Listen anderer WGs sind nicht wählbar (`listowner:<uuid>`). 10 falsche PINs = 15 Min. Sperre.
+**Erster Start** (nicht verbunden): Willkommen mit WG-Name + PIN (= Zustimmung zu `static/rechtliches.html`, gespeichert in `bringfrisch_terms`), dann «Wer bist du?» (leere WG: sich selbst eintragen). «Ohne WG ausprobieren» = lokal.
+
 ## Fachregeln
 
 - **Nächste Woche** (ab Donnerstag): Chip «KW 47 →» in der Abschnittszeile bzw. Wischen; eigener Plan pro KW (`bringfrisch_next_plan`, Worker `/plan/:week`), `state.plan` ist immer die angezeigte Woche. Offene Tage (`empty: true`) kaufen nichts und stehen nicht im Kalender. Wochenwahl pro Woche gespeichert. Montag: geplante Woche wird zur laufenden.
@@ -51,6 +54,6 @@ node tools/build_stage.mjs               # Test-Version bauen (dist-stage/, Test
 cd worker && npx wrangler deploy        # Worker von Hand (normal: per Release-Tag)
 ```
 
-Test-Version: `stage.yml` bei jedem Push auf main → Tests → Test-Server (`wrangler deploy --env stage`, `ONLY_LIST_NAME=Home`) + Test-Seite `bringfrisch-test…workers.dev` → Live-Test `tests/stage_live.mjs` gegen Bring! «Home» (Secret `STAGE_PIN`). Der Test-Server darf nie in die WG-Liste schreiben.
+Test-Version: `stage.yml` bei jedem Push auf main → Tests → **ein** Worker `bringfrisch-test` = Test-Seite (Assets aus `dist-stage/`) + Test-Server (`wrangler deploy --env stage`, `ONLY_LIST_NAME=Home`, `MAIN_WG=test`) → Live-Test `tests/stage_live.mjs` gegen Bring! «Home» (Secret `STAGE_PIN`). Der Test-Server darf nie in die WG-Liste schreiben.
 CI: `.github/workflows/deploy-pages.yml` läuft nur bei Tags `v*` (oder von Hand): Job `test` (`npm run ci -- --shots`, Fotos als Artefakt bei Fehler), danach `worker` (WG-Server per Wrangler, braucht Secrets `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`, sonst Warnung) und dann `deploy` (Pages: `index.html` + `static/`, damit `/static/` gleich bleibt). Push auf main veröffentlicht nichts. Worker sichert täglich alle KV-Daten (`backup:<Tag>`, 30 Tage, `worker/README.md`).
 Tests sind deterministisch: `tests/determinism.js` (feste Uhr Di 10.11.2026, fester Zufall), kein Netz (fetch, Bring!, KV nachgebaut). Neue Tests genauso; neue Funktion in der App = neuer Schritt in `tests/ui_e2e.mjs` (Anleitung: README «Neuen Test hinzufügen»). Live-Tests (`tests/e2e_live.*`, `tools/check_live.*`) brauchen Zugangsdaten → nur von Hand, nie in CI.

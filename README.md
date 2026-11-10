@@ -4,6 +4,12 @@ WG-Menüplaner mit Schweizer Saisongemüse. Die WG wählt gemeinsam 7 Znacht fü
 
 **App:** <https://jodbaer.github.io/BringFresch/> (auf dem Handy öffnen → «Zum Home-Bildschirm»)
 
+## Erster Start
+
+Neues Handy: **WG-Name + PIN** eingeben → **«Wer bist du?»** antippen (leere WG: sich selbst eintragen). Fertig.
+Mit «Verbinden» gelten die [Nutzungsbedingungen, Datenschutz und Cookies](https://jodbaer.github.io/BringFresch/static/rechtliches.html) (auch klein unten in den Einstellungen). «Ohne WG ausprobieren» = nur auf diesem Handy.
+Unsere WG: Name **`wg1`** + bisheriger PIN (schon verbundene Handys merken nichts).
+
 ## Bedienung (Plan)
 
 - **Tag** (Kreis links) antippen = Menü auf-/zuklappen: Zutaten mit Mengen, «Zum Rezept ↗», «Wechseln».
@@ -46,6 +52,37 @@ Rezepte: 10 Klassiker + 6 schnelle/Reste + 82 Saisonrezepte von Betty Bossi, Mig
 
 Ohne Worker funktioniert alles auf einem Handy; Bring! dann über Teilen/Kopieren.
 
+## Mehrere WGs
+
+Ein WG-Server für alle WGs, jede WG sieht nur ihre eigenen Daten (Plan, Stimmen, Vorrat, Mitbewohner, Rezepte, Kalender).
+
+| | Erste WG (unsere) | Weitere WGs |
+|---|---|---|
+| Name in der App | `wg1` (`MAIN_WG` in `worker/wrangler.toml`) oder leer | z.B. `sonnenhof` (gross/klein, Umlaute egal) |
+| PIN | Secret `WG_PIN` (wie bisher) | nur als Hash in KV (`wgs:<name>`) |
+| Daten in KV | ohne Präfix (wie bisher) | `w:<name>:…` |
+| Bring! | gleicher Bot, eigene Liste | gleicher Bot, eigene Liste – **muss selbst gewählt werden** |
+
+Schutz vor der falschen Liste: Eine weitere WG schreibt nirgends hin, bis sie ihre Liste gewählt hat. Listen, die eine andere WG benutzt (auch unsere), sind gar nicht wählbar.
+10 falsche PINs = WG 15 Minuten gesperrt.
+
+### Neue WG einrichten (Anleitung)
+
+1. **WG anlegen** (einmal, am PC, mit `npx wrangler login`):
+   ```bash
+   node tools/new_wg.mjs "Sonnenhof"          # WG-Server
+   node tools/new_wg.mjs "Sonnenhof" --stage  # zum Ausprobieren auf der Test-Version
+   ```
+   Fragt den PIN verdeckt (mind. 6 Zeichen, zweimal). Gibt WG-Name und Kalender-Link aus.
+2. **Bring!-Liste teilen**: Die neue WG lädt in ihrer Bring!-App **allmenbot@gmail.com** in ihre Einkaufsliste ein. Im Bot-Konto (Bring!-App/Web mit dem Bot anmelden) die Einladung annehmen.
+3. **Handys verbinden**: Jede Person öffnet <https://jodbaer.github.io/BringFresch/>, «Zum Home-Bildschirm», gibt WG-Name + PIN ein und tippt sich unter «Wer bist du?» an. Die erste Person trägt sich selbst ein, die anderen Mitbewohner kommen beim Verbinden dazu (oder unter Einstellungen → Mitbewohner).
+4. **Liste wählen**: Einstellungen → «Bring!-Liste der WG» → die eigene Liste wählen. Erst danach geht «Bring! füllen».
+5. Optional: Einstellungen → Mehr → «Kalender abonnieren».
+
+**WG löschen**: im Cloudflare-Dashboard → KV → Namespace `WG` alle Schlüssel `w:<name>:…`, `wgs:<name>`, `cal:<token>` und `listowner:<uuid>` der WG löschen (Backups laufen nach 30 Tagen ab).
+**PIN ändern**: WG löschen (nur `wgs:<name>` und `cal:<token>`) und mit `new_wg.mjs` gleich neu anlegen – die Daten unter `w:<name>:` bleiben.
+Später eigener Bot pro WG: noch nicht eingebaut (heute ein Bot für alle; wird er gesperrt, trifft es alle WGs).
+
 ## Tests
 
 Ein Befehl, ohne Internet, jedes Mal gleich (feste Uhr Di 10.11.2026, fester Zufall, Bring! und WG-Server nachgebaut). Braucht Node 22 und Edge oder Chrome:
@@ -85,7 +122,8 @@ Hilfsfunktionen: `tap` (antippen), `typeInto` (Feld antippen + tippen), `choose`
 
 **Test-Version** (zum Ausprobieren, ohne die WG zu stören): <https://bringfrisch-test.bringfrisch-worker.workers.dev>
 – orange «TEST»-Band, eigener Test-Server mit eigenem Speicher und eigenem Test-PIN, schreibt **nur** in die Bring!-Liste «Home» des Bots (kann technisch nicht auf die WG-Liste).
-Von Hand aktualisieren: `node tools/build_stage.mjs`, dann `cd worker && npx wrangler deploy --env stage` und `npx wrangler deploy -c worker/stage-site.jsonc`.
+Seite und Server sind **ein** Worker (`bringfrisch-test`). Von Hand aktualisieren: `node tools/build_stage.mjs`, dann `cd worker && npx wrangler deploy --env stage`.
+Einmalig nach der Zusammenlegung (v1.6.0): Secrets für den neuen Test-Worker setzen (`powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1`), danach den alten Test-Server löschen: `cd worker && npx wrangler delete --name bringfrisch-stage`.
 Einmalig einrichten (alle Zugangsdaten, Schritt für Schritt, nichts wird angezeigt): `powershell -ExecutionPolicy Bypass -File tools\setup-secrets.ps1` – GitHub-Anmeldung, Cloudflare Account-ID (automatisch) und API-Token, Test-Server mit Bot-Zugang und Test-PIN.
 
 **Release** (neue App-Version veröffentlichen) – ein normaler Push auf `main` veröffentlicht nichts:
@@ -98,4 +136,4 @@ Fortschritt unter GitHub → Actions. Rote Tests = keine neue Version; die Bilds
 
 ## Kosten
 
-Nichts. GitHub Pages + Cloudflare Free Plan. Eine WG mit 4 Leuten braucht weit unter 1 % der Gratis-Limits (100 000 Aufrufe/Tag, 1 000 Speicher-Schreibvorgänge/Tag). Zahlen: Cloudflare-Dashboard → Workers & Pages → bringfrisch → Metrics.
+Nichts. GitHub Pages + Cloudflare Free Plan. Eine WG mit 4 Leuten braucht weit unter 1 % der Gratis-Limits (zwei WGs ebenso; Engpass zuerst: 1 000 KV-«list»/Tag, v.a. offene Wochenwahl) (100 000 Aufrufe/Tag, 1 000 Speicher-Schreibvorgänge/Tag). Zahlen: Cloudflare-Dashboard → Workers & Pages → bringfrisch → Metrics.

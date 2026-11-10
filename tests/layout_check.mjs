@@ -43,7 +43,7 @@ for (const os of ["ios", "android"]) {
         window.Date = FakeDate;
         // fester Zufall (Mulberry32), damit jeder Lauf dieselben Gerichte zeigt
         let s = 46; Math.random = () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-        try { localStorage.setItem("bringfrisch_wahl_2026-W46", "true"); localStorage.setItem("bringfrisch_wahl_2026-W47", "true"); } catch (e) {}
+        try { localStorage.setItem("bringfrisch_welcome", "true"); localStorage.setItem("bringfrisch_wahl_2026-W46", "true"); localStorage.setItem("bringfrisch_wahl_2026-W47", "true"); } catch (e) {}
       });
       const errors = [];
       page.on("pageerror", e => errors.push(e.message));

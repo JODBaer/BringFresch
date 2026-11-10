@@ -1,5 +1,5 @@
 // Offline-Test für den Worker: Bring! und KV werden simuliert. Start: node worker/test.mjs
-import worker, { backup } from "./src/index.js";
+import worker, { backup, pinHash } from "./src/index.js";
 
 let fails = 0;
 const check = (cond, msg) => { console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`); if (!cond) fails++; };
@@ -9,6 +9,7 @@ const store = new Map(), kvOpts = new Map();
 const KV = {
   async get(k, type) { const v = store.get(k); return v == null ? null : type === "json" ? JSON.parse(v) : v; },
   async put(k, v, opts) { store.set(k, v); if (opts) kvOpts.set(k, opts); },
+  async delete(k) { store.delete(k); },
   async list({ prefix = "" } = {}) { return { keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }; },
 };
 const env = { WG: KV, WG_PIN: "1234", CAL_TOKEN: "cal-secret", BRING_EMAIL: "bot@example.ch", BRING_PASSWORD: "pw" };
@@ -25,7 +26,7 @@ globalThis.fetch = async (url, init = {}) => {
     if (p.get("password") !== "pw") return new Response("", { status: 401 });
     return Response.json({ uuid: "u1", access_token: "tok", bringListUUID: "list-1" });
   }
-  if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home" }, { listUuid: "list-wg", name: "WG" }] });
+  if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home" }, { listUuid: "list-wg", name: "WG" }, { listUuid: "list-sh", name: "Sonnenhof" }] });
   if (url.includes("/bringlists/list-wg") && (init.method || "GET") === "GET") return Response.json({ items: { purchase: wgPuts.map(n => ({ itemId: n })) } });
   if (url.includes("/bringlists/list-wg") && init.method === "PUT") { wgPuts.push(new URLSearchParams(init.body).get("purchase")); return new Response(null, { status: 204 }); }
   if (url.includes("/bringlists/list-1") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
@@ -52,10 +53,10 @@ globalThis.fetch = async (url, init = {}) => {
 };
 
 const ORIGIN = "https://jodbaer.github.io";
-const call = (path, { method = "GET", pin = "1234", body, origin = ORIGIN } = {}) =>
+const call = (path, { method = "GET", pin = "1234", body, origin = ORIGIN, wg } = {}) =>
   worker.fetch(new Request("https://bf.example.workers.dev" + path, {
     method,
-    headers: { Origin: origin, "Content-Type": "application/json", ...(pin ? { "X-WG-PIN": pin } : {}) },
+    headers: { Origin: origin, "Content-Type": "application/json", ...(pin ? { "X-WG-PIN": pin } : {}), ...(wg ? { "X-WG": wg } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   }), env);
 
@@ -124,7 +125,7 @@ check(r.status === 400, "Einstellungen ohne Mitbewohner abgelehnt");
 // 2b. Liste wählen
 r = await call("/bring/lists");
 let ls = await r.json();
-check(ls.lists.length === 2 && ls.active === "list-1", "Listen des Bot-Kontos + aktive Liste");
+check(ls.lists.length === 3 && ls.active === "list-1", "Listen des Bot-Kontos + aktive Liste");
 r = await call("/bring/target", { method: "PUT", body: { uuid: "gibts-nicht" } });
 check(r.status === 400, "unbekannte Liste wird abgelehnt");
 r = await call("/bring/target", { method: "PUT", body: { uuid: "list-wg" } });
@@ -212,6 +213,48 @@ r = await call("/backup/2026-11-10");
 check(r.status === 200 && (await r.json()).keys.vorrat, "/backup/:tag liefert die Sicherung");
 r = await call("/backup/2026-11-10", { pin: "falsch" });
 check(r.status === 401, "Sicherung nur mit PIN");
+
+// 7. Zweite WG (gleicher Server, eigene Daten, gleicher Bot mit eigener Bring!-Liste)
+store.set("wgs:sonnenhof", JSON.stringify({ name: "Sonnenhof", salt: "s1", pinHash: await pinHash("s1", "9876"), calToken: "cal-sonnenhof-0123456789" }));
+store.set("cal:cal-sonnenhof-0123456789", "sonnenhof");
+const sh = (path, o = {}) => call(path, { wg: "Sonnenhof", pin: "9876", ...o });
+r = await sh("/wg");
+check(r.status === 200 && (await r.json()).name === "Sonnenhof", "zweite WG: WG-Name (gross/klein egal) + PIN verbindet");
+r = await call("/wg", { wg: "sonnenhof", pin: "1234" });
+check(r.status === 401, "zweite WG: PIN der ersten WG passt nicht");
+r = await call("/wg", { wg: "gibtsnicht", pin: "9876" });
+check(r.status === 401, "unbekannte WG -> 401");
+r = await sh("/settings");
+check((await r.json()).settings === null, "zweite WG sieht die Einstellungen der ersten nicht");
+const mainPlanBefore = store.get("plan");
+r = await sh("/plan", { method: "PUT", body: { week: "2026-W46", plan: Array.from({ length: 7 }, (_, i) => ({ title: i ? "" : "Sonnenhof-Risotto", eaters: ["mia"] })), members: [{ id: "mia", name: "Mia" }] } });
+check(r.status === 200 && store.get("plan") === mainPlanBefore && JSON.parse(store.get("w:sonnenhof:plan")).plan[0].title === "Sonnenhof-Risotto", "Plan der zweiten WG liegt getrennt");
+await sh("/week/2026-W46/vote/mia", { method: "PUT", body: { likes: ["x"] } });
+check(!(await (await call("/week/2026-W46")).json()).votes.mia && (await (await sh("/week/2026-W46")).json()).votes.mia, "Stimmen getrennt pro WG");
+r = await sh("/bring/list");
+check(r.status === 409, "zweite WG ohne gewählte Liste schreibt nirgends hin (409)");
+r = await sh("/bring/lists");
+ls = await r.json();
+check(ls.active === null && ls.lists.map(l => l.uuid).join() === "list-sh", `zweite WG sieht die Listen der ersten WG nicht (${ls.lists.map(l => l.name)})`);
+r = await sh("/bring/target", { method: "PUT", body: { uuid: "list-1" } });
+check(r.status === 400, "zweite WG kann die Liste der ersten nicht wählen");
+r = await sh("/bring/target", { method: "PUT", body: { uuid: "list-sh" } });
+check(r.status === 200 && store.get("w:sonnenhof:bringList") === "list-sh" && store.get("listowner:list-sh") === "sonnenhof", "zweite WG wählt ihre Liste");
+ls = await (await call("/bring/lists")).json();
+check(!ls.lists.some(l => l.uuid === "list-sh"), "erste WG sieht die Liste der zweiten nicht mehr");
+r = await call("/cal/cal-sonnenhof-0123456789.ics", { pin: null });
+check(r.status === 200 && (await r.text()).includes("Sonnenhof-Risotto"), "Kalender-Abo der zweiten WG zeigt ihren Plan");
+check((await (await sh("/cal-link")).json()).url.endsWith("/cal/cal-sonnenhof-0123456789.ics"), "Kalender-Link pro WG");
+env.MAIN_WG = "Bärenhaus";
+r = await call("/wg", { wg: "barenhaus" });
+check(r.status === 200 && (await r.json()).main, "erste WG geht auch mit ihrem Namen (Umlaute egal)");
+delete env.MAIN_WG;
+for (let i = 0; i < 10; i++) await call("/wg", { wg: "Sonnenhof", pin: "0000" });
+r = await sh("/wg");
+check(r.status === 429, "nach 10 falschen PINs ist die WG kurz gesperrt");
+const b3 = await backup(env, new Date("2026-11-12T03:00:00Z"));
+const snap3 = JSON.parse(store.get("backup:2026-11-12")).keys;
+check(snap3["w:sonnenhof:plan"] && !snap3["lock:sonnenhof"], `Sicherung enthält die zweite WG, keine Sperren (${b3.count})`);
 
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

@@ -7,7 +7,8 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 const { fixWindow, STANDARD_NOW } = require("./determinism.js");
 
 const root = process.argv[2] || path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..", "static");
-const worker = (await import("file:///" + path.join(root, "..", "worker", "src", "index.js").replace(/\\/g, "/"))).default;
+const workerMod = await import("file:///" + path.join(root, "..", "worker", "src", "index.js").replace(/\\/g, "/"));
+const worker = workerMod.default;
 
 let fails = 0;
 const check = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) fails++; };
@@ -21,6 +22,7 @@ const env = {
   WG: {
     async get(k, t) { const v = store.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
     async put(k, v) { store.set(k, v); },
+    async delete(k) { store.delete(k); },
     async list({ prefix }) { return { keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) }; },
   },
 };
@@ -48,7 +50,7 @@ const errors = [];
 const vc = new VirtualConsole();
 vc.on("jsdomError", e => errors.push(e.message));
 
-function phone(me, fakeNow) {
+function phone(me, fakeNow, { fresh = false } = {}) {
   const dom = new JSDOM(html, {
     url: "https://jodbaer.github.io/BringFresch/", runScripts: "dangerously", pretendToBeVisual: true, virtualConsole: vc,
     beforeParse(w) {
@@ -57,8 +59,10 @@ function phone(me, fakeNow) {
       w.navigator.clipboard = { writeText: async () => {} };
       // festes Datum (Standard Dienstag KW 46) + fester Zufall; Date.now() läuft echt (Worker: neuerer Stand gewinnt)
       fixWindow(w, { now: fakeNow || STANDARD_NOW, realNow: true });
-      w.localStorage.setItem("bringfrisch_sync", JSON.stringify({ url: WORKER_URL, pin: "4711" }));
-      w.localStorage.setItem("bringfrisch_me", JSON.stringify(me));
+      if (!fresh) {
+        w.localStorage.setItem("bringfrisch_sync", JSON.stringify({ url: WORKER_URL, pin: "4711" }));
+        w.localStorage.setItem("bringfrisch_me", JSON.stringify(me));
+      }
       w.fetch = async (u, init = {}) => {
         const req = new Request(String(u), { ...init, headers: { ...(init.headers || {}), Origin: "https://jodbaer.github.io" } });
         return worker.fetch(req, env);
@@ -295,6 +299,41 @@ const s2Members = JSON.parse(S2.localStorage.getItem("bringfrisch_members") || "
 check(s2Members.length === 5 && s2Members.some(m => m.name === "Mia") && S2.document.getElementById("dinnerTime").value === "19:00", `Jo hat nach dem Herunterziehen 5 Mitbewohner und 19:00 (${s2Members.map(m => m.name).join(", ")})`);
 const who = S2.document.querySelector("#days .prow .who");
 check(who.classList.contains("many") && who.style.getPropertyValue("--cols") === "3" && who.querySelectorAll(".av").length === 5 && who.querySelectorAll(".av.r2").length === 2, "Plan bei 5 Personen: zwei Reihen, 3 oben + 2 unten");
+
+// Zweite WG: neues Handy, erster Start -> WG-Name + PIN -> «Wer bist du?»; Daten getrennt von der ersten WG
+store.set("wgs:sonnenhof", JSON.stringify({ name: "Sonnenhof", salt: "ab", pinHash: await workerMod.pinHash("ab", "135790"), calToken: "cal-sonnenhof-xxxxxxxxxx" }));
+const mainSettingsBefore = store.get("settings"), mainPlanBefore = store.get("plan");
+const join = async (W, wg, pin) => {
+  W.document.getElementById("welcomeWg").value = wg;
+  W.document.getElementById("welcomePin").value = pin;
+  W.document.getElementById("welcomeJoin").dispatchEvent(new W.Event("submit", { cancelable: true }));
+  await wait(400);
+};
+const W1 = phone(null, null, { fresh: true });
+await wait(300);
+check(W1.document.getElementById("welcomeDialog").open, "neues Handy: Willkommen (WG-Name + PIN)");
+await join(W1, "Sonnenhof", "4711");
+check(/Falscher WG-Name oder PIN/.test(W1.document.getElementById("welcomeStatus").textContent) && !W1.localStorage.getItem("bringfrisch_sync"), "falscher PIN: Meldung, nichts gespeichert");
+await join(W1, "Sonnenhof", "135790");
+check(!W1.document.getElementById("welcomeWho").hidden && !W1.document.querySelector("#welcomeMembers [data-me]"), "leere WG: «Wer bist du?» ohne fremde Namen");
+W1.document.getElementById("welcomeName").value = "Mia";
+W1.document.getElementById("welcomeDiet").value = "vegi";
+W1.document.getElementById("welcomeAdd").dispatchEvent(new W1.Event("submit", { cancelable: true }));
+await wait(2500);
+const shSettings = JSON.parse(store.get("w:sonnenhof:settings") || "{}").settings || {};
+check(!W1.document.getElementById("welcomeDialog").open && shSettings.members && shSettings.members.map(m => m.name).join() === "Mia", `erste Person der zweiten WG: nur Mia (${(shSettings.members || []).map(m => m.name)})`);
+check(JSON.parse(W1.localStorage.getItem("bringfrisch_sync")).wg === "Sonnenhof" && JSON.parse(W1.localStorage.getItem("bringfrisch_terms")).version, "WG-Name gemerkt, Bedingungen akzeptiert (mit Datum)");
+check(store.get("settings") === mainSettingsBefore && store.get("plan") === mainPlanBefore, "erste WG unberührt (Mitbewohner, Plan)");
+const shPlan = JSON.parse(store.get("w:sonnenhof:plan") || "null");
+check(shPlan && shPlan.plan.every(d => d.empty || d.eaters.join() === shSettings.members[0].id), "Plan der zweiten WG: nur Mia isst mit");
+const W2 = phone(null, null, { fresh: true });
+await wait(300);
+await join(W2, "sonnenhof", "135790");
+const btns = [...W2.document.querySelectorAll("#welcomeMembers [data-me]")];
+check(btns.map(b => b.textContent).join() === "Mia", "zweites Handy der zweiten WG: «Wer bist du?» zeigt Mia");
+btns[0].click();
+await wait(300);
+check(!W2.document.getElementById("welcomeDialog").open && JSON.parse(W2.localStorage.getItem("bringfrisch_me")) === shSettings.members[0].id, "angetippt = «Ich bin» gespeichert");
 
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

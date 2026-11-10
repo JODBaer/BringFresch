@@ -59,10 +59,11 @@ const WORKER = "https://bringfrisch.bringfrisch-worker.workers.dev"; // DEFAULT_
 const PIN = "2468"; // nur für diesen Test-Worker im Speicher – nicht der WG-PIN
 const kv = new Map();
 const env = {
-  WG_PIN: PIN, CAL_TOKEN: "cal-test", BRING_EMAIL: "bot@test.invalid", BRING_PASSWORD: "test",
+  WG_PIN: PIN, MAIN_WG: "wg1", CAL_TOKEN: "cal-test", BRING_EMAIL: "bot@test.invalid", BRING_PASSWORD: "test",
   WG: {
     async get(k, t) { const v = kv.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
     async put(k, v) { kv.set(k, v); },
+    async delete(k) { kv.delete(k); },
     async list({ prefix }) { return { keys: [...kv.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) }; },
   },
 };
@@ -163,7 +164,7 @@ async function phone({ name, os, scheme, now, preset = {}, context, url }) {
     Math.random = () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     try {
       if (!localStorage.getItem("__ui_seeded")) {
-        for (const [k, v] of Object.entries(preset)) localStorage.setItem(k, v);
+        for (const [k, v] of Object.entries({ bringfrisch_welcome: "true", ...preset })) localStorage.setItem(k, v);
         localStorage.setItem("__ui_seeded", "1");
       }
     } catch (e) { /* ohne Speicher */ }
@@ -1350,6 +1351,45 @@ await step(C2, "Montag: die geplante KW 47 ist jetzt die laufende Woche", async 
   await shot(C2, "01-montag");
   expect(C2.errors.length === 0 && C2.blocked.length === 0, [...C2.errors, ...C2.blocked].join(" | "));
 });
+
+// ---------------------------------------------------------------------------------------------
+// Ablauf D: iPhone, dunkel, ganz neues Handy – Willkommen (WG-Name + PIN), «Wer bist du?», Rechtliches
+// ---------------------------------------------------------------------------------------------
+const D = await phone({ name: "D-iphone-erster-start", os: "ios", scheme: "dark", now: "2026-11-10T12:00:00", preset: { bringfrisch_welcome: "false" } });
+await step(D, "Erster Start: WG-Name + PIN, falscher PIN zeigt Fehler, dann «Wer bist du?» antippen", async () => {
+  await until(D, () => document.getElementById("welcomeDialog").open && !document.getElementById("welcomeJoin").hidden, "Willkommen fehlt");
+  expect((await count(D, "#welcomeJoin .legal a")) === 3, "Links Nutzungsbedingungen/Datenschutz/Cookies fehlen");
+  await shot(D, "01-willkommen");
+  D.allow.push(/status of 401/);
+  await typeInto(D, "#welcomeWg", "WG1");
+  await typeInto(D, "#welcomePin", "0000");
+  await tap(D, '#welcomeJoin button[type="submit"]');
+  await until(D, () => /Falscher/.test(document.getElementById("welcomeStatus").textContent), "Fehler bei falschem PIN fehlt");
+  D.allow.pop();
+  await typeInto(D, "#welcomePin", PIN);
+  await tap(D, '#welcomeJoin button[type="submit"]');
+  await until(D, () => !document.getElementById("welcomeWho").hidden && document.querySelectorAll("#welcomeMembers [data-me]").length > 1, "«Wer bist du?» fehlt");
+  await shot(D, "02-wer-bist-du");
+  const id = await D.page.$eval("#welcomeMembers [data-me]:last-child", b => b.dataset.me);
+  await tap(D, "#welcomeMembers [data-me]:last-child");
+  await until(D, () => !document.getElementById("welcomeDialog").open, "Willkommen bleibt offen");
+  expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_me"))) === id, "«Ich bin» nicht gespeichert");
+  expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_sync")).wg === "WG1" && !!JSON.parse(localStorage.getItem("bringfrisch_terms")).at), "WG-Name/Zustimmung nicht gemerkt");
+  await until(D, () => document.getElementById("syncStatus").textContent === "Verbunden ✓", "nicht verbunden");
+});
+await step(D, "Einstellungen: kleine Links, Datenschutz öffnet die Seite Rechtliches", async () => {
+  await until(D, () => !document.getElementById("wpop").hidden, "nach dem Willkommen kommt die Wochenwahl nicht");
+  await tap(D, "#wlater");
+  await until(D, () => document.getElementById("wpop").hidden && !document.getElementById("wscrim").classList.contains("show"), "Pop-up bleibt");
+  await tap(D, '[data-tab="wg"]');
+  expect((await count(D, "#legalLinks a")) === 3, "Links in den Einstellungen fehlen");
+  await D.page.$eval("#legalLinks", e => e.scrollIntoView());
+  await Promise.all([D.page.waitForNavigation({ waitUntil: "load" }), tap(D, '#legalLinks a[href$="#datenschutz"]')]);
+  expect(/Rechtliches/.test(await text(D, "h1")) && /keine Cookies/i.test(await text(D, "#cookies + p")), "Seite Rechtliches falsch");
+  await shot(D, "03-rechtliches");
+  expect(D.errors.length === 0, D.errors.join(" | "));
+});
+await D.context.close();
 
 await browser.close();
 server.close();

@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'bringfrisch-cache-v35';
+﻿const CACHE_NAME = 'bringfrisch-cache-v36';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,8 @@ const STATIC_ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './recipe_importer.js',
-  './manifest.json'
+  './manifest.json',
+  './rechtliches.html'
 ];
 
 self.addEventListener('install', (event) => {

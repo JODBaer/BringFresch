@@ -1,4 +1,4 @@
-// Live-Test gegen den TEST-Server (bringfrisch-stage) und das echte Bring! – nur die Liste «Home» des Bots.
+// Live-Test gegen den TEST-Server (bringfrisch-test: Test-Seite und Test-Server in einem Worker) und das echte Bring! – nur die Liste «Home» des Bots.
 // Die WG-Liste wird nie berührt: der Test-Server kann gar nicht in eine andere Liste schreiben (ONLY_LIST_NAME).
 //
 //   Lokal (fragt den Test-PIN verdeckt):  powershell -ExecutionPolicy Bypass -File tests\stage_live.ps1
@@ -16,7 +16,7 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 const { fixWindow } = require("./determinism.js");
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const SERVER = process.env.STAGE_URL || "https://bringfrisch-stage.bringfrisch-worker.workers.dev";
+const SERVER = process.env.STAGE_URL || "https://bringfrisch-test.bringfrisch-worker.workers.dev";
 const ORIGIN = "https://bringfrisch-test.bringfrisch-worker.workers.dev";
 const PIN = process.env.STAGE_PIN || "";
 const LIST = "Home";

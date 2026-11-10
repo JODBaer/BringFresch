@@ -1,5 +1,10 @@
 // BringFrisch Worker: kleine Brücke zwischen der Handy-App und Bring! + gemeinsamer WG-Speicher.
 //
+// Mehrere WGs: Header X-WG (Kurzname) + X-WG-PIN. Ohne X-WG oder mit X-WG = MAIN_WG ist es die erste WG
+// (PIN = Secret WG_PIN, Daten ohne Präfix wie bisher). Weitere WGs stehen in KV unter wgs:<name>
+// (PIN nur als Hash, angelegt mit tools/new_wg.mjs), ihre Daten unter w:<name>:… – jede WG sieht nur ihre eigenen.
+//   GET  /wg                          -> { name, main }  (Name der verbundenen WG)
+//
 // Endpunkte (alle ausser /health und /cal brauchen den Header X-WG-PIN):
 //   GET  /health                      -> { ok: true }
 //   GET  /bring/list                  -> { items: ["Rüebli", ...] }  (was schon auf der Bring!-Liste steht)
@@ -71,7 +76,8 @@ async function route(request, env, url) {
   const cal = path.match(/^\/cal\/([^/]+)\.ics$/);
   if (cal && method === "GET") return calendar(env, cal[1]);
 
-  requirePin(request, env);
+  const wg = await requireWg(request, env);
+  env = { ...env, WG: scoped(env.WG, wg.prefix), RAW: env.WG, WG_CTX: wg };
 
   if (path === "/bring/list" && method === "GET") return json(await bringList(env));
   if (path === "/bring/lists" && method === "GET") return json(await bringLists(env));
@@ -154,9 +160,10 @@ async function route(request, env, url) {
     return json(snap);
   }
   if (path === "/cal-link" && method === "GET") {
-    if (!env.CAL_TOKEN) throw httpError(500, "CAL_TOKEN nicht eingerichtet");
-    return json({ url: `${url.origin}/cal/${env.CAL_TOKEN.trim()}.ics` });
+    if (!wg.calToken) throw httpError(500, "CAL_TOKEN nicht eingerichtet");
+    return json({ url: `${url.origin}/cal/${wg.calToken.trim()}.ics` });
   }
+  if (path === "/wg" && method === "GET") return json({ name: wg.name, main: wg.main });
 
   throw httpError(404, "Unbekannter Endpunkt");
 }
@@ -169,7 +176,7 @@ export async function backup(env, now = new Date()) {
   let cursor;
   do {
     const page = await env.WG.list({ cursor });
-    for (const k of page.keys) if (!k.name.startsWith("backup:")) keys[k.name] = await env.WG.get(k.name);
+    for (const k of page.keys) if (!/^(backup|fail|lock):/.test(k.name)) keys[k.name] = await env.WG.get(k.name);
     cursor = page.list_complete === false ? page.cursor : undefined;
   } while (cursor);
   await env.WG.put("backup:" + day, JSON.stringify({ day, keys }), { expirationTtl: 30 * 86400 });
@@ -201,16 +208,52 @@ function corsHeaders(request) {
     ? {
         "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-WG-PIN",
+        "Access-Control-Allow-Headers": "Content-Type, X-WG-PIN, X-WG",
         "Access-Control-Max-Age": "86400",
         Vary: "Origin",
       }
     : { Vary: "Origin" };
 }
 
-function requirePin(request, env) {
-  const pin = request.headers.get("X-WG-PIN") || "";
-  if (!env.WG_PIN || !timingSafeEqual(pin, env.WG_PIN)) throw httpError(401, "Falscher WG-PIN");
+// Welche WG fragt? Erste WG: Secret WG_PIN. Weitere: wgs:<name> in KV, PIN als SHA-256(salt:PIN).
+// Nach 10 falschen Versuchen ist die WG 15 Minuten gesperrt (nur Fehlversuche kosten Schreibzugriffe).
+export const wgSlug = s => String(s || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+async function requireWg(request, env) {
+  const pin = (request.headers.get("X-WG-PIN") || "").trim();
+  const slug = wgSlug(request.headers.get("X-WG"));
+  const main = wgSlug(env.MAIN_WG || "");
+  if (!slug || slug === main) {
+    if (!env.WG_PIN || !timingSafeEqual(pin, env.WG_PIN.trim())) throw httpError(401, slug ? "Falscher WG-Name oder PIN" : "Falscher WG-PIN");
+    return { slug: main || "main", name: env.MAIN_WG_NAME || env.MAIN_WG || "WG", prefix: "", main: true, calToken: env.CAL_TOKEN };
+  }
+  if (await env.WG.get(`lock:${slug}`)) throw httpError(429, "Zu viele falsche Versuche – in 15 Minuten nochmals");
+  const reg = await env.WG.get(`wgs:${slug}`, "json");
+  if (!reg || !pin || !timingSafeEqual(await pinHash(reg.salt, pin), reg.pinHash)) {
+    const fails = (+(await env.WG.get(`fail:${slug}`)) || 0) + 1;
+    if (fails >= 10) await env.WG.put(`lock:${slug}`, "1", { expirationTtl: 900 });
+    await env.WG.put(`fail:${slug}`, String(fails), { expirationTtl: 900 });
+    throw httpError(401, "Falscher WG-Name oder PIN");
+  }
+  return { slug, name: reg.name || slug, prefix: `w:${slug}:`, main: false, calToken: reg.calToken };
+}
+
+export async function pinHash(salt, pin) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${salt}:${pin}`));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// KV nur mit den Schlüsseln einer WG (Präfix wird vorne angehängt und beim Auflisten wieder entfernt)
+function scoped(kv, prefix) {
+  if (!prefix) return kv;
+  return {
+    get: (k, t) => kv.get(prefix + k, t),
+    put: (k, v, o) => kv.put(prefix + k, v, o),
+    delete: k => kv.delete(prefix + k),
+    async list(o = {}) {
+      const r = await kv.list({ ...o, prefix: prefix + (o.prefix || "") });
+      return { ...r, keys: r.keys.map(k => ({ ...k, name: k.name.slice(prefix.length) })) };
+    },
+  };
 }
 
 function timingSafeEqual(a, b) {
@@ -222,7 +265,7 @@ function timingSafeEqual(a, b) {
 
 // ---------------------------------------------------------------------------------------------
 // Bring!
-async function bringLogin(env) {
+async function bringLogin(env, allowNoList = false) {
   if (!env.BRING_EMAIL || !env.BRING_PASSWORD) throw httpError(500, "Bring!-Zugang im Worker nicht eingerichtet");
   const res = await fetch(BRING + "bringauth", {
     method: "POST",
@@ -245,9 +288,14 @@ async function bringLogin(env) {
     return { listUuid: hit.uuid, userUuid: data.uuid, headers, lists };
   }
   const chosen = await env.WG.get("bringList");
-  const listUuid = chosen || env.BRING_LIST_UUID || data.bringListUUID;
+  const mainList = (env.RAW ? await env.RAW.get("bringList") : chosen) || env.BRING_LIST_UUID || data.bringListUUID;
+  const extra = !!(env.WG_CTX && !env.WG_CTX.main);
+  // Weitere WGs: nie still in die Liste der ersten WG schreiben – erst wählen
+  const listUuid = extra ? chosen : chosen || mainList;
+  if (!listUuid && extra && allowNoList) return { listUuid: null, userUuid: data.uuid, headers, mainList };
+  if (!listUuid && extra) throw httpError(409, "Noch keine Bring!-Liste gewählt – unter Einstellungen die WG-Liste wählen");
   if (!listUuid) throw httpError(502, "Bring!-Antwort unvollständig");
-  return { listUuid, userUuid: data.uuid, headers };
+  return { listUuid, userUuid: data.uuid, headers, mainList };
 }
 
 async function fetchLists(userUuid, headers) {
@@ -259,10 +307,21 @@ async function fetchLists(userUuid, headers) {
 
 // Alle Listen des Bot-Kontos (zum Einrichten: welche ist die WG-Liste?)
 async function bringLists(env) {
-  const s = await bringLogin(env);
-  const lists = s.lists || (await fetchLists(s.userUuid, s.headers));
+  const s = await bringLogin(env, true);
+  let lists = s.lists || (await fetchLists(s.userUuid, s.headers));
   // Test-Server zeigt nur seine eine Liste, damit niemand aus Versehen die WG-Liste wählt
-  return { active: s.listUuid, lists: env.ONLY_LIST_NAME ? lists.filter(l => l.uuid === s.listUuid) : lists };
+  if (env.ONLY_LIST_NAME) lists = lists.filter(l => l.uuid === s.listUuid);
+  // Gleicher Bot für mehrere WGs: Listen, die schon eine andere WG benutzt, sind nicht wählbar
+  else if (env.RAW && env.WG_CTX) {
+    const me = env.WG_CTX.slug;
+    const taken = await Promise.all(lists.map(async l => {
+      const owner = await env.RAW.get(`listowner:${l.uuid}`);
+      if (owner) return owner !== me;
+      return !env.WG_CTX.main && l.uuid === s.mainList; // Liste der ersten WG (auch ohne Eintrag)
+    }));
+    lists = lists.filter((l, i) => !taken[i]);
+  }
+  return { active: s.listUuid, lists };
 }
 
 // WG wählt in der App, in welche Bring!-Liste geschrieben wird (gilt für alle Handys)
@@ -270,6 +329,11 @@ async function bringSetTarget(env, { uuid }) {
   const { lists } = await bringLists(env);
   const hit = lists.find(l => l.uuid === uuid);
   if (!hit) throw httpError(400, "Liste nicht gefunden – ist sie mit dem Bot-Konto geteilt?");
+  if (env.RAW && env.WG_CTX && !env.ONLY_LIST_NAME) {
+    const old = await env.WG.get("bringList");
+    if (old && old !== hit.uuid && (await env.RAW.get(`listowner:${old}`)) === env.WG_CTX.slug) await env.RAW.delete(`listowner:${old}`);
+    await env.RAW.put(`listowner:${hit.uuid}`, env.WG_CTX.slug);
+  }
   await env.WG.put("bringList", hit.uuid);
   return { ok: true, active: hit.uuid, name: hit.name };
 }
@@ -413,7 +477,11 @@ function stamp(d) {
 }
 
 async function calendar(env, token) {
-  if (!env.CAL_TOKEN || !timingSafeEqual(token, env.CAL_TOKEN.trim())) return new Response("Not found", { status: 404 });
+  if (!env.CAL_TOKEN || !timingSafeEqual(token, env.CAL_TOKEN.trim())) {
+    const slug = /^[\w-]{16,}$/.test(token) ? await env.WG.get(`cal:${token}`) : null;
+    if (!slug) return new Response("Not found", { status: 404 });
+    env = { ...env, WG: scoped(env.WG, `w:${slug}:`) };
+  }
   const doc = (await env.WG.get("plan", "json")) || {};
   const nextKey = weekAfter(doc.week);
   const next = nextKey ? await env.WG.get(`plan:${nextKey}`, "json") : null;
