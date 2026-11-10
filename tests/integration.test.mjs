@@ -274,6 +274,28 @@ if (!N2.document.getElementById("wpop").hidden) N2.document.getElementById("wlat
 N2.document.getElementById("weekChip").click();
 check(N2.document.querySelectorAll("#days .prow")[1].querySelector(".t").textContent === nextTitle, "Jo sieht Joshuas Plan für nächste Woche");
 
+// WG-Einstellungen: Joshua fügt Mia hinzu (5. Person), ändert Znacht-Zeit und speichert für alle -> Jo hat es nach dem Herunterziehen
+const S1 = phone("joshua");
+await wait(500);
+S1.document.querySelectorAll("dialog[open]").forEach(d => d.close());
+if (!S1.document.getElementById("wpop").hidden) S1.document.getElementById("wlater").click();
+S1.document.getElementById("newMemberName").value = "Mia";
+S1.document.getElementById("addMemberForm").dispatchEvent(new S1.Event("submit", { cancelable: true }));
+S1.document.getElementById("dinnerTime").value = "19:00";
+S1.document.getElementById("dinnerTime").dispatchEvent(new S1.Event("change"));
+S1.document.getElementById("settingsSaveBtn").click();
+await wait(600);
+const savedSettings = JSON.parse(store.get("settings") || "{}").settings || {};
+check(savedSettings.members && savedSettings.members.length === 5 && savedSettings.dinnerTime === "19:00", `«Speichern & an alle senden»: 5 Mitbewohner + Znacht 19:00 im WG-Server (${(savedSettings.members || []).length})`);
+const S2 = phone("jo");
+await wait(500);
+pull(S2);
+await wait(800);
+const s2Members = JSON.parse(S2.localStorage.getItem("bringfrisch_members") || "[]");
+check(s2Members.length === 5 && s2Members.some(m => m.name === "Mia") && S2.document.getElementById("dinnerTime").value === "19:00", `Jo hat nach dem Herunterziehen 5 Mitbewohner und 19:00 (${s2Members.map(m => m.name).join(", ")})`);
+const who = S2.document.querySelector("#days .prow .who");
+check(who.classList.contains("many") && who.style.getPropertyValue("--cols") === "3" && who.querySelectorAll(".av").length === 5 && who.querySelectorAll(".av.r2").length === 2, "Plan bei 5 Personen: zwei Reihen, 3 oben + 2 unten");
+
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 globalThis.fetch = realFetch;

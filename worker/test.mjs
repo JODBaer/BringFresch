@@ -109,6 +109,18 @@ check(vr.staples[0].in_stock === false && vr.updated === vu, "Vorrat gespeichert
 r = await call("/vorrat", { method: "PUT", body: { staples: "kaputt" } });
 check(r.status === 400, "ungültiger Vorrat abgelehnt");
 
+// 2d. WG-Einstellungen
+r = await call("/settings");
+check((await r.json()).settings === null, "Einstellungen anfangs leer");
+const five = ["Joshua", "Lukas", "Leonie", "Jo", "Mia"].map(n => ({ id: n.toLowerCase(), name: n, diet: n === "Jo" ? "vegi" : "fleisch" }));
+r = await call("/settings", { method: "PUT", body: { settings: { members: five, dinnerTime: "19:00", recipeSites: [{ name: "Blog", url: "https://blog.example.ch" }], customRecipes: [] } } });
+const su = (await r.json()).updated;
+r = await call("/settings");
+const sg = await r.json();
+check(sg.settings.members.length === 5 && sg.settings.dinnerTime === "19:00" && sg.updated === su, "WG-Einstellungen gespeichert (5 Mitbewohner, Znacht 19:00)");
+r = await call("/settings", { method: "PUT", body: { settings: { members: [] } } });
+check(r.status === 400, "Einstellungen ohne Mitbewohner abgelehnt");
+
 // 2b. Liste wählen
 r = await call("/bring/lists");
 let ls = await r.json();

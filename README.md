@@ -13,6 +13,8 @@ WG-Menüplaner mit Schweizer Saisongemüse. Die WG wählt gemeinsam 7 Znacht fü
 - Oben: **Kalender-Symbol** = Wochenwahl (roter Punkt = noch offen), **🛒 Bring!-Chip** = füllen.
 - **Ab Donnerstag** steht rechts über den Tagen **«KW 47 →»**: antippen (oder seitlich wischen) = nächste Woche planen. Tage sind zuerst «noch offen», Wochenwahl, Bring! und Kalender gelten für die angezeigte Woche. Am Montag wird sie automatisch zur laufenden.
 - Unten: Plan · Einkauf · Rezepte & Saison · Einstellungen (jede direkt als Seite; Einstellungen: Bring!-Liste und Mitbewohner oben, der Rest unter «Mehr»).
+- **WG-Einstellungen für alle**: Mitbewohner, Znacht-Zeit, Rezept-Webseiten und eigene Rezepte gelten auf allen Handys (Einstellungen → «Speichern & an alle senden», sonst automatisch beim Ändern/Herunterziehen).
+- **Saison**: Gemüse mit Bild, einfache Namen; antippen = «Spinat Rezept» kopiert und ins Suchfeld, ergänzen (z.B. Risotto) → «Suchen».
 - **Rezepte**: Webseiten zum Stöbern (eigene hinzufügbar), Link einfügen → Zutaten werden geholt (jede Rezeptseite, auch geteilter Text), Personenzahl gleich angeben; eigene Rezepte bearbeiten, Katalog-Rezepte «Anpassen» (eigene Kopie, z.B. andere Personenzahl).
 - iPhone bekommt den Glas-Stil, Android Material 3 – automatisch. Design-Vorgabe: [docs/design/](docs/design/).
 

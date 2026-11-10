@@ -12,6 +12,7 @@
 //   GET/PUT /plan/:week               -> Plan einer bestimmten Woche (ab Donnerstag: nächste Woche planen)
 //   GET  /recipe?url=…                -> { title, servings, ingredients[], minutes }  (Rezept-Link importieren)
 //   GET/PUT /vorrat                   -> gemeinsamer Grundvorrat der WG
+//   GET/PUT /settings                 -> WG-Einstellungen (Mitbewohner, Znacht-Zeit, Rezept-Webseiten, eigene Rezepte)
 //   GET  /cal-link                    -> { url } Abo-Link für den Kalender
 //   GET  /cal/:token.ics              -> Kalender-Abo (iCal) mit allen Znacht der Woche
 //   GET  /backup                      -> { days: ["2026-11-10", ...] }  (tägliche Sicherung, 30 Tage)
@@ -122,6 +123,20 @@ async function route(request, env, url) {
     if (!Array.isArray(data.staples) || data.staples.length > 300) throw httpError(400, "Vorrat ungültig");
     const doc = { staples: data.staples, updated: Date.now() };
     await env.WG.put("vorrat", JSON.stringify(doc));
+    return json({ ok: true, updated: doc.updated });
+  }
+
+  // WG-Einstellungen für alle Handys: Mitbewohner, Znacht-Zeit, Rezept-Webseiten, eigene Rezepte (neuerer Stand gewinnt)
+  if (path === "/settings" && method === "GET") return json((await env.WG.get("settings", "json")) || { settings: null, updated: 0 });
+  if (path === "/settings" && method === "PUT") {
+    const data = await body(request);
+    const st = data.settings;
+    if (!st || typeof st !== "object" || Array.isArray(st) || !Array.isArray(st.members) || !st.members.length || st.members.length > 20
+      || st.members.some(m => !m || typeof m.id !== "string" || typeof m.name !== "string")) throw httpError(400, "Einstellungen ungültig");
+    const raw = JSON.stringify(st);
+    if (raw.length > 400000) throw httpError(400, "Einstellungen zu gross");
+    const doc = { settings: st, updated: Date.now() };
+    await env.WG.put("settings", JSON.stringify(doc));
     return json({ ok: true, updated: doc.updated });
   }
 

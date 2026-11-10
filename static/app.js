@@ -19,6 +19,10 @@
   ];
 
   // Adresse des Cloudflare Workers (nach dem ersten Deploy hier eintragen; in der App änderbar)
+  const APP_VERSION = "1.4.0";
+  // Spenden-Link (z.B. Wise «Pay me»-Link https://wise.com/pay/me/…); leer = Knopf ausgeblendet
+  const DONATE_URL = "";
+  const REPO_URL = "https://github.com/jodbaer/BringFresch";
   const DEFAULT_SYNC_URL = "https://bringfrisch.bringfrisch-worker.workers.dev";
   const SYNC_KEY = "bringfrisch_sync";
   const PLAN_UPDATED_KEY = "bringfrisch_plan_updated";
@@ -594,9 +598,62 @@
     const items = DATA.season_items || [];
     const field = items.filter(it => (it.field_months || []).includes(m));
     const storage = items.filter(it => !(it.field_months || []).includes(m) && (it.storage_months || []).includes(m));
-    const card = it => `<div class="card veg"><b>${esc(it.name)}</b><small>${esc(it.category)}</small></div>`;
+    const card = it => {
+      const [name, sub, emoji] = vegLook(it);
+      return `<button type="button" class="card veg" data-veg="${esc(name)}"><span class="vemoji" aria-hidden="true">${emoji}</span><span><b>${esc(name)}</b><small>${esc(sub ? `${sub} · ${it.category}` : it.category)}</small></span></button>`;
+    };
     $("fieldGrid").innerHTML = field.map(card).join("") || `<p class="hint">Diesen Monat kein Freilandgemüse.</p>`;
     $("storageGrid").innerHTML = storage.map(card).join("") || `<p class="hint">Keine Lagerware.</p>`;
+  }
+
+  // Saisonliste: einfache Namen (Hochdeutsch statt Schweizer Begriffe), Bild als Emoji (läuft offline)
+  const VEG_LOOK = {
+    "Bärlauch (Wildgemüse)": ["Bärlauch", "Wildgemüse", "🌿"], "Schweizer Grünspargeln": ["Grüner Spargel", "", "🌱"],
+    "Schweizer Bleichspargeln": ["Weisser Spargel", "", "🌱"], "Schweizer Rhabarber": ["Rhabarber", "", "🌱"],
+    "Radiesli (Radieschen)": ["Radieschen", "", "🔴"], "Kohlrabi": ["Kohlrabi", "", "🥬"], "Schweizer Fenchel": ["Fenchel", "", "🧅"],
+    "Schweizer Blumenkohl": ["Blumenkohl", "", "🥦"], "Schweizer Brokkoli": ["Brokkoli", "", "🥦"],
+    "Schweizer Zucchini (Courgettes)": ["Zucchini", "", "🥒"], "Schweizer Tomaten (Strauch/Cherry)": ["Tomaten", "Strauch, Cherry", "🍅"],
+    "Schweizer Salatgurken": ["Gurken", "", "🥒"], "Schweizer Peperoni (Paprika)": ["Paprika", "", "🫑"],
+    "Schweizer Auberginen": ["Auberginen", "", "🍆"], "Schweizer Buschbohnen (Grüne Bohnen)": ["Grüne Bohnen", "", "🫛"],
+    "Schweizer Zuckermais": ["Mais", "", "🌽"], "Schweizer Kürbis (Knirps / Butternut)": ["Kürbis", "Butternut, Hokkaido", "🎃"],
+    "Schweizer Speiserüebli (Karotten)": ["Karotten", "", "🥕"], "Schweizer Speisekartoffeln (festkochend)": ["Kartoffeln", "festkochend", "🥔"],
+    "Schweizer Speisekartoffeln (mehligkochend)": ["Kartoffeln", "mehligkochend", "🥔"], "Schweizer Lauch (Porree)": ["Lauch", "", "🥬"],
+    "Schweizer Wirz (Wirsing)": ["Wirsing", "", "🥬"], "Schweizer Weisskabis (Kopfkohl)": ["Weisskohl", "", "🥬"],
+    "Schweizer Rotkabis (Rotkohl)": ["Rotkohl", "", "🟣"], "Schweizer Federkohl (Grünkohl / Kale)": ["Grünkohl", "Kale", "🥬"],
+    "Schweizer Randen (Rote Bete)": ["Rote Bete", "", "🟣"], "Schweizer Pastinaken": ["Pastinaken", "", "🥕"],
+    "Schweizer Knollensellerie": ["Sellerie", "Knolle", "🥔"], "Schweizer Chicorée": ["Chicorée", "", "🥬"],
+    "Schweizer Nüsslisalat (Feldsalat)": ["Feldsalat", "", "🥗"], "Schweizer Blattspinat": ["Spinat", "", "🥬"],
+    "Schweizer Speisezwiebeln (Gelb & Rot)": ["Zwiebeln", "gelb, rot", "🧅"], "Schweizer Bergkäse / Gruyère / Emmentaler": ["Bergkäse", "Gruyère, Emmentaler", "🧀"],
+    "Schweizer Magerquark / Kräuterquark": ["Quark", "", "🥛"], "Schweizer Butter / Bratbutter": ["Butter", "", "🧈"],
+  };
+  const CAT_EMOJI = { Wurzelgemüse: "🥕", Kohl: "🥬", Kohlgemüse: "🥦", Salat: "🥗", Milchprodukt: "🧀", Fruchtgemüse: "🍅", Zwiebelgemüse: "🧅" };
+  function vegLook(it) {
+    if (VEG_LOOK[it.name]) return VEG_LOOK[it.name];
+    const base = it.name.replace(/^Schweizer\s+/i, ""), m = base.match(/^(.*?)\s*\((.*)\)$/);
+    return [m ? m[1] : base, m ? m[2] : "", CAT_EMOJI[it.category] || "🥬"];
+  }
+
+  // Gemüse antippen: «Spinat Rezept» kopieren und ins Suchfeld oben -> ergänzen (z.B. «Risotto») und suchen
+  const searchUrl = q => `https://www.google.com/search?q=${encodeURIComponent(q.trim())}`;
+  function setRecipeSearch(q) {
+    $("recipeSearchQ").value = q;
+    $("recipeSearchGo").href = searchUrl(q || "Rezept");
+  }
+  $("recipeSearchQ").addEventListener("input", () => setRecipeSearch($("recipeSearchQ").value));
+  $("recipeSearchQ").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("recipeSearchGo").click(); } });
+  for (const id of ["fieldGrid", "storageGrid"]) {
+    $(id).addEventListener("click", async e => {
+      const b = e.target.closest("[data-veg]");
+      if (!b) return;
+      const q = `${b.dataset.veg} Rezept `;
+      setRecipeSearch(q);
+      await copyText(q.trim());
+      const inp = $("recipeSearchQ");
+      if (inp.scrollIntoView) inp.scrollIntoView({ block: "center", behavior: "smooth" });
+      inp.focus({ preventScroll: true });
+      try { inp.setSelectionRange(q.length, q.length); } catch (err) { /* ältere Browser */ }
+      toast(`«${q.trim()}» kopiert – ergänzen (z.B. Risotto) und suchen`);
+    });
   }
 
   function setupSeason() {
@@ -1090,6 +1147,7 @@
       importer.deleteCustomRecipe(del.dataset.delete);
       renderCatalog();
       renderMyRecipes();
+      settingsChanged();
       toast("Rezept gelöscht");
     }
   });
@@ -1206,6 +1264,7 @@
     }
     if (touched) { savePlan(); refresh(); }
     renderMyRecipes();
+    settingsChanged();
     if (mode === "save") return toast(`${recipe.title} gespeichert`);
     useRecipe(recipe, mode);
   });
@@ -1228,7 +1287,7 @@
   $("recipeSites").addEventListener("click", e => {
     if (e.target.closest("#siteAddBtn")) { $("siteForm").hidden = !$("siteForm").hidden; if (!$("siteForm").hidden) $("siteName").focus(); return; }
     const del = e.target.closest("[data-site-del]");
-    if (del) { mySites.splice(+del.dataset.siteDel, 1); save(SITES_KEY, mySites); renderSites(); }
+    if (del) { mySites.splice(+del.dataset.siteDel, 1); save(SITES_KEY, mySites); renderSites(); settingsChanged(); }
   });
   $("siteForm").addEventListener("submit", e => {
     e.preventDefault();
@@ -1237,6 +1296,7 @@
     if (!name || !url) return;
     mySites.push({ name, url });
     save(SITES_KEY, mySites);
+    settingsChanged();
     $("siteForm").reset();
     $("siteForm").hidden = true;
     renderSites();
@@ -1267,6 +1327,7 @@
       if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Wirklich?"; return; }
       importer.deleteCustomRecipe(del.dataset.myDel);
       renderMyRecipes();
+      settingsChanged();
       toast("Rezept gelöscht");
     }
   });
@@ -1434,6 +1495,7 @@
     const m = state.members.find(x => x.id === sel.dataset.diet);
     m.diet = sel.value;
     saveMembers();
+    settingsChanged();
     refresh();
   });
 
@@ -1450,6 +1512,7 @@
     state.members = state.members.filter(m => m.id !== id);
     [state.plan, otherPlan()].filter(Boolean).forEach(p => p.forEach(d => { d.eaters = d.eaters.filter(x => x !== id); }));
     saveMembers();
+    settingsChanged();
     savePlan();
     renderMembers();
     refresh();
@@ -1463,6 +1526,7 @@
     state.members.push({ id, name, diet: $("newMemberDiet").value });
     [state.plan, otherPlan()].filter(Boolean).forEach(p => p.forEach(d => d.eaters.push(id)));
     saveMembers();
+    settingsChanged();
     savePlan();
     $("newMemberName").value = "";
     renderMembers();
@@ -1675,13 +1739,87 @@
   })();
 
   // Neuerer Plan von einem anderen Handy? Dann übernehmen.
+  // ---------------------------------------------------------------------------
+  // WG-Einstellungen für alle Handys (neuerer Stand gewinnt): Mitbewohner, Znacht-Zeit,
+  // Rezept-Webseiten, eigene Rezepte. Pro Handy bleiben: PIN, «Ich bin», Stil, Farben.
+  // ---------------------------------------------------------------------------
+  const SETTINGS_UPDATED_KEY = "bringfrisch_settings_updated";
+  let settingsTimer = null, settingsServer = true;
+  function wgSettings() {
+    return { members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), recipeSites: mySites, customRecipes: importer.customRecipes };
+  }
+  function settingsChanged() {
+    save(SETTINGS_UPDATED_KEY, Date.now());
+    showSettingsState("Wird gesendet …");
+    clearTimeout(settingsTimer);
+    settingsTimer = setTimeout(pushSettingsNow, 800);
+  }
+  async function pushSettingsNow() {
+    clearTimeout(settingsTimer);
+    settingsTimer = null;
+    if (!connected()) return showSettingsState("Nur auf diesem Handy (nicht verbunden)"), false;
+    try {
+      const { updated } = await api("/settings", { method: "PUT", body: { settings: wgSettings() } });
+      save(SETTINGS_UPDATED_KEY, updated);
+      settingsServer = true;
+      showSettingsState("Für alle gespeichert ✓");
+      return true;
+    } catch (e) {
+      if (/Endpunkt/.test(e.message)) settingsServer = false; // alter WG-Server: Mitbewohner reisen weiter mit dem Plan
+      showSettingsState(settingsServer ? e.message : "WG-Server zu alt – bitte aktualisieren");
+      return false;
+    }
+  }
+  function applySettings(st) {
+    if (Array.isArray(st.members) && st.members.length) {
+      const known = new Set(state.members.map(m => m.id));
+      state.members = st.members;
+      // neue Mitbewohner essen standardmässig mit, weggefallene verschwinden aus dem Plan
+      const ids = new Set(state.members.map(m => m.id));
+      [state.plan, otherPlan()].filter(Boolean).forEach(p => p.forEach(d => {
+        d.eaters = d.eaters.filter(x => ids.has(x));
+        state.members.forEach(m => { if (!known.has(m.id) && !d.empty && !d.eaters.includes(m.id)) d.eaters.push(m.id); });
+      }));
+      save(KEYS.members, state.members);
+    }
+    if (st.dinnerTime) { save(DINNER_KEY, st.dinnerTime); $("dinnerTime").value = st.dinnerTime; }
+    if (Array.isArray(st.recipeSites)) { mySites = st.recipeSites; save(SITES_KEY, mySites); renderSites(); }
+    if (Array.isArray(st.customRecipes)) { importer.customRecipes = st.customRecipes; importer.saveCustomRecipes(); renderMyRecipes(); }
+    renderMembers();
+  }
+  // Erster Start mit dieser Version: wer die WG schon angepasst hat (z.B. 5 Mitbewohner), dessen Stand gilt
+  if (load(SETTINGS_UPDATED_KEY, null) === null) {
+    const isDefault = state.members.length === DEFAULT_MEMBERS.length && state.members.every((m, i) => m.name === DEFAULT_MEMBERS[i].name && m.diet === DEFAULT_MEMBERS[i].diet);
+    save(SETTINGS_UPDATED_KEY, isDefault && !importer.customRecipes.length ? 0 : Date.now());
+  }
+  function showSettingsState(t) { const el = $("settingsState"); if (el) el.textContent = t; }
+  $("settingsSaveBtn").onclick = async () => {
+    if (!connected()) return toast("Nicht verbunden: WG-PIN unter «Mehr» eingeben – bis dahin gilt alles nur auf diesem Handy");
+    const ok = await pushSettingsNow();
+    if (ok) { await pushPlanNow(); toast("Für alle gespeichert ✓ – die anderen sehen es beim nächsten Öffnen oder Herunterziehen"); }
+    else toast($("settingsState").textContent || "Speichern fehlgeschlagen");
+  };
+
   async function pullShared() {
     if (!connected()) return;
     try {
-      const [remote, bring, vorrat, remoteNext] = await Promise.all([
+      const [remote, bring, vorrat, remoteNext, remoteSettings] = await Promise.all([
         api("/plan"), api("/bring/list"), api("/vorrat"),
-        canPlanNext() ? api(`/plan/${nextWeekKey()}`).catch(() => null) : null
+        canPlanNext() ? api(`/plan/${nextWeekKey()}`).catch(() => null) : null,
+        api("/settings").catch(e => { if (/Endpunkt/.test(e.message)) settingsServer = false; return null; })
       ]);
+      // WG-Einstellungen: neuerer Stand gewinnt; hat der Server noch keine, bekommt er unsere
+      if (remoteSettings) {
+        settingsServer = true;
+        const localSet = load(SETTINGS_UPDATED_KEY, 0);
+        if (remoteSettings.settings && remoteSettings.updated > localSet) {
+          applySettings(remoteSettings.settings);
+          save(SETTINGS_UPDATED_KEY, remoteSettings.updated);
+          showSettingsState("Aktuell ✓");
+        } else if (!remoteSettings.settings || localSet > remoteSettings.updated) {
+          await pushSettingsNow();
+        } else showSettingsState("Aktuell ✓");
+      }
       // Grundvorrat: neuerer Stand gewinnt; hat der Server noch keinen, bekommt er unseren
       if (Array.isArray(vorrat.staples) && vorrat.updated > load(VORRAT_UPDATED_KEY, 0)) {
         state.staples = vorrat.staples;
@@ -1700,7 +1838,7 @@
         await pushPlanNow();
         toast("Neue Woche: euer geplanter Plan gilt jetzt");
       } else if (remote.plan && remote.updated > localUpdated) {
-        if (Array.isArray(remote.members) && remote.members.length) state.members = remote.members;
+        if (!settingsServer && Array.isArray(remote.members) && remote.members.length) state.members = remote.members;
         setCurrentPlan(normalizeWeek(remote.plan));
         save(KEYS.members, state.members);
         save(PLAN_UPDATED_KEY, remote.updated);
@@ -1900,6 +2038,7 @@
   $("dinnerTime").addEventListener("change", () => {
     save(DINNER_KEY, $("dinnerTime").value || "18:30");
     schedulePlanPush();
+    settingsChanged();
   });
 
   $("calendarBtn").onclick = async () => {
@@ -1982,6 +2121,7 @@
 
   function rowHTML(day, idx, short, today) {
     const many = state.members.length >= 5;
+    const cols = Math.ceil(state.members.length / 2);
     const ings = dayIngredients(day);
     const b = day.leftover_buffer || 0;
     return `<div class="prow${idx === today ? " today" : ""}${idx === openIdx ? " open" : ""}${day.empty ? " unplanned" : ""}" data-i="${idx}">
@@ -1991,9 +2131,9 @@
           <button type="button" class="t" data-pick="${idx}" aria-label="${DAYS[idx]}: ${esc(day.title)} – wechseln">${esc(day.title)}</button>
           <span class="meta">${esc(dayMeta(day))}</span>
         </div>
-        <div class="who${many ? " many" : ""}">${state.members.map(m => {
+        <div class="who${many ? " many" : ""}"${many ? ` style="--cols:${cols}"` : ""}>${state.members.map((m, k) => {
           const on = day.eaters.includes(m.id);
-          return `<button type="button" class="av${on ? "" : " off"}" data-day="${idx}" data-member="${esc(m.id)}" aria-pressed="${on}" aria-label="${esc(m.name)} isst am ${DAYS[idx]} ${on ? "mit" : "nicht mit"}">${esc(short[m.id])}</button>`;
+          return `<button type="button" class="av${on ? "" : " off"}${many && k >= cols && state.members.length % 2 ? " r2" : ""}" data-day="${idx}" data-member="${esc(m.id)}" aria-pressed="${on}" aria-label="${esc(m.name)} isst am ${DAYS[idx]} ${on ? "mit" : "nicht mit"}">${esc(short[m.id])}</button>`;
         }).join("")}<span class="plus${b ? "" : " zero"}" aria-hidden="true">+${b}</span></div>
         <div class="tot">
           <button type="button" class="num" data-inc="${idx}" aria-label="${esc(totalLabel(day, idx))}">${portionsFor(day)}</button>
@@ -2208,6 +2348,7 @@
     let recipe;
     if (btn.dataset.new) {
       recipe = importer.createCustomRecipe({ title: $("msearch").value.trim(), diet: "vegi", servings: DEFAULT_SERVINGS });
+      settingsChanged();
     } else {
       recipe = allRecipes().find(r => String(r.id) === btn.dataset.id);
     }
@@ -2464,6 +2605,9 @@
     showTab(b.dataset.tab);
   });
   $("setVoteBtn").onclick = () => openVoteFor();
+  $("appVersion").textContent = `Version ${APP_VERSION}`;
+  $("repoLink").href = REPO_URL;
+  if (DONATE_URL) { $("donateLink").href = DONATE_URL; $("donateRow").hidden = false; }
 
   // Woche wechseln: Chip in der Abschnittszeile oder seitlich über die Tage wischen
   $("weekChip").onclick = () => setWeekView(!viewNext);

@@ -92,9 +92,12 @@
 
     /* Saison */
     .season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-    .veg { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
+    .veg { padding: 10px 12px; display: flex; align-items: center; gap: 10px; text-align: left; color: inherit; font: inherit; cursor: pointer; width: 100%; }
+    .veg > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .veg .vemoji { font-size: 26px; line-height: 1; flex: 0 0 auto; }
     .veg b { font-size: 13.5px; }
     .veg small { color: var(--muted); font-size: 11.5px; }
+    .veg:active { transform: scale(.97); }
     .news { padding: 14px; display: flex; flex-direction: column; gap: 6px; }
     .news b { font-size: 14.5px; }
     .news p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
@@ -412,9 +415,10 @@
     .glass .av.off { background: rgba(120,128,120,.22); color: #555d55; }
     .m3 .av.off { background: var(--s4); color: var(--fg2); }
     @media (prefers-color-scheme: dark) { html .av.off { background: rgba(255,255,255,.1) !important; color: rgba(255,255,255,.6) !important; } }
-    .who.many { display: grid; grid-template-columns: repeat(4, 17px); grid-auto-rows: 19px; padding-right: 13px; padding-top: calc((var(--dayh) - 41px) / 2); }
+    /* ab 5 Personen zwei Reihen (5 = 3 + 2, 6 = 3 + 3, 7 = 4 + 3); kürzere zweite Reihe mittig versetzt */
+    .who.many { display: grid; grid-template-columns: repeat(var(--cols, 3), 17px); grid-auto-rows: 19px; padding-right: 13px; padding-top: calc((var(--dayh) - 41px) / 2); }
     .who.many .av { width: 22px; height: 22px; margin-left: 0; }
-    .who.many .av:nth-child(n+5) { transform: translateX(8.5px); }
+    .who.many .av.r2 { transform: translateX(8.5px); }
     .who .plus { position: absolute; left: 100%; top: calc((var(--dayh) - 24px) / 2 - 4px); margin-left: 2px; font: 800 11px/1 var(--font); color: var(--fg2); pointer-events: none; }
     .who .plus.zero { opacity: .4; }
 
@@ -651,6 +655,15 @@
 
     <!-- 3. Saison -->
     <section class="tab" id="tab-season" hidden>
+      <p class="label">Rezept suchen</p>
+      <div class="card set-hero">
+        <p class="hint" style="padding:0">Gemüse unten antippen = «Spinat Rezept» kopiert und hier eingesetzt. Ergänzen (z.B. Risotto) und suchen.</p>
+        <div class="set-inline">
+          <input type="search" id="recipeSearchQ" placeholder="z.B. Spinat Risotto Rezept" autocomplete="off" aria-label="Rezept suchen" enterkeyhint="search">
+          <a class="btn dark" id="recipeSearchGo" href="https://www.google.com/search?q=Rezept" target="_blank" rel="noopener" style="text-decoration:none;flex:0 0 auto">Suchen ↗</a>
+        </div>
+      </div>
+
       <p class="label">Rezepte holen</p>
       <div class="card set-hero">
         <p class="hint" style="padding:0">Auf einer Rezept-Webseite stöbern, Link kopieren und hier einfügen.</p>
@@ -676,7 +689,7 @@
         <b id="newsHeadline"></b>
         <p id="newsTip"></p>
       </div>
-      <p class="label">Frisch vom Feld</p>
+      <p class="label">Frisch vom Feld <small>antippen = Rezept suchen</small></p>
       <div class="season-grid" id="fieldGrid"></div>
       <p class="label">Schweizer Lagerware</p>
       <div class="season-grid" id="storageGrid"></div>
@@ -697,7 +710,7 @@
         <p class="hint" id="bringListHint" style="padding:0" hidden>Liste fehlt? In Bring! die WG-Liste mit <b>allmenbot@gmail.com</b> teilen und im Bot-Konto annehmen, dann unter «Mehr» neu verbinden.</p>
       </div>
 
-      <p class="label">Mitbewohner</p>
+      <p class="label">Mitbewohner <small id="settingsState"></small></p>
       <div class="card">
         <div id="members"></div>
         <form class="add-member" id="addMemberForm">
@@ -710,6 +723,8 @@
           <button class="btn dark" type="submit">+</button>
         </form>
       </div>
+
+      <button class="btn dark" type="button" id="settingsSaveBtn">Speichern &amp; an alle senden</button>
 
       <details class="card set-more" id="setMore">
         <summary><span><b>Mehr</b><small>PIN, Wochenwahl, Abgleich, Kalender, wer isst wann, Plan teilen, Stil, Farben</small></span></summary>
@@ -757,6 +772,16 @@
           <div class="swatches" id="bgPick" role="group" aria-label="Hintergrund"></div>
         </div>
       </details>
+
+      <p class="label">Über BringFrisch</p>
+      <div class="card">
+        <div class="set-row set-line"><span>BringFrisch<small id="appVersion"></small></span></div>
+        <div class="set-row set-line"><span>Quellcode &amp; Fehler melden<small>GitHub</small></span><a class="btn" id="repoLink" href="#" target="_blank" rel="noopener" style="text-decoration:none">Öffnen ↗</a></div>
+        <div class="set-row set-line" id="donateRow" hidden><span>Gefällt dir BringFrisch?<small>Kleiner Beitrag via Wise</small></span><a class="btn dark" id="donateLink" href="#" target="_blank" rel="noopener" style="text-decoration:none">Spenden ↗</a></div>
+        <div class="set-row"><span class="set-sub">Impressum</span>
+          <p class="hint" style="padding:0">BringFrisch ist ein privates, nicht kommerzielles Projekt von Joshua Baer für die eigene WG. Keine Werbung, kein Tracking. Rezepte: nur Fakten (Zutaten, Mengen) mit Link zur Originalseite. Bring! ist eine Marke der Bring! Labs AG; BringFrisch ist nicht mit Bring! verbunden. Kontakt über GitHub.</p>
+        </div>
+      </div>
     </section>
   </main>
 

@@ -27,6 +27,7 @@ Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 - **Alles für alle**: gemeinsame Basis + 150 g Fleisch pro Fleisch-Esser (nicht bei Fleischrezepten) + 100 g Grillkäse pro Vegi + 50 g Salat pro Portion.
 - **Grundvorrat** wie Bring!: gleiche Abteilungen und Artikel (kleine Pillen mit Bring!-Bild). Antippen = direkt auf Bring! (durchgestrichen), nochmals = wieder weg. Was in Bring! gekauft/abgehakt wurde, gilt wieder als «da».
 - **Wahrheit**: Bring! = was auf der Liste steht (BringFrisch baut nur drumherum). Grundvorrat = BringFrisch, gemeinsam für die WG im Worker (`/vorrat`, neuerer Stand gewinnt).
+- **WG-Einstellungen** gemeinsam im Worker (`/settings`, neuerer Stand gewinnt): Mitbewohner, Znacht-Zeit, Rezept-Webseiten, eigene Rezepte. «Speichern & an alle senden» schickt sofort. Pro Handy bleiben: PIN, «Ich bin», Stil, Farben. Ab 5 Personen im Plan zwei Reihen (5 = 3 + 2).
 - **Bot löscht nur Eigenes**: der Worker merkt sich in KV (`bot:<liste>`), was er neu gesetzt hat; nur das nimmt er weg, und nur wenn es noch drauf ist.
 - **Herunterziehen** (oben auf der Seite) = sofort synchronisieren: eigene Änderungen (Plan, Vorrat) hoch, dann Stand der anderen holen.
 - **Schon drauf?** Fehlendes wird einfach eingefügt. Steht etwas schon auf Bring!, fragt «Bring! füllen» pro Artikel nach: Bot-Artikel mit neuer Menge (z.B. zweites Rezept mit Rahm) vorausgewählt, fremde Einträge nicht (Menge wird ergänzt). Danach «Rückgängig»: neue Artikel weg, alte Mengen zurück.

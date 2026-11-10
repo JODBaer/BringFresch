@@ -620,6 +620,31 @@ await step(A, "Rezepte & Saison: Monat wechseln zeigt andere Saison", async () =
   await choose(A, "#monthSelect", "11");
 });
 
+await step(A, "Saison: Bilder, Hochdeutsch; Gemüse antippen = «… Rezept» kopiert, ergänzen, Suchen-Link", async () => {
+  await goTab(A, "season");
+  const names = await A.page.$$eval("#fieldGrid .veg b", l => l.map(b => b.textContent));
+  expect(names.length > 5 && names.every(n => !/^Schweizer /.test(n)), `«Schweizer» noch im Namen: ${names.join(", ")}`);
+  expect(names.includes("Feldsalat") && !names.some(n => /Nüsslisalat|Rüebli|Randen|Kabis/.test(n)), `Schweizer Begriffe: ${names.join(", ")}`);
+  expect(await A.page.$$eval("#fieldGrid .veg .vemoji", l => l.every(e => e.textContent.trim().length > 0)), "Bild (Emoji) fehlt");
+  await A.page.evaluate(() => { const b = [...document.querySelectorAll("#fieldGrid .veg")].find(x => x.dataset.veg === "Spinat"); b.id = "vegSpinat"; });
+  await clearToasts(A);
+  await tap(A, "#vegSpinat");
+  await toastIs(A, /Spinat Rezept.*kopiert/);
+  expect((await clip(A)) === "Spinat Rezept", `kopiert: «${await clip(A)}»`);
+  expect((await A.page.$eval("#recipeSearchQ", e => e.value)) === "Spinat Rezept ", "Suchfeld nicht gefüllt");
+  await A.page.keyboard.type("Risotto");
+  await until(A, () => document.getElementById("recipeSearchGo").href.endsWith("q=Spinat%20Rezept%20Risotto"), "Suchen-Link nicht ergänzt");
+  expect(await A.page.$eval("#recipeSearchGo", a => a.target === "_blank"), "Suche öffnet nicht in neuem Tab");
+  await noHScroll(A, "Saison mit Suche");
+  await shot(A, "10-saison-suche");
+});
+
+await step(A, "Einstellungen: Über BringFrisch (Version, GitHub, Impressum)", async () => {
+  await goTab(A, "wg");
+  expect(/^Version \d+\.\d+\.\d+$/.test(await text(A, "#appVersion")), "Version fehlt");
+  expect((await A.page.$eval("#repoLink", a => a.href)) === "https://github.com/jodbaer/BringFresch" && /Impressum/.test(await text(A, "#tab-wg")), "GitHub-Link/Impressum fehlt");
+});
+
 await step(A, "Einstellungen über ⋮: nicht verbunden, «Mehr» offen", async () => {
   await goTab(A, "wg");
   await noHScroll(A, "Einstellungen");
@@ -1130,11 +1155,15 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, '#catalogFilters [data-filter="custom"]');
-  await until(B, () => document.querySelectorAll("#catalogList [data-delete]").length === 1, "eigenes Rezept fehlt");
-  await tap(B, "#catalogList [data-delete]");
-  await tap(B, "#catalogList [data-delete]");
+  // eigene Rezepte reisen jetzt mit den WG-Einstellungen: es können auch die von Handy A dabei sein
+  const lasagne = () => [...document.querySelectorAll("#catalogList .recipe")].filter(c => c.querySelector("b").textContent === "Kürbis-Lasagne");
+  await until(B, () => [...document.querySelectorAll("#catalogList .recipe")].filter(c => c.querySelector("b").textContent === "Kürbis-Lasagne").length === 1, "eigenes Rezept fehlt (oder doppelt)");
+  await B.page.evaluate(() => { const c = [...document.querySelectorAll("#catalogList .recipe")].find(c => c.querySelector("b").textContent === "Kürbis-Lasagne"); c.querySelector("[data-delete]").id = "delLasagne"; });
+  await tap(B, "#delLasagne");
+  await tap(B, "#delLasagne");
   await toastIs(B, /Rezept gelöscht/);
-  await until(B, () => document.querySelectorAll("#catalogList [data-delete]").length === 0, "nicht gelöscht");
+  await until(B, () => ![...document.querySelectorAll("#catalogList .recipe b")].some(b => b.textContent === "Kürbis-Lasagne"), "nicht gelöscht");
+  void lasagne;
   await closeDialog(B, "catalogDialog");
 });
 
@@ -1180,7 +1209,8 @@ await step(B, "Rezepte-Tab: Link einfügen → Zutaten geholt, Personen anpassen
   const a1 = await B.page.evaluate(amt);
   await tap(B, '.prow[data-i="3"] .pday');
   await goTab(B, "season");
-  await tap(B, "#myRecipes [data-my-edit]");
+  await B.page.evaluate(() => { const row = [...document.querySelectorAll("#myRecipes .myrec")].find(r => r.querySelector("b").textContent === "Kürbis-Lasagne"); row.querySelector("[data-my-edit]").id = "editLasagne"; });
+  await tap(B, "#editLasagne");
   await until(B, () => document.getElementById("recipeDialog").open && document.getElementById("recipeFormTitle").textContent === "Rezept bearbeiten", "Bearbeiten geht nicht auf");
   expect((await B.page.$eval("#recipeIngredients", e => e.value)).split("\n").length === 3, "Zutaten nicht im Formular");
   await B.page.$eval("#recipeServings", e => { e.value = "8"; e.dispatchEvent(new Event("change", { bubbles: true })); });
