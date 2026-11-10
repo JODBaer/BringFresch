@@ -14,6 +14,11 @@
 //   GET/PUT /vorrat                   -> gemeinsamer Grundvorrat der WG
 //   GET  /cal-link                    -> { url } Abo-Link für den Kalender
 //   GET  /cal/:token.ics              -> Kalender-Abo (iCal) mit allen Znacht der Woche
+//   GET  /backup                      -> { days: ["2026-11-10", ...] }  (tägliche Sicherung, 30 Tage)
+//   GET  /backup/:day                 -> { day, keys: { plan: …, vorrat: …, … } }
+//
+// Cron (täglich, wrangler.toml [triggers]): Sicherung aller WG-Daten nach backup:<Tag>, läuft 30 Tage.
+// Zurückholen von Hand: worker/README.md «Sicherung».
 //
 // Secrets (npx wrangler secret put …): BRING_EMAIL, BRING_PASSWORD, WG_PIN, CAL_TOKEN
 // Optional: BRING_LIST_UUID (sonst die Standardliste des Bot-Kontos)
@@ -39,6 +44,7 @@ const MAX_ITEMS = 45; // Free-Plan: 50 Unteranfragen pro Aufruf (1 Login + 1 Lis
 
 // ---------------------------------------------------------------------------------------------
 export default {
+  async scheduled(event, env) { await backup(env, new Date(event.scheduledTime || Date.now())); },
   async fetch(request, env) {
     const url = new URL(request.url);
     const cors = corsHeaders(request);
@@ -122,6 +128,16 @@ async function route(request, env, url) {
   if (path === "/recipe" && method === "GET") return json(await importRecipe(url.searchParams.get("url")));
 
   // Kalender-Link für die App (nur mit PIN sichtbar)
+  if (path === "/backup" && method === "GET") {
+    const { keys } = await env.WG.list({ prefix: "backup:" });
+    return json({ days: keys.map(k => k.name.slice(7)).sort().reverse() });
+  }
+  const bk = path.match(/^\/backup\/(\d{4}-\d{2}-\d{2})$/);
+  if (bk && method === "GET") {
+    const snap = await env.WG.get("backup:" + bk[1], "json");
+    if (!snap) return json({ ok: false, error: "Keine Sicherung für diesen Tag" }, 404);
+    return json(snap);
+  }
   if (path === "/cal-link" && method === "GET") {
     if (!env.CAL_TOKEN) throw httpError(500, "CAL_TOKEN nicht eingerichtet");
     return json({ url: `${url.origin}/cal/${env.CAL_TOKEN.trim()}.ics` });
@@ -132,6 +148,19 @@ async function route(request, env, url) {
 
 // ---------------------------------------------------------------------------------------------
 // Hilfen
+// Tägliche Sicherung: alle WG-Daten (ausser alten Sicherungen) als ein Eintrag, läuft nach 30 Tagen ab.
+export async function backup(env, now = new Date()) {
+  const day = now.toISOString().slice(0, 10), keys = {};
+  let cursor;
+  do {
+    const page = await env.WG.list({ cursor });
+    for (const k of page.keys) if (!k.name.startsWith("backup:")) keys[k.name] = await env.WG.get(k.name);
+    cursor = page.list_complete === false ? page.cursor : undefined;
+  } while (cursor);
+  await env.WG.put("backup:" + day, JSON.stringify({ day, keys }), { expirationTtl: 30 * 86400 });
+  return { day, count: Object.keys(keys).length };
+}
+
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...headers } });
 }

@@ -55,6 +55,27 @@ Den anderen in der WG einfach Adresse und PIN schicken. Tipp: Adresse in `static
 
 Logs live ansehen: `npx wrangler tail`
 
+## Hochladen per Release (empfohlen)
+
+Ein Release-Tag (`git tag v1.2.0 && git push origin v1.2.0`) lädt nach grünen Tests zuerst den WG-Server und dann die App hoch (`.github/workflows/deploy-pages.yml`). Dafür braucht GitHub zwei Secrets (Repo → Settings → Secrets and variables → Actions):
+
+- `CLOUDFLARE_ACCOUNT_ID` – steht bei `npx wrangler whoami`
+- `CLOUDFLARE_API_TOKEN` – dash.cloudflare.com → My Profile → API Tokens → **Create Token** → Vorlage **«Edit Cloudflare Workers»** → Konto wählen → erstellen, dann `gh secret set CLOUDFLARE_API_TOKEN` und einfügen
+
+Fehlt der Token, veröffentlicht der Release nur die App und zeigt eine Warnung. Alte Server-Version zurückholen: `npx wrangler rollback`.
+
+## Sicherung
+
+Jeden Tag um 03:00 UTC (Cron in `wrangler.toml`) speichert der Worker alle WG-Daten (Plan, Wochenwahl, Vorrat, Listenwahl, Bot-Merkliste) als `backup:<Tag>`. Jede Sicherung läuft nach 30 Tagen ab.
+
+- Ansehen: `GET /backup` (Tage) und `GET /backup/2026-11-10` (Inhalt), beide mit `X-WG-PIN`
+- Zurückholen, z.B. nur den Vorrat:
+  ```bash
+  npx wrangler kv key get backup:2026-11-10 --binding WG --remote > b.json
+  node -e "const b=require('./b.json');process.stdout.write(b.keys.vorrat)" > v.json
+  npx wrangler kv key put vorrat --path v.json --binding WG --remote
+  ```
+
 ## Entwicklung
 
 ```bash

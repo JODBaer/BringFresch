@@ -1,6 +1,9 @@
-# Release: Tag v* pushen -> alle Tests (offline, immer gleich) -> nur wenn grün: GitHub Pages veröffentlichen.
+# Release: Tag v* pushen -> alle Tests (offline, immer gleich) -> nur wenn grün:
+#   1. WG-Server (Cloudflare Worker «bringfrisch») hochladen   (braucht Secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID)
+#   2. danach die App auf GitHub Pages veröffentlichen          (Server zuerst: neue App findet immer schon den neuen Server)
+# Zurück zur alten Server-Version: cd worker && npx wrangler rollback
 # Ein normaler Push auf main veröffentlicht nichts. Lokal dasselbe: cd tests && npm ci && npm run ci
-name: Release BringFrisch (Tests + GitHub Pages)
+name: Release BringFrisch (Tests + WG-Server + GitHub Pages)
 
 on:
   push:
@@ -23,9 +26,9 @@ jobs:
       BROWSER: /usr/bin/google-chrome
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7.0.1
       - name: Setup Node
-        uses: actions/setup-node@v4.1.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -38,14 +41,37 @@ jobs:
         run: npm run ci -- --shots
       - name: Upload screenshots (Layout + UI)
         if: failure()
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: test-shots
           path: tests/shots/
           if-no-files-found: ignore
 
-  deploy:
+  worker:
     needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+      - name: Skip notice
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::warning::Secret CLOUDFLARE_API_TOKEN fehlt – WG-Server NICHT aktualisiert. Von Hand – cd worker && npx wrangler deploy"
+      - name: WG-Server hochladen (Worker bringfrisch)
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: worker
+        run: npx --yes wrangler@4.159.0 deploy
+      - name: WG-Server prüfen (/health)
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: curl -fsS --retry 3 --retry-delay 5 https://bringfrisch.bringfrisch-worker.workers.dev/health
+
+  deploy:
+    needs: [test, worker]
     permissions:
       contents: read
       pages: write
@@ -56,9 +82,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7.0.1
       - name: Setup Pages
-        uses: actions/configure-pages@v4.0.0
+        uses: actions/configure-pages@v6.0.0
       # Gleiche Adressen wie früher (Branch-Pages): Root-index.html leitet auf static/ weiter.
       # Installierte Homescreen-Apps zeigen auf /BringFresch/static/ und müssen weiter funktionieren.
       - name: Build site (index.html + static/)
@@ -67,9 +93,9 @@ jobs:
           cp index.html _site/
           cp -r static _site/static
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3.0.1
+        uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: './_site'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4.0.5
+        uses: actions/deploy-pages@v5.0.1

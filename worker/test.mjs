@@ -1,15 +1,15 @@
 // Offline-Test für den Worker: Bring! und KV werden simuliert. Start: node worker/test.mjs
-import worker from "./src/index.js";
+import worker, { backup } from "./src/index.js";
 
 let fails = 0;
 const check = (cond, msg) => { console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`); if (!cond) fails++; };
 
 // --- KV-Attrappe
-const store = new Map();
+const store = new Map(), kvOpts = new Map();
 const KV = {
   async get(k, type) { const v = store.get(k); return v == null ? null : type === "json" ? JSON.parse(v) : v; },
-  async put(k, v) { store.set(k, v); },
-  async list({ prefix }) { return { keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) }; },
+  async put(k, v, opts) { store.set(k, v); if (opts) kvOpts.set(k, opts); },
+  async list({ prefix = "" } = {}) { return { keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }; },
 };
 const env = { WG: KV, WG_PIN: "1234", CAL_TOKEN: "cal-secret", BRING_EMAIL: "bot@example.ch", BRING_PASSWORD: "pw" };
 
@@ -186,6 +186,20 @@ r = await call("/recipe?url=" + encodeURIComponent("http://localhost:8787/x"));
 check(r.status === 400, "interne Adressen werden abgelehnt");
 r = await call("/recipe?url=" + encodeURIComponent("nur Text ohne Link"));
 check(r.status === 400, "Text ohne Link: klare Meldung");
+
+// 6. Tägliche Sicherung (Cron)
+const b1 = await backup(env, new Date("2026-11-10T03:00:00Z"));
+const snap = JSON.parse(store.get("backup:2026-11-10"));
+check(b1.count > 0 && snap.keys.plan && snap.keys.vorrat, `Sicherung enthält Plan und Vorrat (${b1.count} Einträge)`);
+check(kvOpts.get("backup:2026-11-10").expirationTtl === 30 * 86400, "Sicherung läuft nach 30 Tagen ab");
+await worker.scheduled({ scheduledTime: Date.parse("2026-11-11T03:00:00Z") }, env);
+check(!JSON.parse(store.get("backup:2026-11-11")).keys["backup:2026-11-10"], "Sicherung sichert keine alten Sicherungen");
+r = await call("/backup");
+check((await r.json()).days.join() === "2026-11-11,2026-11-10", "/backup listet die Tage, neueste zuerst");
+r = await call("/backup/2026-11-10");
+check(r.status === 200 && (await r.json()).keys.vorrat, "/backup/:tag liefert die Sicherung");
+r = await call("/backup/2026-11-10", { pin: "falsch" });
+check(r.status === 401, "Sicherung nur mit PIN");
 
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);
