@@ -141,6 +141,15 @@ const osBefore = d.getElementById("setOsBtn").textContent;
 d.getElementById("setOsBtn").click();
 check(d.getElementById("setOsBtn").textContent !== osBefore, "Stil in den Einstellungen umschaltbar");
 d.getElementById("setOsBtn").click();
+const rootStyle = () => d.documentElement.style;
+d.querySelector('#accentPick [data-accent="#8ecae6"]').click();
+check(rootStyle().getPropertyValue("--primary").startsWith("hsl(") && d.querySelector('#accentPick [data-accent="#8ecae6"]').getAttribute("aria-pressed") === "true", "Akzentfarbe Himmelblau setzt die Farb-Tokens");
+const cust = d.querySelector('#bgPick [data-custom="bg"]');
+cust.value = "#ffe4e1"; cust.dispatchEvent(new w.Event("change", { bubbles: true }));
+check(rootStyle().getPropertyValue("--bg").startsWith("hsl(") && JSON.parse(w.localStorage.getItem("bf-theme")).bg === "#ffe4e1", "eigener Hintergrund gespeichert und angewendet");
+d.querySelector('#accentPick [data-accent=""]').click();
+d.querySelector('#bgPick [data-bg=""]').click();
+check(!rootStyle().getPropertyValue("--primary") && !rootStyle().getPropertyValue("--bg"), "Standard: wieder die Farben der Vorgabe");
 
 
 // 9. Wochenwahl (Memory)

@@ -168,7 +168,7 @@
     .set-top { display: flex; align-items: center; gap: 12px; }
     .set-top b { font-size: 16px; }
     .set-top small, .set-more small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
-    .set-logo { width: 42px; height: 42px; border-radius: 12px; background: #93c572; color: #1d301d; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: 0 0 auto; }
+    .set-logo { width: 42px; height: 42px; border-radius: 12px; background: var(--pist); color: var(--on-pist); display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: 0 0 auto; }
     .set-status { font-size: 12.5px; font-weight: 600; }
     .set-more summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 14px; }
     .set-more summary::-webkit-details-marker { display: none; }
@@ -183,6 +183,13 @@
     .set-inline { display: flex; gap: 8px; }
     .set-sub { font-weight: 600; }
     .set-sub small { display: inline; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+    .sw { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; padding: 0; font-size: 11.5px; color: var(--muted); cursor: pointer; width: 62px; }
+    .sw i { width: 40px; height: 40px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); display: grid; place-items: center; font-style: normal; font-size: 18px; color: #1d301d; position: relative; overflow: hidden; }
+    .sw[aria-pressed="true"] { color: var(--fg); font-weight: 700; }
+    .sw[aria-pressed="true"] i { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary); }
+    .sw.custom i { background: conic-gradient(#f28b82, #fbbc04, #ccff90, #a7ffeb, #aecbfa, #d7aefb, #f28b82); }
+    .sw input[type="color"] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; border: 0; padding: 0; cursor: pointer; }
 
     /* Wochenwahl (Memory) */
     dialog.full { max-height: 100vh; height: 100%; border-radius: 0; margin: 0 auto; }
@@ -232,6 +239,7 @@
       --spring: cubic-bezier(.34, 1.45, .5, 1); --emph: cubic-bezier(.2, 0, 0, 1);
       --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px);
       --dayh: 44px;
+      --pist: #93c572; --on-pist: #1d301d; --brand: #4c9a4c;
     }
 
     /* ---------- Farben: Google (Material 3, deckende Tonflächen) ---------- */
@@ -264,7 +272,7 @@
       --top-pad: 80px; --bottom-pad: 92px; --r-out: 26px; --r-in: 10px; --row-gap: 5px;
       --fg: #10170f; --fg2: rgba(16,23,15,.66); --outline: rgba(255,255,255,.55);
       --tint: rgba(255,255,255,.30); --tint-strong: rgba(255,255,255,.55); --rim: rgba(255,255,255,.95); --rim2: rgba(255,255,255,.25);
-      --primary: #3a5f3a; --on-primary: #eefcee; --pc: #c8f6c8; --on-pc: #1d301d; --pist: #93c572;
+      --primary: #3a5f3a; --on-primary: #eefcee; --pc: #c8f6c8; --on-pc: #1d301d;
       --today: #90ee90; --on-today: #1d301d; --ring: rgba(255,255,255,.75);
       --mesh: radial-gradient(60% 45% at 12% 8%, #c8f6c8 0%, transparent 70%), radial-gradient(55% 40% at 95% 22%, #e3f1cc 0%, transparent 70%), radial-gradient(70% 45% at 18% 78%, #d4f7e3 0%, transparent 70%), radial-gradient(60% 40% at 92% 92%, #cfe8b2 0%, transparent 70%), linear-gradient(#effbec, #f6faee);
       --bg: #f3f9ee; --surface: rgba(255,255,255,.72); --muted: #56664f; --line: rgba(60,90,50,.14); --chip-off: #b4c3ab;
@@ -308,7 +316,7 @@
     .appbar { position: fixed; z-index: 20; display: flex; align-items: center; gap: 6px; }
     .appbar h1 { margin: 0; flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .appbar .brand { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 850; }
-    .appbar .brand em { font-style: normal; color: var(--brand, #4c9a4c); }
+    .appbar .brand em { font-style: normal; color: var(--brand); }
     .appbar .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .acts { display: flex; align-items: center; gap: 6px; }
     .glass .appbar { left: 10px; right: 10px; top: calc(10px + var(--sat)); height: 60px; border-radius: 30px; padding: 0 8px 0 20px; color: var(--fg); }
@@ -338,7 +346,7 @@
     .bringchip.bump { animation: bump .6s var(--spring); }
     @keyframes bump { 30% { transform: scale(1.15); } }
     .glass .bringchip { background: rgba(255,255,255,.45); color: var(--fg); box-shadow: inset 0 1px 1px var(--rim); }
-    .glass .bringchip.ready { background: linear-gradient(160deg, rgba(255,255,255,.45), transparent 50%), rgba(147,197,114,.95); color: #1d301d; box-shadow: inset 0 1px 1px rgba(255,255,255,.7), 0 4px 14px rgba(60,110,40,.3); }
+    .glass .bringchip.ready { background: linear-gradient(160deg, rgba(255,255,255,.45), transparent 50%), var(--pist); color: var(--on-pist); box-shadow: inset 0 1px 1px rgba(255,255,255,.7), 0 4px 14px rgba(60,110,40,.3); }
     .m3 .bringchip { background: var(--s3); color: var(--fg); }
     .m3 .bringchip.ready { background: var(--primary); color: var(--on-primary); }
     @media (prefers-color-scheme: dark) { html.glass .wahl, html.glass .bringchip:not(.ready) { background: rgba(255,255,255,.12); } }
@@ -353,7 +361,7 @@
     .wkchip { position: relative; flex: none; height: 18px; margin: -3px 0; padding: 0 8px; border: 0; border-radius: 9px; cursor: pointer; font: 750 10.5px/18px var(--font); font-stretch: 110%; white-space: nowrap; transition: transform .3s var(--spring); }
     .wkchip::before { content: ""; position: absolute; inset: -8px -6px; }
     .wkchip:active { transform: scale(.92); }
-    .glass .wkchip { background: #93c572; color: #1d301d; box-shadow: inset 0 1px 1px var(--rim); }
+    .glass .wkchip { background: var(--pist); color: var(--on-pist); box-shadow: inset 0 1px 1px var(--rim); }
     .m3 .wkchip { background: var(--sec-c); color: var(--on-sec-c); }
     .appbar.nextwk .sub { color: var(--primary); font-weight: 750; }
     .prow.unplanned .dish .t { color: var(--fg2); font-weight: 550; }
@@ -374,11 +382,11 @@
     .prow.today .pday { -webkit-mask: var(--cookie) center / 100% 100%; mask: var(--cookie) center / 100% 100%; border-radius: 0; }
     .glass .pday { background: rgba(255,255,255,.35); color: var(--fg); box-shadow: inset 0 1px 1px var(--rim); }
     .glass .prow.today .pday { background: var(--today); color: var(--on-today); }
-    .glass .prow.open .pday { background: #3a5f3a; color: #eefcee; }
+    .glass .prow.open .pday { background: var(--primary); color: var(--on-primary); }
     .m3 .pday { background: var(--sec-c); color: var(--on-sec-c); }
     .m3 .prow.today .pday { background: var(--today); color: var(--on-today); }
     .m3 .prow.open .pday { background: var(--primary); color: var(--on-primary); }
-    @media (prefers-color-scheme: dark) { html.glass .pday { background: rgba(255,255,255,.12); } html.glass .prow.open .pday { background: #90ee90; color: #1d301d; } }
+    @media (prefers-color-scheme: dark) { html.glass .pday { background: rgba(255,255,255,.12); } }
 
     .dish { min-width: 0; padding-top: calc((var(--dayh) - 36px) / 2); }
     .dish .t { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; color: var(--fg); font: 650 15.5px/1.2 var(--font); font-stretch: 96%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -391,9 +399,8 @@
     .av { position: relative; flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 750 8.5px var(--font); font-stretch: 90%; border: 0; cursor: pointer; padding: 0; box-shadow: 0 0 0 2px var(--ring); transition: transform .3s var(--spring); }
     .av + .av { margin-left: var(--ov); }
     .av:active { transform: scale(.88); }
-    .glass .av { background: #c8f6c8; color: #1d301d; }
+    .glass .av { background: var(--pc); color: var(--on-pc); }
     .m3 .av { background: var(--pc); color: var(--on-pc); }
-    @media (prefers-color-scheme: dark) { html.glass .av { background: #3a5f3a; color: #eefcee; } }
     .av.off { opacity: .75; filter: grayscale(1); }
     .av.off::after { content: ""; position: absolute; left: 3px; right: 3px; top: 50%; height: 1.8px; margin-top: -.9px; border-radius: 1px; background: currentColor; transform: rotate(-45deg); }
     .glass .av.off { background: rgba(120,128,120,.22); color: #555d55; }
@@ -429,10 +436,10 @@
     .ing .none { grid-column: 1 / -1; color: var(--fg2); }
     .links { display: flex; gap: 6px; margin-top: 10px; }
     .links a, .links button { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px; font: 700 14px var(--font); text-decoration: none; cursor: pointer; border: 0; transition: border-radius .3s var(--spring); }
-    .glass .links a { background: #3a5f3a; color: #eefcee; border-radius: 999px; }
-    .glass .links button { background: rgba(200,246,200,.45); color: #2f4f2f; border-radius: 999px; box-shadow: inset 0 0 0 1.5px rgba(86,143,86,.4), inset 0 1px 1px var(--rim); }
+    .glass .links a { background: var(--primary); color: var(--on-primary); border-radius: 999px; }
+    .glass .links button { background: color-mix(in srgb, var(--pc) 45%, transparent); color: var(--primary); border-radius: 999px; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 40%, transparent), inset 0 1px 1px var(--rim); }
     .glass .links a:active, .glass .links button:active { border-radius: 12px; }
-    @media (prefers-color-scheme: dark) { html.glass .links a { background: #90ee90; color: #1d301d; } html.glass .links button { background: rgba(144,238,144,.12); color: #c8f6c8; box-shadow: inset 0 0 0 1.5px rgba(144,238,144,.35); } }
+    @media (prefers-color-scheme: dark) { html.glass .links button { background: color-mix(in srgb, var(--primary) 12%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 35%, transparent); } }
     .m3 .links { gap: 2px; }
     .m3 .links a { background: var(--primary); color: var(--on-primary); border-radius: 20px 6px 6px 20px; }
     .m3 .links button { background: var(--sec-c); color: var(--on-sec-c); border-radius: 6px 20px 20px 6px; }
@@ -466,8 +473,8 @@
     .glass .bnav { left: 50%; transform: translateX(-50%); bottom: calc(12px + var(--sab)); width: calc(100% - 24px); max-width: 380px; height: 66px; border-radius: 33px; padding: 5px; gap: 2px; color: var(--fg); }
     .glass .bnav button { flex-direction: column; gap: 1px; font: 650 11px var(--font); border-radius: 28px; opacity: .85; }
     .glass .bnav button .icon { width: 22px; height: 22px; }
-    .glass .bnav button[aria-current="page"] { opacity: 1; background: rgba(255,255,255,.45); color: #3a5f3a; box-shadow: inset 0 1px 1px var(--rim), 0 1px 4px rgba(0,0,0,.08); }
-    @media (prefers-color-scheme: dark) { html.glass .bnav button[aria-current="page"] { background: rgba(255,255,255,.12); color: #90ee90; } }
+    .glass .bnav button[aria-current="page"] { opacity: 1; background: rgba(255,255,255,.45); color: var(--primary); box-shadow: inset 0 1px 1px var(--rim), 0 1px 4px rgba(0,0,0,.08); }
+    @media (prefers-color-scheme: dark) { html.glass .bnav button[aria-current="page"] { background: rgba(255,255,255,.12); } }
     .m3 .bnav { left: 0; right: 0; bottom: 0; height: calc(72px + var(--sab)); padding: 12px 10px calc(12px + var(--sab)); gap: 4px; background: var(--s2); color: var(--fg2); }
     .m3 .bnav button { gap: 8px; border-radius: 24px; font: 700 14px var(--font); }
     .m3 .bnav button span { display: none; }
@@ -720,6 +727,14 @@
         <div class="set-row set-line">
           <span>Stil<small>Automatisch erkannt</small></span>
           <button class="btn" type="button" id="setOsBtn">iPhone</button>
+        </div>
+        <div class="set-row">
+          <span class="set-sub">Akzentfarbe <small>nur auf diesem Handy</small></span>
+          <div class="swatches" id="accentPick" role="group" aria-label="Akzentfarbe"></div>
+        </div>
+        <div class="set-row">
+          <span class="set-sub">Hintergrund <small>nur auf diesem Handy</small></span>
+          <div class="swatches" id="bgPick" role="group" aria-label="Hintergrund"></div>
         </div>
       </details>
     </section>
