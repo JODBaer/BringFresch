@@ -3,6 +3,7 @@
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
 const path = require("path");
+const { fixWindow, STANDARD_NOW } = require("./determinism");
 
 const root = process.argv[2] || path.join(__dirname, "..", "static");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8")
@@ -24,10 +25,7 @@ function boot(preset, fakeNow) {
       win.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new win.Event("close")); } };
       win.navigator.clipboard = { writeText: async () => {} };
       Object.entries(preset || {}).forEach(([k, v]) => win.localStorage.setItem(k, JSON.stringify(v)));
-      if (fakeNow) { // feste Uhrzeit, z.B. Donnerstag
-        const Real = win.Date;
-        win.Date = class extends Real { constructor(...a) { super(...(a.length ? a : [fakeNow])); } static now() { return new Real(fakeNow).getTime(); } };
-      }
+      fixWindow(win, { now: fakeNow || STANDARD_NOW }); // feste Uhrzeit (Standard Dienstag, z.B. Donnerstag) + fester Zufall
     }
   });
 }
@@ -186,7 +184,7 @@ check(!d.getElementById("voteDialog").open, "Wochenwahl schliesst nach Übernahm
 const shareDom = boot();
 const payload = Buffer.from(JSON.stringify({ v: 2, members: [{ id: "a", name: "Alex", diet: "vegi" }], weekPlan: plan0() })).toString("base64");
 const linkDom = new JSDOM(html, { url: `https://jodbaer.github.io/BringFresch/#plan=${encodeURIComponent(payload)}`, runScripts: "dangerously", virtualConsole: vc,
-  beforeParse(win) { win.HTMLDialogElement.prototype.showModal = function () { this.open = true; }; win.HTMLDialogElement.prototype.close = function () { this.open = false; }; } });
+  beforeParse(win) { fixWindow(win); win.HTMLDialogElement.prototype.showModal = function () { this.open = true; }; win.HTMLDialogElement.prototype.close = function () { this.open = false; }; } });
 check(linkDom.window.document.querySelectorAll("#days .prow")[0].querySelectorAll(".av").length === 1, "Plan-Link wird übernommen");
 
 // 9. Schnelles & Reste

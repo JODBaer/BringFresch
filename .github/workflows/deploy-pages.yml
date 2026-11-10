@@ -1,41 +1,68 @@
-name: Deploy BringFrisch to GitHub Pages
+# Release: Tag v* pushen -> alle Tests (offline, immer gleich) -> nur wenn grün: GitHub Pages veröffentlichen.
+# Ein normaler Push auf main veröffentlicht nichts. Lokal dasselbe: cd tests && npm ci && npm run ci
+name: Release BringFrisch (Tests + GitHub Pages)
 
 on:
   push:
-    branches: ["main"]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TZ: Europe/Zurich
+      BROWSER: /usr/bin/google-chrome
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      - name: Setup Node
+        uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm ci
+      - name: All tests (Syntax, App, Integration, Worker, Layout)
+        working-directory: tests
+        run: npm run ci -- --shots
+      - name: Upload layout screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: layout-shots
+          path: tests/shots/
+          if-no-files-found: ignore
+
   deploy:
+    needs: test
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: JavaScript syntax check (blocks broken deploys)
-        run: for f in static/*.js; do node --check "$f" || exit 1; done
+        uses: actions/checkout@v4.2.2
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v4.0.0
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v3.0.1
         with:
           path: './static'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
-
+        uses: actions/deploy-pages@v4.0.5

@@ -7,6 +7,7 @@
 import puppeteer from "puppeteer-core";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -25,7 +26,9 @@ if (shots) mkdirSync(path.join(here, "shots"), { recursive: true });
 let fails = 0;
 const check = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) fails++; };
 
-const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ["--allow-file-access-from-files", "--no-first-run", "--no-default-browser-check", "--disable-gpu"], userDataDir: path.join(process.env.TEMP || here, "bf-layout-profile") });
+// In CI (GitHub Actions, Linux-Container) läuft Chrome nur ohne eigene Sandbox; lokal bleibt sie an.
+const ciArgs = process.env.CI ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
+const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ["--allow-file-access-from-files", "--no-first-run", "--no-default-browser-check", "--disable-gpu", ...ciArgs], userDataDir: path.join(tmpdir(), "bf-layout-profile") });
 const sizes = [[390, 844], [375, 667], [390, 600]];
 for (const os of ["ios", "android"]) {
   for (const scheme of ["light", "dark"]) {
@@ -38,6 +41,8 @@ for (const os of ["ios", "android"]) {
         const Real = Date, fixed = new Real(2026, 10, 12, 12).getTime();
         class FakeDate extends Real { constructor(...a) { if (a.length) super(...a); else super(fixed); } static now() { return fixed; } }
         window.Date = FakeDate;
+        // fester Zufall (Mulberry32), damit jeder Lauf dieselben Gerichte zeigt
+        let s = 46; Math.random = () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
         try { localStorage.setItem("bringfrisch_wahl_2026-W46", "true"); localStorage.setItem("bringfrisch_wahl_2026-W47", "true"); } catch (e) {}
       });
       const errors = [];

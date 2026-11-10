@@ -38,10 +38,14 @@ Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 ## Befehle
 
 ```bash
-cd tests && npm install && npm test     # App (jsdom), 2-Handy-Integration, Worker
+cd tests && npm ci && npm run ci        # ALLES vor dem Abschluss: Syntax, App, Integration, Worker, Layout → «PASS: alles grün»
+npm run ci -- --no-layout                # ohne Browser (falls gesperrt); --shots = Fotos in tests/shots/
+npm test                                 # nur App (jsdom), 2-Handy-Integration, Worker
 node tests/layout_check.mjs --shots      # Plan-Layout im echten Browser (390×844, 375×667, 390×600)
 npx serve static                        # lokal ansehen
+git tag v1.2.0 && git push origin v1.2.0 # Release: Tests in CI, nur bei grün GitHub Pages
 cd worker && npx wrangler deploy        # Worker veröffentlichen
 ```
 
-CI: `.github/workflows/deploy-pages.yml` prüft `node --check static/*.js`.
+CI: `.github/workflows/deploy-pages.yml` läuft nur bei Tags `v*` (oder von Hand): Job `test` (`npm run ci -- --shots`, Fotos als Artefakt bei Fehler), danach `deploy` (Pages). Push auf main veröffentlicht nichts.
+Tests sind deterministisch: `tests/determinism.js` (feste Uhr Di 10.11.2026, fester Zufall), kein Netz (fetch, Bring!, KV nachgebaut). Neue Tests genauso. Live-Tests (`tests/e2e_live.*`, `tools/check_live.*`) brauchen Zugangsdaten → nur von Hand, nie in CI.

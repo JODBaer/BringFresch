@@ -2,7 +2,9 @@
   "name": "bringfrisch-tests",
   "private": true,
   "scripts": {
-    "test": "node app.test.js && node integration.test.mjs && node ../worker/test.mjs"
+    "test": "node app.test.js && node integration.test.mjs && node ../worker/test.mjs",
+    "layout": "node layout_check.mjs",
+    "ci": "node run_ci.mjs"
   },
   "devDependencies": {
     "jsdom": "24.1.3",
