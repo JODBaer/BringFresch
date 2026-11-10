@@ -4,7 +4,9 @@
   "scripts": {
     "test": "node app.test.js && node integration.test.mjs && node ../worker/test.mjs",
     "layout": "node layout_check.mjs",
-    "ci": "node run_ci.mjs"
+    "ci": "node run_ci.mjs",
+    "ui": "node ui_e2e.mjs",
+    "chrome": "browsers install chrome@stable --path .chrome"
   },
   "devDependencies": {
     "jsdom": "24.1.3",

@@ -1,7 +1,8 @@
 // Ein Befehl für alles, was offline und immer gleich läuft (lokal wie in GitHub Actions):
-//   cd tests && npm run ci                -> Syntax, App, 2-Handy-Integration, Worker, Layout im Browser
+//   cd tests && npm run ci                -> Syntax, App, 2-Handy-Integration, Worker, Layout + UI im Browser
 //   npm run ci -- --shots                 -> zusätzlich Bildschirmfotos in tests/shots/
-//   npm run ci -- --no-layout             -> ohne Browser (nur Node)
+//   npm run ci -- --no-layout             -> ohne Layout-Prüfung im Browser
+//   npm run ci -- --no-ui                 -> ohne UI-Test (klickt sich durch alle Seiten, ui_e2e.mjs)
 // Keine Live-Tests (e2e_live, check_live): die brauchen echte Zugangsdaten.
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
@@ -39,7 +40,9 @@ results.push([`Syntax (${syntaxFiles.length} Dateien)`, bad.length === 0]);
 step("App (jsdom)", node, ["app.test.js"]);
 step("Integration (2 Handys + Worker)", node, ["integration.test.mjs"]);
 step("Worker", node, ["../worker/test.mjs"]);
-if (!args.includes("--no-layout")) step("Layout (Browser)", node, ["layout_check.mjs", ...(args.includes("--shots") ? ["--shots"] : [])]);
+const shotArg = args.includes("--shots") ? ["--shots"] : [];
+if (!args.includes("--no-layout")) step("Layout (Browser)", node, ["layout_check.mjs", ...shotArg]);
+if (!args.includes("--no-ui")) step("UI wie ein Mensch (Browser)", node, ["ui_e2e.mjs", ...shotArg]);
 
 console.log("\n=== Zusammenfassung ===");
 for (const [name, ok] of results) console.log(`${ok ? "PASS" : "FAIL"}  ${name}`);

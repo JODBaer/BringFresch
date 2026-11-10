@@ -48,16 +48,34 @@ Ohne Worker funktioniert alles auf einem Handy; Bring! dann über Teilen/Kopiere
 Ein Befehl, ohne Internet, jedes Mal gleich (feste Uhr Di 10.11.2026, fester Zufall, Bring! und WG-Server nachgebaut). Braucht Node 22 und Edge oder Chrome:
 
 ```bash
-cd tests && npm ci && npm run ci        # Syntax, App, 2 Handys + Worker, Worker, Layout im Browser
-npm run ci -- --shots                    # dazu Bildschirmfotos in tests/shots/
-npm run ci -- --no-layout                # ohne Browser
+cd tests && npm ci && npm run ci        # Syntax, App, 2 Handys + Worker, Worker, Layout + UI im Browser
+npm run ci -- --shots                    # dazu Bildschirmfotos in tests/shots/ (UI: tests/shots/ui/)
+npm run ci -- --no-layout --no-ui        # ohne Browser
+npm run ui                               # nur der UI-Test
 ```
 
-Am Schluss steht `PASS: alles grün` oder `FAIL: …` (dann Exit-Code 1). Anderer Browser: `BROWSER=/pfad/zu/chrome`.
+Am Schluss steht `PASS: alles grün` oder `FAIL: …` (dann Exit-Code 1). Läuft gleich unter Windows, Linux und in GitHub Actions.
+Browser: Edge oder Chrome wird automatisch gefunden, sonst `BROWSER=/pfad/zu/chrome`. Kein Browser installiert (z.B. Linux-Server)? Einmal `npm run chrome` – lädt Chrome nach `tests/.chrome/`, der Test findet ihn dort.
+
+**UI-Test** (`tests/ui_e2e.mjs`): bedient die App wie ein Mensch in einem echten Chrome (Handy 390×844 mit Touch): tippt, schreibt, wählt aus, wischt, zieht herunter – durch Plan, Wochenwahl, Bring! füllen, Einkauf, Grundvorrat, Rezepte & Saison, Einstellungen und ⋮-Menü, als iPhone und Android, hell und dunkel, an einem Dienstag, Donnerstag (nächste Woche) und Montag (Wochenwechsel). Der WG-Server ist der echte Worker-Code, im Test-Prozess mit nachgebautem Bring! (Listen «WG» und «Home») – kein Internet, keine Zugangsdaten. Jeder Schritt meldet `PASS`/`FAIL`, bei Fehlern liegt ein Foto `FEHLER-….png` in `tests/shots/ui/`. Nicht headless bedienbar und darum nachgestellt: Teilen-Blatt (die App kopiert stattdessen), Zwischenablage (wird mitgeschrieben), Farb-/Zeitwähler (Wert wird gesetzt), Öffnen von `bring://`/`webcal://` (geprüft werden Hinweis und Link).
+
+### Neuen Test hinzufügen
+
+Neue Abläufe gehören in `tests/ui_e2e.mjs` in einen der Abläufe A (iPhone, ohne/mit WG-Server), B (Android, verbunden, Bring!) oder C (Donnerstag/Montag). Ein Schritt:
+
+```js
+await step(A, "Gäste am Montag: +1", async () => {
+  await goTab(A, "wg");                                   // Plan | shop | season | wg (über ⋮)
+  await tap(A, '#attendance [data-guests="0"]');           // antippen wie mit dem Finger (muss sichtbar sein)
+  await until(A, () => document.querySelector('#attendance [data-guests="0"]').textContent === "1", "Gäste zählen nicht");
+});
+```
+
+Hilfsfunktionen: `tap` (antippen), `typeInto` (Feld antippen + tippen), `choose` (Auswahlliste), `pickNative` (Farb-/Zeitwähler), `swipe`/`pullDown` (wischen/herunterziehen), `until` (warten, bis etwas im Browser stimmt), `toastIs` (Hinweis abwarten), `expect` (prüfen), `text`/`count`/`titles`/`dayTitle`/`ctaCount` (lesen), `shot` (Foto bei `--shots`), `noHScroll` (kein seitliches Scrollen). Auf Seite des WG-Servers: `kvJson("plan")` (Speicher), `wg()` (Artikel in Bring! «WG»), `workerCall("/plan", …)` (ein anderes Handy spielen). Danach `cd tests && npm run ui`.
 
 | Wo | Was |
 |---|---|
-| lokal | `npm run ci` (einzeln: `npm test`, `npm run layout`) |
+| lokal (Windows, Linux) | `npm run ci` (einzeln: `npm test`, `npm run layout`, `npm run ui`) |
 | GitHub Actions, Push auf `main` | dieselben Tests → **Test-Version** aktualisieren → Live-Test gegen echtes Bring! (Liste «Home» des Bots, räumt auf) – `stage.yml` |
 | GitHub Actions, Release-Tag `v*` | dieselben Tests → WG-Version auf GitHub Pages, nur wenn alles grün ist – `deploy-pages.yml` |
 | nur von Hand | Live-Test «Home»: `tests\stage_live.ps1` (fragt den Test-PIN) · WG-Server: `tests\e2e_live.ps1`, `tools\check_live.ps1` |
@@ -73,7 +91,7 @@ Einmalig einrichten: `powershell -ExecutionPolicy Bypass -File worker\setup-stag
 git tag v0.3.0 && git push origin v0.3.0
 ```
 
-Fortschritt unter GitHub → Actions. Rote Tests = keine neue Version; die Bildschirmfotos liegen dann als Artefakt «layout-shots» beim Lauf.
+Fortschritt unter GitHub → Actions. Rote Tests = keine neue Version; die Bildschirmfotos (Layout + UI) liegen dann als Artefakt «test-shots» beim Lauf.
 
 ## Kosten
 
