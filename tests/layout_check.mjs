@@ -5,7 +5,7 @@
 // beim Aufklappen bewegt sich nichts ausser dem geöffneten Tag (Zeilen darüber, Kopfzeile, Schrift bleiben stehen).
 // Geprüft wird an einem Donnerstag: laufende Woche und nächste Woche (Chip «KW n →», offene Tage).
 import puppeteer from "puppeteer-core";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -28,7 +28,9 @@ const check = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) f
 
 // In CI (GitHub Actions, Linux-Container) läuft Chrome nur ohne eigene Sandbox; lokal bleibt sie an.
 const ciArgs = process.env.CI ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
-const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ["--allow-file-access-from-files", "--no-first-run", "--no-default-browser-check", "--disable-gpu", ...ciArgs], userDataDir: path.join(tmpdir(), "bf-layout-profile") });
+// eigenes Profil pro Lauf: zwei Läufe gleichzeitig (z.B. zwei Worktrees) stören sich sonst
+const profileDir = mkdtempSync(path.join(tmpdir(), "bf-layout-profile-"));
+const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ["--allow-file-access-from-files", "--no-first-run", "--no-default-browser-check", "--disable-gpu", ...ciArgs], userDataDir: profileDir });
 const sizes = [[390, 844], [375, 667], [390, 600]];
 for (const os of ["ios", "android"]) {
   for (const scheme of ["light", "dark"]) {
@@ -107,5 +109,6 @@ for (const os of ["ios", "android"]) {
   }
 }
 await browser.close();
+try { rmSync(profileDir, { recursive: true, force: true }); } catch { /* Windows: Chrome lässt evtl. noch kurz Dateien offen */ }
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

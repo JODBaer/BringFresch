@@ -2,14 +2,14 @@
   "name": "bringfrisch-tests",
   "private": true,
   "scripts": {
-    "test": "node app.test.js && node integration.test.mjs && node ../worker/test.mjs",
+    "test": "node app.test.js && node integration.test.mjs && node ../worker/test.mjs && node release_build.test.mjs",
     "layout": "node layout_check.mjs",
     "ci": "node run_ci.mjs",
     "ui": "node ui_e2e.mjs",
     "chrome": "browsers install chrome@stable --path .chrome"
   },
   "devDependencies": {
-    "jsdom": "24.1.3",
-    "puppeteer-core": "^23.11.1"
+    "jsdom": "30.1.3",
+    "puppeteer-core": "25.16.0"
   }
 }

@@ -1,5 +1,5 @@
 // Ein Befehl für alles, was offline und immer gleich läuft (lokal wie in GitHub Actions):
-//   cd tests && npm run ci                -> Syntax, App, 2-Handy-Integration, Worker, Layout + UI im Browser
+//   cd tests && npm run ci                -> Syntax, App, 2-Handy-Integration, Worker, Release-Build, Layout + UI im Browser
 //   npm run ci -- --shots                 -> zusätzlich Bildschirmfotos in tests/shots/
 //   npm run ci -- --no-layout             -> ohne Layout-Prüfung im Browser
 //   npm run ci -- --no-ui                 -> ohne UI-Test (klickt sich durch alle Seiten, ui_e2e.mjs)
@@ -54,6 +54,7 @@ results.push([`Syntax (${syntaxFiles.length} Dateien)`, bad.length === 0]);
 step("App (jsdom)", node, ["app.test.js"]);
 step("Integration (2 Handys + Worker)", node, ["integration.test.mjs"]);
 step("Worker", node, ["../worker/test.mjs"]);
+step("Release-Build (wie GitHub Pages)", node, ["release_build.test.mjs"]);
 const shotArg = args.includes("--shots") ? ["--shots"] : [];
 if (!args.includes("--no-layout")) step("Layout (Browser)", node, ["layout_check.mjs", ...shotArg], { retry: true });
 if (!args.includes("--no-ui")) step("UI wie ein Mensch (Browser)", node, ["ui_e2e.mjs", ...shotArg], { retry: true });
