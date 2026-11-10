@@ -79,6 +79,12 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - Gilt überall, wo heute `J L Le Jo` steht (Plan, Wochenwahl, Kalender-Text); leer = automatisches Kürzel wie bisher
   - Wird mit den Mitbewohnern im WG-Server geteilt, damit alle Handys dieselben Kürzel zeigen
 - [ ] **Live-Test** der neuen Bring!-Logik (Nachfragen, Rückgängig, Herunterziehen): `powershell -ExecutionPolicy Bypass -File tests\e2e_live.ps1`
+- [ ] **Grundvorrat zählt mit** (nach dem Praxistest)
+  - Pro Artikel «reicht für ca. N Znacht» (z.B. Olivenöl 500 ml ≈ 15, Bouillon ≈ 10, Tomatenpüree ≈ 4, Knoblauch ≈ 3); Salz, Pfeffer & Co. zählen nicht (halten Monate)
+  - Jeder gekochte Tag, dessen Rezept den Artikel braucht (Zuordnung wie heute über `keywords`), zählt 1 ab; offene Tage und Resteessen nicht
+  - Nicht speichern, sondern rechnen: Rest = N − gekochte Tage seit «zuletzt gekauft» → keine Konflikte zwischen den Handys
+  - Vorschlag, wenn Rest ≤ 2 oder der Plan der Woche mehr braucht: «Olivenöl reicht noch für ~2 Znacht, geplant sind 4 → auf Bring!?» (ein Tipp, wie heute die Pille)
+  - In Bring! gekauft/abgehakt = wieder voll; von Hand korrigierbar («noch voll» / «fast leer»)
 - [ ] **Praxistest**: eine echte Woche mit Lukas, Leonie und Jo planen, einkaufen, Feedback sammeln
 - [ ] Danach entscheiden: Mengen der Protein-Zusätze (150 g Fleisch / 100 g Käse pro Person), Rezeptauswahl, evtl. Koch-Zuteilung
 
@@ -88,3 +94,4 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 - Weitere Rezepte einzeln über «Eigenes Rezept → Link» statt Massen-Import
 - Bring!-Batch-Schnittstelle (`PUT bringlists/{uuid}/items`, ein Aufruf statt einer pro Artikel) → hebt das 45-Artikel-Limit auf
 - Eigene Bilder für Artikel ohne Bring!-Bild (Bring!-API kann kein Hochladen; nur von Hand in der Bring!-App)
+- Grundvorrat zusätzlich als eigene Bring!-Liste «Vorrat» im Bot-Konto (oben = haben wir, «Zuletzt verwendet» = fehlt), geteilt mit allen, auch ohne PWA. Bot gleicht per Cron (~10 Min.) ab: leer → Einkaufsliste, gekauft → wieder «da». Vorher eine Woche ohne Code testen (Liste von Hand anlegen und teilen). Siehe Entscheid #22

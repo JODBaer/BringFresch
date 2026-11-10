@@ -23,3 +23,4 @@
 | 19 | Schrift Roboto Flex lokal statt von Google Fonts | App bleibt offline und ohne fremde Server (#11) |
 | 20 | Mit offenem Tag bleiben alle 7 Tage sichtbar; Dichte nur beim Start/Drehen ändern | Ruhige Ansicht, nichts springt beim Aufklappen |
 | 21 | Ab Donnerstag die nächste Woche planen: Chip «KW 47 →» in der Abschnittszeile, eigener Plan pro KW | Am Wochenende schon einkaufen; Chip im Design der Vorgabe (Pistazie/Sekundär-Container), ändert die Höhe nicht, alle 7 Tage bleiben sichtbar. Wochenwahl pro Woche gespeichert, kein Raster geht verloren. Am Montag wird die geplante Woche zur laufenden, sonst bleibt der Plan stehen |
+| 22 | Grundvorrat bleibt in der PWA (Worker `/vorrat`), keine eigene Bring!-Liste «Vorrat» | Bring! kennt kein «nur lesen»; eine geteilte Vorrat-Liste bräuchte einen Cron-Abgleich mit der Einkaufsliste (gekauft ≠ gelöscht nicht sicher erkennbar), mehr Abhängigkeit von der inoffiziellen API. Idee steht im Plan unter «Später» |
