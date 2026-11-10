@@ -10,7 +10,9 @@
 #   2. CLOUDFLARE_ACCOUNT_ID  -> GitHub              – automatisch aus «wrangler whoami», nie angezeigt
 #   3. CLOUDFLARE_API_TOKEN   -> GitHub              – du erstellst ihn im Browser und fügst ihn verdeckt ein
 #   4. Test-Server: Bot-Zugang + Test-PIN -> Cloudflare (stage), Test-PIN auch -> GitHub (STAGE_PIN)
-param([string]$Repo = 'jodbaer/BringFresch')
+#   Nur das Bot-Passwort des Test-Servers neu setzen:  … setup-secrets.ps1 -BotPassword
+#   Nur die Account-ID neu setzen (ohne Eingabe):       … setup-secrets.ps1 -AccountId
+param([string]$Repo = 'jodbaer/BringFresch', [switch]$BotPassword, [switch]$AccountId)
 
 $ErrorActionPreference = 'Stop'
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User') + ';C:\Program Files\nodejs;C:\Program Files\GitHub CLI'
@@ -45,6 +47,27 @@ function CfSecret($name, $value, $envName) {
   if ($code -eq 0) { Ok "Cloudflare-Secret $name ($envName) gesetzt" } else { Warn "Cloudflare-Secret $name ($envName) FEHLER" }
 }
 
+if ($AccountId) {
+  Push-Location (Join-Path $root 'worker')
+  try { $who = (npx --yes wrangler whoami 2>$null | Out-String) } finally { Pop-Location }
+  $ids = @([regex]::Matches($who, '[0-9a-f]{32}') | ForEach-Object { $_.Value } | Select-Object -Unique)
+  if ($ids.Count -eq 1 -and $ids[0].Length -eq 32) { GhSecret 'CLOUDFLARE_ACCOUNT_ID' $ids[0] } else { Warn "Account-ID nicht eindeutig gefunden ($($ids.Count))" }
+  Remove-Variable who, ids -ErrorAction SilentlyContinue
+  return
+}
+if ($BotPassword) {
+  Step 1 'Bot-Passwort des Test-Servers neu setzen'
+  $pw = Hidden 'Passwort des Bring!-Bots'
+  $pw2 = Hidden 'Nochmals, zur Kontrolle'
+  if (-not $pw) { Warn 'leer – nichts geändert' }
+  elseif ($pw -cne $pw2) { Warn 'die beiden Eingaben sind verschieden – nichts geändert, bitte nochmals starten' }
+  else { CfSecret 'BRING_PASSWORD' $pw 'stage' }
+  Remove-Variable pw, pw2 -ErrorAction SilentlyContinue
+  [GC]::Collect()
+  Write-Host "`nFertig. Schreib Claude «fertig» – dann wird der Test gegen Bring! «Home» nochmals gestartet." -ForegroundColor Cyan
+  return
+}
+
 Write-Host "BringFrisch – Zugangsdaten einrichten (Repo: $Repo)" -ForegroundColor Cyan
 Write-Host "Nichts von dem, was du eingibst, wird angezeigt oder gespeichert."
 
@@ -77,7 +100,8 @@ if ($haveGh -and (Ask 'CLOUDFLARE_ACCOUNT_ID setzen?')) {
     Write-Host '  Nicht bei Cloudflare angemeldet – gleich öffnet sich die Cloudflare-Anmeldung.'
     Push-Location (Join-Path $root 'worker'); try { npx --yes wrangler login | Out-Null; $who = (npx --yes wrangler whoami 2>$null | Out-String) } finally { Pop-Location }
   }
-  $ids = [regex]::Matches($who, '[0-9a-f]{32}') | ForEach-Object { $_.Value } | Select-Object -Unique
+  # @(...): auch bei genau einem Treffer eine Liste (sonst wäre $ids[0] nur das erste Zeichen)
+  $ids = @([regex]::Matches($who, '[0-9a-f]{32}') | ForEach-Object { $_.Value } | Select-Object -Unique)
   if ($ids.Count -eq 1) { GhSecret 'CLOUDFLARE_ACCOUNT_ID' $ids[0] }
   elseif ($ids.Count -gt 1) { Warn "$($ids.Count) Cloudflare-Konten gefunden – Account-ID bitte selbst einfügen"; GhSecret 'CLOUDFLARE_ACCOUNT_ID' (Hidden 'Account-ID') }
   else { Warn 'keine Account-ID gefunden' }
