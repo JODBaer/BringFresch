@@ -73,7 +73,7 @@ Schutz vor der falschen Liste: Eine weitere WG schreibt nirgends hin, bis sie ih
    node tools/new_wg.mjs "Sonnenhof"          # WG-Server
    node tools/new_wg.mjs "Sonnenhof" --stage  # zum Ausprobieren auf der Test-Version
    ```
-   Fragt den PIN verdeckt (mind. 6 Zeichen, zweimal). Gibt WG-Name und Kalender-Link aus.
+   Fragt den PIN verdeckt (mind. 4 Zeichen, zweimal). Gibt WG-Name und Kalender-Link aus.
 2. **Bring!-Liste teilen**: Die neue WG lädt in ihrer Bring!-App **allmenbot@gmail.com** in ihre Einkaufsliste ein. Im Bot-Konto (Bring!-App/Web mit dem Bot anmelden) die Einladung annehmen.
 3. **Handys verbinden**: Jede Person öffnet <https://jodbaer.github.io/BringFresch/>, «Zum Home-Bildschirm», gibt WG-Name + PIN ein und tippt sich unter «Wer bist du?» an. Die erste Person trägt sich selbst ein, die anderen Mitbewohner kommen beim Verbinden dazu (oder unter Einstellungen → Mitbewohner).
 4. **Liste wählen**: Einstellungen → «Bring!-Liste der WG» → die eigene Liste wählen. Erst danach geht «Bring! füllen».

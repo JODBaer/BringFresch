@@ -1,7 +1,7 @@
 // Neue WG auf dem WG-Server anlegen (eigener Name + PIN, eigene Daten, eigene Bring!-Liste, gleicher Bot).
 //   node tools/new_wg.mjs "Sonnenhof"            -> WG-Server (bringfrisch)
 //   node tools/new_wg.mjs "Sonnenhof" --stage    -> Test-Version (bringfrisch-test)
-// Fragt den PIN verdeckt ab (mind. 6 Zeichen). Gespeichert wird nur ein Hash, nie der PIN selbst.
+// Fragt den PIN verdeckt ab (mind. 4 Zeichen). Gespeichert wird nur ein Hash, nie der PIN selbst.
 // Danach: In Bring! die WG-Liste mit dem Bot-Konto teilen, in der App WG-Name + PIN eingeben,
 // unter Einstellungen die Bring!-Liste wählen. Braucht wrangler-Login (npx wrangler login) oder CLOUDFLARE_API_TOKEN.
 import { createHash, randomBytes } from "node:crypto";
@@ -42,10 +42,10 @@ if (existing.status === 0 && existing.stdout.trim() && !/not found/i.test(existi
   process.exit(1);
 }
 
-const pin = await askHidden(`PIN für «${name}» (mind. 6 Zeichen, wird nicht angezeigt): `);
+const pin = await askHidden(`PIN für «${name}» (mind. 4 Zeichen, wird nicht angezeigt): `);
 const pin2 = await askHidden("PIN nochmals: ");
-if (pin.length < 6 || pin !== pin2) {
-  console.log(pin !== pin2 ? "PINs ungleich. Abbruch." : "PIN zu kurz (mind. 6). Abbruch.");
+if (pin.length < 4 || pin !== pin2) {
+  console.log(pin !== pin2 ? "PINs ungleich. Abbruch." : "PIN zu kurz (mind. 4). Abbruch.");
   process.exit(1);
 }
 
