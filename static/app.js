@@ -2409,6 +2409,9 @@
       if (!last || !nav) return true;
       return last.getBoundingClientRect().bottom <= nav.getBoundingClientRect().top - 6;
     };
+    // Dichte nach einem normal langen Menü wählen: eine sehr lange Zutatenliste darf nicht alles klein machen
+    // (sie scrollt dann im offenen Tag, siehe --ing-max unten)
+    root.style.setProperty("--ing-max", "120px");
     for (const d of ["d1", "d2", "d3"]) { if (ok()) break; root.classList.add(d); }
     // Reicht auch d3 nicht (sehr lange Zutatenliste, kleines Handy): Zutaten bekommen eine feste
     // Höchsthöhe und scrollen im offenen Tag – so bleiben trotzdem alle 7 Tage sichtbar.

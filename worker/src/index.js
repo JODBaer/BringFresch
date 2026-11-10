@@ -320,14 +320,18 @@ async function fetchLists(userUuid, headers) {
 async function bringLists(env) {
   const s = await bringLogin(env, true);
   let lists = s.lists || (await fetchLists(s.userUuid, s.headers));
-  // WG-Server: die Test-Liste gehört der Test-Version – keine WG kann sie wählen
-  if (!env.ONLY_LIST_NAME) lists = lists.filter(l => !testListNames(env.TEST_LIST_NAME).some(n => sameListName(l.name, n)));
+  // WG-Server: die Test-Liste («Home-test») ist eine gemeinsame Spielwiese zum Ausprobieren. Wählbar nur, solange eine WG
+  // noch keine eigene Liste mit dem Bot verknüpft hat (oder gerade auf der Test-Liste ist); sie gehört nie einer WG.
+  const isTest = l => testListNames(env.TEST_LIST_NAME).some(n => sameListName(l.name, n));
+  const ownList = s.listUuid && !lists.some(l => l.uuid === s.listUuid && isTest(l));
+  if (!env.ONLY_LIST_NAME && ownList) lists = lists.filter(l => !isTest(l));
   // Test-Server zeigt nur seine eine Liste, damit niemand aus Versehen die WG-Liste wählt
   if (env.ONLY_LIST_NAME) lists = lists.filter(l => l.uuid === s.listUuid);
   // Gleicher Bot für mehrere WGs: Listen, die schon eine andere WG benutzt, sind nicht wählbar
   else if (env.RAW && env.WG_CTX) {
     const me = env.WG_CTX.slug;
     const taken = await Promise.all(lists.map(async l => {
+      if (isTest(l)) return false; // Spielwiese: für alle (ohne eigene Liste) wählbar
       const owner = await env.RAW.get(`listowner:${l.uuid}`);
       if (owner) return owner !== me && !(env.WG_CTX.aliases || []).includes(owner);
       return !env.WG_CTX.main && l.uuid === s.mainList; // Liste der ersten WG (auch ohne Eintrag)
@@ -345,7 +349,8 @@ async function bringSetTarget(env, { uuid }) {
   if (env.RAW && env.WG_CTX && !env.ONLY_LIST_NAME) {
     const old = await env.WG.get("bringList");
     if (old && old !== hit.uuid && (await env.RAW.get(`listowner:${old}`)) === env.WG_CTX.slug) await env.RAW.delete(`listowner:${old}`);
-    await env.RAW.put(`listowner:${hit.uuid}`, env.WG_CTX.slug);
+    // die Test-Liste gehört nie einer WG (bleibt Spielwiese für alle)
+    if (!testListNames(env.TEST_LIST_NAME).some(n => sameListName(hit.name, n))) await env.RAW.put(`listowner:${hit.uuid}`, env.WG_CTX.slug);
   }
   await env.WG.put("bringList", hit.uuid);
   return { ok: true, active: hit.uuid, name: hit.name };

@@ -125,16 +125,17 @@ check(r.status === 400, "Einstellungen ohne Mitbewohner abgelehnt");
 // 2b. Liste wählen
 r = await call("/bring/lists");
 let ls = await r.json();
-check(ls.lists.length === 2 && ls.active === "list-1", "Listen des Bot-Kontos + aktive Liste");
-check(!ls.lists.some(l => l.name === "Home-test"), "«Home-test» gehört der Test-Version: keine WG sieht sie");
-r = await call("/bring/target", { method: "PUT", body: { uuid: "list-1" } });
-check(r.status === 400, "«Home-test» als WG-Liste wählen wird abgelehnt");
+check(ls.lists.length === 3 && ls.active === "list-1" && ls.lists.some(l => l.name === "Home-test"), "ohne eigene Liste: alle Listen des Bots, «Home-test» als Spielwiese");
 r = await call("/bring/target", { method: "PUT", body: { uuid: "gibts-nicht" } });
 check(r.status === 400, "unbekannte Liste wird abgelehnt");
 r = await call("/bring/target", { method: "PUT", body: { uuid: "list-wg" } });
 check((await r.json()).name === "WG", "WG-Liste gewählt");
 await call("/bring/sync", { method: "POST", body: { items: [{ name: "Zwiebeln", spec: "1 kg" }] } });
 check(wgPuts.includes("Zwiebeln"), "Artikel landen danach in der gewählten Liste");
+ls = await (await call("/bring/lists")).json();
+check(!ls.lists.some(l => l.name === "Home-test"), "mit eigener Liste: «Home-test» nicht mehr wählbar");
+r = await call("/bring/target", { method: "PUT", body: { uuid: "list-1" } });
+check(r.status === 400, "mit eigener Liste: zurück auf «Home-test» abgelehnt");
 store.delete("bringList");
 
 // 3. Wochenwahl
@@ -248,9 +249,11 @@ r = await sh("/bring/list");
 check(r.status === 409, "zweite WG ohne gewählte Liste schreibt nirgends hin (409)");
 r = await sh("/bring/lists");
 ls = await r.json();
-check(ls.active === null && ls.lists.map(l => l.uuid).join() === "list-sh", `zweite WG sieht die Listen der ersten WG nicht (${ls.lists.map(l => l.name)})`);
-r = await sh("/bring/target", { method: "PUT", body: { uuid: "list-1" } });
+check(ls.active === null && ls.lists.map(l => l.uuid).join() === "list-1,list-sh", `zweite WG sieht die Liste der ersten nicht, aber die Spielwiese (${ls.lists.map(l => l.name)})`);
+r = await sh("/bring/target", { method: "PUT", body: { uuid: "list-wg" } });
 check(r.status === 400, "zweite WG kann die Liste der ersten nicht wählen");
+r = await sh("/bring/target", { method: "PUT", body: { uuid: "list-1" } });
+check(r.status === 200 && store.get("w:sonnenhof:bringList") === "list-1" && !store.has("listowner:list-1"), "zweite WG ohne eigene Liste: «Home-test» zum Ausprobieren, gehört ihr nicht");
 r = await sh("/bring/target", { method: "PUT", body: { uuid: "list-sh" } });
 check(r.status === 200 && store.get("w:sonnenhof:bringList") === "list-sh" && store.get("listowner:list-sh") === "sonnenhof", "zweite WG wählt ihre Liste");
 ls = await (await call("/bring/lists")).json();

@@ -92,6 +92,24 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - Schutz: nur verbundene Handys (WG-PIN), höchstens ein paar Meldungen pro Stunde
 - [x] **Hell / Dunkel / Automatisch** zum Umschalten (pro Handy, Einstellungen → Stil); heute folgt der Dunkelmodus nur dem System. Die 10 `prefers-color-scheme`-Stellen im CSS und `applyTheme` müssen auf den Schalter hören
 - [x] **Gäste im Plan sichtbar**: «+1 Gast» bei den Kreisen (heute nur unter Einstellungen → Wer isst wann; die Zahl rechts zählt sie mit, man sieht aber nicht warum)
+- [x] **Lange Zutatenliste macht den Plan winzig** (Bug): Dichte wird jetzt nach einem normalen Menü gewählt, lange Listen scrollen im offenen Tag
+  - Offen, nach Praxistest: Salz, Pfeffer, Öl, Wasser in der Tagesansicht ausblenden («+ 4 Gewürze & Vorrat» antippen = zeigen)
+- [x] **«Home-test» = Spielwiese**: wählbar für jede WG, die noch keine eigene Liste mit dem Bot verknüpft hat; gehört nie einer WG; die Test-Version schreibt ebenfalls hinein
+- [ ] **Rezept mit der Kamera einlesen** (wichtig)
+  - Ablauf: Rezepte → «📷 Foto» → Kochbuchseite / Zettel / Screenshot fotografieren (oder aus Galerie) → Titel, Personen, Zutaten werden ins bestehende Formular «Rezept von Hand» gefüllt → prüfen → Speichern (wie heute, eigene Rezepte der WG)
+  - App: `<input type="file" accept="image/*" capture="environment">` (geht auf iPhone und Android ohne Kamera-Berechtigung), Bild im Handy verkleinern (~1600 px, JPEG) → an den WG-Server
+  - Erkennen: Worker schickt das Bild an ein Bild-Modell (z.B. Claude mit Vision) mit fester Anweisung: «nur Titel, Portionen, Zutaten als JSON: Menge, Einheit, Name»; Antwort wird geprüft (Schema), dann wie beim Link-Import in Zutaten-Text umgewandelt
+    - Alternative ohne KI-Dienst: Texterkennung im Handy (iOS Live Text: Text im Foto markieren → kopieren → ins Zutatenfeld einfügen) – geht heute schon, nur Anleitung im Formular nötig
+  - Braucht: API-Schlüssel als Worker-Secret (nie in der App), Kostendach (z.B. max. 20 Bilder pro WG und Monat), nur verbundene WGs (PIN), Bild wird nicht gespeichert
+  - Danach wie heute: Mengen für `servings`, Bring!-Katalog-Abbildung, Fleisch-Erkennung (Hackfleisch → «Fleisch»), Saison optional
+  - Tests: Worker mit nachgebauter Modell-Antwort (kein Netz), UI-Schritt «Foto wählen → Formular gefüllt»; Live-Test nur von Hand
+  - Offen: welcher Dienst/Modell, Kosten pro Bild, Handschrift unterstützen?
+- [ ] **Grundvorrat verwalten** (besser als heute)
+  - **Hinzufügen**: Eingabe schlägt Bring!-Artikel vor (Autokorrektur auf den Bring!-Namen, z.B. «Olivenoel» → «Olivenöl», mit Bild); nicht doppelt (gleicher Bring!-Artikel schon im Vorrat → «Ist schon da»)
+  - **Nicht gefunden**: Hinweis «Gibt es in Bring! nicht – bitte zuerst in Bring! als eigenen Artikel anlegen», dann erneut suchen
+  - **Wegnehmen**: lange drücken oder ✕ im Bearbeiten-Modus
+  - **Leer melden**: wie heute antippen = auf Bring!; klar sichtbar, welcher Bring!-Artikel es ist (Bild + Bring!-Name)
+  - **Bald leer**: siehe «Grundvorrat zählt mit» oben (rechnet aus den gekochten Rezepten seit dem letzten Kauf)
 - [ ] **Praxistest**: eine echte Woche mit Lukas, Leonie und Jo planen, einkaufen, Feedback sammeln
 - [ ] Danach entscheiden: Mengen der Protein-Zusätze (150 g Fleisch / 100 g Käse pro Person), Rezeptauswahl, evtl. Koch-Zuteilung
 
