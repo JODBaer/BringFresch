@@ -174,6 +174,9 @@ check(cards()[0].querySelectorAll(".mini").length === 2, "Stimmen-Kürzel auf de
 check(d.querySelector("#voteRank .rank-row .t").textContent === t0, "Ranking: meistgewähltes Gericht oben");
 d.getElementById("voteShuffleBtn").click();
 check(titleOf(cards()[0]) === t0 && titleOf(cards()[1]) === t1, "Mischeln behält gewählte Gerichte");
+for (let k = 0; k < 8; k++) d.getElementById("voteShuffleBtn").click(); // oft mischeln: nie zweimal dasselbe Gericht
+const shuffled = cards().map(titleOf);
+check(new Set(shuffled).size === shuffled.length, `Mischeln: kein Gericht doppelt (${shuffled.length - new Set(shuffled).size} doppelt)`);
 d.getElementById("voteAddBtn").click();
 check(d.getElementById("catalogDialog").open && /Wochenwahl/.test(d.getElementById("catalogSubtitle").textContent), "+ Gericht öffnet Katalog im Wochenwahl-Modus");
 d.querySelector("#catalogList [data-assign]").click();

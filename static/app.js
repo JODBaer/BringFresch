@@ -141,6 +141,10 @@
     return `https://fooby.ch/de/suche.html?query=${encodeURIComponent(r.title)}`;
   }
 
+  // Fleisch/Fisch in Titel oder Zutaten? (Zeilen mit Vegi-Ersatz wie «Vegi-Hack», «planted» zählen nicht)
+  const MEAT_RE = /hackfleisch|ghackets|hackbraten|fleisch|poulet|hähnchen|huhn|chicken|rind(?!e)|schwein|kalb|lamm|speck|schinken|wurst|würst|cervelat|salami|lachs|fisch|forelle|thon|thun|kabeljau|crevette|garnele|saibling|steak|pancetta|chorizo|prosciutto|geschnetzelt|voressen|haxe|seeteufel|meeresfr|felchen|egli|zander|dorsch|scampi/i;
+  const guessMeat = text => String(text).split("\n").filter(l => !/vegi|vegan|veget|planted|tofu|quorn|seitan/i.test(l)).some(l => MEAT_RE.test(l));
+
   function esc(str) {
     return String(str == null ? "" : str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
@@ -1010,12 +1014,15 @@
   // Nur Gerichte ohne Stimme werden durch saisonale Reserve ersetzt
   $("voteShuffleBtn").onclick = () => {
     let swapped = 0;
+    // alles, was schon im Raster steht oder gerade neu gezogen wurde, nie doppelt (sonst 2× dasselbe Gericht)
+    const taken = [...vote.candidates];
     vote.candidates = vote.candidates.map(id => {
       if (votersOf(id).length > 0) return id;
       const old = recipeById(id);
-      const r = backupRecipe(dietGroup(old), vote.candidates, !!(old && old.quick));
+      const r = backupRecipe(dietGroup(old), taken, !!(old && old.quick));
       if (!r) return id;
       swapped++;
+      taken.push(String(r.id));
       return String(r.id);
     });
     saveVote();
@@ -2221,7 +2228,10 @@
       $("recipeServings").value = r.servings || DEFAULT_SERVINGS;
       $("recipeServingsHint").textContent = `Laut Webseite für ${r.servings || DEFAULT_SERVINGS} Personen – anpassen, falls es nicht stimmt.`;
       if (!$("recipeIngredients").value.trim()) $("recipeIngredients").value = (r.ingredients || []).join("\n");
-      toast(`${(r.ingredients || []).length} Zutaten übernommen`);
+      // Fleisch oder Fisch im Titel/den Zutaten -> «Fleisch» vorwählen (sonst steht z.B. «Wirzwickel mit Hackfleisch» als Vegi da)
+      const meat = guessMeat(`${$("recipeTitle").value}\n${$("recipeIngredients").value}`);
+      if (meat && $("recipeDiet").value !== "fleisch") $("recipeDiet").value = "fleisch";
+      toast(`${(r.ingredients || []).length} Zutaten übernommen${meat ? " · als Fleisch erkannt" : ""}`);
       return true;
     } catch (e) {
       toast(e.message);

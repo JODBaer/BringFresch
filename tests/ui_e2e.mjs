@@ -95,7 +95,7 @@ globalThis.fetch = async (url, init = {}) => {
     }
     return new Response(null, { status: 204 });
   }
-  if (url === RECIPE_URL) return new Response(RECIPE_HTML, { headers: { "Content-Type": "text/html" } });
+  if (url.split("?")[0] === RECIPE_URL) return new Response(RECIPE_HTML, { headers: { "Content-Type": "text/html" } });
   return new Response("kein Netz im Test", { status: 599 });
 };
 const wg = () => bring.L.items;
@@ -1098,7 +1098,15 @@ await step(B, "Grundvorrat verbunden: Pille = auf Bring!, nochmals = weg; in Bri
   await tap(B, "#openStaplesBtn");
   await until(B, () => document.getElementById("staplesDialog").open && document.querySelectorAll("#staplesList .btile").length > 5, "Grundvorrat geht nicht auf");
   expect((await text(B, "#staplesHint")).startsWith("Antippen = auf eure Bring!-Liste"), "Hinweis");
-  const idx = await B.page.$eval('#staplesList .btile[aria-pressed="false"]', b => b.dataset.staple);
+  // eine freie Pille, die im Blatt ganz sichtbar ist (in GitHub Actions lag die erste manchmal unter dem Blattrand)
+  const idx = await B.page.evaluate(() => {
+    const body = document.querySelector("#staplesDialog .sheet-body").getBoundingClientRect();
+    const free = [...document.querySelectorAll('#staplesList .btile[aria-pressed="false"]')];
+    const inView = free.find(b => { const r = b.getBoundingClientRect(); return r.top >= body.top && r.bottom <= Math.min(body.bottom, innerHeight); });
+    const pick = inView || free[0];
+    pick.scrollIntoView({ block: "center" });
+    return pick.dataset.staple;
+  });
   const before = wgNames();
   await clearToasts(B);
   await tap(B, `#staplesList [data-staple="${idx}"]`);
@@ -1171,6 +1179,17 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   await toastIs(B, /3 Zutaten übernommen/);
   expect((await B.page.$eval("#recipeTitle", e => e.value)) === "Kürbis-Lasagne" && (await B.page.$eval("#recipeServings", e => e.value)) === "6", "Titel/Portionen nicht übernommen");
   expect((await B.page.$eval("#recipeIngredients", e => e.value)).split("\n").length === 3, "Zutaten nicht übernommen");
+  expect((await B.page.$eval("#recipeDiet", e => e.value)) === "vegi", "Kürbis-Lasagne fälschlich als Fleisch erkannt");
+  // Fleisch im Titel -> «Fleisch» vorgewählt (z.B. «Wirzwickel mit Hackfleisch»)
+  await B.page.$eval("#recipeTitle", e => { e.value = "Wirzwickel mit Hackfleisch"; });
+  await B.page.$eval("#recipeIngredients", e => { e.value = ""; });
+  await B.page.$eval("#recipeUrl", e => { e.value = ""; });
+  await typeInto(B, "#recipeUrl", RECIPE_URL + "?2");
+  await tap(B, "#recipeInstructions");
+  await until(B, () => document.getElementById("recipeDiet").value === "fleisch", "Hackfleisch nicht als Fleisch erkannt");
+  await B.page.$eval("#recipeTitle", e => { e.value = "Kürbis-Lasagne"; });
+  await B.page.$eval("#recipeDiet", e => { e.value = "vegi"; });
+  await B.page.$eval("#recipeUrl", (e, u) => { e.value = u; }, RECIPE_URL);
   await shot(B, "09-rezept-link");
   await tap(B, '#recipeForm button[type="submit"]');
   await until(B, () => document.querySelector('.prow[data-i="5"] .t').textContent === "Kürbis-Lasagne", "nicht eingeplant");
