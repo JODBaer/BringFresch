@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'bringfrisch-cache-v40';
+﻿const CACHE_NAME = 'bringfrisch-cache-v42';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -25,7 +25,8 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      // «bf-img» = Rezeptbilder der Wochenwahl, bleiben über App-Updates hinweg
+      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== 'bf-img').map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();

@@ -916,6 +916,44 @@
       .sort((a, b) => b.voters.length - a.voters.length || a.order - b.order);
   }
 
+  // Bilder zu den Gerichten: der WG-Server holt sie einmal von der Rezeptseite; das Handy merkt sie sich (Cache «bf-img»)
+  const imgCache = new Map(); // source_url -> Objekt-URL, "" = kein Bild
+  const imgState = u => (imgCache.has(u) ? (imgCache.get(u) ? " ok" : " none") : "");
+  const imgLoading = new Set();
+  async function loadImg(u) {
+    const req = `${sync.url.replace(/\/+$/, "")}/img?url=${encodeURIComponent(u)}`;
+    let cache = null;
+    try { cache = window.caches ? await caches.open("bf-img") : null; } catch (e) { /* ohne Cache */ }
+    let res = cache ? await cache.match(req).catch(() => null) : null;
+    if (!res) {
+      const r = await fetch(req, { headers: { "X-WG-PIN": sync.pin, ...(sync.wg ? { "X-WG": sync.wg } : {}) } });
+      if (r.status === 404) { imgCache.set(u, ""); return; }
+      if (!r.ok) return; // später nochmals
+      if (cache) await cache.put(req, r.clone()).catch(() => {});
+      res = r;
+    }
+    imgCache.set(u, URL.createObjectURL(await res.blob()));
+  }
+  async function loadVoteImages() {
+    const todo = [...new Set([...document.querySelectorAll("#voteGrid .vimg[data-img]")].map(e => e.dataset.img))]
+      .filter(u => !imgCache.has(u) && !imgLoading.has(u));
+    const show = u => document.querySelectorAll("#voteGrid .vimg[data-img]").forEach(e => {
+      if (e.dataset.img !== u || !imgCache.has(u)) return;
+      const src = imgCache.get(u);
+      e.className = `vimg${src ? " ok" : " none"}`;
+      if (src) e.style.backgroundImage = `url(${src})`;
+    });
+    const worker = async () => {
+      for (let u; (u = todo.shift()); ) {
+        imgLoading.add(u);
+        try { await loadImg(u); } catch (e) { /* offline: Fläche bleibt grau */ }
+        imgLoading.delete(u);
+        show(u);
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]); // höchstens 3 gleichzeitig
+  }
+
   function renderVote() {
     const short = initialsMap();
     const mine = myVote();
@@ -931,6 +969,7 @@
         <div class="vcard${on ? " on" : ""}">
           <button class="tap" type="button" data-like="${esc(id)}" aria-pressed="${on}" aria-label="${esc(r.title)} ${on ? "abwählen" : "wählen"}"></button>
           ${on ? `<span class="tick" aria-hidden="true">✓</span>` : ""}
+          ${r.source_url && connected() ? `<span class="vimg${imgState(r.source_url)}" data-img="${esc(r.source_url)}" aria-hidden="true"${imgCache.get(r.source_url) ? ` style="background-image:url(${imgCache.get(r.source_url)})"` : ""}></span>` : ""}
           <span class="vt">${esc(r.title)}</span>
           <span class="vm">${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${recipeHref(r) ? ` · <a href="${esc(recipeHref(r))}" target="_blank" rel="noopener">🌐</a>` : ""}</span>
           ${on ? `<span class="days-pick" role="group" aria-label="Wunschtag">${DAYS.map((d, i) => `<button type="button" data-wish="${esc(id)}" data-day="${i}" aria-pressed="${wish === i}">${d.slice(0, 2)}</button>`).join("")}</span>` : ""}
@@ -938,6 +977,7 @@
         </div>`;
     }).join("");
 
+    loadVoteImages();
     const voted = state.members.filter(m => ((vote.votes[m.id] || {}).likes || []).length > 0);
     $("voteWho").textContent = `${voted.length} von ${state.members.length} haben gewählt`;
     $("voteRank").innerHTML = ranking().map((x, k) => {
@@ -957,7 +997,8 @@
     $("voteDialog").showModal();
     pullVote();
     clearInterval(votePoll);
-    if (connected()) votePoll = setInterval(pullVote, 15000); // Stimmen der anderen live nachladen
+    // Stimmen der anderen live nachladen – alle 30 s und nur, wenn die App sichtbar ist (schont das Gratis-Kontingent des WG-Servers)
+    if (connected()) votePoll = setInterval(() => { if (document.visibilityState !== "hidden") pullVote(); }, 30000);
   }
   $("voteDialog").addEventListener("close", () => clearInterval(votePoll));
 
@@ -2811,7 +2852,6 @@
     showTab(b.dataset.tab);
   });
   $("setVoteBtn").onclick = () => openVoteFor();
-  $("appVersion").textContent = `Version ${APP_VERSION}`;
   $("repoLink").href = REPO_URL;
   $("appVersionTop").textContent = APP_VERSION;
   $("repoLinkTop").href = REPO_URL;
