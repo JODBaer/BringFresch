@@ -1857,7 +1857,7 @@
     const many = state.members.length >= 5;
     const ings = dayIngredients(day);
     const b = day.leftover_buffer || 0;
-    return `<div class="prow${idx === today ? " today" : ""}${idx === openIdx ? " open" : ""}${day.empty ? " empty" : ""}" data-i="${idx}">
+    return `<div class="prow${idx === today ? " today" : ""}${idx === openIdx ? " open" : ""}${day.empty ? " unplanned" : ""}" data-i="${idx}">
       <div class="phead">
         <button type="button" class="pday" aria-expanded="${idx === openIdx}" aria-label="${DAYS[idx]}: ganzes Menü zeigen">${DAYS[idx].slice(0, 2)}</button>
         <div class="dish">

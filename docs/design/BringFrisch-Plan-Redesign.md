@@ -54,7 +54,7 @@ Reines Hellgrün nie mit weisser Schrift (zu wenig Kontrast).
 - Keine eigene Einkaufskorb-Karte mehr.
 
 ## 8. Wochenwahl
-- Ist für die aktuelle Woche nichts gewählt (oder ist **Sonntag** und die nächste Woche offen): beim Start **Pop-up** mittig («Wochenwahl starten» / «Später»), Hintergrund verschwommen/abgedunkelt.
+- Ist für die aktuelle Woche nichts gewählt (oder ist ab **Donnerstag** die nächste Woche noch offen, siehe Chip «KW n →» in der Abschnittszeile): beim Start **Pop-up** mittig («Wochenwahl starten» / «Später»), Hintergrund verschwommen/abgedunkelt.
 - Nach Wahl oder «Später» **fliegt das Pop-up in das Kalender-Symbol** oben (FLIP-Animation); solange offen: roter pulsierender Punkt am Symbol.
 - Eigentlicher Auswahl-Ablauf ist noch zu bauen.
 

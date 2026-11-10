@@ -3,6 +3,7 @@
 //   node layout_check.mjs --shots    -> legt zusätzlich Bildschirmfotos in tests/shots/ ab
 // Regeln (BringFrisch-Plan-Redesign.md §5): Mit einem offenen Tag bleiben alle 7 Tage sichtbar;
 // beim Aufklappen bewegt sich nichts ausser dem geöffneten Tag (Zeilen darüber, Kopfzeile, Schrift bleiben stehen).
+// Geprüft wird an einem Donnerstag: laufende Woche und nächste Woche (Chip «KW n →», offene Tage).
 import puppeteer from "puppeteer-core";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -28,12 +29,16 @@ const browser = await puppeteer.launch({ executablePath: browserPath, headless: 
 const sizes = [[390, 844], [375, 667], [390, 600]];
 for (const os of ["ios", "android"]) {
   for (const scheme of ["light", "dark"]) {
-    for (const [w, h] of sizes) {
+    for (const [w, h] of sizes) for (const view of ["cur", "next"]) {
       const page = await browser.newPage();
       await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
       await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }]);
       await page.evaluateOnNewDocument(() => {
-        try { localStorage.setItem("bringfrisch_wahl_" + "x", "true"); } catch (e) {}
+        // fester Donnerstag, 12.11.2026 12:00 (KW 46), damit der Wochen-Chip erscheint
+        const Real = Date, fixed = new Real(2026, 10, 12, 12).getTime();
+        class FakeDate extends Real { constructor(...a) { if (a.length) super(...a); else super(fixed); } static now() { return fixed; } }
+        window.Date = FakeDate;
+        try { localStorage.setItem("bringfrisch_wahl_2026-W46", "true"); localStorage.setItem("bringfrisch_wahl_2026-W47", "true"); } catch (e) {}
       });
       const errors = [];
       page.on("pageerror", e => errors.push(e.message));
@@ -43,8 +48,14 @@ for (const os of ["ios", "android"]) {
       // Wochenwahl-Pop-up wegklicken, falls es erscheint
       await page.evaluate(() => { const p = document.getElementById("wpop"); if (!p.hidden) document.getElementById("wlater").click(); });
       await new Promise(r => setTimeout(r, 700));
+      const chip = await page.evaluate(() => { const c = document.getElementById("weekChip"); return { shown: !c.hidden, head: document.querySelector(".sechead").getBoundingClientRect().height }; });
+      if (view === "next") {
+        await page.click("#weekChip");
+        await new Promise(r => setTimeout(r, 500));
+      }
 
-      const tag = `${os}/${scheme} ${w}×${h}`;
+      const tag = `${os}/${scheme} ${w}×${h}${view === "next" ? " nächste Woche" : ""}`;
+      if (view === "cur") check(chip.shown && chip.head <= 12.5, `${tag}: Wochen-Chip sichtbar, Abschnittszeile bleibt ${Math.round(chip.head)} px`);
       const res = await page.evaluate(async () => {
         const wait = ms => new Promise(r => setTimeout(r, ms));
         const rows = () => [...document.querySelectorAll("#days .prow")];
@@ -84,7 +95,7 @@ for (const os of ["ios", "android"]) {
       if (shots) {
         await page.evaluate(() => document.querySelectorAll("#days .prow")[2].querySelector(".pday").click());
         await new Promise(r => setTimeout(r, 500));
-        await page.screenshot({ path: path.join(here, "shots", `${os}-${scheme}-${w}x${h}.png`) });
+        await page.screenshot({ path: path.join(here, "shots", `${os}-${scheme}-${w}x${h}${view === "next" ? "-next" : ""}.png`) });
       }
       await page.close();
     }

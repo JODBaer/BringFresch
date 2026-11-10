@@ -202,7 +202,7 @@ const curTitles = [...td.querySelectorAll("#days .prow .t")].map(e => e.textCont
 const heightBefore = td.querySelectorAll("#days .prow").length;
 chip.click();
 check(/KW 47 · nächste Woche/.test(td.getElementById("weekLabel").textContent), "Kopfzeile: KW 47 · nächste Woche");
-check(td.querySelectorAll("#days .prow").length === heightBefore && td.querySelectorAll("#days .prow.empty").length === 7, "nächste Woche: 7 offene Tage, gleiches Raster");
+check(td.querySelectorAll("#days .prow").length === heightBefore && td.querySelectorAll("#days .prow.unplanned").length === 7, "nächste Woche: 7 offene Tage, gleiches Raster");
 check(!td.querySelector("#days .prow.today"), "kein «heute» in der nächsten Woche");
 check(/^0 Artikel/.test(td.getElementById("ctaCount").textContent), `offene Tage kaufen nichts (${td.getElementById("ctaCount").textContent})`);
 td.querySelectorAll("#days .prow")[0].querySelector(".t").click();
