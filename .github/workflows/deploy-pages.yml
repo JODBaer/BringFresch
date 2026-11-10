@@ -94,9 +94,12 @@ jobs:
           cp -r static _site/static
           # Version in der App = Release-Tag (v1.5.0 -> 1.5.0), damit «Aktualisieren» die neue Version erkennt
           if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            sed -i "s/const APP_VERSION = \"[^\"]*\"/const APP_VERSION = \"${GITHUB_REF_NAME#v}\"/" _site/static/app.js
-            grep -q "const APP_VERSION = \"${GITHUB_REF_NAME#v}\"" _site/static/app.js
+            # nur die Zeile mit der Deklaration (sonst trifft es auch das Suchmuster in «Aktualisieren» -> Syntaxfehler)
+            sed -i -E "s/^([[:space:]]*)const APP_VERSION = \"[^\"]*\";/\1const APP_VERSION = \"${GITHUB_REF_NAME#v}\";/" _site/static/app.js
+            test "$(grep -c "const APP_VERSION = \"${GITHUB_REF_NAME#v}\";" _site/static/app.js)" = 1
           fi
+          # was veröffentlicht wird, muss gültiges JavaScript sein
+          for f in _site/static/*.js; do node --check "$f"; done
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5.0.0
         with:
