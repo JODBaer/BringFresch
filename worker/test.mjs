@@ -180,7 +180,7 @@ const icsDl = await r.text();
 check((icsDl.match(/BEGIN:VEVENT/g) || []).length === 2 && /attachment; filename="BringFrisch-2026-W47.ics"/.test(r.headers.get("Content-Disposition")) && icsDl.includes("UID:bringfrisch-dl-2026-W47-0-jo@"), "herunterladen: nur diese Woche, nur meine Abende, als Datei mit eigenen Termin-IDs");
 
 // 4c. Test-Server: schreibt nur in die Liste «Home-test», nie in die WG-Liste
-const stageEnv = { ...env, ONLY_LIST_NAME: "Neu-test,Home-test" }; // erster Name fehlt -> zweiter gilt (Liste noch nicht umbenannt)
+const stageEnv = { ...env, ONLY_LIST_NAME: "Neu-test,home test" }; // erster Name fehlt -> zweiter gilt (Liste noch nicht umbenannt)
 const stageCall = (path, opts = {}) => worker.fetch(new Request("https://stage.example" + path, {
   method: opts.method || "GET",
   headers: { Origin: "https://bringfrisch-test.bringfrisch-worker.workers.dev", "Content-Type": "application/json", "X-WG-PIN": "1234" },

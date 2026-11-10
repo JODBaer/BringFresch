@@ -49,7 +49,7 @@ console.log(`Test-Server: ${SERVER}\nBring!-Liste: ${LIST}\n`);
 check((await (await fetch(SERVER + "/health")).json()).ok === true, "Test-Server erreichbar");
 const { lists, active } = await api("/bring/lists");
 if (lists.length === 1) LIST = lists[0].name;
-if (!check(lists.length === 1 && LISTS.includes(lists[0].name) && lists[0].uuid === active, `Test-Server schreibt nur in «${LIST}» (sieht: ${lists.map(l => l.name).join(", ")})`)) finish();
+if (!check(lists.length === 1 && LISTS.some(n => n.toLowerCase().replace(/[^a-z0-9]/g, "") === lists[0].name.toLowerCase().replace(/[^a-z0-9]/g, "")) && lists[0].uuid === active, `Test-Server schreibt nur in «${LIST}» (sieht: ${lists.map(l => l.name).join(", ")})`)) finish();
 const cors = await fetch(SERVER + "/health", { headers: { Origin: ORIGIN } });
 check(cors.headers.get("access-control-allow-origin") === ORIGIN, "CORS erlaubt die Test-Seite");
 

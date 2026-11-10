@@ -289,8 +289,8 @@ async function bringLogin(env, allowNoList = false) {
     // Test-Server: immer genau diese Liste (per Name), egal was gespeichert ist
     const lists = await fetchLists(data.uuid, headers);
     // mehrere Namen erlaubt («Home-test,Home»): der erste vorhandene gilt (Liste kann in Bring! umbenannt werden)
-    const hit = testListNames(env.ONLY_LIST_NAME).map(n => lists.find(l => l.name === n)).find(Boolean);
-    if (!hit) throw httpError(502, `Test-Server: Liste «${env.ONLY_LIST_NAME}» im Bot-Konto nicht gefunden`);
+    const hit = testListNames(env.ONLY_LIST_NAME).map(n => lists.find(l => sameListName(l.name, n))).find(Boolean);
+    if (!hit) throw httpError(502, `Test-Server: Liste «${env.ONLY_LIST_NAME}» im Bot-Konto nicht gefunden (Bot sieht ${lists.length} Listen) – ist sie mit dem Bot geteilt?`);
     return { listUuid: hit.uuid, userUuid: data.uuid, headers, lists };
   }
   const chosen = await env.WG.get("bringList");
@@ -306,6 +306,8 @@ async function bringLogin(env, allowNoList = false) {
 
 // Namen der Test-Liste (gehört der Test-Version). «Home» = alter Name, solange die Liste in Bring! nicht umbenannt ist
 const testListNames = v => String(v || "Home-test,Home").split(",").map(s => s.trim()).filter(Boolean);
+// «Home-test», «Home-Test», «Home test», «hometest» gelten als gleich
+const sameListName = (a, b) => String(a).toLowerCase().replace(/[^a-z0-9]/g, "") === String(b).toLowerCase().replace(/[^a-z0-9]/g, "");
 
 async function fetchLists(userUuid, headers) {
   const res = await fetch(`${BRING}bringusers/${userUuid}/lists`, { headers });
@@ -319,7 +321,7 @@ async function bringLists(env) {
   const s = await bringLogin(env, true);
   let lists = s.lists || (await fetchLists(s.userUuid, s.headers));
   // WG-Server: die Test-Liste gehört der Test-Version – keine WG kann sie wählen
-  if (!env.ONLY_LIST_NAME) lists = lists.filter(l => !testListNames(env.TEST_LIST_NAME).includes(l.name));
+  if (!env.ONLY_LIST_NAME) lists = lists.filter(l => !testListNames(env.TEST_LIST_NAME).some(n => sameListName(l.name, n)));
   // Test-Server zeigt nur seine eine Liste, damit niemand aus Versehen die WG-Liste wählt
   if (env.ONLY_LIST_NAME) lists = lists.filter(l => l.uuid === s.listUuid);
   // Gleicher Bot für mehrere WGs: Listen, die schon eine andere WG benutzt, sind nicht wählbar
