@@ -80,7 +80,6 @@ const W = dom.window, $ = id => W.document.getElementById(id);
 await wait(300);
 
 log("\n[1] Verbinden");
-check(!!SERVER && $("syncUrl").value === SERVER, "Server-Adresse ist vorausgefüllt");
 $("syncPin").value = PIN;
 $("syncForm").dispatchEvent(new W.Event("submit", { cancelable: true }));
 for (let i = 0; i < 40 && !$("syncStatus").textContent.startsWith("Verbunden"); i++) await wait(250);

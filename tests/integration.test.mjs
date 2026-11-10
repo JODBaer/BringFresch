@@ -28,6 +28,7 @@ const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
   if (url.endsWith("/bringauth")) return Response.json({ uuid: "u", access_token: "t", bringListUUID: "L" });
+  if (url.endsWith("/bringusers/u/lists")) return Response.json({ lists: [{ listUuid: "L", name: "WG" }] });
   if (url.endsWith("/bringlists/L") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
   if (url.endsWith("/bringlists/L") && init.method === "PUT") {
     const p = new URLSearchParams(init.body);
@@ -71,6 +72,7 @@ await wait(200);
 const B = phone("jo");
 await wait(200);
 check(A.document.getElementById("syncStatus").textContent.startsWith("Verbunden"), "Handy A verbunden");
+check(A.document.getElementById("bringListName").textContent === "WG" && !A.document.getElementById("setMore").open, "Einstellungen zeigen die Bring!-Liste, «Mehr» bleibt zu");
 
 // Wochenwahl: A öffnet zuerst -> Kandidaten landen im Worker
 A.document.getElementById("openVoteBtn").click();

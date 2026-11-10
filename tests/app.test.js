@@ -133,6 +133,15 @@ d.getElementById("newMemberName").value = "Mia";
 d.getElementById("addMemberForm").dispatchEvent(new w.Event("submit", { cancelable: true }));
 check(d.querySelectorAll("#days .prow")[0].querySelectorAll(".av").length === 5, "neue Person erscheint im Plan");
 
+// 8. Einstellungen: Bring!-Liste + Mitbewohner oben, Rest unter «Mehr»
+check(!d.getElementById("syncUrl"), "keine Server-Adresse mehr in den Einstellungen");
+check(d.getElementById("setMore").open && d.getElementById("setMore").contains(d.getElementById("syncPin")), "ohne Verbindung: «Mehr» offen, PIN dort");
+check(d.getElementById("setMore").contains(d.getElementById("attendance")), "Wer isst wann / Gäste unter «Mehr»");
+const osBefore = d.getElementById("setOsBtn").textContent;
+d.getElementById("setOsBtn").click();
+check(d.getElementById("setOsBtn").textContent !== osBefore, "Stil in den Einstellungen umschaltbar");
+d.getElementById("setOsBtn").click();
+
 
 // 9. Wochenwahl (Memory)
 d.getElementById("openVoteBtn").click();

@@ -1721,18 +1721,17 @@
   }
 
   function renderSyncSettings() {
-    $("syncUrl").value = sync.url || "";
     $("syncPin").value = sync.pin || "";
     $("dinnerTime").value = load(DINNER_KEY, "18:30");
-    setSyncStatus(connected() ? "Verbinde …" : "Nicht verbunden: Bring! über Teilen/Kopieren", false);
-    if (connected()) loadBringLists();
+    setSyncStatus(connected() ? "Verbinde …" : "Nicht verbunden: WG-PIN unter «Mehr» eingeben. Bis dahin Bring! über Teilen/Kopieren.", false);
+    if (connected()) loadBringLists(); else $("setMore").open = true;
   }
 
   $("syncForm").addEventListener("submit", async e => {
     e.preventDefault();
-    sync = { url: $("syncUrl").value.trim(), pin: $("syncPin").value.trim() };
+    sync = { url: sync.url || DEFAULT_SYNC_URL, pin: $("syncPin").value.trim() };
     save(SYNC_KEY, sync);
-    if (!connected()) return setSyncStatus("Adresse und PIN eingeben", false);
+    if (!connected()) return setSyncStatus("WG-PIN eingeben", false);
     setSyncStatus("Verbinde …", false);
     await pullShared();
     if ($("syncStatus").textContent.startsWith("Verbunden")) {
@@ -1756,6 +1755,8 @@
         o.selected = l.uuid === active;
         sel.appendChild(o);
       }
+      const cur = lists.find(l => l.uuid === active);
+      $("bringListName").textContent = cur ? cur.name : "Liste wählen";
       field.hidden = false;
       hint.hidden = false;
     } catch (e) {
@@ -1766,6 +1767,7 @@
   $("bringListSelect").addEventListener("change", async e => {
     try {
       const { name } = await api("/bring/target", { method: "PUT", body: { uuid: e.target.value } });
+      $("bringListName").textContent = name;
       setBringList(await api("/bring/list"));
       refresh();
       toast(`Bring!-Liste: ${name} ✓`);
@@ -1774,6 +1776,8 @@
       loadBringLists();
     }
   });
+
+  $("syncNowBtn").onclick = () => (connected() ? runPullSync() : toast("Zuerst die WG-PIN eingeben"));
 
   $("dinnerTime").addEventListener("change", () => {
     save(DINNER_KEY, $("dinnerTime").value || "18:30");
@@ -2134,10 +2138,16 @@
     document.documentElement.classList.remove("m3", "glass");
     document.documentElement.classList.add(v);
     try { localStorage.setItem(OS_KEY, v); } catch (e) { /* ohne Speicher: nur für diese Sitzung */ }
-    $("menuOsLabel").textContent = v === "glass" ? "Android-Stil" : "iPhone-Stil";
+    osLabels();
     fitDensity();
   }
-  $("menuOsLabel").textContent = currentOs() === "glass" ? "Android-Stil" : "iPhone-Stil";
+  function osLabels() {
+    const v = currentOs();
+    $("menuOsLabel").textContent = v === "glass" ? "Android-Stil" : "iPhone-Stil";
+    $("setOsBtn").textContent = v === "glass" ? "iPhone" : "Android";
+  }
+  osLabels();
+  $("setOsBtn").onclick = () => setOs(currentOs() === "glass" ? "m3" : "glass");
 
   // Bring!-Chip: ruhig «24 Artikel» · nach Sync hervorgehoben «24 für Bring!» · nach dem Füllen «✓ in Bring!»
   let chipState = "quiet";

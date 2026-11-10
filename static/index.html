@@ -163,6 +163,27 @@
     .btile:disabled { opacity: .6; }
     .preview { font-family: var(--mono); font-size: 12.5px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 180px; overflow-y: auto; white-space: pre-wrap; margin: 0; }
 
+    /* Einstellungen: Bring!-Liste und Mitbewohner oben, der Rest unter «Mehr» */
+    .set-hero { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .set-top { display: flex; align-items: center; gap: 12px; }
+    .set-top b { font-size: 16px; }
+    .set-top small, .set-more small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
+    .set-logo { width: 42px; height: 42px; border-radius: 12px; background: #93c572; color: #1d301d; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: 0 0 auto; }
+    .set-status { font-size: 12.5px; font-weight: 600; }
+    .set-more summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 14px; }
+    .set-more summary::-webkit-details-marker { display: none; }
+    .set-more summary::after { content: "\203A"; color: var(--muted); font-size: 20px; transition: transform .2s; }
+    .set-more[open] summary::after { transform: rotate(90deg); }
+    @media (prefers-reduced-motion: reduce) { .set-more summary::after { transition: none; } }
+    .set-row { padding: 12px 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; }
+    .set-line { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+    .set-line > :first-child { min-width: 0; }
+    .set-line .btn { padding: 8px 12px; flex: 0 0 auto; }
+    .set-line input[type="time"] { width: auto; }
+    .set-inline { display: flex; gap: 8px; }
+    .set-sub { font-weight: 600; }
+    .set-sub small { display: inline; }
+
     /* Wochenwahl (Memory) */
     dialog.full { max-height: 100vh; height: 100%; border-radius: 0; margin: 0 auto; }
     dialog.full .sheet { max-height: 100vh; height: 100%; }
@@ -640,6 +661,19 @@
 
     <!-- 4. WG -->
     <section class="tab" id="tab-wg" hidden>
+      <p class="label">Bring!-Liste der WG</p>
+      <div class="card set-hero">
+        <div class="set-top">
+          <div class="set-logo" aria-hidden="true">B!</div>
+          <div><b id="bringListName">Noch nicht verbunden</b><small>Hier landet «Bring! füllen»</small></div>
+        </div>
+        <label class="field" id="bringListField" hidden>Liste wählen
+          <select id="bringListSelect"></select>
+        </label>
+        <span class="set-status" id="syncStatus"></span>
+        <p class="hint" id="bringListHint" style="padding:0" hidden>Liste fehlt? In Bring! die WG-Liste mit <b>allmenbot@gmail.com</b> teilen und im Bot-Konto annehmen, dann unter «Mehr» neu verbinden.</p>
+      </div>
+
       <p class="label">Mitbewohner</p>
       <div class="card">
         <div id="members"></div>
@@ -654,37 +688,40 @@
         </form>
       </div>
 
-      <p class="label">Wer isst wann? <small>+ Gäste pro Tag</small></p>
-      <div class="card table-wrap"><table id="attendance"></table></div>
-
-      <p class="label">WG-Server <small id="syncStatus"></small></p>
-      <form class="card" id="syncForm" style="padding:12px;display:flex;flex-direction:column;gap:10px">
-        <p class="hint" style="padding:0">Damit «Bring! füllen» direkt in eure Bring!-Liste schreibt und alle zusammen wählen können. Adresse und PIN bekommt ihr einmal von Joshua.</p>
-        <label class="field">Adresse
-          <input type="url" id="syncUrl" placeholder="https://bringfrisch.….workers.dev" autocomplete="off">
-        </label>
-        <label class="field">WG-PIN
-          <input type="text" id="syncPin" inputmode="numeric" autocomplete="off">
-        </label>
-        <button class="btn dark" type="submit">Verbinden</button>
-        <label class="field" id="bringListField" hidden>Bring!-Liste der WG
-          <select id="bringListSelect"></select>
-        </label>
-        <p class="hint" id="bringListHint" style="padding:0" hidden>Eure WG-Liste fehlt? In Bring! die WG-Liste mit <b>allmenbot@gmail.com</b> teilen und im Bot-Konto annehmen, dann neu verbinden.</p>
-      </form>
-
-      <p class="label">Kalender</p>
-      <div class="card" style="padding:12px;display:flex;flex-direction:column;gap:10px">
-        <p class="hint" style="padding:0">Alle Znacht der Woche als Kalender-Abo (iPhone, Google, Outlook). Änderungen im Plan erscheinen automatisch. Wer mitisst, markiert das hier in der App.</p>
-        <label class="field">Znacht um
+      <details class="card set-more" id="setMore">
+        <summary><span><b>Mehr</b><small>PIN, Abgleich, Kalender, wer isst wann, Plan teilen, Stil</small></span></summary>
+        <form class="set-row" id="syncForm">
+          <label for="syncPin">WG-PIN<small>Einmal pro Handy, dann gemerkt. Bekommt ihr von Joshua.</small></label>
+          <div class="set-inline">
+            <input type="text" id="syncPin" inputmode="numeric" autocomplete="off">
+            <button class="btn dark" type="submit">Verbinden</button>
+          </div>
+        </form>
+        <div class="set-row set-line">
+          <span>Jetzt abgleichen<small>Geht auch mit Herunterziehen im Plan</small></span>
+          <button class="btn" type="button" id="syncNowBtn">Abgleichen</button>
+        </div>
+        <div class="set-row set-line">
+          <label for="dinnerTime">Znacht um<small>Für den Kalender</small></label>
           <input type="time" id="dinnerTime" value="18:30">
-        </label>
-        <button class="btn" type="button" id="calendarBtn">📅 Kalender abonnieren</button>
-      </div>
-
-      <p class="label">Plan teilen</p>
-      <p class="hint">Schickt den aktuellen Wochenplan als Link (z.B. per WhatsApp). Wer den Link öffnet, bekommt den Plan aufs eigene Handy.</p>
-      <button class="btn" id="sharePlanBtn" type="button">🔗 Plan-Link teilen</button>
+        </div>
+        <div class="set-row set-line">
+          <span>Kalender abonnieren<small>iPhone, Google, Outlook. Änderungen kommen automatisch.</small></span>
+          <button class="btn" type="button" id="calendarBtn">Abonnieren</button>
+        </div>
+        <div class="set-row">
+          <span class="set-sub">Wer isst wann? <small>+ Gäste pro Tag</small></span>
+          <div class="table-wrap"><table id="attendance"></table></div>
+        </div>
+        <div class="set-row set-line">
+          <span>Plan-Link teilen<small>z.B. per WhatsApp, holt den Plan aufs andere Handy</small></span>
+          <button class="btn" id="sharePlanBtn" type="button">Teilen</button>
+        </div>
+        <div class="set-row set-line">
+          <span>Stil<small>Automatisch erkannt</small></span>
+          <button class="btn" type="button" id="setOsBtn">iPhone</button>
+        </div>
+      </details>
     </section>
   </main>
 
