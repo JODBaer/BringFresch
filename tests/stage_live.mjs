@@ -19,7 +19,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = process.env.STAGE_URL || "https://bringfrisch-test.bringfrisch-worker.workers.dev";
 const ORIGIN = "https://bringfrisch-test.bringfrisch-worker.workers.dev";
 const PIN = process.env.STAGE_PIN || "";
-const LIST = "Home-test";
+const LISTS = ["Home-test", "Home"]; // «Home» = alter Name, bis die Liste in Bring! umbenannt ist
+let LIST = LISTS[0];
 const RUN = process.env.GITHUB_RUN_ID || String(Date.now()).slice(-6);
 
 let fails = 0;
@@ -47,7 +48,8 @@ console.log(`Test-Server: ${SERVER}\nBring!-Liste: ${LIST}\n`);
 // 1. Server + Sicherheitsnetz: es darf nur «Home-test» geben, sonst sofort abbrechen (nichts schreiben)
 check((await (await fetch(SERVER + "/health")).json()).ok === true, "Test-Server erreichbar");
 const { lists, active } = await api("/bring/lists");
-if (!check(lists.length === 1 && lists[0].name === LIST && lists[0].uuid === active, `Test-Server schreibt nur in «${LIST}» (sieht: ${lists.map(l => l.name).join(", ")})`)) finish();
+if (lists.length === 1) LIST = lists[0].name;
+if (!check(lists.length === 1 && LISTS.includes(lists[0].name) && lists[0].uuid === active, `Test-Server schreibt nur in «${LIST}» (sieht: ${lists.map(l => l.name).join(", ")})`)) finish();
 const cors = await fetch(SERVER + "/health", { headers: { Origin: ORIGIN } });
 check(cors.headers.get("access-control-allow-origin") === ORIGIN, "CORS erlaubt die Test-Seite");
 

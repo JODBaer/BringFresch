@@ -30,7 +30,7 @@
 //
 // Secrets (npx wrangler secret put …): BRING_EMAIL, BRING_PASSWORD, WG_PIN, CAL_TOKEN
 // Optional: BRING_LIST_UUID (sonst die Standardliste des Bot-Kontos)
-// Test-Server (wrangler --env stage): ONLY_LIST_NAME = "Home-test" -> schreibt nur in diese Liste des Bots, nie in die WG-Liste
+// Test-Server (wrangler --env stage): ONLY_LIST_NAME = "Home-test,Home" -> schreibt nur in diese Liste des Bots (alter Name «Home» geht weiter), nie in die WG-Liste
 // WG-Server: «Home-test» (TEST_LIST_NAME) gehört immer der Test-Version und ist für keine WG wählbar
 // KV-Binding: WG
 
@@ -288,7 +288,8 @@ async function bringLogin(env, allowNoList = false) {
   if (env.ONLY_LIST_NAME) {
     // Test-Server: immer genau diese Liste (per Name), egal was gespeichert ist
     const lists = await fetchLists(data.uuid, headers);
-    const hit = lists.find(l => l.name === env.ONLY_LIST_NAME);
+    // mehrere Namen erlaubt («Home-test,Home»): der erste vorhandene gilt (Liste kann in Bring! umbenannt werden)
+    const hit = testListNames(env.ONLY_LIST_NAME).map(n => lists.find(l => l.name === n)).find(Boolean);
     if (!hit) throw httpError(502, `Test-Server: Liste «${env.ONLY_LIST_NAME}» im Bot-Konto nicht gefunden`);
     return { listUuid: hit.uuid, userUuid: data.uuid, headers, lists };
   }
@@ -303,6 +304,9 @@ async function bringLogin(env, allowNoList = false) {
   return { listUuid, userUuid: data.uuid, headers, mainList };
 }
 
+// Namen der Test-Liste (gehört der Test-Version). «Home» = alter Name, solange die Liste in Bring! nicht umbenannt ist
+const testListNames = v => String(v || "Home-test,Home").split(",").map(s => s.trim()).filter(Boolean);
+
 async function fetchLists(userUuid, headers) {
   const res = await fetch(`${BRING}bringusers/${userUuid}/lists`, { headers });
   if (!res.ok) throw httpError(502, `Bring!-Listen nicht lesbar (${res.status})`);
@@ -315,7 +319,7 @@ async function bringLists(env) {
   const s = await bringLogin(env, true);
   let lists = s.lists || (await fetchLists(s.userUuid, s.headers));
   // WG-Server: die Test-Liste gehört der Test-Version – keine WG kann sie wählen
-  if (!env.ONLY_LIST_NAME) lists = lists.filter(l => l.name !== (env.TEST_LIST_NAME || "Home-test"));
+  if (!env.ONLY_LIST_NAME) lists = lists.filter(l => !testListNames(env.TEST_LIST_NAME).includes(l.name));
   // Test-Server zeigt nur seine eine Liste, damit niemand aus Versehen die WG-Liste wählt
   if (env.ONLY_LIST_NAME) lists = lists.filter(l => l.uuid === s.listUuid);
   // Gleicher Bot für mehrere WGs: Listen, die schon eine andere WG benutzt, sind nicht wählbar

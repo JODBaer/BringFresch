@@ -35,7 +35,7 @@ id = "477e6573755e423fba0e3e8410fbb8cc"
 # Secrets einmalig: powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1
 [env.stage]
 name = "bringfrisch-test"
-vars = { ONLY_LIST_NAME = "Home-test", MAIN_WG = "test", MAIN_WG_NAME = "Test" }
+vars = { ONLY_LIST_NAME = "Home-test,Home", MAIN_WG = "test", MAIN_WG_NAME = "Test" }
 assets = { directory = "../dist-stage" }
 
 [[env.stage.kv_namespaces]]
