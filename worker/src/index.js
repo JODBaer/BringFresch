@@ -221,10 +221,12 @@ export const wgSlug = s => String(s || "").trim().toLowerCase().normalize("NFD")
 async function requireWg(request, env) {
   const pin = (request.headers.get("X-WG-PIN") || "").trim();
   const slug = wgSlug(request.headers.get("X-WG"));
-  const main = wgSlug(env.MAIN_WG || "");
-  if (!slug || slug === main) {
+  // MAIN_WG darf mehrere Namen haben («allmen,wg1»): der erste gilt, die anderen gehen weiter (alte Handys)
+  const aliases = String(env.MAIN_WG || "").split(",").map(wgSlug).filter(Boolean);
+  const main = aliases[0] || "";
+  if (!slug || aliases.includes(slug)) {
     if (!env.WG_PIN || !timingSafeEqual(pin, env.WG_PIN.trim())) throw httpError(401, slug ? "Falscher WG-Name oder PIN" : "Falscher WG-PIN");
-    return { slug: main || "main", name: env.MAIN_WG_NAME || env.MAIN_WG || "WG", prefix: "", main: true, calToken: env.CAL_TOKEN };
+    return { slug: main || "main", aliases, name: env.MAIN_WG_NAME || main || "WG", prefix: "", main: true, calToken: env.CAL_TOKEN };
   }
   if (await env.WG.get(`lock:${slug}`)) throw httpError(429, "Zu viele falsche Versuche – in 15 Minuten nochmals");
   const reg = await env.WG.get(`wgs:${slug}`, "json");
@@ -316,7 +318,7 @@ async function bringLists(env) {
     const me = env.WG_CTX.slug;
     const taken = await Promise.all(lists.map(async l => {
       const owner = await env.RAW.get(`listowner:${l.uuid}`);
-      if (owner) return owner !== me;
+      if (owner) return owner !== me && !(env.WG_CTX.aliases || []).includes(owner);
       return !env.WG_CTX.main && l.uuid === s.mainList; // Liste der ersten WG (auch ohne Eintrag)
     }));
     lists = lists.filter((l, i) => !taken[i]);

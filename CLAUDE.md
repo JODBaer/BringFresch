@@ -18,7 +18,7 @@ WG: Joshua, Lukas, Leonie = Fleisch · Jo = Vegi (keine Veganer).
 
 Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 
-**Mehrere WGs** (ein Worker): Header `X-WG` (Name) + `X-WG-PIN`. Erste WG = `MAIN_WG` (`wrangler.toml`, Secret `WG_PIN`, Daten ohne Präfix); weitere WGs `wgs:<name>` in KV (PIN-Hash, `node tools/new_wg.mjs "Name"`), Daten unter `w:<name>:…`. Gleicher Bring!-Bot; jede weitere WG muss ihre Liste selbst wählen, Listen anderer WGs sind nicht wählbar (`listowner:<uuid>`). 10 falsche PINs = 15 Min. Sperre.
+**Mehrere WGs** (ein Worker): Header `X-WG` (Name) + `X-WG-PIN`. Erste WG = `MAIN_WG` (`wrangler.toml`, «allmen,wg1»: erster Name gilt, weitere = Aliasse, Secret `WG_PIN`, Daten ohne Präfix); weitere WGs `wgs:<name>` in KV (PIN-Hash, `node tools/new_wg.mjs "Name"`), Daten unter `w:<name>:…`. Gleicher Bring!-Bot; jede weitere WG muss ihre Liste selbst wählen, Listen anderer WGs sind nicht wählbar (`listowner:<uuid>`). 10 falsche PINs = 15 Min. Sperre.
 **Erster Start** (nicht verbunden): Willkommen mit WG-Name + PIN (= Zustimmung zu `static/rechtliches.html`, gespeichert in `bringfrisch_terms`), dann «Wer bist du?» (leere WG: sich selbst eintragen). «Ohne WG ausprobieren» = lokal.
 
 ## Fachregeln

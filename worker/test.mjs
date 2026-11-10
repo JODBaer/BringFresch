@@ -248,6 +248,14 @@ check((await (await sh("/cal-link")).json()).url.endsWith("/cal/cal-sonnenhof-01
 env.MAIN_WG = "Bärenhaus";
 r = await call("/wg", { wg: "barenhaus" });
 check(r.status === 200 && (await r.json()).main, "erste WG geht auch mit ihrem Namen (Umlaute egal)");
+env.MAIN_WG = "allmen,wg1";
+r = await call("/wg", { wg: "WG1" });
+check(r.status === 200 && (await r.json()).main, "erste WG: alter Name (wg1) geht weiter");
+r = await call("/wg", { wg: "Allmen" });
+check(r.status === 200 && (await r.json()).name === "allmen", "erste WG: neuer Name (Allmen) geht");
+store.set("listowner:list-wg", "wg1");
+ls = await (await call("/bring/lists", { wg: "allmen" })).json();
+check(ls.lists.some(l => l.uuid === "list-wg"), "Liste, die unter altem Namen gewählt wurde, bleibt wählbar");
 delete env.MAIN_WG;
 for (let i = 0; i < 10; i++) await call("/wg", { wg: "Sonnenhof", pin: "0000" });
 r = await sh("/wg");

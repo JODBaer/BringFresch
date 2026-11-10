@@ -4,8 +4,10 @@ compatibility_date = "2025-09-01"
 
 # Name der ersten WG (beim ersten Start in der App eingeben, mit dem bisherigen WG-PIN).
 # Weitere WGs: node tools/new_wg.mjs (eigener Name + PIN, eigene Daten, eigene Bring!-Liste).
+# Mehrere Namen mit Komma: der erste gilt, die weiteren gehen auch (alte Handys mit «wg1»).
 [vars]
-MAIN_WG = "wg1"
+MAIN_WG = "allmen,wg1"
+MAIN_WG_NAME = "Allmen"
 
 # Tägliche Sicherung der WG-Daten (03:00 UTC), siehe README «Sicherung»
 [triggers]
@@ -33,7 +35,7 @@ id = "477e6573755e423fba0e3e8410fbb8cc"
 # Secrets einmalig: powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1
 [env.stage]
 name = "bringfrisch-test"
-vars = { ONLY_LIST_NAME = "Home", MAIN_WG = "test" }
+vars = { ONLY_LIST_NAME = "Home", MAIN_WG = "test", MAIN_WG_NAME = "Test" }
 assets = { directory = "../dist-stage" }
 
 [[env.stage.kv_namespaces]]

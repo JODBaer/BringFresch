@@ -20,7 +20,7 @@ if (!slug) {
   console.log('Aufruf: node tools/new_wg.mjs "WG-Name" [--stage]');
   process.exit(1);
 }
-if (["wg1", "test", "main"].includes(slug)) {
+if (["allmen", "wg1", "test", "main"].includes(slug)) {
   console.log(`«${slug}» ist reserviert (erste WG / Test). Bitte anderen Namen wählen.`);
   process.exit(1);
 }

@@ -8,7 +8,7 @@ WG-Menüplaner mit Schweizer Saisongemüse. Die WG wählt gemeinsam 7 Znacht fü
 
 Neues Handy: **WG-Name + PIN** eingeben → **«Wer bist du?»** antippen (leere WG: sich selbst eintragen). Fertig.
 Mit «Verbinden» gelten die [Nutzungsbedingungen, Datenschutz und Cookies](https://jodbaer.github.io/BringFresch/static/rechtliches.html) (auch klein unten in den Einstellungen). «Ohne WG ausprobieren» = nur auf diesem Handy.
-Unsere WG: Name **`wg1`** + bisheriger PIN (schon verbundene Handys merken nichts).
+Unsere WG: Name **`Allmen`** + bisheriger PIN (`wg1` geht auch; schon verbundene Handys merken nichts).
 
 ## Bedienung (Plan)
 
@@ -58,7 +58,7 @@ Ein WG-Server für alle WGs, jede WG sieht nur ihre eigenen Daten (Plan, Stimmen
 
 | | Erste WG (unsere) | Weitere WGs |
 |---|---|---|
-| Name in der App | `wg1` (`MAIN_WG` in `worker/wrangler.toml`) oder leer | z.B. `sonnenhof` (gross/klein, Umlaute egal) |
+| Name in der App | `Allmen` (oder `wg1`; `MAIN_WG` in `worker/wrangler.toml`) | z.B. `sonnenhof` (gross/klein, Umlaute egal) |
 | PIN | Secret `WG_PIN` (wie bisher) | nur als Hash in KV (`wgs:<name>`) |
 | Daten in KV | ohne Präfix (wie bisher) | `w:<name>:…` |
 | Bring! | gleicher Bot, eigene Liste | gleicher Bot, eigene Liste – **muss selbst gewählt werden** |
