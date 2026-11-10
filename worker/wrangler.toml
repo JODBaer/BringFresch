@@ -31,11 +31,11 @@ id = "477e6573755e423fba0e3e8410fbb8cc"
 #   node tools/build_stage.mjs && cd worker && npx wrangler deploy --env stage
 #   -> https://bringfrisch-test.bringfrisch-worker.workers.dev
 # Dateien aus dist-stage/ werden direkt ausgeliefert, alles andere (/plan, /bring/…) beantwortet der Worker.
-# Eigener Speicher, schreibt NUR in die Bring!-Liste «Home» des Bots (nie in die WG-Liste).
+# Eigener Speicher, schreibt NUR in die Bring!-Liste «Home-test» des Bots (nie in die WG-Liste).
 # Secrets einmalig: powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1
 [env.stage]
 name = "bringfrisch-test"
-vars = { ONLY_LIST_NAME = "Home", MAIN_WG = "test", MAIN_WG_NAME = "Test" }
+vars = { ONLY_LIST_NAME = "Home-test", MAIN_WG = "test", MAIN_WG_NAME = "Test" }
 assets = { directory = "../dist-stage" }
 
 [[env.stage.kv_namespaces]]

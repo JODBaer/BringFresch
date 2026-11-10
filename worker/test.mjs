@@ -26,7 +26,7 @@ globalThis.fetch = async (url, init = {}) => {
     if (p.get("password") !== "pw") return new Response("", { status: 401 });
     return Response.json({ uuid: "u1", access_token: "tok", bringListUUID: "list-1" });
   }
-  if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home" }, { listUuid: "list-wg", name: "WG" }, { listUuid: "list-sh", name: "Sonnenhof" }] });
+  if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home-test" }, { listUuid: "list-wg", name: "WG" }, { listUuid: "list-sh", name: "Sonnenhof" }] });
   if (url.includes("/bringlists/list-wg") && (init.method || "GET") === "GET") return Response.json({ items: { purchase: wgPuts.map(n => ({ itemId: n })) } });
   if (url.includes("/bringlists/list-wg") && init.method === "PUT") { wgPuts.push(new URLSearchParams(init.body).get("purchase")); return new Response(null, { status: 204 }); }
   if (url.includes("/bringlists/list-1") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
@@ -125,7 +125,10 @@ check(r.status === 400, "Einstellungen ohne Mitbewohner abgelehnt");
 // 2b. Liste wählen
 r = await call("/bring/lists");
 let ls = await r.json();
-check(ls.lists.length === 3 && ls.active === "list-1", "Listen des Bot-Kontos + aktive Liste");
+check(ls.lists.length === 2 && ls.active === "list-1", "Listen des Bot-Kontos + aktive Liste");
+check(!ls.lists.some(l => l.name === "Home-test"), "«Home-test» gehört der Test-Version: keine WG sieht sie");
+r = await call("/bring/target", { method: "PUT", body: { uuid: "list-1" } });
+check(r.status === 400, "«Home-test» als WG-Liste wählen wird abgelehnt");
 r = await call("/bring/target", { method: "PUT", body: { uuid: "gibts-nicht" } });
 check(r.status === 400, "unbekannte Liste wird abgelehnt");
 r = await call("/bring/target", { method: "PUT", body: { uuid: "list-wg" } });
@@ -176,8 +179,8 @@ r = await call("/cal/cal-secret.ics?me=jo&week=2026-W47&dl=1", { pin: null });
 const icsDl = await r.text();
 check((icsDl.match(/BEGIN:VEVENT/g) || []).length === 2 && /attachment; filename="BringFrisch-2026-W47.ics"/.test(r.headers.get("Content-Disposition")) && icsDl.includes("UID:bringfrisch-dl-2026-W47-0-jo@"), "herunterladen: nur diese Woche, nur meine Abende, als Datei mit eigenen Termin-IDs");
 
-// 4c. Test-Server: schreibt nur in die Liste «Home», nie in die WG-Liste
-const stageEnv = { ...env, ONLY_LIST_NAME: "Home" };
+// 4c. Test-Server: schreibt nur in die Liste «Home-test», nie in die WG-Liste
+const stageEnv = { ...env, ONLY_LIST_NAME: "Home-test" };
 const stageCall = (path, opts = {}) => worker.fetch(new Request("https://stage.example" + path, {
   method: opts.method || "GET",
   headers: { Origin: "https://bringfrisch-test.bringfrisch-worker.workers.dev", "Content-Type": "application/json", "X-WG-PIN": "1234" },
@@ -187,12 +190,12 @@ store.set("bringList", "list-wg"); // selbst wenn die WG-Liste gespeichert ist �
 r = await stageCall("/bring/lists");
 check(r.headers.get("Access-Control-Allow-Origin") === "https://bringfrisch-test.bringfrisch-worker.workers.dev", "CORS für die Test-Seite");
 ls = await r.json();
-check(ls.active === "list-1" && ls.lists.length === 1 && ls.lists[0].name === "Home", "Test-Server zeigt nur «Home»");
+check(ls.active === "list-1" && ls.lists.length === 1 && ls.lists[0].name === "Home-test", "Test-Server zeigt nur «Home-test»");
 r = await stageCall("/bring/target", { method: "PUT", body: { uuid: "list-wg" } });
 check(r.status === 400, "Test-Server kann nicht auf die WG-Liste umgestellt werden");
 const wgBefore = wgPuts.length;
 await stageCall("/bring/sync", { method: "POST", body: { items: [{ name: "Stage Test", spec: "1 Stk" }] } });
-check(wgPuts.length === wgBefore && bringList.some(x => x.name === "Stage Test"), "Test-Server schreibt in «Home», nicht in die WG-Liste");
+check(wgPuts.length === wgBefore && bringList.some(x => x.name === "Stage Test"), "Test-Server schreibt in «Home-test», nicht in die WG-Liste");
 store.delete("bringList");
 
 // 5. Rezept-Link

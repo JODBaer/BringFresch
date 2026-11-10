@@ -89,13 +89,10 @@ log("\n[2] Bring!-Liste wählen");
 for (let i = 0; i < 40 && $("bringListField").hidden; i++) await wait(250);
 const opts = [...$("bringListSelect").options];
 check(opts.length > 0, `Auswahl zeigt: ${opts.map(o => (o.selected ? "→" : "") + o.textContent).join(", ")}`);
-const home = opts.find(o => o.textContent === "Home");
-if (home && !home.selected) {
-  $("bringListSelect").value = home.value;
-  $("bringListSelect").dispatchEvent(new W.Event("change"));
-  await wait(3000);
-}
-check((await api("/bring/lists")).active === (home || opts[0]).value, "Server schreibt in «Home»");
+// «Home-test» gehört der Test-Version (auf dem WG-Server nicht wählbar). Hier wird die Liste NICHT umgestellt.
+check(!opts.some(o => o.textContent === "Home-test"), "«Home-test» ist auf dem WG-Server nicht wählbar");
+const active = (await api("/bring/lists")).active;
+check(opts.some(o => o.value === active), `Server schreibt in die gewählte WG-Liste (${(opts.find(o => o.value === active) || {}).textContent})`);
 
 log("\n[3] Wochenwahl (als Joshua)");
 $("openVoteBtn").click();

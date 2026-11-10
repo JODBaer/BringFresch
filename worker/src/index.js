@@ -30,7 +30,8 @@
 //
 // Secrets (npx wrangler secret put …): BRING_EMAIL, BRING_PASSWORD, WG_PIN, CAL_TOKEN
 // Optional: BRING_LIST_UUID (sonst die Standardliste des Bot-Kontos)
-// Test-Server (wrangler --env stage): ONLY_LIST_NAME = "Home" -> schreibt nur in diese Liste des Bots, nie in die WG-Liste
+// Test-Server (wrangler --env stage): ONLY_LIST_NAME = "Home-test" -> schreibt nur in diese Liste des Bots, nie in die WG-Liste
+// WG-Server: «Home-test» (TEST_LIST_NAME) gehört immer der Test-Version und ist für keine WG wählbar
 // KV-Binding: WG
 
 const BRING = "https://api.getbring.com/rest/v2/";
@@ -313,6 +314,8 @@ async function fetchLists(userUuid, headers) {
 async function bringLists(env) {
   const s = await bringLogin(env, true);
   let lists = s.lists || (await fetchLists(s.userUuid, s.headers));
+  // WG-Server: die Test-Liste gehört der Test-Version – keine WG kann sie wählen
+  if (!env.ONLY_LIST_NAME) lists = lists.filter(l => l.name !== (env.TEST_LIST_NAME || "Home-test"));
   // Test-Server zeigt nur seine eine Liste, damit niemand aus Versehen die WG-Liste wählt
   if (env.ONLY_LIST_NAME) lists = lists.filter(l => l.uuid === s.listUuid);
   // Gleicher Bot für mehrere WGs: Listen, die schon eine andere WG benutzt, sind nicht wählbar

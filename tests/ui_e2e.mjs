@@ -5,7 +5,7 @@
 //   - static/ läuft über einen kleinen lokalen Webserver (wie GitHub Pages, mit Service Worker)
 //   - feste Uhr (Di 10.11.2026 12:00, Do 12.11. für «nächste Woche», Mo 16.11. für den Wochenwechsel) + fester Zufall
 //   - WG-Server: Anfragen der App an den Worker werden abgefangen und vom echten Worker-Code (worker/src/index.js)
-//     hier im Prozess beantwortet – mit Speicher im RAM und einem nachgebauten Bring! (Listen «WG» und «Home»).
+//     hier im Prozess beantwortet – mit Speicher im RAM und einem nachgebauten Bring! (Listen «WG», «Ferien» und die reservierte «Home-test»).
 // Browser: BROWSER=/pfad/zu/chrome, sonst Edge/Chrome/Chromium des Systems, sonst `npm run chrome` (lädt Chrome nach tests/.chrome).
 //
 // Neuen Schritt hinzufügen (siehe README «Tests»): in einem Ablauf unten
@@ -68,7 +68,7 @@ const env = {
   },
 };
 const kvJson = k => (kv.has(k) ? JSON.parse(kv.get(k)) : null);
-const bring = { L: { name: "WG", items: [] }, H: { name: "Home", items: [] } };
+const bring = { L: { name: "WG", items: [] }, H: { name: "Ferien", items: [] }, T: { name: "Home-test", items: [] } };
 const RECIPE_URL = "https://www.bettybossi.ch/de/rezepte/rezept/kuerbis-lasagne-10001234/";
 const RECIPE_HTML = `<html><head><script type="application/ld+json">${JSON.stringify({
   "@context": "https://schema.org", "@type": "Recipe", name: "Kürbis-Lasagne", recipeYield: "6 Personen", totalTime: "PT50M",
@@ -772,11 +772,13 @@ await step(A, "WG-PIN: falscher PIN zeigt Fehler, richtiger PIN verbindet", asyn
   await shot(A, "14-verbunden");
 });
 
-await step(A, "Bring!-Liste wählen: «Home», dann zurück auf «WG»", async () => {
+await step(A, "Bring!-Liste wählen: «Ferien», dann zurück auf «WG»; «Home-test» nicht wählbar", async () => {
+  const opts = await A.page.$$eval("#bringListSelect option", os => os.map(o => o.textContent));
+  expect(!opts.includes("Home-test") && opts.includes("Ferien"), `Auswahl zeigt: ${opts.join(", ")}`);
   await clearToasts(A);
   await choose(A, "#bringListSelect", "H");
-  await toastIs(A, /Bring!-Liste: Home ✓/);
-  expect(kv.get("bringList") === "H" && (await text(A, "#bringListName")) === "Home", "Home nicht gewählt");
+  await toastIs(A, /Bring!-Liste: Ferien ✓/);
+  expect(kv.get("bringList") === "H" && (await text(A, "#bringListName")) === "Ferien", "Ferien nicht gewählt");
   await clearToasts(A);
   await choose(A, "#bringListSelect", "L");
   await toastIs(A, /Bring!-Liste: WG ✓/);
@@ -985,7 +987,7 @@ await step(B, "Bring! füllen: alle Artikel landen in Bring! «WG», Chip «✓ 
   await clearToasts(B);
   await tap(B, "#syncBtn");
   await toastIs(B, new RegExp(`^${n0} Artikel in Bring! ✓`));
-  expect(wg().length === n0 && bring.H.items.length === 0, `Bring! WG ${wg().length}, Home ${bring.H.items.length}`);
+  expect(wg().length === n0 && bring.H.items.length === 0, `Bring! WG ${wg().length}, Ferien ${bring.H.items.length}`);
   await until(B, () => document.getElementById("ctaCount").textContent === "✓ in Bring!", "Chip zeigt nicht ✓");
   await shot(B, "04-bring-gefuellt");
 });

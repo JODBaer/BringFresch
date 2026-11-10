@@ -1,11 +1,11 @@
-// Live-Test gegen den TEST-Server (bringfrisch-test: Test-Seite und Test-Server in einem Worker) und das echte Bring! – nur die Liste «Home» des Bots.
+// Live-Test gegen den TEST-Server (bringfrisch-test: Test-Seite und Test-Server in einem Worker) und das echte Bring! – nur die Liste «Home-test» des Bots.
 // Die WG-Liste wird nie berührt: der Test-Server kann gar nicht in eine andere Liste schreiben (ONLY_LIST_NAME).
 //
 //   Lokal (fragt den Test-PIN verdeckt):  powershell -ExecutionPolicy Bypass -File tests\stage_live.ps1
 //   GitHub Actions:                        Secret STAGE_PIN, siehe .github/workflows/stage.yml
 //
-// Ablauf: Server erreichbar -> nur «Home» sichtbar -> Artikel setzen/ändern/wegnehmen
-//         -> Test-App (dist-stage) in jsdom: verbinden, «Bring! füllen», alles auf «Home» -> aufräumen.
+// Ablauf: Server erreichbar -> nur «Home-test» sichtbar -> Artikel setzen/ändern/wegnehmen
+//         -> Test-App (dist-stage) in jsdom: verbinden, «Bring! füllen», alles auf «Home-test» -> aufräumen.
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -19,7 +19,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = process.env.STAGE_URL || "https://bringfrisch-test.bringfrisch-worker.workers.dev";
 const ORIGIN = "https://bringfrisch-test.bringfrisch-worker.workers.dev";
 const PIN = process.env.STAGE_PIN || "";
-const LIST = "Home";
+const LIST = "Home-test";
 const RUN = process.env.GITHUB_RUN_ID || String(Date.now()).slice(-6);
 
 let fails = 0;
@@ -44,7 +44,7 @@ const removeMine = async () => {
 
 console.log(`Test-Server: ${SERVER}\nBring!-Liste: ${LIST}\n`);
 
-// 1. Server + Sicherheitsnetz: es darf nur «Home» geben, sonst sofort abbrechen (nichts schreiben)
+// 1. Server + Sicherheitsnetz: es darf nur «Home-test» geben, sonst sofort abbrechen (nichts schreiben)
 check((await (await fetch(SERVER + "/health")).json()).ok === true, "Test-Server erreichbar");
 const { lists, active } = await api("/bring/lists");
 if (!check(lists.length === 1 && lists[0].name === LIST && lists[0].uuid === active, `Test-Server schreibt nur in «${LIST}» (sieht: ${lists.map(l => l.name).join(", ")})`)) finish();
@@ -98,7 +98,7 @@ try {
   check(n > 0, `Plan braucht ${n} Artikel`);
   $("syncBtn").click();
   await wait(1500);
-  if ($("dupDialog").open) $("dupSendBtn").click(); // falls von Hand schon etwas auf «Home» steht
+  if ($("dupDialog").open) $("dupSendBtn").click(); // falls von Hand schon etwas auf «Home-test» steht
   check(await waitFor(() => /✓ in Bring!/.test($("ctaCount").textContent), 90000), `«Bring! füllen» fertig («${$("ctaCount").textContent}»)`);
   l = await api("/bring/list");
   check(l.mine.length > 0 && l.mine.length <= n, `${l.mine.length} Artikel auf «${LIST}», z.B. ${l.details.slice(0, 4).map(d => `${d.name} [${d.spec}]`).join(", ")}`);

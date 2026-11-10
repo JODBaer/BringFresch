@@ -97,7 +97,7 @@ npm run ui                               # nur der UI-Test
 Am Schluss steht `PASS: alles grün` oder `FAIL: …` (dann Exit-Code 1). Läuft gleich unter Windows, Linux und in GitHub Actions.
 Browser: Edge oder Chrome wird automatisch gefunden, sonst `BROWSER=/pfad/zu/chrome`. Kein Browser installiert (z.B. Linux-Server)? Einmal `npm run chrome` – lädt Chrome nach `tests/.chrome/`, der Test findet ihn dort.
 
-**UI-Test** (`tests/ui_e2e.mjs`): bedient die App wie ein Mensch in einem echten Chrome (Handy 390×844 mit Touch): tippt, schreibt, wählt aus, wischt, zieht herunter – durch Plan, Wochenwahl, Bring! füllen, Einkauf, Grundvorrat, Rezepte & Saison, Einstellungen und als iPhone und Android, hell und dunkel, an einem Dienstag, Donnerstag (nächste Woche) und Montag (Wochenwechsel). Der WG-Server ist der echte Worker-Code, im Test-Prozess mit nachgebautem Bring! (Listen «WG» und «Home») – kein Internet, keine Zugangsdaten. Jeder Schritt meldet `PASS`/`FAIL`, bei Fehlern liegt ein Foto `FEHLER-….png` in `tests/shots/ui/`. Nicht headless bedienbar und darum nachgestellt: Teilen-Blatt (die App kopiert stattdessen), Zwischenablage (wird mitgeschrieben), Farb-/Zeitwähler (Wert wird gesetzt), Öffnen von `bring://`/`webcal://` (geprüft werden Hinweis und Link).
+**UI-Test** (`tests/ui_e2e.mjs`): bedient die App wie ein Mensch in einem echten Chrome (Handy 390×844 mit Touch): tippt, schreibt, wählt aus, wischt, zieht herunter – durch Plan, Wochenwahl, Bring! füllen, Einkauf, Grundvorrat, Rezepte & Saison, Einstellungen und als iPhone und Android, hell und dunkel, an einem Dienstag, Donnerstag (nächste Woche) und Montag (Wochenwechsel). Der WG-Server ist der echte Worker-Code, im Test-Prozess mit nachgebautem Bring! (Listen «WG», «Ferien» und die reservierte «Home-test») – kein Internet, keine Zugangsdaten. Jeder Schritt meldet `PASS`/`FAIL`, bei Fehlern liegt ein Foto `FEHLER-….png` in `tests/shots/ui/`. Nicht headless bedienbar und darum nachgestellt: Teilen-Blatt (die App kopiert stattdessen), Zwischenablage (wird mitgeschrieben), Farb-/Zeitwähler (Wert wird gesetzt), Öffnen von `bring://`/`webcal://` (geprüft werden Hinweis und Link).
 
 ### Neuen Test hinzufügen
 
@@ -116,12 +116,12 @@ Hilfsfunktionen: `tap` (antippen), `typeInto` (Feld antippen + tippen), `choose`
 | Wo | Was |
 |---|---|
 | lokal (Windows, Linux) | `npm run ci` (einzeln: `npm test`, `npm run layout`, `npm run ui`) |
-| GitHub Actions, Push auf `main` | dieselben Tests → **Test-Version** aktualisieren → Live-Test gegen echtes Bring! (Liste «Home» des Bots, räumt auf) – `stage.yml` |
+| GitHub Actions, Push auf `main` | dieselben Tests → **Test-Version** aktualisieren → Live-Test gegen echtes Bring! (Liste «Home-test» des Bots, räumt auf) – `stage.yml` |
 | GitHub Actions, Release-Tag `v*` | dieselben Tests → WG-Version auf GitHub Pages, nur wenn alles grün ist – `deploy-pages.yml` |
-| nur von Hand | Live-Test «Home»: `tests\stage_live.ps1` (fragt den Test-PIN) · WG-Server: `tests\e2e_live.ps1`, `tools\check_live.ps1` |
+| nur von Hand | Live-Test «Home-test»: `tests\stage_live.ps1` (fragt den Test-PIN) · WG-Server: `tests\e2e_live.ps1`, `tools\check_live.ps1` |
 
 **Test-Version** (zum Ausprobieren, ohne die WG zu stören): <https://bringfrisch-test.bringfrisch-worker.workers.dev>
-– orange «TEST»-Band, eigener Test-Server mit eigenem Speicher und eigenem Test-PIN, schreibt **nur** in die Bring!-Liste «Home» des Bots (kann technisch nicht auf die WG-Liste).
+– orange «TEST»-Band, eigener Test-Server mit eigenem Speicher und eigenem Test-PIN, schreibt **nur** in die Bring!-Liste «Home-test» des Bots (kann technisch nicht auf die WG-Liste).
 Seite und Server sind **ein** Worker (`bringfrisch-test`). Von Hand aktualisieren: `node tools/build_stage.mjs`, dann `cd worker && npx wrangler deploy --env stage`.
 Einmalig nach der Zusammenlegung (v1.6.0): Secrets für den neuen Test-Worker setzen (`powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1`), danach den alten Test-Server löschen: `cd worker && npx wrangler delete --name bringfrisch-stage`.
 Einmalig einrichten (alle Zugangsdaten, Schritt für Schritt, nichts wird angezeigt): `powershell -ExecutionPolicy Bypass -File tools\setup-secrets.ps1` – GitHub-Anmeldung, Cloudflare Account-ID (automatisch) und API-Token, Test-Server mit Bot-Zugang und Test-PIN.
