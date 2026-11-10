@@ -1,4 +1,4 @@
-// BringFrisch: Eigene Rezepte (von Hand oder mit Web-Link von Betty Bossi, Swissmilk, Fooby, Migusto …)
+// BringFrisch: Eigene Rezepte (von Hand oder mit Link einer Rezeptseite), bearbeiten, löschen
 
 const UNIT_PATTERN = "kg|g|dl|ml|cl|l|el|tl|stk|stück|bund|prise|glas|dose|becher|pck|packung|tranchen|kopf|rolle|zehe|zehen|portion";
 
@@ -86,9 +86,33 @@ class RecipeImporter {
       is_custom: true
     };
     if (cleanUrl) recipe.source_url = cleanUrl;
+    // gleicher Link nochmals geholt -> bestehendes Rezept aktualisieren statt doppelt
+    const same = cleanUrl && this.customRecipes.find(r => r.source_url === cleanUrl);
+    if (same) return this.updateCustomRecipe(same.id, { title, url: cleanUrl, diet, servings, ingredientsText, instructions });
     this.customRecipes.push(recipe);
     this.saveCustomRecipes();
     return recipe;
+  }
+
+  updateCustomRecipe(id, { title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "" }) {
+    const r = this.customRecipes.find(x => x.id === id);
+    if (!r) return null;
+    const cleanUrl = (url || "").trim();
+    Object.assign(r, {
+      title: (title || "").trim() || r.title,
+      diet,
+      servings: Math.max(1, parseInt(servings, 10) || r.servings || 4),
+      ingredients: this.parseIngredients(ingredientsText),
+      instructions: (instructions || "").trim(),
+    });
+    if (cleanUrl) r.source_url = cleanUrl; else delete r.source_url;
+    this.saveCustomRecipes();
+    return r;
+  }
+
+  // Zutaten zurück in Text (zum Bearbeiten): «500 g Lauch»
+  ingredientsToText(ingredients) {
+    return (ingredients || []).map(i => [i.amount && !(i.amount === "1" && i.unit === "Stk" && !/^\d/.test(i.name)) ? i.amount : "", i.unit && i.unit !== "Stk" ? i.unit : (i.amount && i.amount !== "1" ? "Stk" : ""), i.name].filter(Boolean).join(" ")).join("\n");
   }
 
   deleteCustomRecipe(id) {

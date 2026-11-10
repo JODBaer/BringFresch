@@ -12,7 +12,8 @@ WG-Menüplaner mit Schweizer Saisongemüse. Die WG wählt gemeinsam 7 Znacht fü
 - **Zahl** rechts = Portionen (Personen + Reste): antippen = +1 (bis +6, dann wieder 0), **▾** = Auswahl.
 - Oben: **Kalender-Symbol** = Wochenwahl (roter Punkt = noch offen), **🛒 Bring!-Chip** = füllen.
 - **Ab Donnerstag** steht rechts über den Tagen **«KW 47 →»**: antippen (oder seitlich wischen) = nächste Woche planen. Tage sind zuerst «noch offen», Wochenwahl, Bring! und Kalender gelten für die angezeigte Woche. Am Montag wird sie automatisch zur laufenden.
-- Unten: Plan · Einkauf · Rezepte & Saison · Einstellungen (⋮-Menü: WG-Einstellungen, Aktualisieren, Wochenwahl, iPhone-/Android-Stil).
+- Unten: Plan · Einkauf · Rezepte & Saison · Einstellungen (jede direkt als Seite; Einstellungen: Bring!-Liste und Mitbewohner oben, der Rest unter «Mehr»).
+- **Rezepte**: Webseiten zum Stöbern (eigene hinzufügbar), Link einfügen → Zutaten werden geholt (jede Rezeptseite, auch geteilter Text), Personenzahl gleich angeben; eigene Rezepte bearbeiten, Katalog-Rezepte «Anpassen» (eigene Kopie, z.B. andere Personenzahl).
 - iPhone bekommt den Glas-Stil, Android Material 3 – automatisch. Design-Vorgabe: [docs/design/](docs/design/).
 
 ## So funktioniert's
@@ -57,7 +58,7 @@ npm run ui                               # nur der UI-Test
 Am Schluss steht `PASS: alles grün` oder `FAIL: …` (dann Exit-Code 1). Läuft gleich unter Windows, Linux und in GitHub Actions.
 Browser: Edge oder Chrome wird automatisch gefunden, sonst `BROWSER=/pfad/zu/chrome`. Kein Browser installiert (z.B. Linux-Server)? Einmal `npm run chrome` – lädt Chrome nach `tests/.chrome/`, der Test findet ihn dort.
 
-**UI-Test** (`tests/ui_e2e.mjs`): bedient die App wie ein Mensch in einem echten Chrome (Handy 390×844 mit Touch): tippt, schreibt, wählt aus, wischt, zieht herunter – durch Plan, Wochenwahl, Bring! füllen, Einkauf, Grundvorrat, Rezepte & Saison, Einstellungen und ⋮-Menü, als iPhone und Android, hell und dunkel, an einem Dienstag, Donnerstag (nächste Woche) und Montag (Wochenwechsel). Der WG-Server ist der echte Worker-Code, im Test-Prozess mit nachgebautem Bring! (Listen «WG» und «Home») – kein Internet, keine Zugangsdaten. Jeder Schritt meldet `PASS`/`FAIL`, bei Fehlern liegt ein Foto `FEHLER-….png` in `tests/shots/ui/`. Nicht headless bedienbar und darum nachgestellt: Teilen-Blatt (die App kopiert stattdessen), Zwischenablage (wird mitgeschrieben), Farb-/Zeitwähler (Wert wird gesetzt), Öffnen von `bring://`/`webcal://` (geprüft werden Hinweis und Link).
+**UI-Test** (`tests/ui_e2e.mjs`): bedient die App wie ein Mensch in einem echten Chrome (Handy 390×844 mit Touch): tippt, schreibt, wählt aus, wischt, zieht herunter – durch Plan, Wochenwahl, Bring! füllen, Einkauf, Grundvorrat, Rezepte & Saison, Einstellungen und als iPhone und Android, hell und dunkel, an einem Dienstag, Donnerstag (nächste Woche) und Montag (Wochenwechsel). Der WG-Server ist der echte Worker-Code, im Test-Prozess mit nachgebautem Bring! (Listen «WG» und «Home») – kein Internet, keine Zugangsdaten. Jeder Schritt meldet `PASS`/`FAIL`, bei Fehlern liegt ein Foto `FEHLER-….png` in `tests/shots/ui/`. Nicht headless bedienbar und darum nachgestellt: Teilen-Blatt (die App kopiert stattdessen), Zwischenablage (wird mitgeschrieben), Farb-/Zeitwähler (Wert wird gesetzt), Öffnen von `bring://`/`webcal://` (geprüft werden Hinweis und Link).
 
 ### Neuen Test hinzufügen
 
@@ -65,7 +66,7 @@ Neue Abläufe gehören in `tests/ui_e2e.mjs` in einen der Abläufe A (iPhone, oh
 
 ```js
 await step(A, "Gäste am Montag: +1", async () => {
-  await goTab(A, "wg");                                   // Plan | shop | season | wg (über ⋮)
+  await goTab(A, "wg");                                   // plan | shop | season | wg
   await tap(A, '#attendance [data-guests="0"]');           // antippen wie mit dem Finger (muss sichtbar sein)
   await until(A, () => document.querySelector('#attendance [data-guests="0"]').textContent === "1", "Gäste zählen nicht");
 });

@@ -296,13 +296,9 @@ const ctaCount = async P => parseInt((await text(P, "#ctaCount")).replace(/\D/g,
 const ls = (P, k) => P.page.evaluate(k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return localStorage.getItem(k); } }, k);
 async function shot(P, name) { if (SHOTS) { await settle(P); await P.page.screenshot({ path: path.join(shotDir, `${P.name}-${name}.png`) }); } }
 
-// Bottom-Navigation: Plan, Einkauf, Rezepte & Saison; Einstellungen über das ⋮-Menü
+// Bottom-Navigation: Plan, Einkauf, Rezepte & Saison, Einstellungen (jede direkt als Seite, kein Pop-up)
 async function goTab(P, tab) {
-  if (tab === "wg") {
-    await tap(P, "#moreBtn");
-    await until(P, () => document.getElementById("navMenu").classList.contains("show"), "⋮-Menü geht nicht auf");
-    await tap(P, "#menuSettings");
-  } else await tap(P, `.bnav [data-tab="${tab}"]`);
+  await tap(P, `.bnav [data-tab="${tab}"]`);
   await until(P, t => !document.getElementById(`tab-${t}`).hidden && [...document.querySelectorAll(".tab")].filter(s => !s.hidden).length === 1, `Tab ${tab} erscheint nicht`, tab);
 }
 async function noHScroll(P, tag) {
@@ -685,7 +681,7 @@ await step(A, "Znacht-Zeit 19:15 (Zeitwähler) wird gespeichert", async () => {
 await step(A, "Stil umschalten: iPhone ↔ Android", async () => {
   expect((await text(A, "#setOsBtn")) === "iPhone", "Knopf zeigt nicht iPhone");
   await tap(A, "#setOsBtn");
-  await until(A, () => document.documentElement.classList.contains("m3") && document.getElementById("setOsBtn").textContent === "Android" && document.getElementById("menuOsLabel").textContent === "iPhone-Stil", "kein Android-Stil");
+  await until(A, () => document.documentElement.classList.contains("m3") && document.getElementById("setOsBtn").textContent === "Android", "kein Android-Stil");
   await shot(A, "12-android-stil");
   await tap(A, "#setOsBtn");
   await until(A, () => document.documentElement.classList.contains("glass") && localStorage.getItem("bf-os") === "glass", "nicht zurück auf iPhone");
@@ -763,20 +759,23 @@ await step(A, "Kalender abonnieren: Link kopiert, Abo enthält den Plan um 19:15
   expect(A.page.url().startsWith(BASE), "Seite ist weggesprungen");
 });
 
-await step(A, "⋮-Menü: Aktualisieren", async () => {
+await step(A, "Einstellungen: direkt die Seite (kein Pop-up); «Abgleichen»", async () => {
+  await goTab(A, "wg");
+  expect(!(await A.page.$("#navMenu")), "altes ⋮-Menü ist noch da");
+  expect(await A.page.$eval("#tab-wg", t => !t.hidden && t.querySelector(".set-hero").getBoundingClientRect().height > 40), "Einstellungen nicht direkt sichtbar");
+  await shot(A, "15-einstellungen");
   await clearToasts(A);
-  await tap(A, "#moreBtn");
-  await until(A, () => document.getElementById("navMenu").classList.contains("show"), "Menü geht nicht auf");
-  await shot(A, "15-menue");
-  await tap(A, "#menuRefresh");
+  await A.page.evaluate(() => { document.getElementById("setMore").open = true; });
+  await tap(A, "#syncNowBtn");
   await toastIs(A, /^Synchronisiert ✓/);
-  expect(!(await A.page.$eval("#navMenu", m => m.classList.contains("show"))), "Menü bleibt offen");
 });
 
-await step(A, "⋮-Menü: Wochenwahl öffnen → «Einfach zufällig planen» → «Rückgängig»", async () => {
+await step(A, "Einstellungen: Wochenwahl öffnen → «Einfach zufällig planen» → «Rückgängig»", async () => {
+  await goTab(A, "plan");
   const before = await titles(A);
-  await tap(A, "#moreBtn");
-  await tap(A, "#menuVote");
+  await goTab(A, "wg");
+  await A.page.evaluate(() => { document.getElementById("setMore").open = true; });
+  await tap(A, "#setVoteBtn");
   await until(A, () => document.getElementById("voteDialog").open && document.querySelectorAll("#voteGrid .vcard").length === 14, "Wochenwahl geht nicht auf");
   await clearToasts(A);
   await tap(A, "#voteRandomBtn");
@@ -787,17 +786,17 @@ await step(A, "⋮-Menü: Wochenwahl öffnen → «Einfach zufällig planen» �
   await until(A, b => [...document.querySelectorAll("#days .t")].map(e => e.textContent).join() === b, "Rückgängig stellt Plan nicht her", before.join());
 });
 
-await step(A, "⋮-Menü: Stil wechseln und zurück; ⋮ schliesst beim Tippen daneben", async () => {
-  await tap(A, "#moreBtn");
-  await tap(A, "#menuOs");
-  await until(A, () => document.documentElement.classList.contains("m3"), "kein Android-Stil");
-  await tap(A, "#moreBtn");
-  await tap(A, "#menuOs");
-  await until(A, () => document.documentElement.classList.contains("glass"), "nicht zurück");
-  await tap(A, "#moreBtn");
-  await until(A, () => document.getElementById("navMenu").classList.contains("show"), "Menü geht nicht auf");
-  await tap(A, "#tab-wg .label");
-  await until(A, () => !document.getElementById("navMenu").classList.contains("show"), "Menü bleibt offen");
+await step(A, "Plan: Knopf «Wechseln» sieht aus wie ein Knopf (Text drin, nicht darüber)", async () => {
+  await goTab(A, "plan");
+  await tap(A, '.prow[data-i="1"] .pday');
+  await until(A, () => !!document.querySelector('.prow[data-i="1"].open .links [data-pick]'), "Tag geht nicht auf");
+  const r = await A.page.evaluate(() => {
+    const b = document.querySelector('.prow[data-i="1"] .links [data-pick]'), br = b.getBoundingClientRect();
+    const range = document.createRange(); range.selectNodeContents(b); const tr = range.getBoundingClientRect();
+    return { h: br.height, w: br.width, inside: tr.top >= br.top - 1 && tr.bottom <= br.bottom + 1 && tr.left >= br.left - 1 && tr.right <= br.right + 1, fs: parseFloat(getComputedStyle(b).fontSize) };
+  });
+  expect(r.h >= 30 && r.w >= 70 && r.inside && r.fs >= 13, `«Wechseln» kaputt: ${JSON.stringify(r)}`);
+  await tap(A, '.prow[data-i="1"] .pday');
 });
 
 await step(A, "Navigation: jeder Tab, kein seitliches Scrollen", async () => {
@@ -1103,19 +1102,30 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   await shot(B, "09-rezept-link");
   await tap(B, '#recipeForm button[type="submit"]');
   await until(B, () => document.querySelector('.prow[data-i="5"] .t').textContent === "Kürbis-Lasagne", "nicht eingeplant");
-  // fremde Seite: WG-Server lehnt ab, Titel kommt aus dem Link
+  // Seite ohne Rezeptdaten: WG-Server meldet es, Titel kommt aus dem Link
   await tap(B, '.prow[data-i="4"] .t');
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, "#newRecipeBtn");
-  B.allow.push(/status of 400/);
+  B.allow.push(/status of 4\d\d|status of 5\d\d/);
   await clearToasts(B);
   await typeInto(B, "#recipeUrl", "https://example.com/rezepte/gute-suppe");
   await tap(B, "#recipeInstructions");
-  await toastIs(B, /Nur Betty Bossi/);
+  await toastIs(B, /Zutaten von Hand einfügen|nicht erreichbar|Keine Rezeptdaten/);
   await until(B, () => document.getElementById("recipeTitle").value === "Gute Suppe", "Titel aus Link fehlt");
   B.allow.pop();
   await closeDialog(B, "recipeDialog");
+  // Link direkt ins Suchfeld des Menüs einfügen (wie aus dem Teilen-Menü: Text + Link) -> «Rezept von diesem Link holen»
+  await tap(B, '.prow[data-i="6"] .t');
+  await typeInto(B, "#msearch", `Schau mal: ${RECIPE_URL} 😋`);
+  await until(B, () => !!document.querySelector("#mlist [data-link]"), "Link-Option in der Menü-Suche fehlt");
+  await clearToasts(B);
+  await tap(B, "#mlist [data-link]");
+  await until(B, () => document.getElementById("recipeDialog").open, "Formular geht nach Link nicht auf");
+  await toastIs(B, /3 Zutaten übernommen/);
+  expect((await B.page.$eval("#recipeUrl", e => e.value)) === RECIPE_URL, "Link nicht aus dem Text gelöst");
+  await tap(B, '#recipeForm button[type="submit"]');
+  await until(B, () => document.querySelector('.prow[data-i="6"] .t').textContent === "Kürbis-Lasagne", "Link-Rezept nicht am Sonntag eingeplant");
   await tap(B, '.prow[data-i="4"] .t');
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
@@ -1126,6 +1136,79 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   await toastIs(B, /Rezept gelöscht/);
   await until(B, () => document.querySelectorAll("#catalogList [data-delete]").length === 0, "nicht gelöscht");
   await closeDialog(B, "catalogDialog");
+});
+
+await step(B, "Rezepte-Tab: Webseiten zum Stöbern, eigene Webseite hinzufügen/entfernen", async () => {
+  await goTab(B, "season");
+  const n = await B.page.$$eval("#recipeSites a.btile", a => a.length);
+  expect(n >= 5, `nur ${n} Rezept-Webseiten`);
+  expect(await B.page.$eval("#recipeSites a.btile", a => a.target === "_blank" && a.href.startsWith("https://")), "Webseite öffnet nicht in neuem Tab");
+  await tap(B, "#siteAddBtn");
+  await typeInto(B, "#siteName", "Meine Seite");
+  await typeInto(B, "#siteUrl", "kochblog.example.ch/rezepte");
+  await tap(B, '#siteForm button[type="submit"]');
+  await until(B, () => [...document.querySelectorAll("#recipeSites .btile")].some(b => /Meine Seite/.test(b.textContent)), "eigene Webseite fehlt");
+  expect(await B.page.$eval("#recipeSites [data-site-del]", b => b.previousElementSibling.href === "https://kochblog.example.ch/rezepte"), "https:// nicht ergänzt");
+  await tap(B, "#recipeSites [data-site-del]");
+  await until(B, () => !document.querySelector("#recipeSites [data-site-del]"), "eigene Webseite nicht entfernt");
+});
+
+await step(B, "Rezepte-Tab: Link einfügen → Zutaten geholt, Personen anpassen, nur speichern; dann bearbeiten (Plan rechnet neu)", async () => {
+  await goTab(B, "season");
+  await clearToasts(B);
+  await typeInto(B, "#quickLink", RECIPE_URL);
+  await tap(B, "#quickLinkBtn");
+  await until(B, () => document.getElementById("recipeDialog").open, "Formular geht nicht auf");
+  await toastIs(B, /3 Zutaten übernommen/);
+  expect(/Laut Webseite für 6/.test(await text(B, "#recipeServingsHint")), "Personen-Hinweis fehlt");
+  expect((await text(B, "#recipeSubmitBtn")) === "Speichern", "Knopf sollte nur speichern");
+  await B.page.$eval("#recipeServings", e => { e.value = "4"; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); });
+  const planBefore = await titles(B);
+  await tap(B, "#recipeSubmitBtn");
+  await toastIs(B, /gespeichert/);
+  expect((await titles(B)).join() === planBefore.join(), "nur speichern hat den Plan geändert");
+  await until(B, () => /für 4 Personen/.test(document.getElementById("myRecipes").textContent), "Meine Rezepte: Personen falsch");
+  // einplanen, dann Personen ändern -> Plan und Einkaufsliste rechnen neu
+  await goTab(B, "plan");
+  await tap(B, '.prow[data-i="3"] .t');
+  await typeInto(B, "#msearch", "Kürbis-Lasagne");
+  await until(B, () => !!document.querySelector("#mlist [data-id^='custom-']"), "eigenes Rezept nicht in der Suche");
+  await tap(B, "#mlist [data-id^='custom-']");
+  const ctaBefore = await ctaCount(B);
+  const amt = () => document.querySelector('.prow[data-i="3"] .ing b') ? document.querySelector('.prow[data-i="3"] .ing b').textContent : "";
+  await tap(B, '.prow[data-i="3"] .pday');
+  const a1 = await B.page.evaluate(amt);
+  await tap(B, '.prow[data-i="3"] .pday');
+  await goTab(B, "season");
+  await tap(B, "#myRecipes [data-my-edit]");
+  await until(B, () => document.getElementById("recipeDialog").open && document.getElementById("recipeFormTitle").textContent === "Rezept bearbeiten", "Bearbeiten geht nicht auf");
+  expect((await B.page.$eval("#recipeIngredients", e => e.value)).split("\n").length === 3, "Zutaten nicht im Formular");
+  await B.page.$eval("#recipeServings", e => { e.value = "8"; e.dispatchEvent(new Event("change", { bubbles: true })); });
+  await tap(B, "#recipeSubmitBtn");
+  await toastIs(B, /gespeichert/);
+  await goTab(B, "plan");
+  await tap(B, '.prow[data-i="3"] .pday');
+  const a2 = await B.page.evaluate(amt);
+  await tap(B, '.prow[data-i="3"] .pday');
+  expect(a1 && a2 && a1 !== a2, `Menge im Plan nicht neu gerechnet (${a1} → ${a2})`);
+  void ctaBefore;
+});
+
+await step(B, "Katalog: «Anpassen» macht eine eigene Kopie (z.B. andere Personenzahl)", async () => {
+  await tap(B, '.prow[data-i="2"] .t');
+  await tap(B, "#mlist [data-catalog]");
+  await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
+  await tap(B, '#catalogFilters [data-filter="all"]');
+  const title = await B.page.$eval("#catalogList [data-edit]", b => b.closest(".recipe").querySelector("b").textContent);
+  expect((await B.page.$eval("#catalogList [data-edit]", b => b.textContent)) === "Anpassen", "Katalog-Rezept: «Anpassen» fehlt");
+  await tap(B, "#catalogList [data-edit]");
+  await until(B, () => document.getElementById("recipeDialog").open && /eigene Kopie/.test(document.getElementById("recipeFormTitle").textContent), "Anpassen geht nicht auf");
+  expect((await B.page.$eval("#recipeTitle", e => e.value)) === title && (await B.page.$eval("#recipeIngredients", e => e.value)).trim().length > 0, "Kopie nicht vorausgefüllt");
+  await B.page.$eval("#recipeServings", e => { e.value = "2"; e.dispatchEvent(new Event("change", { bubbles: true })); });
+  await tap(B, "#recipeSubmitBtn");
+  await until(B, t => document.querySelector('.prow[data-i="2"] .t').textContent === t, "Kopie nicht eingeplant", title);
+  const mine = await ls(B, "bringfrisch_custom_recipes");
+  expect(mine.some(r => r.title === title && r.servings === 2), "Kopie mit 2 Personen nicht gespeichert");
 });
 
 await step(B, "Navigation: jeder Tab, kein seitliches Scrollen; keine JS-Fehler, nichts ins Internet", async () => {

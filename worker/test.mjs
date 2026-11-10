@@ -36,6 +36,15 @@ globalThis.fetch = async (url, init = {}) => {
     if (ex) ex.specification = p.get("specification"); else bringList.push({ name: p.get("purchase"), specification: p.get("specification") });
     return new Response(null, { status: 204 });
   }
+  if (url.startsWith("https://www.swissmilk.ch/")) {
+    return new Response(`<html><head><meta property="og:title" content="Auberginenrollen - Rezept | Swissmilk"></head><body><h1>Navigieren</h1><table>
+      <tr itemprop="recipeIngredient"><td colspan="2" class="Ingredient--text">Bratpfanne</td></tr>
+      <tr itemprop="recipeIngredient" class="Ingredient"><td class="Ingredient--amount"><span><!----><span>50</span><span> g</span></span></td><td class="Ingredient--text">Ingwer</td></tr>
+      <tr itemprop="recipeIngredient" class="Ingredient"><td class="Ingredient--amount"><span>2</span></td><td class="Ingredient--text">Auberginen</td></tr></table><span itemprop="recipeYield">4 Personen</span></body></html>`);
+  }
+  if (url.startsWith("https://blog.example.ch/")) {
+    return new Response(`<html><script type="application/ld+json">{"@graph":[{"@type":"WebPage"},{"@type":["Recipe"],"name":"Omas R&#246;sti","recipeYield":["2"],"recipeIngredient":["800 g Kartoffeln","2 EL Butter"]}]}</script></html>`);
+  }
   if (url.startsWith("https://www.bettybossi.ch/")) {
     return new Response(`<html><script type="application/ld+json">{"@context":"https://schema.org","@type":"Recipe","name":"Zwiebelsuppe","recipeYield":"4 Personen","totalTime":"PT46M","recipeIngredient":["5 Zwiebeln","2 EL Butter"]}</script></html>`);
   }
@@ -167,8 +176,16 @@ store.delete("bringList");
 r = await call("/recipe?url=" + encodeURIComponent("https://www.bettybossi.ch/de/rezepte/rezept/zwiebelsuppe-10010500/"));
 const rec = await r.json();
 check(rec.title === "Zwiebelsuppe" && rec.servings === 4 && rec.minutes === 46 && rec.ingredients.length === 2, "Rezept-Link wird ausgelesen");
-r = await call("/recipe?url=" + encodeURIComponent("https://example.com/x"));
-check(r.status === 400, "fremde Rezept-Seiten werden abgelehnt");
+r = await call("/recipe?url=" + encodeURIComponent("https://www.swissmilk.ch/de/rezepte/x/"));
+const sm = await r.json();
+check(sm.title === "Auberginenrollen" && sm.ingredients.join("|") === "50 g Ingwer|2 Auberginen", `Swissmilk: Titel und Zutaten aus den Tabellenzeilen, ohne Bratpfanne (${sm.title}: ${sm.ingredients})`);
+r = await call("/recipe?url=" + encodeURIComponent("Schau mal: https://blog.example.ch/roesti 😋"));
+const bl = await r.json();
+check(bl.title === "Omas Rösti" && bl.servings === 2 && bl.ingredients.length === 2, "jede Rezeptseite geht, Link aus geteiltem Text, &#246; wird ö");
+r = await call("/recipe?url=" + encodeURIComponent("http://localhost:8787/x"));
+check(r.status === 400, "interne Adressen werden abgelehnt");
+r = await call("/recipe?url=" + encodeURIComponent("nur Text ohne Link"));
+check(r.status === 400, "Text ohne Link: klare Meldung");
 
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

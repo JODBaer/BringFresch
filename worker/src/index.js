@@ -33,7 +33,8 @@ const ALLOWED_ORIGINS = [
   /^https:\/\/bringfrisch-test\.bringfrisch-worker\.workers\.dev$/, // Test-Seite (tools/build_stage.mjs)
   /^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/,
 ];
-const RECIPE_HOSTS = /(^|\.)(bettybossi\.ch|migros\.ch|fooby\.ch|swissmilk\.ch|chefkoch\.de)$/;
+// Rezept-Link: jede https-Seite mit Rezeptdaten (schema.org). Nur auf Knopfdruck, eine Seite, nur Fakten.
+const BLOCKED_HOSTS = /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.|\[)|\.(local|internal)$/;
 const MAX_ITEMS = 45; // Free-Plan: 50 Unteranfragen pro Aufruf (1 Login + 1 Liste + Artikel)
 
 // ---------------------------------------------------------------------------------------------
@@ -438,16 +439,24 @@ function events(doc) {
 // ---------------------------------------------------------------------------------------------
 // Rezept-Link importieren (schema.org Recipe aus JSON-LD)
 async function importRecipe(link) {
+  // auch geteilter Text wie «Schau mal: https://… 😋» geht – der erste Link zählt
+  const found = String(link || "").match(/https?:\/\/[^\s<>"']+/);
   let u;
   try {
-    u = new URL(link);
+    u = new URL(found ? found[0].replace(/[),.!?]+$/, "") : link);
   } catch {
-    throw httpError(400, "Ungültiger Link");
+    throw httpError(400, "Kein Link gefunden");
   }
-  if (u.protocol !== "https:" || !RECIPE_HOSTS.test(u.hostname)) throw httpError(400, "Nur Betty Bossi, Migusto, Fooby, Swissmilk oder Chefkoch");
-  const res = await fetch(u.toString(), { headers: { "User-Agent": "BringFrisch-RecipeImport/1.0 (private WG meal planner)" } });
-  if (!res.ok) throw httpError(502, `Seite nicht erreichbar (${res.status})`);
-  const html = await res.text();
+  if (u.protocol === "http:") u.protocol = "https:";
+  if (u.protocol !== "https:" || BLOCKED_HOSTS.test(u.hostname)) throw httpError(400, "Nur normale Webseiten (https://…)");
+  let res;
+  try {
+    res = await fetch(u.toString(), { headers: { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)", Accept: "text/html" }, redirect: "follow" });
+  } catch {
+    throw httpError(502, "Seite nicht erreichbar");
+  }
+  if (!res.ok) throw httpError(502, `Seite nicht erreichbar (${res.status}) – Zutaten von Hand einfügen`);
+  const html = (await res.text()).slice(0, 3_000_000);
   let recipe = null;
   for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g)) {
     try {
@@ -465,11 +474,17 @@ async function importRecipe(link) {
     if (recipe) break;
   }
   if (!recipe) {
-    // Microdata (Swissmilk)
-    const ingredients = [...html.matchAll(/itemprop="recipeIngredient"[^>]*>([\s\S]*?)<\/(?:li|span|div|p)>/g)]
-      .map(m => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
-    if (!ingredients.length) throw httpError(422, "Keine Rezeptdaten auf der Seite gefunden");
-    const title = (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/) || [])[1] || "";
+    // Microdata (z.B. Swissmilk: Tabellenzeilen <tr itemprop="recipeIngredient">, Menge und Zutat in eigenen Zellen)
+    const text = h => h.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    let ingredients = [...html.matchAll(/<tr[^>]*itemprop="recipeIngredient"[^>]*>([\s\S]*?)<\/tr>/g)]
+      .filter(m => /amount/i.test(m[1])) // Zeilen ohne Menge sind Geräte («Bratpfanne»)
+      .map(m => text(m[1])).filter(Boolean);
+    if (!ingredients.length) {
+      ingredients = [...html.matchAll(/<(li|span|div|p)[^>]*itemprop="recipeIngredient"[^>]*>([\s\S]*?)<\/\1>/g)].map(m => text(m[2])).filter(Boolean);
+    }
+    if (!ingredients.length) throw httpError(422, "Keine Rezeptdaten auf der Seite gefunden – Zutaten von Hand einfügen");
+    const og = (html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]*)"/) || [])[1];
+    const title = og ? og.replace(/\s*[-|–].*$/, "") : (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/) || [])[1] || "";
     const yieldText = (html.match(/itemprop="recipeYield"[^>]*>([^<]*)/) || [])[1] || "";
     recipe = { name: title.replace(/<[^>]+>/g, "").trim(), recipeIngredient: ingredients, recipeYield: yieldText };
   }
@@ -487,5 +502,5 @@ async function importRecipe(link) {
 }
 
 function decodeEntities(s) {
-  return s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ");
+  return s.replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16))).replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ");
 }

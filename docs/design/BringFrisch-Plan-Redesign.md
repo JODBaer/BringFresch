@@ -26,7 +26,7 @@ Reines Hellgrün nie mit weisser Schrift (zu wenig Kontrast).
 2. **«Wochenplan · Tag = Menü · Gericht = wechseln»** – kleine, fixe Zeile (10 px), verschwindet nie.
 3. **7 Tage** als Liste.
 4. **Saison-Zeile** («Saison im November: …»).
-5. **Navigation:** Plan · Einkauf · Rezepte & Saison · Einstellungen (⋮-Menü öffnet über «Einstellungen»).
+5. **Navigation:** Plan · Einkauf · Rezepte & Saison · Einstellungen – jede direkt als Seite (früheres ⋮-Menü entfällt, Inhalte unter Einstellungen → «Mehr»).
 
 ## 4. Tageszeile (links → rechts)
 - **Tag** (Kreis; heute = Keks-Form, hellgrün). Antippen = Menü auf-/zuklappen.

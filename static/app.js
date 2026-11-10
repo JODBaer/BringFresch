@@ -1047,6 +1047,7 @@
           </div>
           <div class="row">
             <button class="btn dark" type="button" data-assign="${esc(r.id)}">${actionLabel}</button>
+            <button class="btn" type="button" data-edit="${esc(r.id)}" style="flex:0 0 auto">${custom ? "Bearbeiten" : "Anpassen"}</button>
             ${custom ? `<button class="btn" type="button" data-delete="${esc(r.id)}" style="flex:0 0 auto">Löschen</button>` : ""}
           </div>
         </div>`;
@@ -1072,6 +1073,13 @@
       useRecipe(recipe, mode);
       return;
     }
+    const ed = e.target.closest("[data-edit]");
+    if (ed) {
+      const recipe = allRecipes().find(r => String(r.id) === ed.dataset.edit);
+      if (!recipe) return;
+      const custom = recipe.is_custom || String(recipe.id).startsWith("custom-");
+      return openRecipeForm(null, custom ? { edit: recipe } : { copyOf: recipe });
+    }
     const del = e.target.closest("[data-delete]");
     if (del) {
       if (del.dataset.armed !== "1") {
@@ -1081,6 +1089,7 @@
       }
       importer.deleteCustomRecipe(del.dataset.delete);
       renderCatalog();
+      renderMyRecipes();
       toast("Rezept gelöscht");
     }
   });
@@ -1122,14 +1131,34 @@
   // ---------------------------------------------------------------------------
   // Eigenes Rezept
   // ---------------------------------------------------------------------------
-  $("newRecipeBtn").onclick = () => {
+  // edit: eigenes Rezept bearbeiten · copyOf: Katalog-Rezept als eigene Kopie anpassen (z.B. Personen)
+  let editingId = null;
+  function openRecipeForm(link, { edit = null, copyOf = null } = {}) {
     $("recipeForm").reset();
-    $("recipeServings").value = DEFAULT_SERVINGS;
+    lastFetched = "";
+    editingId = edit ? edit.id : null;
+    const base = edit || copyOf;
+    $("recipeFormTitle").textContent = edit ? "Rezept bearbeiten" : copyOf ? "Rezept anpassen (eigene Kopie)" : "Eigenes Rezept";
+    $("recipeSubmitBtn").textContent = state.catalogMode === "save" ? "Speichern" : "Speichern & einplanen";
+    $("recipeServingsHint").textContent = "Die Zutaten unten gelten für so viele Personen; BringFrisch rechnet dann für eure Esser um.";
+    $("recipeServings").value = base ? base.servings || DEFAULT_SERVINGS : DEFAULT_SERVINGS;
+    if (base) {
+      $("recipeTitle").value = base.title || "";
+      $("recipeUrl").value = base.source_url || "";
+      lastFetched = base.source_url || "";
+      $("recipeDiet").value = base.diet || "vegi";
+      $("recipeIngredients").value = importer.ingredientsToText(base.ingredients);
+      $("recipeInstructions").value = base.instructions || "";
+    }
     $("recipeDialog").showModal();
     $("catalogDialog").close();
-  };
+    if (link) { $("recipeUrl").value = link; fetchRecipeLink(true); }
+  }
+  $("newRecipeBtn").onclick = () => openRecipeForm();
 
   $("recipeDialog").addEventListener("close", () => {
+    editingId = null;
+    if (state.catalogMode === "save") state.catalogMode = "day";
     if (state.catalogMode === "vote") {
       state.catalogMode = "day";
       renderVote();
@@ -1137,28 +1166,112 @@
     }
   });
 
-  $("recipeUrl").addEventListener("change", async () => {
-    const link = $("recipeUrl").value.trim();
+  // Link: erster https-Link aus beliebigem Text («Schau mal: https://… 😋» aus dem Teilen-Menü)
+  const linkIn = text => { const m = String(text || "").match(/https?:\/\/[^\s<>"']+/); return m ? m[0].replace(/[),.!?]+$/, "") : ""; };
+  let lastFetched = "";
+  async function fetchRecipeLink(force) {
+    const link = linkIn($("recipeUrl").value);
+    if (!link) { if (force) toast("Kein Link gefunden – bitte https://… einfügen"); return; }
+    if (link === lastFetched && !force) return;
+    lastFetched = link;
+    $("recipeUrl").value = link;
     if (await importFromLink(link)) return;
     const title = $("recipeTitle");
     if (!title.value.trim()) title.value = importer.analyzeRecipeUrl(link).title;
-  });
+  }
+  $("recipeUrl").addEventListener("change", () => fetchRecipeLink(false));
+  $("recipeUrl").addEventListener("paste", () => setTimeout(() => fetchRecipeLink(false), 0));
+  $("recipeFetchBtn").onclick = () => fetchRecipeLink(true);
 
   $("recipeForm").addEventListener("submit", e => {
     e.preventDefault();
-    const recipe = importer.createCustomRecipe({
+    const fields = {
       title: $("recipeTitle").value,
-      url: $("recipeUrl").value,
+      url: linkIn($("recipeUrl").value),
       diet: $("recipeDiet").value,
       servings: $("recipeServings").value,
       ingredientsText: $("recipeIngredients").value,
       instructions: $("recipeInstructions").value
-    });
+    };
+    const recipe = editingId ? importer.updateCustomRecipe(editingId, fields) : importer.createCustomRecipe(fields);
     const mode = state.catalogMode;
     state.catalogMode = "day";
+    editingId = null;
     $("recipeDialog").close();
+    if (!recipe) return;
+    // geänderte Rezepte gelten sofort auch in Plan und Einkaufsliste
+    let touched = false;
+    for (const plan of [state.plan, otherPlan()]) {
+      (plan || []).forEach((d, i) => { if (d && String(d.id) === String(recipe.id)) { plan[i] = makeDay(recipe, i, d); touched = true; } });
+    }
+    if (touched) { savePlan(); refresh(); }
+    renderMyRecipes();
+    if (mode === "save") return toast(`${recipe.title} gespeichert`);
     useRecipe(recipe, mode);
   });
+
+  // Rezepte-Tab: Webseiten zum Stöbern (eigene dazu), Link einfügen, meine Rezepte
+  const SITES_KEY = "bringfrisch_recipe_sites";
+  const DEFAULT_SITES = [
+    ["Betty Bossi", "https://www.bettybossi.ch/de/rezepte/"],
+    ["Swissmilk", "https://www.swissmilk.ch/de/rezepte-kochideen/"],
+    ["Fooby", "https://fooby.ch/de/rezepte.html"],
+    ["Migusto", "https://migusto.migros.ch/de/rezepte"],
+    ["Chefkoch", "https://www.chefkoch.de/"],
+  ];
+  let mySites = load(SITES_KEY, []) || [];
+  function renderSites() {
+    $("recipeSites").innerHTML = DEFAULT_SITES.map(([n, u]) => `<a class="btile" href="${esc(u)}" target="_blank" rel="noopener">${esc(n)} ↗</a>`).join("")
+      + mySites.map((x, i) => `<span class="btile"><a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(x.name)} ↗</a><button type="button" class="x" data-site-del="${i}" aria-label="${esc(x.name)} entfernen">✕</button></span>`).join("")
+      + `<button type="button" class="btile" id="siteAddBtn">+ Webseite</button>`;
+  }
+  $("recipeSites").addEventListener("click", e => {
+    if (e.target.closest("#siteAddBtn")) { $("siteForm").hidden = !$("siteForm").hidden; if (!$("siteForm").hidden) $("siteName").focus(); return; }
+    const del = e.target.closest("[data-site-del]");
+    if (del) { mySites.splice(+del.dataset.siteDel, 1); save(SITES_KEY, mySites); renderSites(); }
+  });
+  $("siteForm").addEventListener("submit", e => {
+    e.preventDefault();
+    let url = linkIn($("siteUrl").value) || ($("siteUrl").value.trim() ? "https://" + $("siteUrl").value.trim().replace(/^\/+/, "") : "");
+    const name = $("siteName").value.trim();
+    if (!name || !url) return;
+    mySites.push({ name, url });
+    save(SITES_KEY, mySites);
+    $("siteForm").reset();
+    $("siteForm").hidden = true;
+    renderSites();
+    toast(`${name} hinzugefügt`);
+  });
+  function quickImport() {
+    const link = linkIn($("quickLink").value);
+    if (!link) return toast("Kein Link gefunden – bitte https://… einfügen");
+    $("quickLink").value = "";
+    state.catalogMode = "save";
+    openRecipeForm(link);
+  }
+  $("quickLinkBtn").onclick = quickImport;
+  $("quickLink").addEventListener("paste", () => setTimeout(() => { if (linkIn($("quickLink").value)) quickImport(); }, 0));
+  $("myRecipeNewBtn").onclick = () => { state.catalogMode = "save"; openRecipeForm(); };
+  function renderMyRecipes() {
+    const list = importer.customRecipes;
+    $("myRecipesCount").textContent = list.length ? String(list.length) : "";
+    $("myRecipes").innerHTML = list.length
+      ? list.map(r => `<div class="myrec"><span><b>${esc(r.title)}</b><small>${DIET_LABEL[r.diet] || "Vegi"} · für ${r.servings || DEFAULT_SERVINGS} Personen · ${(r.ingredients || []).length} Zutaten</small></span>${r.source_url ? `<a class="pill" href="${esc(r.source_url)}" target="_blank" rel="noopener">🌐</a>` : ""}<button class="btn" type="button" data-my-edit="${esc(r.id)}">Bearbeiten</button><button class="btn" type="button" data-my-del="${esc(r.id)}">Löschen</button></div>`).join("")
+      : `<div class="empty">Noch keine eigenen Rezepte – Link oben einfügen oder von Hand.</div>`;
+  }
+  $("myRecipes").addEventListener("click", e => {
+    const ed = e.target.closest("[data-my-edit]");
+    if (ed) { const r = importer.customRecipes.find(x => x.id === ed.dataset.myEdit); if (r) { state.catalogMode = "save"; openRecipeForm(null, { edit: r }); } return; }
+    const del = e.target.closest("[data-my-del]");
+    if (del) {
+      if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Wirklich?"; return; }
+      importer.deleteCustomRecipe(del.dataset.myDel);
+      renderMyRecipes();
+      toast("Rezept gelöscht");
+    }
+  });
+  renderSites();
+  renderMyRecipes();
 
   // ---------------------------------------------------------------------------
   // Einkauf & Grundvorrat
@@ -1803,11 +1916,16 @@
 
   // Rezept-Link: Zutaten und Portionen direkt von der Rezeptseite holen
   async function importFromLink(link) {
-    if (!connected() || !link) return false;
+    if (!link) return false;
+    if (!connected()) {
+      toast("Zutaten holen braucht den WG-Server (Einstellungen → Mehr → WG-PIN). Sonst Zutaten unten einfügen.");
+      return false;
+    }
     try {
       const r = await api(`/recipe?url=${encodeURIComponent(link)}`);
       if (!$("recipeTitle").value.trim()) $("recipeTitle").value = r.title || "";
       $("recipeServings").value = r.servings || DEFAULT_SERVINGS;
+      $("recipeServingsHint").textContent = `Laut Webseite für ${r.servings || DEFAULT_SERVINGS} Personen – anpassen, falls es nicht stimmt.`;
       if (!$("recipeIngredients").value.trim()) $("recipeIngredients").value = (r.ingredients || []).join("\n");
       toast(`${(r.ingredients || []).length} Zutaten übernommen`);
       return true;
@@ -2019,6 +2137,11 @@
 
   function sheetOptions() {
     const f = norm($("msearch").value.trim());
+    const pasted = linkIn($("msearch").value);
+    if (pasted) {
+      $("mlist").innerHTML = `<button type="button" class="opt" role="option" data-link="${esc(pasted)}"><span><span class="n">🔗 Rezept von diesem Link holen</span><small>${esc(pasted.replace(/^https?:\/\/(www\.)?/, "").slice(0, 60))}</small></span></button>`;
+      return;
+    }
     const counts = dishCounts();
     const current = state.plan[sheetDay] ? String(state.plan[sheetDay].id) : null;
     const all = allRecipes().filter(r => String(r.id) !== current && (!f || norm(`${r.title} ${dayMeta(r)}`).includes(f)));
@@ -2075,6 +2198,12 @@
       closeMenuSheet();
       state.catalogMode = "day";
       return openCatalog(idx);
+    }
+    if (btn.dataset.link) {
+      closeMenuSheet();
+      state.catalogMode = "day";
+      state.catalogDay = idx;
+      return openRecipeForm(btn.dataset.link);
     }
     let recipe;
     if (btn.dataset.new) {
@@ -2149,7 +2278,6 @@
   }
   function osLabels() {
     const v = currentOs();
-    $("menuOsLabel").textContent = v === "glass" ? "Android-Stil" : "iPhone-Stil";
     $("setOsBtn").textContent = v === "glass" ? "iPhone" : "Android";
   }
   osLabels();
@@ -2239,8 +2367,8 @@
   function renderThemePick() {
     const pick = (id, key, list) => {
       const cur = theme[key], custom = cur && !list.some(([v]) => v === cur);
-      $(id).innerHTML = list.map(([v, name, show]) => `<button type="button" class="sw" data-${key}="${v}" aria-pressed="${cur === v}"><i style="background:${show}"></i>${name}</button>`).join("")
-        + `<label class="sw custom" aria-pressed="${!!custom}"><i${custom ? ` style="background:${esc(cur)}"` : ""}>＋<input type="color" data-custom="${key}" value="${custom ? esc(cur) : list[0][2]}" aria-label="Eigene Farbe"></i>Eigene</label>`;
+      $(id).innerHTML = list.map(([v, name, show]) => `<button type="button" class="swatch" data-${key}="${v}" aria-pressed="${cur === v}"><i style="background:${show}"></i>${name}</button>`).join("")
+        + `<label class="swatch custom" aria-pressed="${!!custom}"><i${custom ? ` style="background:${esc(cur)}"` : ""}>＋<input type="color" data-custom="${key}" value="${custom ? esc(cur) : list[0][2]}" aria-label="Eigene Farbe"></i>Eigene</label>`;
     };
     pick("accentPick", "accent", ACCENTS);
     pick("bgPick", "bg", BGS);
@@ -2252,7 +2380,7 @@
   }
   for (const id of ["accentPick", "bgPick"]) {
     $(id).addEventListener("click", e => {
-      const b = e.target.closest("button.sw");
+      const b = e.target.closest("button.swatch");
       if (!b) return;
       if (b.dataset.accent !== undefined) setTheme("accent", b.dataset.accent);
       if (b.dataset.bg !== undefined) setTheme("bg", b.dataset.bg);
@@ -2324,9 +2452,7 @@
   $("wscrim").onclick = () => dockWahlPop();
   $("wpop").addEventListener("keydown", e => { if (e.key === "Escape") dockWahlPop(); });
 
-  // Navigation: Symbole animieren; «Einstellungen» öffnet das ⋮-Menü
-  const navMenu = $("navMenu");
-  function closeNavMenu() { navMenu.classList.remove("show"); $("moreBtn").setAttribute("aria-expanded", "false"); }
+  // Navigation: Symbole animieren, Tab zeigen (auch «Einstellungen» direkt als Seite)
   document.querySelector(".bnav").addEventListener("click", e => {
     const b = e.target.closest("[data-tab]");
     if (!b) return;
@@ -2335,20 +2461,9 @@
     b.classList.add("anim");
     clearTimeout(b._anim);
     b._anim = setTimeout(() => b.classList.remove("anim"), 2300);
-    if (b.id === "moreBtn") {
-      e.stopPropagation();
-      const open = !navMenu.classList.contains("show");
-      navMenu.classList.toggle("show", open);
-      b.setAttribute("aria-expanded", String(open));
-      return;
-    }
-    closeNavMenu();
     showTab(b.dataset.tab);
   });
-  document.addEventListener("click", e => { if (!navMenu.contains(e.target) && e.target.id !== "moreBtn" && !e.target.closest("#moreBtn")) closeNavMenu(); });
-  $("menuSettings").onclick = () => { closeNavMenu(); showTab("wg"); };
-  $("menuRefresh").onclick = () => { closeNavMenu(); runPullSync(); };
-  $("menuVote").onclick = () => { closeNavMenu(); openVoteFor(); };
+  $("setVoteBtn").onclick = () => openVoteFor();
 
   // Woche wechseln: Chip in der Abschnittszeile oder seitlich über die Tage wischen
   $("weekChip").onclick = () => setWeekView(!viewNext);
@@ -2366,7 +2481,6 @@
       if (Math.abs(dx) > 70 && Math.abs(dy) < 40) setWeekView(dx < 0);
     }, { passive: true });
   })();
-  $("menuOs").onclick = () => { closeNavMenu(); setOs(currentOs() === "glass" ? "m3" : "glass"); };
 
   // Unsichtbarer Scrollbalken: Greifstreifen rechts, feiner Balken nur beim Scrollen/Ziehen
   (function scrollGrip() {

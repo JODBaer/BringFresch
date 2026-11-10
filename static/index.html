@@ -183,13 +183,19 @@
     .set-inline { display: flex; gap: 8px; }
     .set-sub { font-weight: 600; }
     .set-sub small { display: inline; }
+    .btile .x { border: 0; background: none; color: var(--muted); padding: 0 0 0 2px; font-size: 13px; cursor: pointer; }
+    .myrec { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
+    .myrec:first-child { border-top: 0; }
+    .myrec > span { flex: 1; min-width: 0; }
+    .myrec small { display: block; color: var(--muted); font-size: 12px; }
+    .myrec .btn { padding: 7px 10px; font-size: 13px; flex: 0 0 auto; }
     .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
-    .sw { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; padding: 0; font-size: 11.5px; color: var(--muted); cursor: pointer; width: 62px; }
-    .sw i { width: 40px; height: 40px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); display: grid; place-items: center; font-style: normal; font-size: 18px; color: #1d301d; position: relative; overflow: hidden; }
-    .sw[aria-pressed="true"] { color: var(--fg); font-weight: 700; }
-    .sw[aria-pressed="true"] i { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary); }
-    .sw.custom i { background: conic-gradient(#f28b82, #fbbc04, #ccff90, #a7ffeb, #aecbfa, #d7aefb, #f28b82); }
-    .sw input[type="color"] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; border: 0; padding: 0; cursor: pointer; }
+    .swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; padding: 0; font-size: 11.5px; color: var(--muted); cursor: pointer; width: 62px; }
+    .swatch i { width: 40px; height: 40px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); display: grid; place-items: center; font-style: normal; font-size: 18px; color: #1d301d; position: relative; overflow: hidden; }
+    .swatch[aria-pressed="true"] { color: var(--fg); font-weight: 700; }
+    .swatch[aria-pressed="true"] i { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary); }
+    .swatch.custom i { background: conic-gradient(#f28b82, #fbbc04, #ccff90, #a7ffeb, #aecbfa, #d7aefb, #f28b82); }
+    .swatch input[type="color"] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; border: 0; padding: 0; cursor: pointer; }
 
     /* Wochenwahl (Memory) */
     dialog.full { max-height: 100vh; height: 100%; border-radius: 0; margin: 0 auto; }
@@ -508,15 +514,6 @@
     @keyframes gear { from { transform: rotate(-300deg); } }
 
     /* ⋮-Menü über «Einstellungen» */
-    .navmenu { position: fixed; z-index: 25; right: 16px; bottom: calc(var(--bottom-pad) - 6px + var(--sab)); min-width: 230px; padding: 6px; display: flex; flex-direction: column; gap: 2px; transform-origin: bottom right; transform: scale(.8); opacity: 0; pointer-events: none; transition: transform .35s var(--spring), opacity .15s; border-radius: 22px; color: var(--fg); }
-    .navmenu.show { transform: none; opacity: 1; pointer-events: auto; }
-    .navmenu button { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; background: none; text-align: left; font: 600 14px var(--font); cursor: pointer; border-radius: 6px; color: inherit; }
-    .navmenu button:first-child { border-radius: 16px 16px 6px 6px; }
-    .navmenu button:last-child { border-radius: 6px 6px 16px 16px; }
-    .navmenu .icon { width: 20px; height: 20px; }
-    .m3 .navmenu { background: var(--s2); box-shadow: 0 2px 6px rgba(0,0,0,.15), 0 8px 24px rgba(0,0,0,.1); }
-    .m3 .navmenu button:active { background: var(--s4); }
-    .glass .navmenu button:active { background: rgba(255,255,255,.4); }
 
     /* ---------- Menü wechseln: Blatt von unten ---------- */
     .mscrim { position: fixed; inset: 0; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 30; }
@@ -654,6 +651,25 @@
 
     <!-- 3. Saison -->
     <section class="tab" id="tab-season" hidden>
+      <p class="label">Rezepte holen</p>
+      <div class="card set-hero">
+        <p class="hint" style="padding:0">Auf einer Rezept-Webseite stöbern, Link kopieren und hier einfügen.</p>
+        <div class="set-inline">
+          <input type="text" inputmode="url" autocomplete="off" id="quickLink" placeholder="https://… einfügen" aria-label="Rezept-Link">
+          <button class="btn dark" type="button" id="quickLinkBtn">Holen</button>
+        </div>
+        <div class="btiles" id="recipeSites"></div>
+        <form class="set-inline" id="siteForm" hidden>
+          <input type="text" id="siteName" placeholder="Name" aria-label="Name der Webseite" required>
+          <input type="text" inputmode="url" id="siteUrl" placeholder="https://…" aria-label="Adresse der Webseite" required>
+          <button class="btn dark" type="submit">+</button>
+        </form>
+      </div>
+
+      <p class="label">Meine Rezepte <small id="myRecipesCount"></small></p>
+      <div class="card" id="myRecipes"></div>
+      <button class="btn" type="button" id="myRecipeNewBtn">+ Rezept von Hand</button>
+
       <p class="label">Schweizer Saison <small>VSGP · Swisspatat</small></p>
       <select id="monthSelect" aria-label="Monat"></select>
       <div class="card news">
@@ -696,7 +712,7 @@
       </div>
 
       <details class="card set-more" id="setMore">
-        <summary><span><b>Mehr</b><small>PIN, Abgleich, Kalender, wer isst wann, Plan teilen, Stil</small></span></summary>
+        <summary><span><b>Mehr</b><small>PIN, Wochenwahl, Abgleich, Kalender, wer isst wann, Plan teilen, Stil, Farben</small></span></summary>
         <form class="set-row" id="syncForm">
           <label for="syncPin">WG-PIN<small>Einmal pro Handy, dann gemerkt. Bekommt ihr von Joshua.</small></label>
           <div class="set-inline">
@@ -704,6 +720,10 @@
             <button class="btn dark" type="submit">Verbinden</button>
           </div>
         </form>
+        <div class="set-row set-line">
+          <span>Wochenwahl<small>14 Saison-Gerichte, alle stimmen ab</small></span>
+          <button class="btn" type="button" id="setVoteBtn">Öffnen</button>
+        </div>
         <div class="set-row set-line">
           <span>Jetzt abgleichen<small>Geht auch mit Herunterziehen im Plan</small></span>
           <button class="btn" type="button" id="syncNowBtn">Abgleichen</button>
@@ -744,15 +764,8 @@
     <button type="button" data-tab="plan" aria-current="page"><svg class="icon ic-plan" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 15H5V9h14v10z"/><rect class="pg" x="5" y="9" width="14" height="10" rx="1" opacity="0"/><rect class="entry" x="7" y="11" width="5" height="5" rx="1.2"/></svg><span>Plan</span></button>
     <button type="button" data-tab="shop"><svg class="icon ic-cart" viewBox="0 0 24 24" aria-hidden="true"><g class="body"><path d="M1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42a.25.25 0 0 1-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2H1z"/><rect class="item" x="9" y="5.2" width="3.4" height="3.4" rx=".8" opacity="0"/></g><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/><g class="ground"><path d="M-6 23.4h6M3 23.4h6M12 23.4h6M21 23.4h6M30 23.4h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></g></svg><span>Einkauf</span></button>
     <button type="button" data-tab="season"><svg class="icon ic-knife" viewBox="0 0 24 24" aria-hidden="true"><g class="veg"><path d="M12 23 8.2 9.4c2.2-1.6 5.4-1.6 7.6 0z"/><path d="M12 8V3.2M12 8.2 9.4 4.4M12 8.2l2.6-3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g><g class="knife"><path d="M10.6 13.2V4.6c0-1.6 1-2.6 2.6-2.6.7 2.6.9 6.6.2 11.2z"/><path d="M10.7 14.2h2.6v6.4a1.3 1.3 0 0 1-2.6 0z"/></g></svg><span>Rezepte &amp; Saison</span></button>
-    <button type="button" data-tab="wg" id="moreBtn" aria-haspopup="menu" aria-expanded="false"><svg class="icon ic-gear" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg><span>Einstellungen</span></button>
+    <button type="button" data-tab="wg" id="moreBtn"><svg class="icon ic-gear" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg><span>Einstellungen</span></button>
   </nav>
-
-  <div class="navmenu g gs" id="navMenu" role="menu" aria-label="Einstellungen">
-    <button type="button" role="menuitem" id="menuSettings"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>WG, Bring!, Kalender</button>
-    <button type="button" role="menuitem" id="menuRefresh"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>Aktualisieren</button>
-    <button type="button" role="menuitem" id="menuVote"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V9h14z"/></svg>Wochenwahl öffnen</button>
-    <button type="button" role="menuitem" id="menuOs"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 20h-4v-1h4v1zm3.25-3H6.75V4h10.5v14z"/></svg><span id="menuOsLabel">Android-Stil</span></button>
-  </div>
 
   <!-- Menü wechseln -->
   <div class="mscrim" id="mscrim"></div>
@@ -833,12 +846,18 @@
   <dialog id="recipeDialog">
     <form class="sheet" id="recipeForm">
       <div class="sheet-head">
-        <div><h2>Eigenes Rezept</h2><p>Von Hand oder mit Link (Betty Bossi, Swissmilk, Fooby, Migusto …)</p></div>
+        <div><h2 id="recipeFormTitle">Eigenes Rezept</h2><p>Link einer Rezeptseite einfügen oder von Hand eintragen</p></div>
         <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
       <div class="sheet-body">
-        <label class="field">Link <small>optional, Titel wird erkannt</small>
-          <input type="url" id="recipeUrl" placeholder="https://www.bettybossi.ch/…">
+        <label class="field" for="recipeUrl">Link <small>z.B. Betty Bossi, Swissmilk, Fooby, Migusto, Chefkoch, Blogs – auch geteilter Text geht</small></label>
+        <div class="set-inline">
+          <input type="text" inputmode="url" autocomplete="off" id="recipeUrl" placeholder="https://… einfügen">
+          <button class="btn" type="button" id="recipeFetchBtn">Holen</button>
+        </div>
+        <p class="hint" id="recipeLinkHint" style="padding:0">Klappt der Link nicht: auf der Rezeptseite die Zutaten markieren, kopieren und unten einfügen.</p>
+        <label class="field">Für wie viele Personen sind die Mengen? <small id="recipeServingsHint">Die Zutaten unten gelten für so viele Personen; BringFrisch rechnet dann für eure Esser um.</small>
+          <input type="number" id="recipeServings" min="1" max="20" value="4" inputmode="numeric">
         </label>
         <label class="field">Titel
           <input type="text" id="recipeTitle" placeholder="z.B. Mamas Lauchgratin" required>
@@ -851,9 +870,6 @@
               <option value="vegan">Vegan</option>
             </select>
           </label>
-          <label class="field">Portionen
-            <input type="number" id="recipeServings" min="1" max="20" value="4">
-          </label>
         </div>
         <label class="field">Zutaten <small>eine pro Zeile: Menge Einheit Name</small>
           <textarea id="recipeIngredients" placeholder="500 g Lauch&#10;2 Stk Zwiebeln&#10;2 dl Halbrahm&#10;150 g Reibkäse"></textarea>
@@ -861,7 +877,7 @@
         <label class="field">Zubereitung <small>optional</small>
           <textarea id="recipeInstructions" style="min-height:70px;font-family:var(--font)"></textarea>
         </label>
-        <button class="btn dark" type="submit">Speichern &amp; einplanen</button>
+        <button class="btn dark" type="submit" id="recipeSubmitBtn">Speichern &amp; einplanen</button>
       </div>
     </form>
   </dialog>
