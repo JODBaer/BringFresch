@@ -63,6 +63,8 @@ Ein Release-Tag (`git tag v1.2.0 && git push origin v1.2.0`) lädt nach grünen 
 powershell -ExecutionPolicy Bypass -File tools\setup-secrets.ps1
 ```
 
+Alles von Grund auf neu (neuer Token, Bot-Passwort wird direkt bei Bring! geprüft, Test-PIN, beide Server, danach Test-Lauf): `… setup-secrets.ps1 -Neu`
+
 Kontrolle (nur Namen, nie Werte): `gh secret list`
 
 Fehlt der Token, veröffentlicht der Release nur die App und zeigt eine Warnung. Alte Server-Version zurückholen: `npx wrangler rollback`.

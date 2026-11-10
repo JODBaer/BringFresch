@@ -12,8 +12,9 @@
 #   4. Test-Server: Bot-Zugang + Test-PIN -> Cloudflare (stage), Test-PIN auch -> GitHub (STAGE_PIN)
 #   Nur das Bot-Passwort des Test-Servers neu setzen:  … setup-secrets.ps1 -BotPassword
 #   Nur die Account-ID neu setzen (ohne Eingabe):       … setup-secrets.ps1 -AccountId
-#   Alles reparieren, was vor dem BOM-Fix gesetzt wurde: … setup-secrets.ps1 -Flicken
-param([string]$Repo = 'jodbaer/BringFresch', [switch]$BotPassword, [switch]$AccountId, [switch]$Flicken)
+#   Alles von Grund auf neu (Token, Bot, PINs, beide Server, Test-Lauf): … setup-secrets.ps1 -Neu
+param([string]$Repo = 'jodbaer/BringFresch', [switch]$BotPassword, [switch]$AccountId, [switch]$Neu,
+      [string]$BotMail = 'allmenbot@gmail.com')
 
 $ErrorActionPreference = 'Stop'
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User') + ';C:\Program Files\nodejs;C:\Program Files\GitHub CLI'
@@ -47,8 +48,25 @@ function GhSecret($name, $value) {
   if ($code -eq 0) { Ok "GitHub-Secret $name gesetzt" } else { Warn "GitHub-Secret $name FEHLER" }
 }
 function CfSecret($name, $value, $envName) {
-  $code = WithStdin 'cmd.exe' "/c npx --yes wrangler secret put $name --env $envName" $value (Join-Path $root 'worker')
-  if ($code -eq 0) { Ok "Cloudflare-Secret $name ($envName) gesetzt" } else { Warn "Cloudflare-Secret $name ($envName) FEHLER" }
+  # $envName leer = WG-Server (bringfrisch), sonst z.B. 'stage'
+  $envArg = if ($envName) { " --env $envName" } else { '' }
+  $label = if ($envName) { $envName } else { 'WG-Server' }
+  $code = WithStdin 'cmd.exe' "/c npx --yes wrangler secret put $name$envArg" $value (Join-Path $root 'worker')
+  if ($code -eq 0) { Ok "Cloudflare-Secret $name ($label) gesetzt" } else { Warn "Cloudflare-Secret $name ($label) FEHLER" }
+}
+function AskNo($q) { (Read-Host "  $q [j/N]") -match '^(j|ja|y|yes)$' }
+function RandomToken { -join ((48..57) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ }) }
+# Bot-Zugang direkt bei Bring! ausprobieren (nichts wird angezeigt). Gibt die Listen-Namen zurück oder $null.
+function BringCheck($mail, $pw) {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  $h = @{ 'X-BRING-API-KEY' = 'cof4Nc6D8saplXjE3h3HXqHH8m7VU2i1Gs0g85Sp'; 'X-BRING-CLIENT' = 'webApp'; 'X-BRING-CLIENT-SOURCE' = 'webApp'; 'X-BRING-COUNTRY' = 'CH' }
+  try {
+    $r = Invoke-RestMethod -Method Post -Uri 'https://api.getbring.com/rest/v2/bringauth' -Headers $h -Body @{ email = $mail; password = $pw } -ContentType 'application/x-www-form-urlencoded'
+    if (-not $r.access_token) { return $null }
+    $h['Authorization'] = "Bearer $($r.access_token)"; $h['X-BRING-USER-UUID'] = $r.uuid
+    $l = Invoke-RestMethod -Uri "https://api.getbring.com/rest/v2/bringusers/$($r.uuid)/lists" -Headers $h
+    return @{ lists = @($l.lists | ForEach-Object { $_.name }) }
+  } catch { return $null }
 }
 
 if ($AccountId) {
@@ -59,47 +77,85 @@ if ($AccountId) {
   Remove-Variable who, ids -ErrorAction SilentlyContinue
   return
 }
-if ($Flicken) {
-  # Alle Werte, die mit der alten Version gesetzt wurden, hatten 3 unsichtbare Bytes vorne dran -> alles neu setzen.
-  Write-Host 'BringFrisch – Anmeldung flicken. Nichts wird angezeigt oder gespeichert.' -ForegroundColor Cyan
-  Step 1 'Cloudflare Account-ID -> GitHub (automatisch)'
+if ($Neu) {
+  # Alles von Grund auf neu. Kein Wert wird angezeigt oder gespeichert.
+  Write-Host 'BringFrisch – alle Zugänge neu einrichten. Nichts von dem, was du eingibst, wird angezeigt oder gespeichert.' -ForegroundColor Cyan
+
+  Step 1 'Anmeldungen am PC (GitHub + Cloudflare)'
+  gh auth status 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) { Write-Host '  GitHub-Anmeldung öffnet sich im Browser …'; gh auth login --hostname github.com --git-protocol https --web }
+  gh auth status 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) { Warn 'nicht bei GitHub angemeldet – Abbruch'; return }
+  Ok 'GitHub'
   Push-Location (Join-Path $root 'worker')
-  try { $who = (npx --yes wrangler whoami 2>$null | Out-String) } finally { Pop-Location }
+  try {
+    $who = (npx --yes wrangler whoami 2>$null | Out-String)
+    if ($who -notmatch '[0-9a-f]{32}') { Write-Host '  Cloudflare-Anmeldung öffnet sich im Browser …'; npx --yes wrangler login | Out-Null; $who = (npx --yes wrangler whoami 2>$null | Out-String) }
+  } finally { Pop-Location }
   $ids = @([regex]::Matches($who, '[0-9a-f]{32}') | ForEach-Object { $_.Value } | Select-Object -Unique)
-  if ($ids.Count -eq 1) { GhSecret 'CLOUDFLARE_ACCOUNT_ID' $ids[0] } else { Warn "Account-ID nicht eindeutig ($($ids.Count)) – bitte «wrangler login» und nochmals starten" }
+  if ($ids.Count -ne 1) { Warn "Cloudflare-Konto nicht eindeutig ($($ids.Count)) – Abbruch"; return }
+  Ok 'Cloudflare'
+
+  Step 2 'Cloudflare Account-ID -> GitHub (automatisch)'
+  GhSecret 'CLOUDFLARE_ACCOUNT_ID' $ids[0]
   Remove-Variable who, ids -ErrorAction SilentlyContinue
 
-  Step 2 'Cloudflare API-Token -> GitHub'
-  Write-Host '  Hast du den Token noch? Sonst: Browser -> «Create Token» -> Vorlage «Edit Cloudflare Workers» -> Token kopieren.'
-  if (Ask 'Browser mit den Cloudflare-Tokens öffnen?') { Start-Process 'https://dash.cloudflare.com/profile/api-tokens' }
-  $tok = Hidden 'Token einfügen'
-  if ($tok) { GhSecret 'CLOUDFLARE_API_TOKEN' $tok.Trim() } else { Warn 'leer – übersprungen' }
+  Step 3 'Neuer Cloudflare API-Token -> GitHub'
+  Write-Host '  Im Browser (öffnet sich gleich):'
+  Write-Host '    1. Alten «Edit Cloudflare Workers»-Token löschen (falls vorhanden, «…» -> Delete)'
+  Write-Host '    2. «Create Token» -> Vorlage «Edit Cloudflare Workers» -> «Use template»'
+  Write-Host '    3. Account Resources: dein Konto · Zone Resources: «All zones»'
+  Write-Host '    4. «Continue to summary» -> «Create Token» -> «Copy»'
+  Start-Process 'https://dash.cloudflare.com/profile/api-tokens'
+  do { $tok = (Hidden 'Token einfügen').Trim(); if (-not $tok) { Warn 'leer – bitte einfügen' } } until ($tok)
+  GhSecret 'CLOUDFLARE_API_TOKEN' $tok
   Remove-Variable tok -ErrorAction SilentlyContinue
 
-  Step 3 'Bring!-Bot + Test-PIN für den Test-Server'
-  $mail = Hidden 'E-Mail des Bring!-Bots'
+  Step 4 "Bring!-Bot ($BotMail)"
+  Write-Host '  Tipp: Passwort vergessen? In der Bring!-App/Web mit dem Bot-Konto «Passwort vergessen» -> neues setzen, dann hier eingeben.'
+  $lists = $null
   do {
-    $pw = Hidden 'Passwort des Bring!-Bots'
+    $pw = Hidden "Passwort von $BotMail"
     $pw2 = Hidden 'Nochmals, zur Kontrolle'
-    $same = ($pw -ceq $pw2)
-    if (-not $same) { Warn 'die beiden Eingaben sind verschieden – bitte nochmals' }
-  } until ($same)
-  $pin = Hidden 'Test-PIN (nicht der WG-PIN)'
-  if ($mail) { CfSecret 'BRING_EMAIL' $mail.Trim() 'stage' }
-  if ($pw) { CfSecret 'BRING_PASSWORD' $pw 'stage' }
-  if ($pin) { CfSecret 'WG_PIN' $pin.Trim() 'stage'; GhSecret 'STAGE_PIN' $pin.Trim() }
-  CfSecret 'CAL_TOKEN' (-join ((48..57) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })) 'stage'
-  Remove-Variable mail, pw, pw2, pin -ErrorAction SilentlyContinue
+    if ($pw -cne $pw2) { Warn 'die beiden Eingaben sind verschieden – bitte nochmals'; continue }
+    Write-Host '  prüfe direkt bei Bring! …'
+    $check = BringCheck $BotMail $pw
+    if ($check) { $lists = $check.lists; Ok "Bring! nimmt das Passwort an. Listen: $($lists -join ', ')" }
+    else { Warn 'Bring! lehnt ab (Passwort falsch?) – bitte nochmals'; if (-not (Ask 'Nochmals versuchen?')) { Remove-Variable pw, pw2; return } }
+  } until ($check)
+  if ($lists -notcontains 'Home') { Warn 'Liste «Home» fehlt im Bot-Konto – der Test-Server braucht sie (in Bring! anlegen).' }
+  CfSecret 'BRING_EMAIL' $BotMail 'stage'
+  CfSecret 'BRING_PASSWORD' $pw 'stage'
+  CfSecret 'BRING_EMAIL' $BotMail ''
+  CfSecret 'BRING_PASSWORD' $pw ''
+  Remove-Variable pw, pw2, check -ErrorAction SilentlyContinue
+
+  Step 5 'Test-PIN (nur Test-Server, nicht der WG-PIN)'
+  do { $pin = (Hidden 'Neuer Test-PIN').Trim(); $pin2 = (Hidden 'Nochmals').Trim() } until ($pin -and $pin -ceq $pin2)
+  CfSecret 'WG_PIN' $pin 'stage'
+  GhSecret 'STAGE_PIN' $pin
+  CfSecret 'CAL_TOKEN' (RandomToken) 'stage'
+  Remove-Variable pin, pin2 -ErrorAction SilentlyContinue
+
+  Step 6 'WG-Server: PIN und Kalender-Link'
+  Write-Host '  Neuer WG-PIN = alle in der WG müssen ihn im Handy neu eingeben.'
+  if (AskNo 'WG-PIN neu setzen?') {
+    do { $pin = (Hidden 'Neuer WG-PIN').Trim(); $pin2 = (Hidden 'Nochmals').Trim() } until ($pin -and $pin -ceq $pin2)
+    CfSecret 'WG_PIN' $pin ''
+    Remove-Variable pin, pin2 -ErrorAction SilentlyContinue
+  } else { Ok 'WG-PIN bleibt' }
+  Write-Host '  Neuer Kalender-Link = alle müssen den Kalender neu abonnieren.'
+  if (AskNo 'Kalender-Link neu machen?') { CfSecret 'CAL_TOKEN' (RandomToken) '' } else { Ok 'Kalender-Link bleibt' }
   [GC]::Collect()
 
-  Step 4 'Test-Version neu starten (Tests + Test-Server + Bring! «Home»)'
+  Step 7 'Test-Version neu starten (Tests + Test-Server + Bring! «Home»), ca. 7 Minuten'
   gh workflow run stage.yml --repo $Repo --ref main
-  Start-Sleep -Seconds 8
+  Start-Sleep -Seconds 10
   $id = (gh run list --repo $Repo --workflow stage.yml --limit 1 --json databaseId --jq '.[0].databaseId')
-  Write-Host '  Läuft (ca. 6–7 Minuten) …'
   gh run watch $id --repo $Repo --exit-status | Out-Null
   if ($LASTEXITCODE -eq 0) { Ok 'alles grün – Anmeldung funktioniert wieder' }
-  else { Warn "noch rot – schreib Claude «Lauf $id ist rot», dann schaue ich nach" }
+  else { Warn "noch rot – schreib Claude «Lauf $id ist rot»" }
+  Write-Host "`nDer WG-Server hat das neue Bot-Passwort schon jetzt (kein Release nötig)." -ForegroundColor Cyan
   return
 }
 if ($BotPassword) {
