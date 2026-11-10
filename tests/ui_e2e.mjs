@@ -731,6 +731,17 @@ await step(A, "Stil umschalten: iPhone ↔ Android", async () => {
   await until(A, () => document.documentElement.classList.contains("glass") && localStorage.getItem("bf-os") === "glass", "nicht zurück auf iPhone");
 });
 
+await step(A, "Hell / Dunkel / Automatisch: Schalter unter Stil (pro Handy)", async () => {
+  const bg = () => A.page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim());
+  const light = await bg();
+  await choose(A, "#modeSelect", "dark");
+  await until(A, () => document.documentElement.classList.contains("dark") && localStorage.getItem("bf-mode") === "dark", "nicht dunkel");
+  expect((await bg()) !== light, `Hintergrund bleibt hell (${light})`);
+  await shot(A, "12b-dunkel");
+  await choose(A, "#modeSelect", "auto");
+  await until(A, () => !document.documentElement.classList.contains("dark") && localStorage.getItem("bf-mode") === null, "Automatisch (System hell) nicht hell");
+});
+
 await step(A, "Akzentfarbe: Pistazie, Himmelblau, eigene Farbe, «Hellgrün» = Standard", async () => {
   const prim = () => A.page.evaluate(() => document.documentElement.style.getPropertyValue("--primary"));
   for (const v of ["#93c572", "#8ecae6"]) {

@@ -68,5 +68,5 @@ Reines Hellgrün nie mit weisser Schrift (zu wenig Kontrast).
 ## 10. Sonstiges
 - Scrollbalken unsichtbar, ohne Layout-Einfluss; unsichtbarer **Greifstreifen** rechts (10 px), feiner Balken nur beim Scrollen/Ziehen.
 - Pull-to-Refresh mit Formwechsel-Ladeindikator (Android) bzw. Glas-Kreis (iPhone).
-- Dunkelmodus folgt dem System.
+- Hell/Dunkel folgt dem System, pro Handy umschaltbar (Einstellungen → Stil: Automatisch / Hell / Dunkel).
 - Mitbewohner-Anzahl im Prototyp über Einstellungen umschaltbar (4/5/7) – nur zum Testen.

@@ -252,6 +252,23 @@ fd.getElementById("welcomeSkip").click();
 check(!fd.getElementById("welcomeDialog").open && firstDom.window.localStorage.getItem("bringfrisch_welcome") === "true", "«Ohne WG ausprobieren» schliesst und merkt es sich");
 check(!boot({ bringfrisch_sync: { pin: "1" }, bringfrisch_welcome: false }).window.document.getElementById("welcomeDialog").open, "schon verbunden: kein Willkommen");
 
+// Hell/Dunkel-Schalter (pro Handy) und Gäste in der Plan-Zeile sichtbar
+const md = boot({}).window, mdd = md.document;
+const setMode = v => { mdd.getElementById("modeSelect").value = v; mdd.getElementById("modeSelect").dispatchEvent(new md.Event("change")); };
+setMode("dark");
+check(mdd.documentElement.classList.contains("dark") && md.localStorage.getItem("bf-mode") === "dark", "Dunkel gewählt: html.dark, gemerkt");
+setMode("light");
+check(!mdd.documentElement.classList.contains("dark") && md.localStorage.getItem("bf-mode") === "light", "Hell gewählt");
+setMode("auto");
+check(md.localStorage.getItem("bf-mode") === null, "Automatisch: nichts gespeichert, folgt dem System");
+const gp = JSON.parse(md.localStorage.getItem("bringfrisch_current_plan"));
+const gplan = Array.isArray(gp) ? gp : gp.plan;
+const gi = gplan.findIndex(d => !d.empty);
+gplan[gi].extra_guests = 1;
+
+const gd = boot({ bringfrisch_current_plan: gp, bringfrisch_plan_week: JSON.parse(md.localStorage.getItem("bringfrisch_plan_week")) }).window.document;
+check(/\+1 Gast$/.test(gd.querySelectorAll("#days .prow")[gi].querySelector(".meta").textContent), `Gast sichtbar in der Zeile (${gd.querySelectorAll("#days .prow")[gi].querySelector(".meta").textContent})`);
+
 check(errors.length === 0, `keine JS-Fehler insgesamt ${errors.join(" | ")}`);
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

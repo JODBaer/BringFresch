@@ -11,6 +11,11 @@
       if (!v) { try { v = localStorage.getItem("bf-os"); } catch (e) {} }
       if (v !== "m3" && v !== "glass") v = /Android/i.test(navigator.userAgent) ? "m3" : "glass";
       document.documentElement.classList.add(v);
+      // Hell/Dunkel vor dem ersten Bild (kein Aufblitzen): Schalter unter Stil, sonst wie das System
+      var m = null;
+      try { m = localStorage.getItem("bf-mode"); } catch (e) {}
+      var dark = m === "dark" || (m !== "light" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+      if (dark) document.documentElement.classList.add("dark");
     })();
   </script>
   <link rel="preload" href="fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -35,12 +40,10 @@
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
       color-scheme: light;
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #18181b; --surface: #202024; --fg: #f5f5f4; --muted: #a1a1aa; --line: #2e2e33;
-        --chip-off: #45454d; --accent: #1f9d55; --on-accent: #ffffff; --nav: #1c1c20;
-        color-scheme: dark;
-      }
+    html.dark {
+      --bg: #18181b; --surface: #202024; --fg: #f5f5f4; --muted: #a1a1aa; --line: #2e2e33;
+      --chip-off: #45454d; --accent: #1f9d55; --on-accent: #ffffff; --nav: #1c1c20;
+      color-scheme: dark;
     }
 
     * { box-sizing: border-box; }
@@ -285,16 +288,14 @@
       --accent: #568f56; --on-accent: #ffffff; --nav: var(--s2);
       color-scheme: light;
     }
-    @media (prefers-color-scheme: dark) {
-      html.m3 {
-        --s0: #101510; --s1: #172017; --s2: #1c261b; --s3: #253124; --s4: #2f3c2d;
-        --fg: #e2ecdc; --fg2: #b7c8ad; --outline: #3d4f3a;
-        --primary: #90ee90; --on-primary: #1d301d; --pc: #3a5f3a; --on-pc: #c8f6c8;
-        --sec-c: #34452a; --on-sec-c: #dcefc6; --today: #3a5f3a; --on-today: #eefcee;
-        --bg: var(--s0); --surface: #172017; --muted: #a9b9a0; --line: #2a3628; --chip-off: #4a5a46;
-        --accent: #90ee90; --on-accent: #1d301d; --nav: var(--s2);
-        color-scheme: dark;
-      }
+    html.dark.m3 {
+      --s0: #101510; --s1: #172017; --s2: #1c261b; --s3: #253124; --s4: #2f3c2d;
+      --fg: #e2ecdc; --fg2: #b7c8ad; --outline: #3d4f3a;
+      --primary: #90ee90; --on-primary: #1d301d; --pc: #3a5f3a; --on-pc: #c8f6c8;
+      --sec-c: #34452a; --on-sec-c: #dcefc6; --today: #3a5f3a; --on-today: #eefcee;
+      --bg: var(--s0); --surface: #172017; --muted: #a9b9a0; --line: #2a3628; --chip-off: #4a5a46;
+      --accent: #90ee90; --on-accent: #1d301d; --nav: var(--s2);
+      color-scheme: dark;
     }
 
     /* ---------- Farben: iPhone (Glas über weichen Farbflächen) ---------- */
@@ -309,17 +310,15 @@
       --accent: #3a5f3a; --on-accent: #eefcee; --nav: transparent;
       color-scheme: light;
     }
-    @media (prefers-color-scheme: dark) {
-      html.glass {
-        --fg: #f1f5ee; --fg2: rgba(241,245,238,.7); --outline: rgba(255,255,255,.22);
-        --tint: rgba(18,26,20,.38); --tint-strong: rgba(18,26,20,.62); --rim: rgba(255,255,255,.45); --rim2: rgba(255,255,255,.08);
-        --primary: #90ee90; --on-primary: #1d301d; --pc: #3a5f3a; --on-pc: #eefcee;
-        --today: #90ee90; --on-today: #1d301d; --ring: rgba(40,48,40,.9);
-        --mesh: radial-gradient(60% 45% at 12% 8%, #24452a 0%, transparent 70%), radial-gradient(55% 40% at 95% 22%, #34441f 0%, transparent 70%), radial-gradient(70% 45% at 18% 78%, #173a31 0%, transparent 70%), radial-gradient(60% 40% at 92% 92%, #2f4520 0%, transparent 70%), linear-gradient(#0e1610, #121610);
-        --bg: #111a13; --surface: rgba(28,38,30,.78); --muted: #a9b9a0; --line: rgba(255,255,255,.1); --chip-off: #4a5a46;
-        --accent: #90ee90; --on-accent: #1d301d;
-        color-scheme: dark;
-      }
+    html.dark.glass {
+      --fg: #f1f5ee; --fg2: rgba(241,245,238,.7); --outline: rgba(255,255,255,.22);
+      --tint: rgba(18,26,20,.38); --tint-strong: rgba(18,26,20,.62); --rim: rgba(255,255,255,.45); --rim2: rgba(255,255,255,.08);
+      --primary: #90ee90; --on-primary: #1d301d; --pc: #3a5f3a; --on-pc: #eefcee;
+      --today: #90ee90; --on-today: #1d301d; --ring: rgba(40,48,40,.9);
+      --mesh: radial-gradient(60% 45% at 12% 8%, #24452a 0%, transparent 70%), radial-gradient(55% 40% at 95% 22%, #34441f 0%, transparent 70%), radial-gradient(70% 45% at 18% 78%, #173a31 0%, transparent 70%), radial-gradient(60% 40% at 92% 92%, #2f4520 0%, transparent 70%), linear-gradient(#0e1610, #121610);
+      --bg: #111a13; --surface: rgba(28,38,30,.78); --muted: #a9b9a0; --line: rgba(255,255,255,.1); --chip-off: #4a5a46;
+      --accent: #90ee90; --on-accent: #1d301d;
+      color-scheme: dark;
     }
 
     /* ---------- Grundgerüst: Leiste und Navigation schweben, Inhalt scrollt darunter ---------- */
@@ -357,7 +356,7 @@
     .m3 .appbar .brand { font: 900 30px/1 var(--font); font-stretch: 125%; letter-spacing: -.02em; padding-bottom: 2px; }
     .m3 .appbar .sub { order: -1; font: 600 14px/1.3 var(--font); color: var(--primary); margin-bottom: 4px; }
     .m3 .acts { position: absolute; right: 12px; top: calc(10px + var(--sat)); }
-    @media (prefers-color-scheme: dark) { html.glass, html.m3 { --brand: #90ee90; } }
+    html.dark.glass, html.dark.m3 { --brand: #90ee90; }
 
     .wahl { position: relative; width: 40px; height: 38px; border: 0; border-radius: 999px; display: grid; place-items: center; cursor: pointer; transition: border-radius .3s var(--spring); }
     .wahl .icon { width: 20px; height: 20px; }
@@ -379,7 +378,7 @@
     .glass .bringchip.ready { background: linear-gradient(160deg, rgba(255,255,255,.45), transparent 50%), var(--pist); color: var(--on-pist); box-shadow: inset 0 1px 1px rgba(255,255,255,.7), 0 4px 14px rgba(60,110,40,.3); }
     .m3 .bringchip { background: var(--s3); color: var(--fg); }
     .m3 .bringchip.ready { background: var(--primary); color: var(--on-primary); }
-    @media (prefers-color-scheme: dark) { html.glass .wahl, html.glass .bringchip:not(.ready) { background: rgba(255,255,255,.12); } }
+    html.dark.glass .wahl, html.dark.glass .bringchip:not(.ready) { background: rgba(255,255,255,.12); }
 
     /* «Wochenplan»-Zeile: 10 px, fix, verschwindet nie */
     .sechead { display: flex; justify-content: space-between; align-items: center; gap: 10px; height: 12px; padding: 0 10px; margin: -2px 0 -4px; line-height: 1; }
@@ -416,7 +415,7 @@
     .m3 .pday { background: var(--sec-c); color: var(--on-sec-c); }
     .m3 .prow.today .pday { background: var(--today); color: var(--on-today); }
     .m3 .prow.open .pday { background: var(--primary); color: var(--on-primary); }
-    @media (prefers-color-scheme: dark) { html.glass .pday { background: rgba(255,255,255,.12); } }
+    html.dark.glass .pday { background: rgba(255,255,255,.12); }
 
     .dish { min-width: 0; padding-top: calc((var(--dayh) - 36px) / 2); }
     .dish .t { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; color: var(--fg); font: 650 15.5px/1.2 var(--font); font-stretch: 96%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -435,7 +434,7 @@
     .av.off::after { content: ""; position: absolute; left: 3px; right: 3px; top: 50%; height: 1.8px; margin-top: -.9px; border-radius: 1px; background: currentColor; transform: rotate(-45deg); }
     .glass .av.off { background: rgba(120,128,120,.22); color: #555d55; }
     .m3 .av.off { background: var(--s4); color: var(--fg2); }
-    @media (prefers-color-scheme: dark) { html .av.off { background: rgba(255,255,255,.1) !important; color: rgba(255,255,255,.6) !important; } }
+    html.dark .av.off { background: rgba(255,255,255,.1) !important; color: rgba(255,255,255,.6) !important; }
     /* ab 5 Personen zwei Reihen (5 = 3 + 2, 6 = 3 + 3, 7 = 4 + 3); kürzere zweite Reihe mittig versetzt */
     .who.many { display: grid; grid-template-columns: repeat(var(--cols, 3), 17px); grid-auto-rows: 19px; padding-right: 13px; padding-top: calc((var(--dayh) - 41px) / 2); }
     .who.many .av { width: 22px; height: 22px; margin-left: 0; }
@@ -470,7 +469,7 @@
     .glass .links a { background: var(--primary); color: var(--on-primary); border-radius: 999px; }
     .glass .links button { background: color-mix(in srgb, var(--pc) 45%, transparent); color: var(--primary); border-radius: 999px; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 40%, transparent), inset 0 1px 1px var(--rim); }
     .glass .links a:active, .glass .links button:active { border-radius: 12px; }
-    @media (prefers-color-scheme: dark) { html.glass .links button { background: color-mix(in srgb, var(--primary) 12%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 35%, transparent); } }
+    html.dark.glass .links button { background: color-mix(in srgb, var(--primary) 12%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 35%, transparent); }
     .m3 .links { gap: 2px; }
     .m3 .links a { background: var(--primary); color: var(--on-primary); border-radius: 20px 6px 6px 20px; }
     .m3 .links button { background: var(--sec-c); color: var(--on-sec-c); border-radius: 20px; }
@@ -505,7 +504,7 @@
     .glass .bnav button { flex-direction: column; gap: 1px; font: 650 11px var(--font); border-radius: 28px; opacity: .85; }
     .glass .bnav button .icon { width: 22px; height: 22px; }
     .glass .bnav button[aria-current="page"] { opacity: 1; background: rgba(255,255,255,.45); color: var(--primary); box-shadow: inset 0 1px 1px var(--rim), 0 1px 4px rgba(0,0,0,.08); }
-    @media (prefers-color-scheme: dark) { html.glass .bnav button[aria-current="page"] { background: rgba(255,255,255,.12); } }
+    html.dark.glass .bnav button[aria-current="page"] { background: rgba(255,255,255,.12); }
     .m3 .bnav { left: 0; right: 0; bottom: 0; height: calc(72px + var(--sab)); padding: 12px 10px calc(12px + var(--sab)); gap: 4px; background: var(--s2); color: var(--fg2); }
     .m3 .bnav button { gap: 8px; border-radius: 24px; font: 700 14px var(--font); }
     .m3 .bnav button span { display: none; }
@@ -577,7 +576,7 @@
     .glass .opt { background: rgba(255,255,255,.32); }
     .glass .opt:focus-visible { background: rgba(255,255,255,.6); }
     .glass .opt .pop { background: rgba(220,60,60,.14); color: #b32626; }
-    @media (prefers-color-scheme: dark) { html.glass .opt, html.glass .msearch { background: rgba(255,255,255,.12); } html.glass .opt .pop { color: #ffb4b4; } }
+    html.dark.glass .opt, html.dark.glass .msearch { background: rgba(255,255,255,.12); } html.dark.glass .opt .pop { color: #ffb4b4; }
     .opt.more-link { grid-template-columns: 1fr; text-align: center; color: var(--primary); font-weight: 700; }
 
     /* ---------- Hinweis unten (Snackbar) ---------- */
@@ -798,6 +797,14 @@
         <div class="set-row set-line">
           <span>Stil<small>Automatisch erkannt</small></span>
           <button class="btn" type="button" id="setOsBtn">iPhone</button>
+        </div>
+        <div class="set-row set-line">
+          <label for="modeSelect">Hell / Dunkel<small>nur auf diesem Handy</small></label>
+          <select id="modeSelect">
+            <option value="auto">Automatisch</option>
+            <option value="light">Hell</option>
+            <option value="dark">Dunkel</option>
+          </select>
         </div>
         <div class="set-row">
           <span class="set-sub">Akzentfarbe <small>nur auf diesem Handy</small></span>

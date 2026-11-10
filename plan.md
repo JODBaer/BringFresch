@@ -90,8 +90,8 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - Bildschirmfoto: der Browser darf den Bildschirm nicht einfach fotografieren (iPhone gar nicht). Darum: Foto/Screenshot aus der Galerie auswählen (Datei-Feld), der Worker lädt es ins Issue
   - Einfachste Stufe ohne Server: Knopf öffnet `github.com/jodbaer/BringFresch/issues/new` mit vorausgefülltem Titel/Text (Version, Seite); Foto hängt man dort selbst an (braucht GitHub-Konto)
   - Schutz: nur verbundene Handys (WG-PIN), höchstens ein paar Meldungen pro Stunde
-- [ ] **Hell / Dunkel / Automatisch** zum Umschalten (pro Handy, Einstellungen → Stil); heute folgt der Dunkelmodus nur dem System. Die 10 `prefers-color-scheme`-Stellen im CSS und `applyTheme` müssen auf den Schalter hören
-- [ ] **Gäste im Plan sichtbar**: «+1 Gast» bei den Kreisen (heute nur unter Einstellungen → Wer isst wann; die Zahl rechts zählt sie mit, man sieht aber nicht warum)
+- [x] **Hell / Dunkel / Automatisch** zum Umschalten (pro Handy, Einstellungen → Stil); heute folgt der Dunkelmodus nur dem System. Die 10 `prefers-color-scheme`-Stellen im CSS und `applyTheme` müssen auf den Schalter hören
+- [x] **Gäste im Plan sichtbar**: «+1 Gast» bei den Kreisen (heute nur unter Einstellungen → Wer isst wann; die Zahl rechts zählt sie mit, man sieht aber nicht warum)
 - [ ] **Praxistest**: eine echte Woche mit Lukas, Leonie und Jo planen, einkaufen, Feedback sammeln
 - [ ] Danach entscheiden: Mengen der Protein-Zusätze (150 g Fleisch / 100 g Käse pro Person), Rezeptauswahl, evtl. Koch-Zuteilung
 

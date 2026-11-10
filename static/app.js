@@ -2257,7 +2257,8 @@
   function dayMeta(day) {
     if (day.empty) return "Antippen oder Wochenwahl";
     const kind = day.is_leftovers ? "Reste" : day.quick ? "schnell" : day.diet === "fleisch" ? "Fleisch" : day.diet === "vegan" ? "vegan" : "vegi";
-    return `${kind} · ${day.prep_time_min || 30} Min.`;
+    const g = day.extra_guests || 0; // Gäste zählen in der Zahl rechts mit – hier sieht man warum
+    return `${kind} · ${day.prep_time_min || 30} Min.${g ? ` · +${g} ${g === 1 ? "Gast" : "Gäste"}` : ""}`;
   }
 
   // Zutaten für die Portionen dieses Tages (gleiche Rechnung wie die Einkaufsliste)
@@ -2666,9 +2667,15 @@
     return v;
   }
 
+  // Hell / Dunkel / Automatisch (pro Handy). Das CSS hört nur auf html.dark; index.html setzt es schon vor dem ersten Bild.
+  const MODE_KEY = "bf-mode";
   const darkMq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  const getMode = () => { try { const m = localStorage.getItem(MODE_KEY); return m === "light" || m === "dark" ? m : "auto"; } catch (e) { return "auto"; } };
+  const isDark = () => { const m = getMode(); return m === "dark" || (m === "auto" && !!(darkMq && darkMq.matches)); };
   function applyTheme() {
-    const st = document.documentElement.style, dark = !!(darkMq && darkMq.matches), os = currentOs();
+    document.documentElement.classList.toggle("dark", isDark());
+    if ($("modeSelect")) $("modeSelect").value = getMode();
+    const st = document.documentElement.style, dark = isDark(), os = currentOs();
     themeProps.forEach(k => st.removeProperty(k));
     const vars = { ...(theme.accent ? accentVars(theme.accent, dark, os) : {}), ...(theme.bg ? bgVars(theme.bg, dark, os, theme.accent) : {}) };
     for (const [k, v] of Object.entries(vars)) st.setProperty(k, v);
@@ -2684,6 +2691,12 @@
     if (c) meta.setAttribute("content", c);
   }
   if (darkMq && darkMq.addEventListener) darkMq.addEventListener("change", applyTheme);
+  $("modeSelect").onchange = () => {
+    const v = $("modeSelect").value;
+    try { if (v === "auto") localStorage.removeItem(MODE_KEY); else localStorage.setItem(MODE_KEY, v); } catch (e) { /* ohne Speicher: nur jetzt */ }
+    applyTheme();
+    toast(v === "auto" ? "Hell/Dunkel wie das Handy ✓" : v === "dark" ? "Dunkel ✓" : "Hell ✓");
+  };
 
   function renderThemePick() {
     const pick = (id, key, list) => {
