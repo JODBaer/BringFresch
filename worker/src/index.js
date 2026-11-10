@@ -82,6 +82,7 @@ async function route(request, env, url) {
   const wg = await requireWg(request, env);
   env = { ...env, WG: scoped(env.WG, wg.prefix), RAW: env.WG, WG_CTX: wg };
 
+  if (path === "/img" && method === "GET") return recipeImage(env, url.searchParams.get("url"));
   if (path === "/bring/list" && method === "GET") return json(await bringList(env));
   if (path === "/bring/lists" && method === "GET") return json(await bringLists(env));
   if (path === "/bring/target" && method === "PUT") return json(await bringSetTarget(env, await body(request)));
@@ -179,7 +180,7 @@ export async function backup(env, now = new Date()) {
   let cursor;
   do {
     const page = await env.WG.list({ cursor });
-    for (const k of page.keys) if (!/^(backup|fail|lock):/.test(k.name)) keys[k.name] = await env.WG.get(k.name);
+    for (const k of page.keys) if (!/^(backup|fail|lock|img):/.test(k.name)) keys[k.name] = await env.WG.get(k.name);
     cursor = page.list_complete === false ? page.cursor : undefined;
   } while (cursor);
   await env.WG.put("backup:" + day, JSON.stringify({ day, keys }), { expirationTtl: 30 * 86400 });
@@ -445,13 +446,21 @@ async function bringRemove(env, { names }) {
 // ---------------------------------------------------------------------------------------------
 // Wochenwahl
 async function getWeek(env, key) {
-  const [candidates, list] = await Promise.all([
+  // Stimmen direkt pro Mitbewohner lesen statt die Schlüssel aufzulisten: «list» ist im Gratis-Tarif auf
+  // 1000 pro Tag begrenzt (und die Wochenwahl fragt alle 30 s nach). Nur ohne bekannte Mitbewohner wird gelistet.
+  const [candidates, settings, plan] = await Promise.all([
     env.WG.get(`week:${key}:candidates`, "json"),
-    env.WG.list({ prefix: `week:${key}:vote:` }),
+    env.WG.get("settings", "json"),
+    env.WG.get("plan", "json"),
   ]);
+  const ids = new Set([...(((settings || {}).settings || {}).members || []), ...((plan || {}).members || [])].map(m => m && m.id).filter(Boolean));
+  const names = ids.size
+    ? [...ids].map(id => `week:${key}:vote:${id}`)
+    : (await env.WG.list({ prefix: `week:${key}:vote:` })).keys.map(k => k.name);
   const votes = {};
-  await Promise.all(list.keys.map(async k => {
-    votes[k.name.split(":").pop()] = await env.WG.get(k.name, "json");
+  await Promise.all(names.map(async n => {
+    const v = await env.WG.get(n, "json");
+    if (v) votes[n.split(":").pop()] = v;
   }));
   return { week: key, candidates: candidates || null, votes };
 }
@@ -575,6 +584,54 @@ function events(doc, { me = "", dl = false } = {}) {
     });
   }
   return lines;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Bild zum Rezept (Wochenwahl): einmal von der Rezeptseite holen (og:image bzw. schema.org image) und im
+// WG-Server ablegen – nur für verbundene WGs (PIN), nie im öffentlichen Repo. Pro Rezept-Link genau ein Abruf,
+// danach aus dem Speicher; gibt es kein Bild, merkt sich der Server das 7 Tage (kein erneutes Anfragen).
+const IMG_MAX = 900_000;
+async function recipeImage(env, link) {
+  let u;
+  try { u = new URL(String(link || "")); } catch { throw httpError(400, "Kein Link"); }
+  if (u.protocol !== "https:" || BLOCKED_HOSTS.test(u.hostname)) throw httpError(400, "Nur normale Webseiten (https://…)");
+  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(u.toString()));
+  const key = "img:" + [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+  const kv = env.RAW || env.WG;
+  const send = (buf, type) => new Response(buf, { headers: { "Content-Type": type, "Cache-Control": "private, max-age=2592000" } });
+  const hit = await kv.getWithMetadata(key, "arrayBuffer");
+  if (hit && hit.value != null) {
+    if (hit.metadata && hit.metadata.none) throw httpError(404, "Kein Bild");
+    return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg");
+  }
+  const none = async () => { await kv.put(key, "", { metadata: { none: true }, expirationTtl: 7 * 86400 }); return json({ ok: false, error: "Kein Bild" }, 404); };
+  const UA = { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)" };
+  let html = "";
+  try {
+    const res = await fetch(u.toString(), { headers: { ...UA, Accept: "text/html" }, redirect: "follow" });
+    if (!res.ok) return none();
+    html = (await res.text()).slice(0, 2_000_000);
+  } catch { return none(); }
+  const attr = (tag, name) => { const m = tag.match(new RegExp(`${name}\\s*=\\s*["']([^"']+)["']`, "i")); return m ? m[1] : ""; };
+  let src = "";
+  for (const tag of html.match(/<meta\b[^>]*>/gi) || []) {
+    if (/(property|name)\s*=\s*["'](og:image|og:image:url|twitter:image)["']/i.test(tag)) { src = attr(tag, "content"); if (src) break; }
+  }
+  if (!src) { const m = html.match(/"image"\s*:\s*(?:\[\s*)?(?:\{[^}]*?"url"\s*:\s*)?"(https:[^"]+)"/); if (m) src = m[1]; }
+  if (!src) return none();
+  let imgUrl;
+  try { imgUrl = new URL(src.replace(/&amp;/g, "&"), u); } catch { return none(); }
+  if (imgUrl.protocol !== "https:" || BLOCKED_HOSTS.test(imgUrl.hostname)) return none();
+  let buf, type;
+  try {
+    const res = await fetch(imgUrl.toString(), { headers: { ...UA, Accept: "image/avif,image/webp,image/jpeg,image/png,image/*" }, redirect: "follow" });
+    type = (res.headers.get("Content-Type") || "").split(";")[0].trim();
+    if (!res.ok || !/^image\/(jpeg|png|webp|avif|gif)$/.test(type)) return none();
+    buf = await res.arrayBuffer();
+  } catch { return none(); }
+  if (!buf.byteLength || buf.byteLength > IMG_MAX) return none();
+  await kv.put(key, buf, { metadata: { type, from: imgUrl.hostname } });
+  return send(buf, type);
 }
 
 // ---------------------------------------------------------------------------------------------

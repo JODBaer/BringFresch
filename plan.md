@@ -107,9 +107,20 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 - [ ] **Grundvorrat verwalten** (besser als heute)
   - **Hinzufügen**: Eingabe schlägt Bring!-Artikel vor (Autokorrektur auf den Bring!-Namen, z.B. «Olivenoel» → «Olivenöl», mit Bild); nicht doppelt (gleicher Bring!-Artikel schon im Vorrat → «Ist schon da»)
   - **Nicht gefunden**: Hinweis «Gibt es in Bring! nicht – bitte zuerst in Bring! als eigenen Artikel anlegen», dann erneut suchen
-  - **Wegnehmen**: lange drücken oder ✕ im Bearbeiten-Modus
+  - **Wegnehmen**: kein ✕ dauernd sichtbar (verklickt man sich). **Lange drücken** auf die Pille → ✕ erscheint (Pille wackelt) → ✕ antippen = weg, mit «Rückgängig»
   - **Leer melden**: wie heute antippen = auf Bring!; klar sichtbar, welcher Bring!-Artikel es ist (Bild + Bring!-Name)
-  - **Bald leer**: siehe «Grundvorrat zählt mit» oben (rechnet aus den gekochten Rezepten seit dem letzten Kauf)
+  - **Standard-Vorrat für jede neue WG** mit Grundzählung («reicht für N Znacht», z.B. Olivenöl 15, Bouillon 10, Reis 6, Teigwaren 6, Tomatenpüree 4, Rahm 2, Joghurt 4)
+  - **Zahl von Hand anpassen** beim Durchgehen des Vorrats (lange drücken → «noch für 3»), z.B. Joghurt passt in kein Rezept und zählt nur von Hand
+  - **Ab 2 oder weniger**: Pille hervorgehoben («bald leer») oben im Grundvorrat, Vorschlag «auf Bring!?» (ein Tipp, nichts automatisch)
+  - **Bald leer – wie es zählt**: siehe «Grundvorrat zählt mit» oben (jeder gekochte Tag, dessen Rezept den Artikel braucht, zählt 1 ab; Rest = N − gekochte Tage seit «zuletzt gekauft»)
+- [ ] **Emoji als Namenkürzel**: lange auf den eigenen Kreis/Namen drücken → Emoji wählen (z.B. 🦊) statt «J»; gilt für die ganze WG (in den Einstellungen gespeichert)
+- [ ] **«Wer bin ich» nur in den Einstellungen**: die Auswahl «Ich bin» in der Wochenwahl weg; die Wochenwahl nimmt «Du bist» aus den Einstellungen (fehlt es, einmal fragen). Ein Handy für mehrere Personen: dann dort wechseln
+- [ ] **Sprache Deutsch / English** vorbereiten: alle Texte in `static/i18n.js` (Schlüssel → de/en), Auswahl pro Handy unter Einstellungen → Stil, Standard nach Handy-Sprache; Rezepte/Zutaten bleiben deutsch (Bring!-Namen)
+- [x] **«Aktualisieren» bei der Version** unter «Über BringFrisch» statt ganz oben in den Einstellungen
+- [x] **Wochenwahl mit Bildern**: Vorschaubild der Rezeptseite, einmal vom WG-Server geholt und abgelegt (nur mit PIN), auf dem Handy zwischengespeichert
+- [ ] **Wochenwahl wie Memory**: Karte zeigt nur das Bild (+ kurzer Titel unten); antippen = Karte dreht sich (3D-Flip) → Rückseite: ganzer Titel, Vegi/Fleisch, Minuten, Wunschtag, «Wählen» / «Abwählen», 🌐 Rezept; nochmals antippen (oder ✓) = zurück aufs Bild, gewählte Karten mit Häkchen und Rahmen. Ohne Bild: Vorderseite mit Gemüse-Bild/Farbe. Zuerst als HTML-Vorschau zeigen (Joshua wählt)
+- [x] **Gratis-Kontingent des WG-Servers schonen** (Cloudflare KV: 1000 Schreib-/Listen-Aufrufe pro Tag fürs ganze Konto): Wochenwahl listet keine Schlüssel mehr, fragt alle 30 s statt 15 s und nur bei offener App
+  - Offen: Tests der Test-Version (Live-Test bei jedem Push) zählen mit – bei vielen Pushes am selben Tag knapp; notfalls Live-Test nur 1× pro Tag
 - [ ] **Praxistest**: eine echte Woche mit Lukas, Leonie und Jo planen, einkaufen, Feedback sammeln
 - [ ] Danach entscheiden: Mengen der Protein-Zusätze (150 g Fleisch / 100 g Käse pro Person), Rezeptauswahl, evtl. Koch-Zuteilung
 

@@ -57,12 +57,13 @@ if (!browserPath) {
 const worker = (await import(pathToFileURL(path.join(here, "..", "worker", "src", "index.js")).href)).default;
 const WORKER = "https://bringfrisch.bringfrisch-worker.workers.dev"; // DEFAULT_SYNC_URL der App
 const PIN = "2468"; // nur für diesen Test-Worker im Speicher – nicht der WG-PIN
-const kv = new Map();
+const kv = new Map(), kvMeta = new Map();
 const env = {
   WG_PIN: PIN, MAIN_WG: "wg1", CAL_TOKEN: "cal-test", BRING_EMAIL: "bot@test.invalid", BRING_PASSWORD: "test",
   WG: {
     async get(k, t) { const v = kv.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
-    async put(k, v) { kv.set(k, v); },
+    async put(k, v, o) { kv.set(k, v); if (o && o.metadata) kvMeta.set(k, o.metadata); else kvMeta.delete(k); },
+    async getWithMetadata(k) { const v = kv.get(k); return { value: v == null ? null : v, metadata: kvMeta.get(k) || null }; },
     async delete(k) { kv.delete(k); },
     async list({ prefix }) { return { keys: [...kv.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) }; },
   },
@@ -95,6 +96,9 @@ globalThis.fetch = async (url, init = {}) => {
     }
     return new Response(null, { status: 204 });
   }
+  // Rezeptseiten der Wochenwahl: Vorschaubild (og:image) -> winziges PNG
+  if (/^https:\/\/(fooby\.ch|www\.swissmilk\.ch|migusto\.migros\.ch|www\.bettybossi\.ch)\//.test(url) &&url.split("?")[0] !== RECIPE_URL) return new Response(`<html><head><meta property="og:image" content="https://bilder.test/${encodeURIComponent(url).slice(-40)}.png"></head></html>`, { headers: { "Content-Type": "text/html" } });
+  if (url.startsWith("https://bilder.test/")) return new Response(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64"), { headers: { "Content-Type": "image/png" } });
   if (url.split("?")[0] === RECIPE_URL) return new Response(RECIPE_HTML, { headers: { "Content-Type": "text/html" } });
   return new Response("kein Netz im Test", { status: 599 });
 };
@@ -648,14 +652,14 @@ await step(A, "Saison: Bilder, Hochdeutsch; Gemüse antippen = «… Rezept» ko
 
 await step(A, "Einstellungen: Über BringFrisch (Version, GitHub, Impressum)", async () => {
   await goTab(A, "wg");
-  expect(/^Version \d+\.\d+\.\d+$/.test(await text(A, "#appVersion")), "Version fehlt");
+  expect(/^\d+\.\d+\.\d+$/.test(await text(A, "#appVersionTop")), "Version fehlt");
   expect((await A.page.$eval("#repoLink", a => a.href)) === "https://github.com/jodbaer/BringFresch" && /Impressum/.test(await text(A, "#tab-wg")), "GitHub-Link/Impressum fehlt");
 });
 
-await step(A, "Einstellungen oben: Version + GitHub sichtbar, «Aktualisieren» gleicht ab und prüft die Version; Statusleiste im Design", async () => {
+await step(A, "Über BringFrisch: Version + «Aktualisieren» in einer Zeile, gleicht ab und prüft die Version; Statusleiste im Design", async () => {
   await goTab(A, "wg");
-  const top = await A.page.evaluate(() => { const c = document.getElementById("versionCard"), r = c.getBoundingClientRect(); return { first: c === document.querySelector("#tab-wg > *"), v: document.getElementById("appVersionTop").textContent, repo: document.getElementById("repoLinkTop").href, top: r.top, vh: innerHeight }; });
-  expect(top.first && /^\d+\.\d+\.\d+$/.test(top.v) && top.repo === "https://github.com/jodbaer/BringFresch" && top.top < top.vh / 2, `Version/Repo nicht oben: ${JSON.stringify(top)}`);
+  const top = await A.page.evaluate(() => { const c = document.getElementById("versionCard"); return { inAbout: !!c.closest(".card") && c.closest(".card").previousElementSibling.textContent.includes("Über BringFrisch"), btn: !!c.querySelector("#updateBtn"), v: document.getElementById("appVersionTop").textContent, repo: document.getElementById("repoLinkTop").href }; });
+  expect(top.inAbout && top.btn && /^\d+\.\d+\.\d+$/.test(top.v) && top.repo === "https://github.com/jodbaer/BringFresch", `Version/Aktualisieren nicht unter «Über»: ${JSON.stringify(top)}`);
   await clearToasts(A);
   await tap(A, "#updateBtn");
   await toastIs(A, /Alles aktuell|Neueste Version/);
@@ -939,6 +943,13 @@ await step(B, "Wochenwahl als Leonie: 3 Gerichte antippen, Wunschtag Mi, eines w
   await tap(B, `${card(2)} [data-like]`);
   await until(B, () => document.getElementById("voteMine").textContent === "2 gewählt", "Abwählen klappt nicht");
   expect((await text(B, "#voteWho")) === "1 von 4 haben gewählt", await text(B, "#voteWho"));
+});
+
+await step(B, "Wochenwahl: Bilder von der Rezeptseite (WG-Server legt sie ab, Handy merkt sie sich)", async () => {
+  await until(B, () => document.querySelectorAll("#voteGrid .vimg.ok").length > 0 && [...document.querySelectorAll("#voteGrid .vimg.ok")].every(e => /blob:/.test(e.style.backgroundImage)), "keine Bilder in der Wochenwahl", null, 15000);
+  expect([...kv.keys()].some(k => k.startsWith("img:")), "Bild nicht im WG-Server abgelegt");
+  expect(await B.page.evaluate(async () => (await (await caches.open("bf-img")).keys()).length > 0), "Bild nicht im Handy-Cache");
+  await shot(B, "02b-wochenwahl-bilder");
 });
 
 await step(B, "Wochenwahl als Jo (gleiches Handy, sofort gewechselt): 2 Gerichte; beide Stimmen kommen beim WG-Server an", async () => {

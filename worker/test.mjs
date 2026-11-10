@@ -8,6 +8,7 @@ const check = (cond, msg) => { console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`);
 const store = new Map(), kvOpts = new Map();
 const KV = {
   async get(k, type) { const v = store.get(k); return v == null ? null : type === "json" ? JSON.parse(v) : v; },
+  async getWithMetadata(k) { const v = store.get(k); return { value: v == null ? null : v, metadata: v == null ? null : (kvOpts.get(k) || {}).metadata || null }; },
   async put(k, v, opts) { store.set(k, v); if (opts) kvOpts.set(k, opts); },
   async delete(k) { store.delete(k); },
   async list({ prefix = "" } = {}) { return { keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }; },
@@ -18,6 +19,7 @@ const env = { WG: KV, WG_PIN: "1234", CAL_TOKEN: "cal-secret", BRING_EMAIL: "bot
 const bringCalls = [];
 const bringList = [{ name: "Milch", specification: "" }];
 const wgPuts = [];
+let imgFetches = 0;
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
   bringCalls.push({ url, init });
@@ -37,6 +39,9 @@ globalThis.fetch = async (url, init = {}) => {
     if (ex) ex.specification = p.get("specification"); else bringList.push({ name: p.get("purchase"), specification: p.get("specification") });
     return new Response(null, { status: 204 });
   }
+  if (url === "https://fooby.ch/de/rezepte/1/bild") return new Response(`<html><head><meta property="og:image" content="/img/bild.jpg?w=1200&amp;q=80"></head></html>`);
+  if (url === "https://fooby.ch/img/bild.jpg?w=1200&q=80") { imgFetches++; return new Response(new Uint8Array([255, 216, 255, 1, 2, 3]), { headers: { "Content-Type": "image/jpeg" } }); }
+  if (url === "https://fooby.ch/de/rezepte/2/ohne") { imgFetches++; return new Response("<html><head><title>ohne Bild</title></head></html>"); }
   if (url.startsWith("https://www.swissmilk.ch/")) {
     return new Response(`<html><head><meta property="og:title" content="Auberginenrollen - Rezept | Swissmilk"></head><body><h1>Navigieren</h1><table>
       <tr itemprop="recipeIngredient"><td colspan="2" class="Ingredient--text">Bratpfanne</td></tr>
@@ -198,6 +203,22 @@ const wgBefore = wgPuts.length;
 await stageCall("/bring/sync", { method: "POST", body: { items: [{ name: "Stage Test", spec: "1 Stk" }] } });
 check(wgPuts.length === wgBefore && bringList.some(x => x.name === "Stage Test"), "Test-Server schreibt in «Home-test», nicht in die WG-Liste");
 store.delete("bringList");
+
+// 4d. Rezeptbild für die Wochenwahl: einmal von der Seite holen, im Server ablegen, nur mit PIN
+const IMG_PAGE = "https://fooby.ch/de/rezepte/1/bild";
+r = await call("/img?url=" + encodeURIComponent(IMG_PAGE), { pin: "falsch" });
+check(r.status === 401, "Bild nur mit WG-PIN");
+r = await call("/img?url=" + encodeURIComponent(IMG_PAGE));
+const img1 = new Uint8Array(await r.arrayBuffer());
+check(r.status === 200 && r.headers.get("Content-Type") === "image/jpeg" && img1.length === 6 && imgFetches === 1, `Bild von der Rezeptseite geholt (og:image, relativ + &amp;) (${r.status})`);
+r = await call("/img?url=" + encodeURIComponent(IMG_PAGE));
+check(r.status === 200 && (await r.arrayBuffer()).byteLength === 6 && imgFetches === 1, "zweites Mal aus dem Speicher (kein neuer Abruf)");
+r = await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/rezepte/2/ohne"));
+await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/rezepte/2/ohne"));
+check(r.status === 404 && imgFetches === 2, "Seite ohne Bild: 404, und der Server fragt nicht nochmals");
+check((await call("/img?url=" + encodeURIComponent("http://localhost/x"))).status === 400, "nur normale https-Seiten");
+await backup(env, new Date("2026-11-10T03:00:00Z"));
+check(!Object.keys(JSON.parse(store.get("backup:2026-11-10")).keys).some(k => k.startsWith("img:")), "Bilder nicht in der täglichen Sicherung");
 
 // 5. Rezept-Link
 r = await call("/recipe?url=" + encodeURIComponent("https://www.bettybossi.ch/de/rezepte/rezept/zwiebelsuppe-10010500/"));
