@@ -844,6 +844,20 @@ await step(A, "Plan: Knopf «Wechseln» sieht aus wie ein Knopf (Text drin, nich
   await tap(A, '.prow[data-i="1"] .pday');
 });
 
+await step(A, "Plan: Rezept-Link öffnet in neuem Tab – Original-Seite oder «Rezept suchen» auf Fooby", async () => {
+  await goTab(A, "plan");
+  const links = await A.page.evaluate(() => [...document.querySelectorAll("#days .prow:not(.unplanned)")]
+    .filter(r => !/schnell|Reste/.test(r.querySelector(".meta").textContent))
+    .map(r => { const a = r.querySelector(".links a"); return { title: r.querySelector(".t").textContent, href: a && a.href, text: a && a.textContent, target: a && a.target }; }));
+  expect(links.length > 0, "keine geplanten Menüs");
+  for (const l of links) {
+    expect(l.href && l.href.startsWith("https://") && l.target === "_blank", `${l.title}: kein Rezept-Link (${JSON.stringify(l)})`);
+    const search = /fooby\.ch\/de\/suche/.test(l.href);
+    expect(search === /Rezept suchen/.test(l.text), `${l.title}: Linktext passt nicht (${l.text})`);
+    if (search) expect(decodeURIComponent(l.href).includes(l.title), `${l.title}: Suche ohne Menü-Namen (${l.href})`);
+  }
+});
+
 await step(A, "Navigation: jeder Tab, kein seitliches Scrollen", async () => {
   for (const t of ["plan", "shop", "season", "wg", "plan"]) {
     await goTab(A, t);

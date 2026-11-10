@@ -48,6 +48,7 @@ cd tests && npm ci && npm run ci        # ALLES vor dem Abschluss: Syntax, App, 
 npm run ci -- --no-layout                # ohne Browser (falls gesperrt); --shots = Fotos in tests/shots/
 npm test                                 # nur App (jsdom), 2-Handy-Integration, Worker
 node tests/layout_check.mjs --shots      # Plan-Layout im echten Browser (390×844, 375×667, 390×600)
+cd tests && node links_live.mjs          # Rezept-Links im Browser öffnen (Internet, nur von Hand); falsche Links ersetzen oder entfernen → App zeigt «Rezept suchen» (Fooby)
 cd tests && npm run ui                  # UI-Test: klickt sich wie ein Mensch durch alle Seiten/Funktionen (echter Chrome, Worker-Code + Bring!-Attrappe im Prozess)
 cd tests && npm run ci                  # alles (auch Layout + UI); --no-ui / --no-layout; ohne Browser: npm run chrome
 npx serve static                        # lokal ansehen

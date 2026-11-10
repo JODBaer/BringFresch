@@ -144,7 +144,7 @@ window.BRINGFRISCH_DATA = {
   recipes: [
     {
       id: "aelplermagronen",
-      source_url: "https://www.bettybossi.ch/de/Rezept/ShowRezept/BB_KUCA130802_0055A-40-de",
+      source_url: "https://fooby.ch/de/rezepte/13040/aelplermagronen",
       title: "Klassische Älplermagronen mit Apfelmus",
       category: "schweizerisch",
       diet: "vegi",
@@ -165,7 +165,7 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "gschwellti_abendbrot",
-      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM199910_79/gschwellti-mit-verschiedenen-quarksaucen/",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2018_ALLT_05/gschwellti/",
       title: "Schweizer Gschwellti mit Käseauswahl & Quarkdip",
       category: "abendbrot",
       diet: "vegi",
@@ -186,7 +186,7 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "kuerbis_linsen_curry",
-      source_url: "https://www.bettybossi.ch/de/Rezept/ShowRezept/BB_BBZC170915_0018A-40-de",
+      source_url: "https://fooby.ch/de/rezepte/27588/kuerbis-dal",
       title: "Herbstliches Kürbis-Kokos-Curry mit roten Linsen",
       category: "exotisch",
       diet: "vegan",
@@ -207,7 +207,6 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "wirz_eintopf",
-      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200811_43/wirz-eintopf/",
       title: "Währschafter Schweizer Wirz-Rüebli-Eintopf",
       category: "schweizerisch",
       diet: "vegi",
@@ -228,7 +227,7 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "lauch_waehe",
-      source_url: "https://www.bettybossi.ch/de/Rezept/ShowRezept/BB_KUCA130802_0060A-40-de",
+      source_url: "https://fooby.ch/de/rezepte/25828/lauchwaehe",
       title: "Knusprige Schweizer Lauchwähe mit Käseguss",
       category: "schweizerisch",
       diet: "vegi",
@@ -249,7 +248,7 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "randen_risotto",
-      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2020_DIVE_05/randenrisotto/",
+      source_url: "https://fooby.ch/de/rezepte/26051/randenrisotto-mit-ziegenkaese",
       title: "Leuchtendes Schweizer Randen-Risotto mit Ziegenkäse",
       category: "exotisch",
       diet: "vegi",
@@ -270,7 +269,7 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "pastinaken_suppe",
-      source_url: "https://www.bettybossi.ch/de/Rezept/ShowRezept/BB_BBZC140115_0012A-40-de",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/KO2021_SBLV_32/pastinakensuppe/",
       title: "Cremige Pastinaken-Rüebli-Suppe mit gerösteten Kernen",
       category: "abendbrot",
       diet: "vegan",
@@ -291,7 +290,7 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "schweizer_roesti_spiegelei",
-      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200611_49/berner-roesti/",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200911_74/scheibenroesti-mit-spiegeleiern/",
       title: "Knusprige Schweizer Rösti mit Spiegelei & Nüsslisalat",
       category: "schweizerisch",
       diet: "vegi",
@@ -311,7 +310,7 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "ghackets_hoernli",
-      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2019_DIVE_04/ghackets-mit-hoernli/",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200903_89/ghackets-mit-hoernli-und-apfelmus/",
       title: "Ghackets mit Hörnli, Lauch & Apfelmus (WG-Klassiker)",
       category: "fleisch",
       diet: "fleisch",
@@ -333,7 +332,7 @@ window.BRINGFRISCH_DATA = {
     },
     {
       id: "chicoree_gratin",
-      source_url: "https://www.bettybossi.ch/de/Rezept/ShowRezept/BB_KUCA130802_0066A-40-de",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200803_81_B/chicoree-gratin-mit-schinken/",
       title: "Überbackener Schweizer Chicorée-Schinken-Gratin",
       category: "schweizerisch",
       diet: "fleisch",

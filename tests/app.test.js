@@ -56,6 +56,10 @@ const row0 = () => d.querySelectorAll("#days .prow")[0];
 row0().querySelector(".pday").click();
 check(row0().classList.contains("open") && d.querySelectorAll("#days .prow.open").length === 1, "Tag antippen klappt das Menü auf");
 check(row0().querySelectorAll(".ing li").length > 0 && /Wechseln/.test(row0().querySelector(".links").textContent), "Zutaten + «Wechseln» im offenen Menü");
+// Rezept-Link: Original-Seite, sonst Web-Suche nach dem Menü (nie ein falscher Link); Schnelles/Reste ohne Link
+const linkRows = [...d.querySelectorAll("#days .prow:not(.unplanned)")].filter(r => !/schnell|Reste/.test(r.querySelector(".meta").textContent));
+check(linkRows.length > 0 && linkRows.every(r => r.querySelector(".links a[href^='https://']")), "jedes Menü hat einen Rezept-Link oder «Rezept suchen»");
+check(linkRows.every(r => { const a = r.querySelector(".links a"); return /fooby\.ch\/de\/suche/.test(a.href) === /Rezept suchen/.test(a.textContent); }), "ohne Original-Link: «Rezept suchen» auf Fooby mit dem Menü");
 const sameNode = d.querySelectorAll("#days .prow")[1];
 d.querySelectorAll("#days .prow")[2].querySelector(".pday").click();
 check(d.querySelectorAll("#days .prow")[1] === sameNode && !row0().classList.contains("open"), "Aufklappen zeichnet die anderen Zeilen nicht neu");

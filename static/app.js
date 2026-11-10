@@ -132,6 +132,15 @@
   // ---------------------------------------------------------------------------
   const $ = id => document.getElementById(id);
 
+  // Link zum Rezept: Original-Seite, sonst die Suche auf Fooby mit dem Menü (lieber suchen als falsch verlinken;
+  // Fooby und Swissmilk nehmen den Suchbegriff im Link an, Betty Bossi und Migusto nicht).
+  // Schnelles/Reste (Fertigpizza, Resteessen …) brauchen keinen. Links prüfen: tests/links_live.mjs
+  function recipeHref(r) {
+    if (r.source_url) return r.source_url;
+    if (!r.title || r.empty || r.quick || r.is_leftovers) return "";
+    return `https://fooby.ch/de/suche.html?query=${encodeURIComponent(r.title)}`;
+  }
+
   function esc(str) {
     return String(str == null ? "" : str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
@@ -919,7 +928,7 @@
           <button class="tap" type="button" data-like="${esc(id)}" aria-pressed="${on}" aria-label="${esc(r.title)} ${on ? "abwählen" : "wählen"}"></button>
           ${on ? `<span class="tick" aria-hidden="true">✓</span>` : ""}
           <span class="vt">${esc(r.title)}</span>
-          <span class="vm">${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${r.source_url ? ` · <a href="${esc(r.source_url)}" target="_blank" rel="noopener">🌐</a>` : ""}</span>
+          <span class="vm">${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${recipeHref(r) ? ` · <a href="${esc(recipeHref(r))}" target="_blank" rel="noopener">🌐</a>` : ""}</span>
           ${on ? `<span class="days-pick" role="group" aria-label="Wunschtag">${DAYS.map((d, i) => `<button type="button" data-wish="${esc(id)}" data-day="${i}" aria-pressed="${wish === i}">${d.slice(0, 2)}</button>`).join("")}</span>` : ""}
           <span class="vv">${votersOf(id).map(m => `<span class="mini" title="${esc(m.name)}">${esc(short[m.id])}</span>`).join("")}</span>
         </div>`;
@@ -1116,7 +1125,7 @@
               <b>${esc(r.title)}</b>
               <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}</small>
             </div>
-            ${r.source_url ? `<a class="pill" href="${esc(r.source_url)}" target="_blank" rel="noopener">🌐 Rezept</a>` : ""}
+            ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : "🔎 Rezept suchen"}</a>` : ""}
           </div>
           <div class="row">
             <button class="btn dark" type="button" data-assign="${esc(r.id)}">${actionLabel}</button>
@@ -2289,7 +2298,7 @@
       </div>
       <div class="more"><div><div class="inner">
         <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
-        <div class="links">${day.source_url ? `<a href="${esc(day.source_url)}" target="_blank" rel="noopener">Zum Rezept ↗</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button>${day.empty ? "" : `<input class="tm" type="time" data-time="${idx}" value="${esc(day.time || load(DINNER_KEY, "18:30"))}" aria-label="Znacht-Zeit am ${DAYS[idx]} (gilt für alle)">`}</div>
+        <div class="links">${recipeHref(day) ? `<a href="${esc(recipeHref(day))}" target="_blank" rel="noopener">${day.source_url ? "Zum Rezept ↗" : "Rezept suchen ↗"}</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button>${day.empty ? "" : `<input class="tm" type="time" data-time="${idx}" value="${esc(day.time || load(DINNER_KEY, "18:30"))}" aria-label="Znacht-Zeit am ${DAYS[idx]} (gilt für alle)">`}</div>
       </div></div></div>
     </div>`;
   }
