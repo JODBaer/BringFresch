@@ -32,6 +32,7 @@ tools/recipes_staging.json
 worker/.wrangler/
 tests/.e2e-items.json
 tests/shots/
+tests/.chrome/
 .claude/worktrees/
 dist-stage/
 

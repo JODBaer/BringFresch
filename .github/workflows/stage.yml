@@ -38,14 +38,14 @@ jobs:
       - name: Install test dependencies
         working-directory: tests
         run: npm ci
-      - name: All tests (Syntax, App, Integration, Worker, Layout)
+      - name: All tests (Syntax, App, Integration, Worker, Layout, UI)
         working-directory: tests
         run: npm run ci -- --shots
-      - name: Upload layout screenshots
+      - name: Upload screenshots (Layout + UI)
         if: failure()
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: layout-shots
+          name: test-shots
           path: tests/shots/
           if-no-files-found: ignore
 

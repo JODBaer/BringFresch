@@ -802,12 +802,16 @@
     }
   }
 
-  let votePushTimer = null;
+  // Pro Person ein eigener Timer: wechselt «Ich bin» innerhalb von 0.5 s, geht die Stimme davor nicht verloren
+  const votePushTimers = {};
   function pushMyVote() {
     if (!connected()) return;
-    clearTimeout(votePushTimer);
-    votePushTimer = setTimeout(() => {
-      api(`/week/${vote.week}/vote/${encodeURIComponent(myId())}`, { method: "PUT", body: myVote() }).catch(e => setSyncStatus(e.message, false));
+    const id = myId();
+    clearTimeout(votePushTimers[id]);
+    votePushTimers[id] = setTimeout(() => {
+      delete votePushTimers[id];
+      const v = vote.votes[id] || { likes: [], days: {} };
+      api(`/week/${vote.week}/vote/${encodeURIComponent(id)}`, { method: "PUT", body: v }).catch(e => setSyncStatus(e.message, false));
     }, 500);
   }
 
@@ -1461,6 +1465,7 @@
   let planPushTimer = null;
   async function pushPlanNow() {
     clearTimeout(planPushTimer);
+    planPushTimer = null; // sonst schickt jedes spätere Herunterziehen den alten Plan wieder hoch
     const r = await api("/plan", {
       method: "PUT",
       body: { week: weekKey(), plan: currentPlan(), members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
