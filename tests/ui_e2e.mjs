@@ -153,6 +153,10 @@ async function phone({ name, os, scheme, now, preset = {}, context, url }) {
   const page = await context.newPage();
   const P = { name, os, scheme, page, context, errors: [], allow: [], offline: false, blocked: [], calls: [] };
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  // iPhone/Android wie echte Handys erkennen (Kalender-Abo: iPhone = Kalender-App, Android = Google Kalender)
+  await page.setUserAgent(os === "ios"
+    ? "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+    : "Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36");
   await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }]);
   await page.emulateTimezone("Europe/Zurich");
   await page.evaluateOnNewDocument((nowIso, preset) => {
@@ -174,6 +178,8 @@ async function phone({ name, os, scheme, now, preset = {}, context, url }) {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async t => { window.__clip = String(t); } } });
     // Andere Apps öffnen (location.href = "bring://" bzw. "webcal://…" nach kurzer Pause) geht headless nicht und würde
     // unter Windows sogar echte Programme starten oder Chrome blockieren: der Sprung wird nur mitgeschrieben (window.__nav).
+    // Neue Fenster (z.B. Google Kalender «Hinzufügen») öffnen headless nichts: nur mitschreiben (window.__opened)
+    window.open = u => { window.__opened = String(u); return null; };
     const realSetTimeout = window.setTimeout;
     window.setTimeout = function (fn, ms, ...rest) {
       if (typeof fn === "function" && /location\.href\s*=/.test(String(fn))) return realSetTimeout(() => { window.__nav = String(fn); }, ms);
@@ -783,13 +789,14 @@ await step(A, "Abgleichen", async () => {
   await toastIs(A, /^Synchronisiert ✓/);
 });
 
-await step(A, "Kalender abonnieren: Link kopiert, Abo enthält den Plan um 19:15", async () => {
+await step(A, "Kalender abonnieren (iPhone): persönlicher Link, Kalender-App öffnet, Abo enthält den Plan um 19:15", async () => {
   // webcal:// öffnet headless nichts; geprüft wird der kopierte Link und was ein Kalender dort abholt
   await clearToasts(A);
   await tap(A, "#calendarBtn");
-  await toastIs(A, /Kalender-Link kopiert/);
+  await toastIs(A, /Kalender öffnet sich – «Abonnieren» tippen/);
   const link = await clip(A);
-  expect(link === `${WORKER}/cal/cal-test.ics`, `Link ${link}`);
+  const me = await A.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_me")) || JSON.parse(localStorage.getItem("bringfrisch_members"))[0].id);
+  expect(link === `${WORKER}/cal/cal-test.ics?me=${me}`, `Link ${link}`);
   await until(A, () => /webcal:/.test(window.__nav || ""), "Kalender-App wird nicht geöffnet");
   const ics = await (await worker.fetch(new Request(link), env)).text();
   const plan = await titles(A);
@@ -1377,16 +1384,41 @@ await step(D, "Erster Start: WG-Name + PIN, falscher PIN zeigt Fehler, dann «We
   expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_sync")).wg === "WG1" && !!JSON.parse(localStorage.getItem("bringfrisch_terms")).at), "WG-Name/Zustimmung nicht gemerkt");
   await until(D, () => document.getElementById("syncStatus").textContent === "Verbunden ✓", "nicht verbunden");
 });
-await step(D, "Einstellungen: kleine Links, Datenschutz öffnet die Seite Rechtliches", async () => {
+await step(D, "Du bist: eigener Kreis umrandet; Zeit pro Tag ändern gilt für alle (mit Name); Kalender nur meine Abende", async () => {
   await until(D, () => !document.getElementById("wpop").hidden, "nach dem Willkommen kommt die Wochenwahl nicht");
   await tap(D, "#wlater");
   await until(D, () => document.getElementById("wpop").hidden && !document.getElementById("wscrim").classList.contains("show"), "Pop-up bleibt");
+  const me = await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_me")));
+  expect((await count(D, '.prow[data-i="0"] .av.me')) === 1 && (await D.page.$eval('.prow[data-i="0"] .av.me', b => b.dataset.member)) === me, "eigener Kreis nicht umrandet");
+  await tap(D, '.prow[data-i="0"] .pday');
+  await until(D, () => document.querySelector('.prow[data-i="0"]').classList.contains("open"), "Tag geht nicht auf");
+  await clearToasts(D);
+  await pickNative(D, '.prow[data-i="0"] [data-time]', "20:15");
+  await toastIs(D, /Montag: Znacht um 20:15 – gilt für alle/);
+  const myName = await D.page.evaluate(id => JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.id === id).name, me);
+  expect((await text(D, '.prow[data-i="0"] .meta .by')) === `🕖 20:15 (${myName})`, "Zeit mit Name fehlt in der Zeile");
+  await waitPushed(D);
+  expect(kvJson("plan").plan[0].time === "20:15" && kvJson("plan").plan[0].time_by === myName, "Zeit nicht beim WG-Server");
+  await shot(D, "03-zeit-pro-tag");
+  await goTab(D, "wg");
+  expect((await D.page.$eval("#meSelect", s => s.value)) === me, "«Du bist» zeigt nicht mich");
+  // wie ein Android-Handy: Abo über Google Kalender
+  await D.page.evaluate(() => { window.__opened = ""; Object.defineProperty(navigator, "userAgent", { configurable: true, get: () => "Mozilla/5.0 (Linux; Android 15; Pixel 8)" }); });
+  await D.page.$eval("#setMore", d => { d.open = true; });
+  await clearToasts(D);
+  await tap(D, "#calendarBtn");
+  await until(D, () => /calendar\.google\.com\/calendar\/r\?cid=webcal/.test(window.__opened), "Google Kalender öffnet nicht");
+  const opened = decodeURIComponent(await D.page.evaluate(() => window.__opened));
+  expect(opened.includes(`/cal/cal-test.ics?me=${me}`), `Abo nicht persönlich: ${opened}`);
+  await shot(D, "04-kalender");
+});
+await step(D, "Einstellungen: kleine Links, Datenschutz öffnet die Seite Rechtliches", async () => {
   await tap(D, '[data-tab="wg"]');
   expect((await count(D, "#legalLinks a")) === 3, "Links in den Einstellungen fehlen");
   await D.page.$eval("#legalLinks", e => e.scrollIntoView());
   await Promise.all([D.page.waitForNavigation({ waitUntil: "load" }), tap(D, '#legalLinks a[href$="#datenschutz"]')]);
   expect(/Rechtliches/.test(await text(D, "h1")) && /keine Cookies/i.test(await text(D, "#cookies + p")), "Seite Rechtliches falsch");
-  await shot(D, "03-rechtliches");
+  await shot(D, "05-rechtliches");
   expect(D.errors.length === 0, D.errors.join(" | "));
 });
 await D.context.close();

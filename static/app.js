@@ -278,8 +278,8 @@
       // Rezeptdaten aus der aktuellen Datenbank nachziehen (Korrekturen an Zutaten wirken auch auf gespeicherte Pläne)
       const fresh = day.id != null && allRecipes().find(r => String(r.id) === String(day.id));
       if (fresh) {
-        const { eaters, leftover_buffer, extra_guests } = day;
-        plan[idx] = { ...fresh, day: DAYS[idx], eaters, leftover_buffer, extra_guests };
+        const { eaters, leftover_buffer, extra_guests, time, time_by } = day;
+        plan[idx] = { ...fresh, day: DAYS[idx], eaters, leftover_buffer, extra_guests, ...(time ? { time, time_by } : {}) };
       }
     });
     return plan;
@@ -670,6 +670,11 @@
   const DIET_LABEL = { fleisch: "Fleisch", vegi: "Vegi", vegan: "Vegan" };
 
   function renderMembers() {
+    if ($("meSelect")) {
+      const me = load(ME_KEY, null);
+      const cur = state.members.some(m => m.id === me) ? me : "";
+      $("meSelect").innerHTML = (cur ? "" : `<option value="" selected>– wählen –</option>`) + state.members.map(m => `<option value="${esc(m.id)}"${m.id === cur ? " selected" : ""}>${esc(m.name)}</option>`).join("");
+    }
     $("members").innerHTML = state.members.map(m => `
       <div class="member">
         <b>${esc(m.name)}</b>
@@ -953,6 +958,17 @@
   $("voteMe").onchange = () => {
     save(ME_KEY, $("voteMe").value);
     renderVote();
+    renderMembers();
+    renderDays();
+  };
+  // «Du bist» in den Einstellungen (pro Handy)
+  $("meSelect").onchange = () => {
+    if (!$("meSelect").value) return;
+    save(ME_KEY, $("meSelect").value);
+    renderMembers();
+    renderDays();
+    const m = state.members.find(x => x.id === $("meSelect").value);
+    toast(`Du bist ${m ? m.name : ""} ✓`);
   };
 
   $("voteGrid").addEventListener("click", e => {
@@ -1998,7 +2014,8 @@
       save(PLAN_UPDATED_KEY, Math.max(load(PLAN_UPDATED_KEY, 0), 1));
       schedulePlanPush();
       loadBringLists();
-    }
+      api("/wg").then(i => toast(`Verbunden mit ${i.name ? i.name.charAt(0).toUpperCase() + i.name.slice(1) : "der WG"} ✓`)).catch(() => toast("Verbunden ✓"));
+    } else toast(`✗ ${$("syncStatus").textContent || "Nicht verbunden"}`);
   });
 
   // Andere WG: der Stand des Servers gilt (sonst landen Plan und Mitbewohner der alten WG in der neuen)
@@ -2036,16 +2053,24 @@
     const before = sync;
     sync = { url: sync.url || DEFAULT_SYNC_URL, pin, wg };
     status.textContent = "Verbinde …";
+    const btn = $("welcomeJoin").querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = "Verbinde …";
+    const done = () => { btn.disabled = false; btn.textContent = "Verbinden"; };
     let remote;
     try {
       const info = await api("/wg");
       remote = await api("/settings");
-      if (info.name) status.textContent = `Verbunden mit ${info.name} ✓`;
+      const name = info.name ? info.name.charAt(0).toUpperCase() + info.name.slice(1) : wg;
+      status.textContent = `Verbunden mit ${name} ✓`;
+      $("welcomeOk").textContent = `✓ Verbunden mit ${name}`;
     } catch (err) {
       sync = before;
-      status.textContent = /Failed to fetch|NetworkError|Load failed/.test(err.message) ? "Keine Verbindung zum WG-Server – Internet?" : err.message;
+      done();
+      status.textContent = /Failed to fetch|NetworkError|Load failed/.test(err.message) ? "Keine Verbindung zum WG-Server – Internet?" : `✗ ${err.message} – nochmals versuchen`;
       return;
     }
+    done();
     if ((before.wg || "") !== wg) forgetWgStand();
     save(SYNC_KEY, sync);
     save(TERMS_KEY, { version: TERMS_VERSION, at: Date.now() });
@@ -2137,13 +2162,38 @@
     settingsChanged();
   });
 
+  // Kalender: persönlich (nur meine Abende). iPhone: webcal öffnet die Kalender-App.
+  // Android/PC: Google Kalender «Per URL hinzufügen» direkt öffnen (die Android-App kann selbst nicht abonnieren).
+  const isApple = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  async function myCalUrl(extra = "") {
+    const { url } = await api("/cal-link");
+    return `${url}?me=${encodeURIComponent(myId())}${extra}`;
+  }
   $("calendarBtn").onclick = async () => {
     if (!connected()) return toast("Zuerst mit dem WG-Server verbinden");
     try {
-      const { url } = await api("/cal-link");
+      const url = await myCalUrl();
+      const webcal = url.replace(/^https:/, "webcal:");
       await copyText(url);
-      toast("Kalender-Link kopiert – wird geöffnet");
-      setTimeout(() => { location.href = url.replace(/^https:/, "webcal:"); }, 400);
+      if (isApple()) {
+        toast("Kalender öffnet sich – «Abonnieren» tippen");
+        setTimeout(() => { location.href = url.replace(/^https:/, "webcal:"); }, 400);
+      } else {
+        toast("Google Kalender öffnet sich – «Hinzufügen» tippen. Link ist auch kopiert (Outlook: «Aus dem Internet»)");
+        setTimeout(() => { window.open(`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`, "_blank", "noopener"); }, 400);
+      }
+    } catch (e) {
+      toast(e.message);
+    }
+  };
+  $("calendarDlBtn").onclick = async () => {
+    if (!connected()) return toast("Zuerst mit dem WG-Server verbinden");
+    try {
+      if (planPushTimer) await pushPlanNow();
+      if (nextPushTimer) await pushNextNow();
+      const url = await myCalUrl(`&week=${shownWeek()}&dl=1`);
+      toast("Termine werden geladen – «Zum Kalender hinzufügen» tippen");
+      setTimeout(() => { location.href = url; }, 300);
     } catch (e) {
       toast(e.message);
     }
@@ -2216,6 +2266,7 @@
     `${DAYS[idx]}: für ${portionsFor(day)} kochen (${day.eaters.length + (day.extra_guests || 0)} Personen + ${day.leftover_buffer || 0} Reste). Antippen: plus eins`;
 
   function rowHTML(day, idx, short, today) {
+    const meId = load(ME_KEY, null);
     const many = state.members.length >= 5;
     const cols = Math.ceil(state.members.length / 2);
     const ings = dayIngredients(day);
@@ -2225,11 +2276,11 @@
         <button type="button" class="pday" aria-expanded="${idx === openIdx}" aria-label="${DAYS[idx]}: ganzes Menü zeigen">${DAYS[idx].slice(0, 2)}</button>
         <div class="dish">
           <button type="button" class="t" data-pick="${idx}" aria-label="${DAYS[idx]}: ${esc(day.title)} – wechseln">${esc(day.title)}</button>
-          <span class="meta">${esc(dayMeta(day))}</span>
+          <span class="meta">${esc(dayMeta(day))}${day.time ? ` · <span class="by">🕖 ${esc(day.time)}${day.time_by ? ` (${esc(day.time_by)})` : ""}</span>` : ""}</span>
         </div>
         <div class="who${many ? " many" : ""}"${many ? ` style="--cols:${cols}"` : ""}>${state.members.map((m, k) => {
           const on = day.eaters.includes(m.id);
-          return `<button type="button" class="av${on ? "" : " off"}${many && k >= cols && state.members.length % 2 ? " r2" : ""}" data-day="${idx}" data-member="${esc(m.id)}" aria-pressed="${on}" aria-label="${esc(m.name)} isst am ${DAYS[idx]} ${on ? "mit" : "nicht mit"}">${esc(short[m.id])}</button>`;
+          return `<button type="button" class="av${on ? "" : " off"}${m.id === meId ? " me" : ""}${many && k >= cols && state.members.length % 2 ? " r2" : ""}" data-day="${idx}" data-member="${esc(m.id)}" aria-pressed="${on}" aria-label="${esc(m.name)} isst am ${DAYS[idx]} ${on ? "mit" : "nicht mit"}">${esc(short[m.id])}</button>`;
         }).join("")}<span class="plus${b ? "" : " zero"}" aria-hidden="true">+${b}</span></div>
         <div class="tot">
           <button type="button" class="num" data-inc="${idx}" aria-label="${esc(totalLabel(day, idx))}">${portionsFor(day)}</button>
@@ -2238,7 +2289,7 @@
       </div>
       <div class="more"><div><div class="inner">
         <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
-        <div class="links">${day.source_url ? `<a href="${esc(day.source_url)}" target="_blank" rel="noopener">Zum Rezept ↗</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button></div>
+        <div class="links">${day.source_url ? `<a href="${esc(day.source_url)}" target="_blank" rel="noopener">Zum Rezept ↗</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button>${day.empty ? "" : `<input class="tm" type="time" data-time="${idx}" value="${esc(day.time || load(DINNER_KEY, "18:30"))}" aria-label="Znacht-Zeit am ${DAYS[idx]} (gilt für alle)">`}</div>
       </div></div></div>
     </div>`;
   }
@@ -2300,7 +2351,23 @@
   $("days").addEventListener("change", e => {
     const sel = e.target.closest("[data-buffer]");
     if (sel) setBuffer(+sel.dataset.buffer, parseInt(sel.value, 10));
+    const tm = e.target.closest("[data-time]");
+    if (tm && /^\d{2}:\d{2}$/.test(tm.value)) setDayTime(+tm.dataset.time, tm.value);
   });
+
+  // Zeit pro Tag: gilt für alle (Plan + Kalender-Abo), man sieht, wer sie geändert hat
+  function setDayTime(idx, value) {
+    const day = state.plan[idx];
+    if (value === load(DINNER_KEY, "18:30")) { delete day.time; delete day.time_by; }
+    else {
+      const me = state.members.find(m => m.id === load(ME_KEY, null));
+      day.time = value;
+      day.time_by = me ? me.name : "";
+    }
+    savePlan();
+    refresh();
+    toast(`${DAYS[idx]}: Znacht um ${value} – gilt für alle`);
+  }
 
   // ---------------------------------------------------------------------------
   // Dichte: einmal beim Start/Drehen so wählen, dass 7 Tage + ein offener Tag hineinpassen

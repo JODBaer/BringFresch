@@ -20,6 +20,8 @@
 //   GET/PUT /settings                 -> WG-Einstellungen (Mitbewohner, Znacht-Zeit, Rezept-Webseiten, eigene Rezepte)
 //   GET  /cal-link                    -> { url } Abo-Link für den Kalender
 //   GET  /cal/:token.ics              -> Kalender-Abo (iCal) mit allen Znacht der Woche
+//        ?me=<id>                     -> nur die Abende, an denen diese Person mitisst (persönliches Abo)
+//        ?week=2026-W47&dl=1          -> einmal herunterladen: nur diese Woche, eigene UIDs, als Datei
 //   GET  /backup                      -> { days: ["2026-11-10", ...] }  (tägliche Sicherung, 30 Tage)
 //   GET  /backup/:day                 -> { day, keys: { plan: …, vorrat: …, … } }
 //
@@ -74,7 +76,7 @@ async function route(request, env, url) {
   if (path === "/health") return json({ ok: true });
 
   const cal = path.match(/^\/cal\/([^/]+)\.ics$/);
-  if (cal && method === "GET") return calendar(env, cal[1]);
+  if (cal && method === "GET") return calendar(env, cal[1], url.searchParams);
 
   const wg = await requireWg(request, env);
   env = { ...env, WG: scoped(env.WG, wg.prefix), RAW: env.WG, WG_CTX: wg };
@@ -478,7 +480,7 @@ function stamp(d) {
   return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 }
 
-async function calendar(env, token) {
+async function calendar(env, token, params = new URLSearchParams()) {
   if (!env.CAL_TOKEN || !timingSafeEqual(token, env.CAL_TOKEN.trim())) {
     const slug = /^[\w-]{16,}$/.test(token) ? await env.WG.get(`cal:${token}`) : null;
     if (!slug) return new Response("Not found", { status: 404 });
@@ -487,14 +489,23 @@ async function calendar(env, token) {
   const doc = (await env.WG.get("plan", "json")) || {};
   const nextKey = weekAfter(doc.week);
   const next = nextKey ? await env.WG.get(`plan:${nextKey}`, "json") : null;
+  const me = String(params.get("me") || "").slice(0, 60);
+  const week = /^\d{4}-W\d{2}$/.test(params.get("week") || "") ? params.get("week") : "";
+  const dl = params.get("dl") === "1";
+  const docs = week ? [doc.week === week ? doc : next && next.week === week ? next : await env.WG.get(`plan:${week}`, "json")] : [doc, next];
+  const meName = me && ((doc.members || []).find(m => m.id === me) || {}).name;
   const lines = [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//BringFrisch//WG-Znacht//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    "X-WR-CALNAME:BringFrisch Znacht", "X-WR-TIMEZONE:Europe/Zurich", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H",
+    `X-WR-CALNAME:BringFrisch Znacht${meName ? ` (${icsEscape(meName)})` : ""}`, "X-WR-TIMEZONE:Europe/Zurich", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H",
   ];
-  for (const d of [doc, next]) if (d) lines.push(...events(d));
+  for (const d of docs) if (d) lines.push(...events(d, { me, dl }));
   lines.push("END:VCALENDAR");
   return new Response(lines.join("\r\n") + "\r\n", {
-    headers: { "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "max-age=300" },
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Cache-Control": dl ? "no-store" : "max-age=300",
+      ...(dl ? { "Content-Disposition": `attachment; filename="BringFrisch-${week || doc.week || "Woche"}.ics"` } : {}),
+    },
   });
 }
 
@@ -510,7 +521,7 @@ function weekAfter(weekKey) {
 }
 
 // Termine einer Woche (noch offene Tage bekommen keinen)
-function events(doc) {
+function events(doc, { me = "", dl = false } = {}) {
   const lines = [];
   const monday = mondayOf(doc.week);
   if (monday && Array.isArray(doc.plan)) {
@@ -520,6 +531,7 @@ function events(doc) {
       if (!day || !day.title || day.empty) return; // noch offen: kein Termin
       const eaters = (day.eaters || []).map(id => names[id] || id);
       if (eaters.length === 0 && !day.extra_guests) return; // niemand zuhause
+      if (me && !(day.eaters || []).includes(me)) return; // persönlich: nur meine Abende
       const date = new Date(monday);
       date.setUTCDate(monday.getUTCDate() + i);
       const ymd = date.toISOString().slice(0, 10).replace(/-/g, "");
@@ -531,11 +543,12 @@ function events(doc) {
         `Es essen: ${eaters.join(", ") || "–"}${day.extra_guests ? ` + ${day.extra_guests} Gäste` : ""}`,
         `Reste fürs Zmittag: +${day.leftover_buffer ?? 2} Portionen`,
         day.cook ? `Koch: ${day.cook}` : "",
+        day.time && day.time_by ? `Zeit geändert von ${day.time_by}` : "",
         day.source_url ? `Rezept: ${day.source_url}` : "",
       ].filter(Boolean).join("\n");
       lines.push(
         "BEGIN:VEVENT",
-        `UID:bringfrisch-${doc.week}-${i}@bringfrisch`,
+        `UID:bringfrisch-${dl ? "dl-" : ""}${doc.week}-${i}${me ? `-${me}` : ""}@bringfrisch`,
         `DTSTAMP:${stamp(new Date(doc.updated || Date.now()))}`,
         `DTSTART;TZID=Europe/Zurich:${start}`,
         `DTEND;TZID=Europe/Zurich:${end}`,

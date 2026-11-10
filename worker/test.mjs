@@ -165,6 +165,16 @@ check(got.week === "2026-W47" && got.plan[0].title === "Nächste 0", "Plan KW 47
 check((await (await call("/plan")).json()).week === "2026-W46", "laufender Plan bleibt KW 46");
 const ics2 = await (await call("/cal/cal-secret.ics", { pin: null })).text();
 check((ics2.match(/BEGIN:VEVENT/g) || []).length === 8 && ics2.includes("DTSTART;TZID=Europe/Zurich:20261116T183000"), "Kalender zeigt auch die nächste Woche (nur geplante Tage)");
+// 4b2. Persönliches Abo (?me=), Zeit pro Tag, «Diese Woche herunterladen» (?week=&dl=1)
+const plan3 = plan.map((d, i) => (i === 0 ? { ...d, eaters: ["joshua"], time: "20:15", time_by: "Joshua" } : d));
+await call("/plan", { method: "PUT", body: { week: "2026-W46", plan: plan3, members: [{ id: "joshua", name: "Joshua" }, { id: "jo", name: "Jo" }] } });
+const icsJo = await (await call("/cal/cal-secret.ics?me=jo", { pin: null })).text();
+check((icsJo.match(/BEGIN:VEVENT/g) || []).length === 7 && icsJo.includes("X-WR-CALNAME:BringFrisch Znacht (Jo)"), `persönliches Abo: nur Jos Abende (${(icsJo.match(/BEGIN:VEVENT/g) || []).length})`);
+const icsJoshua = await (await call("/cal/cal-secret.ics?me=joshua", { pin: null })).text();
+check(icsJoshua.includes("DTSTART;TZID=Europe/Zurich:20261109T201500") && icsJoshua.replace(/\r\n /g, "").includes("Zeit geändert von Joshua"), "Zeit pro Tag: 20:15 im Kalender, mit wer sie geändert hat");
+r = await call("/cal/cal-secret.ics?me=jo&week=2026-W47&dl=1", { pin: null });
+const icsDl = await r.text();
+check((icsDl.match(/BEGIN:VEVENT/g) || []).length === 2 && /attachment; filename="BringFrisch-2026-W47.ics"/.test(r.headers.get("Content-Disposition")) && icsDl.includes("UID:bringfrisch-dl-2026-W47-0-jo@"), "herunterladen: nur diese Woche, nur meine Abende, als Datei mit eigenen Termin-IDs");
 
 // 4c. Test-Server: schreibt nur in die Liste «Home», nie in die WG-Liste
 const stageEnv = { ...env, ONLY_LIST_NAME: "Home" };
