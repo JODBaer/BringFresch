@@ -17,6 +17,7 @@
 //
 // Secrets (npx wrangler secret put …): BRING_EMAIL, BRING_PASSWORD, WG_PIN, CAL_TOKEN
 // Optional: BRING_LIST_UUID (sonst die Standardliste des Bot-Kontos)
+// Test-Server (wrangler --env stage): ONLY_LIST_NAME = "Home" -> schreibt nur in diese Liste des Bots, nie in die WG-Liste
 // KV-Binding: WG
 
 const BRING = "https://api.getbring.com/rest/v2/";
@@ -27,7 +28,11 @@ const BRING_HEADERS = {
   "X-BRING-CLIENT-SOURCE": "webApp",
   "X-BRING-COUNTRY": "CH",
 };
-const ALLOWED_ORIGINS = [/^https:\/\/jodbaer\.github\.io$/, /^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/];
+const ALLOWED_ORIGINS = [
+  /^https:\/\/jodbaer\.github\.io$/,
+  /^https:\/\/bringfrisch-test\.bringfrisch-worker\.workers\.dev$/, // Test-Seite (tools/build_stage.mjs)
+  /^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+];
 const RECIPE_HOSTS = /(^|\.)(bettybossi\.ch|migros\.ch|fooby\.ch|swissmilk\.ch|chefkoch\.de)$/;
 const MAX_ITEMS = 45; // Free-Plan: 50 Unteranfragen pro Aufruf (1 Login + 1 Liste + Artikel)
 
@@ -185,23 +190,34 @@ async function bringLogin(env) {
   }
   if (!res.ok) throw httpError(502, `Bring!-Login fehlgeschlagen (${res.status})`);
   const data = await res.json();
+  if (!data.uuid || !data.access_token) throw httpError(502, "Bring!-Antwort unvollständig");
+  const headers = { ...BRING_HEADERS, "X-BRING-USER-UUID": data.uuid, Authorization: `Bearer ${data.access_token}` };
+  if (env.ONLY_LIST_NAME) {
+    // Test-Server: immer genau diese Liste (per Name), egal was gespeichert ist
+    const lists = await fetchLists(data.uuid, headers);
+    const hit = lists.find(l => l.name === env.ONLY_LIST_NAME);
+    if (!hit) throw httpError(502, `Test-Server: Liste «${env.ONLY_LIST_NAME}» im Bot-Konto nicht gefunden`);
+    return { listUuid: hit.uuid, userUuid: data.uuid, headers, lists };
+  }
   const chosen = await env.WG.get("bringList");
   const listUuid = chosen || env.BRING_LIST_UUID || data.bringListUUID;
-  if (!data.uuid || !data.access_token || !listUuid) throw httpError(502, "Bring!-Antwort unvollständig");
-  return {
-    listUuid,
-    userUuid: data.uuid,
-    headers: { ...BRING_HEADERS, "X-BRING-USER-UUID": data.uuid, Authorization: `Bearer ${data.access_token}` },
-  };
+  if (!listUuid) throw httpError(502, "Bring!-Antwort unvollständig");
+  return { listUuid, userUuid: data.uuid, headers };
+}
+
+async function fetchLists(userUuid, headers) {
+  const res = await fetch(`${BRING}bringusers/${userUuid}/lists`, { headers });
+  if (!res.ok) throw httpError(502, `Bring!-Listen nicht lesbar (${res.status})`);
+  const data = await res.json();
+  return (data.lists || []).map(l => ({ uuid: l.listUuid, name: l.name }));
 }
 
 // Alle Listen des Bot-Kontos (zum Einrichten: welche ist die WG-Liste?)
 async function bringLists(env) {
   const s = await bringLogin(env);
-  const res = await fetch(`${BRING}bringusers/${s.userUuid}/lists`, { headers: s.headers });
-  if (!res.ok) throw httpError(502, `Bring!-Listen nicht lesbar (${res.status})`);
-  const data = await res.json();
-  return { active: s.listUuid, lists: (data.lists || []).map(l => ({ uuid: l.listUuid, name: l.name })) };
+  const lists = s.lists || (await fetchLists(s.userUuid, s.headers));
+  // Test-Server zeigt nur seine eine Liste, damit niemand aus Versehen die WG-Liste wählt
+  return { active: s.listUuid, lists: env.ONLY_LIST_NAME ? lists.filter(l => l.uuid === s.listUuid) : lists };
 }
 
 // WG wählt in der App, in welche Bring!-Liste geschrieben wird (gilt für alle Handys)

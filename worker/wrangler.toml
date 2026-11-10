@@ -1,8 +1,8 @@
-name = "bringfrisch"
+﻿name = "bringfrisch"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 
-# Gemeinsamer WG-Speicher (Wochenwahl, Plan für den Kalender).
+# Gemeinsamer WG-Speicher (Wochenwahl, Plan fÃ¼r den Kalender).
 # Einmalig anlegen: npx wrangler kv namespace create WG  -> die ausgegebene id hier eintragen.
 [[kv_namespaces]]
 binding = "WG"
@@ -12,5 +12,17 @@ id = "477e6573755e423fba0e3e8410fbb8cc"
 #   npx wrangler secret put BRING_EMAIL      # E-Mail des Bring!-Bot-Kontos
 #   npx wrangler secret put BRING_PASSWORD   # Passwort des Bot-Kontos
 #   npx wrangler secret put WG_PIN           # PIN, den alle in der App eingeben
-#   npx wrangler secret put CAL_TOKEN        # langer Zufallstext für den Kalender-Link
+#   npx wrangler secret put CAL_TOKEN        # langer Zufallstext fÃ¼r den Kalender-Link
 # Optional: BRING_LIST_UUID (sonst Standardliste des Bot-Kontos)
+
+# ---------------------------------------------------------------------------
+# Test-Server (Stage): npx wrangler deploy --env stage
+# Eigener Speicher, schreibt NUR in die Bring!-Liste Â«HomeÂ» des Bots (nie in die WG-Liste).
+# Secrets einmalig: powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1
+[env.stage]
+name = "bringfrisch-stage"
+vars = { ONLY_LIST_NAME = "Home" }
+
+[[env.stage.kv_namespaces]]
+binding = "WG"
+id = "48eef0faf2ce4bd3bb74fed8f4cfe31f"

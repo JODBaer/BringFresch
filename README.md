@@ -58,13 +58,19 @@ Am Schluss steht `PASS: alles grün` oder `FAIL: …` (dann Exit-Code 1). Andere
 | Wo | Was |
 |---|---|
 | lokal | `npm run ci` (einzeln: `npm test`, `npm run layout`) |
-| GitHub Actions | nur bei einem Release-Tag `v*` (oder von Hand: Actions → Run workflow): dieselben Tests, danach GitHub Pages – nur wenn alles grün ist |
-| nur von Hand | echte Durchläufe mit Bring! und WG-Server: `tests\e2e_live.ps1`, `tools\check_live.ps1` (brauchen Zugangsdaten, nie in CI) |
+| GitHub Actions, Push auf `main` | dieselben Tests → **Test-Version** aktualisieren → Live-Test gegen echtes Bring! (Liste «Home» des Bots, räumt auf) – `stage.yml` |
+| GitHub Actions, Release-Tag `v*` | dieselben Tests → WG-Version auf GitHub Pages, nur wenn alles grün ist – `deploy-pages.yml` |
+| nur von Hand | Live-Test «Home»: `tests\stage_live.ps1` (fragt den Test-PIN) · WG-Server: `tests\e2e_live.ps1`, `tools\check_live.ps1` |
+
+**Test-Version** (zum Ausprobieren, ohne die WG zu stören): <https://bringfrisch-test.bringfrisch-worker.workers.dev>
+– orange «TEST»-Band, eigener Test-Server mit eigenem Speicher und eigenem Test-PIN, schreibt **nur** in die Bring!-Liste «Home» des Bots (kann technisch nicht auf die WG-Liste).
+Von Hand aktualisieren: `node tools/build_stage.mjs`, dann `cd worker && npx wrangler deploy --env stage` und `npx wrangler deploy -c worker/stage-site.jsonc`.
+Einmalig einrichten: `powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1` (Bot-Zugang + Test-PIN), in GitHub die Secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `STAGE_PIN`.
 
 **Release** (neue App-Version veröffentlichen) – ein normaler Push auf `main` veröffentlicht nichts:
 
 ```bash
-git tag v1.2.0 && git push origin v1.2.0
+git tag v0.3.0 && git push origin v0.3.0
 ```
 
 Fortschritt unter GitHub → Actions. Rote Tests = keine neue Version; die Bildschirmfotos liegen dann als Artefakt «layout-shots» beim Lauf.

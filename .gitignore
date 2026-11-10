@@ -33,3 +33,10 @@ worker/.wrangler/
 tests/.e2e-items.json
 tests/shots/
 .claude/worktrees/
+dist-stage/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

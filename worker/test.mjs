@@ -144,6 +144,25 @@ check((await (await call("/plan")).json()).week === "2026-W46", "laufender Plan 
 const ics2 = await (await call("/cal/cal-secret.ics", { pin: null })).text();
 check((ics2.match(/BEGIN:VEVENT/g) || []).length === 8 && ics2.includes("DTSTART;TZID=Europe/Zurich:20261116T183000"), "Kalender zeigt auch die nächste Woche (nur geplante Tage)");
 
+// 4c. Test-Server: schreibt nur in die Liste «Home», nie in die WG-Liste
+const stageEnv = { ...env, ONLY_LIST_NAME: "Home" };
+const stageCall = (path, opts = {}) => worker.fetch(new Request("https://stage.example" + path, {
+  method: opts.method || "GET",
+  headers: { Origin: "https://bringfrisch-test.bringfrisch-worker.workers.dev", "Content-Type": "application/json", "X-WG-PIN": "1234" },
+  body: opts.body ? JSON.stringify(opts.body) : undefined,
+}), stageEnv);
+store.set("bringList", "list-wg"); // selbst wenn die WG-Liste gespeichert ist …
+r = await stageCall("/bring/lists");
+check(r.headers.get("Access-Control-Allow-Origin") === "https://bringfrisch-test.bringfrisch-worker.workers.dev", "CORS für die Test-Seite");
+ls = await r.json();
+check(ls.active === "list-1" && ls.lists.length === 1 && ls.lists[0].name === "Home", "Test-Server zeigt nur «Home»");
+r = await stageCall("/bring/target", { method: "PUT", body: { uuid: "list-wg" } });
+check(r.status === 400, "Test-Server kann nicht auf die WG-Liste umgestellt werden");
+const wgBefore = wgPuts.length;
+await stageCall("/bring/sync", { method: "POST", body: { items: [{ name: "Stage Test", spec: "1 Stk" }] } });
+check(wgPuts.length === wgBefore && bringList.some(x => x.name === "Stage Test"), "Test-Server schreibt in «Home», nicht in die WG-Liste");
+store.delete("bringList");
+
 // 5. Rezept-Link
 r = await call("/recipe?url=" + encodeURIComponent("https://www.bettybossi.ch/de/rezepte/rezept/zwiebelsuppe-10010500/"));
 const rec = await r.json();

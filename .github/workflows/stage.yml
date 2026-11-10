@@ -1,0 +1,100 @@
+# Test-Version: jeder Push auf main (oder von Hand «Run workflow")
+#   1. alle Offline-Tests (wie lokal: cd tests && npm ci && npm run ci)
+#   2. Test-Server + Test-Seite auf Cloudflare aktualisieren
+#        https://bringfrisch-test.bringfrisch-worker.workers.dev  (schreibt nur in die Bring!-Liste «Home» des Bots)
+#   3. Live-Test gegen echtes Bring! («Home»), räumt danach auf
+# Die WG-Version (GitHub Pages) kommt nur mit einem Release-Tag v* (deploy-pages.yml).
+# Secrets (GitHub > Settings > Secrets and variables > Actions):
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  -> Schritt 2 (ohne: wird übersprungen)
+#   STAGE_PIN                                    -> Schritt 3 (ohne: wird übersprungen)
+name: Test-Version (Tests + Stage + Bring! Home)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "stage"
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TZ: Europe/Zurich
+      BROWSER: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm ci
+      - name: All tests (Syntax, App, Integration, Worker, Layout)
+        working-directory: tests
+        run: npm run ci -- --shots
+      - name: Upload layout screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: layout-shots
+          path: tests/shots/
+          if-no-files-found: ignore
+
+  stage:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 22
+      - name: Skip notice
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::notice::Secret CLOUDFLARE_API_TOKEN fehlt – Test-Version wird nicht aktualisiert."
+      - name: Test-Server (Worker --env stage)
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: worker
+        run: npx --yes wrangler@4.159.0 deploy --env stage
+      - name: Test-Seite (dist-stage)
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: |
+          node tools/build_stage.mjs
+          npx --yes wrangler@4.159.0 deploy -c worker/stage-site.jsonc
+
+  live:
+    needs: stage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      STAGE_PIN: ${{ secrets.STAGE_PIN }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - name: Skip notice
+        if: env.STAGE_PIN == ''
+        run: echo "::notice::Secret STAGE_PIN fehlt – Live-Test gegen Bring! «Home» übersprungen."
+      - name: Install test dependencies
+        if: env.STAGE_PIN != ''
+        working-directory: tests
+        run: npm ci
+      - name: Live-Test Bring! «Home»
+        if: env.STAGE_PIN != ''
+        working-directory: tests
+        run: node stage_live.mjs
