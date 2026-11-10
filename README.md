@@ -86,7 +86,7 @@ Hilfsfunktionen: `tap` (antippen), `typeInto` (Feld antippen + tippen), `choose`
 **Test-Version** (zum Ausprobieren, ohne die WG zu stören): <https://bringfrisch-test.bringfrisch-worker.workers.dev>
 – orange «TEST»-Band, eigener Test-Server mit eigenem Speicher und eigenem Test-PIN, schreibt **nur** in die Bring!-Liste «Home» des Bots (kann technisch nicht auf die WG-Liste).
 Von Hand aktualisieren: `node tools/build_stage.mjs`, dann `cd worker && npx wrangler deploy --env stage` und `npx wrangler deploy -c worker/stage-site.jsonc`.
-Einmalig einrichten: `powershell -ExecutionPolicy Bypass -File worker\setup-stage.ps1` (Bot-Zugang + Test-PIN), in GitHub die Secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `STAGE_PIN`.
+Einmalig einrichten (alle Zugangsdaten, Schritt für Schritt, nichts wird angezeigt): `powershell -ExecutionPolicy Bypass -File tools\setup-secrets.ps1` – GitHub-Anmeldung, Cloudflare Account-ID (automatisch) und API-Token, Test-Server mit Bot-Zugang und Test-PIN.
 
 **Release** (neue App-Version veröffentlichen) – ein normaler Push auf `main` veröffentlicht nichts:
 

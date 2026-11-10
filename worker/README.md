@@ -57,10 +57,13 @@ Logs live ansehen: `npx wrangler tail`
 
 ## Hochladen per Release (empfohlen)
 
-Ein Release-Tag (`git tag v1.2.0 && git push origin v1.2.0`) lädt nach grünen Tests zuerst den WG-Server und dann die App hoch (`.github/workflows/deploy-pages.yml`). Dafür braucht GitHub zwei Secrets (Repo → Settings → Secrets and variables → Actions):
+Ein Release-Tag (`git tag v1.2.0 && git push origin v1.2.0`) lädt nach grünen Tests zuerst den WG-Server und dann die App hoch (`.github/workflows/deploy-pages.yml`). Dafür braucht GitHub die Secrets `CLOUDFLARE_ACCOUNT_ID` und `CLOUDFLARE_API_TOKEN` (für die Test-Version auch `STAGE_PIN`). Einrichten Schritt für Schritt – du tippst, nichts wird angezeigt oder gespeichert, die Account-ID wird automatisch aus `wrangler whoami` übernommen:
 
-- `CLOUDFLARE_ACCOUNT_ID` – steht bei `npx wrangler whoami`
-- `CLOUDFLARE_API_TOKEN` – dash.cloudflare.com → My Profile → API Tokens → **Create Token** → Vorlage **«Edit Cloudflare Workers»** → Konto wählen → erstellen, dann `gh secret set CLOUDFLARE_API_TOKEN` und einfügen
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\setup-secrets.ps1
+```
+
+Kontrolle (nur Namen, nie Werte): `gh secret list`
 
 Fehlt der Token, veröffentlicht der Release nur die App und zeigt eine Warnung. Alte Server-Version zurückholen: `npx wrangler rollback`.
 
