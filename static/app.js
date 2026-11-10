@@ -19,7 +19,7 @@
   ];
 
   // Adresse des Cloudflare Workers (nach dem ersten Deploy hier eintragen; in der App änderbar)
-  const APP_VERSION = "1.4.0";
+  const APP_VERSION = "1.5.0";
   // Spenden-Link (z.B. Wise «Pay me»-Link https://wise.com/pay/me/…); leer = Knopf ausgeblendet
   const DONATE_URL = "";
   const REPO_URL = "https://github.com/jodbaer/BringFresch";
@@ -2502,6 +2502,14 @@
     for (const [k, v] of Object.entries(vars)) st.setProperty(k, v);
     themeProps = Object.keys(vars);
     renderThemePick();
+    syncThemeColor();
+  }
+  // Statusleiste oben (Android/Chrome) und Taskwechsler in der Hintergrundfarbe des Designs
+  function syncThemeColor() {
+    const meta = document.getElementById("themeColor");
+    if (!meta || !document.body) return;
+    const c = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || getComputedStyle(document.body).backgroundColor;
+    if (c) meta.setAttribute("content", c);
   }
   if (darkMq && darkMq.addEventListener) darkMq.addEventListener("change", applyTheme);
 
@@ -2607,6 +2615,62 @@
   $("setVoteBtn").onclick = () => openVoteFor();
   $("appVersion").textContent = `Version ${APP_VERSION}`;
   $("repoLink").href = REPO_URL;
+  $("appVersionTop").textContent = APP_VERSION;
+  $("repoLinkTop").href = REPO_URL;
+
+  // Aktualisieren: erst eigene Änderungen senden und den Stand der WG holen, dann neue App-Version laden
+  const verNum = v => String(v || "0").split(".").map(n => parseInt(n, 10) || 0);
+  const isNewer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+  async function latestVersion() {
+    const r = await fetch(`app.js?v=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const m = (await r.text()).match(/const APP_VERSION = "([^"]+)"/);
+    return m ? m[1] : null;
+  }
+  function setUpdateState(html, isNew) {
+    $("updateState").innerHTML = html;
+    $("versionCard").classList.toggle("new", !!isNew);
+  }
+  async function hardReload() {
+    try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* egal */ }
+    try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch (e) { /* egal */ }
+    location.reload();
+  }
+  const repoHtml = () => `Quellcode: <a href="${esc(REPO_URL)}" target="_blank" rel="noopener">GitHub ↗</a>`;
+  async function checkUpdate(quiet) {
+    try {
+      const latest = await latestVersion();
+      if (latest && isNewer(latest, APP_VERSION)) {
+        setUpdateState(`Neue Version <b>${esc(latest)}</b> verfügbar · ${repoHtml()}`, true);
+        if (quiet) toast(`Neue Version ${latest} verfügbar`, { label: "Laden", run: () => $("updateBtn").click() });
+        return latest;
+      }
+      if (!quiet) setUpdateState(`Neueste Version ✓ · ${repoHtml()}`);
+      return null;
+    } catch (e) {
+      if (!quiet) setUpdateState(`Offline – später nochmals · ${repoHtml()}`);
+      return null;
+    }
+  }
+  $("updateBtn").onclick = async () => {
+    const btn = $("updateBtn");
+    btn.disabled = true;
+    setUpdateState("Wird abgeglichen …");
+    try {
+      if (connected()) await syncNow(); // eigene Änderungen zuerst hoch, dann Stand der WG holen
+      const latest = await checkUpdate(false);
+      if (latest) {
+        setUpdateState(`Version ${esc(latest)} wird geladen …`, true);
+        toast(`Version ${latest} wird geladen …`);
+        setTimeout(hardReload, 600);
+        return;
+      }
+      toast(connected() ? `Alles aktuell: Version ${APP_VERSION}, synchronisiert ✓` : `Neueste Version ${APP_VERSION} ✓ (nicht verbunden)`);
+    } finally {
+      btn.disabled = false;
+    }
+  };
+  setTimeout(() => checkUpdate(true), 4000); // beim Start leise nachsehen
   if (DONATE_URL) { $("donateLink").href = DONATE_URL; $("donateRow").hidden = false; }
 
   // Woche wechseln: Chip in der Abschnittszeile oder seitlich über die Tage wischen

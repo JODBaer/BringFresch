@@ -81,10 +81,9 @@ Die heutigen Endpunkte bleiben gleich, damit die App nur wenig ändern muss. Neu
 - **Geteilt:** WG A teilt ein Rezept, WG B sieht es und übernimmt es. Ändert WG B etwas, entsteht eine Kopie. Löscht WG A, bleibt der Plan von WG B intakt.
 - **UI-Test:** zwei WGs in zwei Browser-Profilen.
 
-## Offene Fragen (Joshua)
+## Entscheide (Joshua, 10.11.2026)
 
-- Wer darf eine neue WG anlegen: nur du, oder jede Person mit Link?
-- Sollen geteilte Rezepte mit dem WG-Namen («von WG Hottingen») oder anonym erscheinen?
-- Soll ein Rezept auch zwischen nur zwei WGs geteilt werden können (befreundete WGs), oder genügt «alle»?
+- **Neue WG anlegen: nur Joshua**, von Hand per Skript. Keine Registrierung in der App.
+- **Eigener Gebrauch:** keine öffentliche Plattform. «Geteilt» heisst: zwischen den WGs, die Joshua selbst anlegt. Darum genügt «für alle WGs»; Freigaben für einzelne WGs und die Herkunftsangabe sind nicht nötig. Geteilte Rezepte zeigen schlicht «geteilt».
 
 Grundsatz aus CLAUDE.md bleibt: **erst Praxistest mit der eigenen WG**, dann bauen. Bis dahin ändert dieses Dokument nichts am laufenden System.

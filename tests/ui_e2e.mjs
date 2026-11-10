@@ -645,6 +645,18 @@ await step(A, "Einstellungen: Über BringFrisch (Version, GitHub, Impressum)", a
   expect((await A.page.$eval("#repoLink", a => a.href)) === "https://github.com/jodbaer/BringFresch" && /Impressum/.test(await text(A, "#tab-wg")), "GitHub-Link/Impressum fehlt");
 });
 
+await step(A, "Einstellungen oben: Version + GitHub sichtbar, «Aktualisieren» gleicht ab und prüft die Version; Statusleiste im Design", async () => {
+  await goTab(A, "wg");
+  const top = await A.page.evaluate(() => { const c = document.getElementById("versionCard"), r = c.getBoundingClientRect(); return { first: c === document.querySelector("#tab-wg > *"), v: document.getElementById("appVersionTop").textContent, repo: document.getElementById("repoLinkTop").href, top: r.top, vh: innerHeight }; });
+  expect(top.first && /^\d+\.\d+\.\d+$/.test(top.v) && top.repo === "https://github.com/jodbaer/BringFresch" && top.top < top.vh / 2, `Version/Repo nicht oben: ${JSON.stringify(top)}`);
+  await clearToasts(A);
+  await tap(A, "#updateBtn");
+  await toastIs(A, /Alles aktuell|Neueste Version/);
+  expect(/Neueste Version ✓/.test(await text(A, "#updateState")), "Status nach Aktualisieren fehlt");
+  const tc = await A.page.evaluate(() => ({ meta: document.getElementById("themeColor").getAttribute("content"), bg: getComputedStyle(document.documentElement).getPropertyValue("--bg").trim(), sb: document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content }));
+  expect(tc.meta && tc.meta === tc.bg && tc.sb === "default", `Statusleiste nicht im Design: ${JSON.stringify(tc)}`);
+});
+
 await step(A, "Einstellungen über ⋮: nicht verbunden, «Mehr» offen", async () => {
   await goTab(A, "wg");
   await noHScroll(A, "Einstellungen");

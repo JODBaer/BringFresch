@@ -92,6 +92,11 @@ jobs:
           mkdir -p _site
           cp index.html _site/
           cp -r static _site/static
+          # Version in der App = Release-Tag (v1.5.0 -> 1.5.0), damit «Aktualisieren» die neue Version erkennt
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            sed -i "s/const APP_VERSION = \"[^\"]*\"/const APP_VERSION = \"${GITHUB_REF_NAME#v}\"/" _site/static/app.js
+            grep -q "const APP_VERSION = \"${GITHUB_REF_NAME#v}\"" _site/static/app.js
+          fi
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5.0.0
         with:

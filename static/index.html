@@ -15,10 +15,11 @@
   </script>
   <link rel="preload" href="fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+  <!-- Statusleiste oben / Leiste unten im Design: Farbe folgt dem Hintergrund (app.js setzt sie nach Stil, Hell/Dunkel, Farbwahl) -->
+  <meta name="theme-color" id="themeColor" content="#f3f9ee">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"><!-- black-translucent hätte immer weisse Schrift: auf hellem Glas unlesbar -->
   <meta name="apple-mobile-web-app-title" content="BringFrisch">
   <meta name="format-detection" content="telephone=no">
   <link rel="apple-touch-icon" href="icon-180.png">
@@ -186,6 +187,8 @@
     .set-inline { display: flex; gap: 8px; }
     .set-sub { font-weight: 600; }
     .set-sub small { display: inline; }
+    #versionCard a { color: var(--primary); }
+    #versionCard.new { box-shadow: inset 0 0 0 2px var(--primary); }
     .btile .x { border: 0; background: none; color: var(--muted); padding: 0 0 0 2px; font-size: 13px; cursor: pointer; }
     .myrec { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
     .myrec:first-child { border-top: 0; }
@@ -697,6 +700,11 @@
 
     <!-- 4. WG -->
     <section class="tab" id="tab-wg" hidden>
+      <div class="card set-row set-line" id="versionCard">
+        <span>BringFrisch <b id="appVersionTop"></b><small id="updateState">Quellcode: <a id="repoLinkTop" href="#" target="_blank" rel="noopener">GitHub ↗</a></small></span>
+        <button class="btn dark" type="button" id="updateBtn">Aktualisieren</button>
+      </div>
+
       <p class="label">Bring!-Liste der WG</p>
       <div class="card set-hero">
         <div class="set-top">
