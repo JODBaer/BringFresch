@@ -12,7 +12,8 @@
 #   4. Test-Server: Bot-Zugang + Test-PIN -> Cloudflare (stage), Test-PIN auch -> GitHub (STAGE_PIN)
 #   Nur das Bot-Passwort des Test-Servers neu setzen:  … setup-secrets.ps1 -BotPassword
 #   Nur die Account-ID neu setzen (ohne Eingabe):       … setup-secrets.ps1 -AccountId
-param([string]$Repo = 'jodbaer/BringFresch', [switch]$BotPassword, [switch]$AccountId)
+#   Alles reparieren, was vor dem BOM-Fix gesetzt wurde: … setup-secrets.ps1 -Flicken
+param([string]$Repo = 'jodbaer/BringFresch', [switch]$BotPassword, [switch]$AccountId, [switch]$Flicken)
 
 $ErrorActionPreference = 'Stop'
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User') + ';C:\Program Files\nodejs;C:\Program Files\GitHub CLI'
@@ -32,7 +33,10 @@ function WithStdin($file, $arguments, $value, $dir) {
   $psi = New-Object System.Diagnostics.ProcessStartInfo
   $psi.FileName = $file; $psi.Arguments = $arguments; $psi.WorkingDirectory = $dir
   $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
-  $p = [System.Diagnostics.Process]::Start($psi)
+  # Ohne das setzt Windows PowerShell bei UTF-8-Konsolen 3 unsichtbare Bytes (BOM) vor den Wert -> Passwort/PIN/Token «falsch»
+  $oldEnc = [Console]::InputEncoding
+  try { [Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false } catch {}
+  try { $p = [System.Diagnostics.Process]::Start($psi) } finally { try { [Console]::InputEncoding = $oldEnc } catch {} }
   $p.StandardInput.Write($value); $p.StandardInput.Close()
   $null = $p.StandardOutput.ReadToEnd(); $null = $p.StandardError.ReadToEnd()
   $p.WaitForExit()
@@ -53,6 +57,49 @@ if ($AccountId) {
   $ids = @([regex]::Matches($who, '[0-9a-f]{32}') | ForEach-Object { $_.Value } | Select-Object -Unique)
   if ($ids.Count -eq 1 -and $ids[0].Length -eq 32) { GhSecret 'CLOUDFLARE_ACCOUNT_ID' $ids[0] } else { Warn "Account-ID nicht eindeutig gefunden ($($ids.Count))" }
   Remove-Variable who, ids -ErrorAction SilentlyContinue
+  return
+}
+if ($Flicken) {
+  # Alle Werte, die mit der alten Version gesetzt wurden, hatten 3 unsichtbare Bytes vorne dran -> alles neu setzen.
+  Write-Host 'BringFrisch – Anmeldung flicken. Nichts wird angezeigt oder gespeichert.' -ForegroundColor Cyan
+  Step 1 'Cloudflare Account-ID -> GitHub (automatisch)'
+  Push-Location (Join-Path $root 'worker')
+  try { $who = (npx --yes wrangler whoami 2>$null | Out-String) } finally { Pop-Location }
+  $ids = @([regex]::Matches($who, '[0-9a-f]{32}') | ForEach-Object { $_.Value } | Select-Object -Unique)
+  if ($ids.Count -eq 1) { GhSecret 'CLOUDFLARE_ACCOUNT_ID' $ids[0] } else { Warn "Account-ID nicht eindeutig ($($ids.Count)) – bitte «wrangler login» und nochmals starten" }
+  Remove-Variable who, ids -ErrorAction SilentlyContinue
+
+  Step 2 'Cloudflare API-Token -> GitHub'
+  Write-Host '  Hast du den Token noch? Sonst: Browser -> «Create Token» -> Vorlage «Edit Cloudflare Workers» -> Token kopieren.'
+  if (Ask 'Browser mit den Cloudflare-Tokens öffnen?') { Start-Process 'https://dash.cloudflare.com/profile/api-tokens' }
+  $tok = Hidden 'Token einfügen'
+  if ($tok) { GhSecret 'CLOUDFLARE_API_TOKEN' $tok.Trim() } else { Warn 'leer – übersprungen' }
+  Remove-Variable tok -ErrorAction SilentlyContinue
+
+  Step 3 'Bring!-Bot + Test-PIN für den Test-Server'
+  $mail = Hidden 'E-Mail des Bring!-Bots'
+  do {
+    $pw = Hidden 'Passwort des Bring!-Bots'
+    $pw2 = Hidden 'Nochmals, zur Kontrolle'
+    $same = ($pw -ceq $pw2)
+    if (-not $same) { Warn 'die beiden Eingaben sind verschieden – bitte nochmals' }
+  } until ($same)
+  $pin = Hidden 'Test-PIN (nicht der WG-PIN)'
+  if ($mail) { CfSecret 'BRING_EMAIL' $mail.Trim() 'stage' }
+  if ($pw) { CfSecret 'BRING_PASSWORD' $pw 'stage' }
+  if ($pin) { CfSecret 'WG_PIN' $pin.Trim() 'stage'; GhSecret 'STAGE_PIN' $pin.Trim() }
+  CfSecret 'CAL_TOKEN' (-join ((48..57) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })) 'stage'
+  Remove-Variable mail, pw, pw2, pin -ErrorAction SilentlyContinue
+  [GC]::Collect()
+
+  Step 4 'Test-Version neu starten (Tests + Test-Server + Bring! «Home»)'
+  gh workflow run stage.yml --repo $Repo --ref main
+  Start-Sleep -Seconds 8
+  $id = (gh run list --repo $Repo --workflow stage.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+  Write-Host '  Läuft (ca. 6–7 Minuten) …'
+  gh run watch $id --repo $Repo --exit-status | Out-Null
+  if ($LASTEXITCODE -eq 0) { Ok 'alles grün – Anmeldung funktioniert wieder' }
+  else { Warn "noch rot – schreib Claude «Lauf $id ist rot», dann schaue ich nach" }
   return
 }
 if ($BotPassword) {
