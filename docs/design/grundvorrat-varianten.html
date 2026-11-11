@@ -1,0 +1,907 @@
+<title>Grundvorrat Varianten</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root {
+  --bg: #f3f7ef; --fg: #172116; --muted: #4d5d47; --card: #ffffff; --line: #d3e0c9;
+  --accent: #3a5f3a; --accent-bg: #c8f6c8; --on-accent: #ffffff; --focus: #1a73e8; --new: #fff3b0;
+  --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e130e; --fg: #e2ecdc; --muted: #a9bba0; --card: #182018; --line: #2f3c2d;
+    --accent: #90ee90; --accent-bg: #3a5f3a; --on-accent: #1d301d; --focus: #8ab4ff; --new: #4a4418;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e130e; --fg: #e2ecdc; --muted: #a9bba0; --card: #182018; --line: #2f3c2d;
+  --accent: #90ee90; --accent-bg: #3a5f3a; --on-accent: #1d301d; --focus: #8ab4ff; --new: #4a4418;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.4; overflow-x: hidden; }
+button, input { font: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.page { max-width: 1120px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+.top h1 { font-size: 22px; margin: 0 0 2px; letter-spacing: -.01em; }
+.top h1 span { color: var(--accent); }
+.top p { margin: 0 0 14px; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-bottom: 20px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--card); gap: 2px; }
+.seg button { border: 0; background: none; color: var(--fg); padding: 7px 13px; border-radius: 999px; cursor: pointer; font-size: 14px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.stage { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 880px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.phonewrap { width: 100%; max-width: 390px; justify-self: center; }
+.side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; }
+.box h2 { font-size: 18px; margin: 0 0 6px; }
+.box h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 4px; }
+.box p { margin: 4px 0; }
+.box ul { margin: 4px 0; padding-left: 20px; }
+.box li { margin: 3px 0; }
+.qa { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 8px 0 0; }
+.qa dt { color: var(--muted); }
+.qa dd { margin: 0; }
+.pro b { color: var(--accent); }
+.try { background: var(--accent-bg); border-radius: 12px; padding: 8px 12px; margin-top: 12px !important; }
+.bringbox .bh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.bringbox .count { font-weight: 700; color: var(--accent); }
+.bringbox ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.bringbox li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.bringbox li.new { animation: newrow 2.4s ease-out; }
+@keyframes newrow { 0%, 40% { background: var(--new); } 100% { background: transparent; } }
+.bringbox li .n { flex: 1; min-width: 0; }
+.bringbox li small { color: var(--muted); display: block; font-size: 12px; }
+.bringbox li .by { font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; color: var(--muted); white-space: nowrap; }
+.bringbox li button { border: 1px solid var(--line); background: none; color: var(--fg); border-radius: 999px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.bringbox .log { color: var(--muted); font-size: 13px; min-height: 1.4em; }
+.muted { color: var(--muted); font-size: 13px; }
+.reset { align-self: flex-start; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+
+/* ---------------- Handy ---------------- */
+.phone { width: 100%; height: 844px; max-height: calc(100svh - 24px); min-height: 560px; border-radius: 52px; padding: 11px; background: #0d0f0d; box-shadow: 0 30px 60px -20px rgba(0,0,0,.45), inset 0 0 0 2px #333; font-family: var(--font); }
+.screen { position: relative; height: 100%; border-radius: 42px; overflow: hidden; display: flex; flex-direction: column; color: var(--p-fg); font-size: 15px; }
+@media (max-width: 440px) {
+  .phone { padding: 0; background: none; box-shadow: none; border-radius: 24px; border: 1px solid var(--line); }
+  .screen { border-radius: 23px; }
+}
+/* iPhone: Glas */
+.phone.ios {
+  --p-fg: #10170f; --p-fg2: rgba(16,23,15,.68); --card: rgba(255,255,255,.52); --card2: rgba(250,255,248,.82); --rim: rgba(255,255,255,.95);
+  --line: rgba(16,23,15,.14); --pri: #3a5f3a; --on-pri: #eefcee; --ton: rgba(147,197,114,.45); --on-ton: #1d301d;
+  --leer: #3a5f3a; --leer-bg: rgba(144,238,144,.6); --on-leer: #1d301d; --danger: #ba1a1a; --ring: #1a73e8; --warn: #7a4b00;
+  --r-out: 22px; --r-in: 10px; --pill-bg: rgba(255,255,255,.55); --snack: #233123; --on-snack: #eefcee; --snack-act: #90ee90;
+  --mesh: radial-gradient(60% 45% at 12% 8%, #c8f6c8 0%, transparent 70%), radial-gradient(55% 40% at 95% 22%, #e3f1cc 0%, transparent 70%), radial-gradient(70% 45% at 18% 78%, #d4f7e3 0%, transparent 70%), radial-gradient(60% 40% at 92% 92%, #cfe8b2 0%, transparent 70%), linear-gradient(#effbec, #f6faee);
+}
+.phone.ios.dark {
+  --p-fg: #f1f5ee; --p-fg2: rgba(241,245,238,.72); --card: rgba(18,26,20,.5); --card2: rgba(20,30,22,.86); --rim: rgba(255,255,255,.16);
+  --line: rgba(255,255,255,.16); --pri: #90ee90; --on-pri: #1d301d; --ton: rgba(147,197,114,.28); --on-ton: #eefcee;
+  --leer: #90ee90; --leer-bg: rgba(58,95,58,.75); --on-leer: #eefcee; --danger: #ffb4ab; --ring: #8ab4ff; --warn: #ffcf8a;
+  --pill-bg: rgba(18,26,20,.4); --snack: #dfe9da; --on-snack: #1d301d; --snack-act: #3a5f3a;
+  --mesh: radial-gradient(60% 45% at 12% 8%, #24452a 0%, transparent 70%), radial-gradient(55% 40% at 95% 22%, #34441f 0%, transparent 70%), radial-gradient(70% 45% at 18% 78%, #173a31 0%, transparent 70%), radial-gradient(60% 40% at 92% 92%, #2f4520 0%, transparent 70%), linear-gradient(#0e1610, #121610);
+}
+.phone.ios .screen { background: var(--mesh); }
+.phone.ios .card, .phone.ios .navbar, .phone.ios .tray { background: var(--card); -webkit-backdrop-filter: blur(22px) saturate(1.9); backdrop-filter: blur(22px) saturate(1.9); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 18px -10px rgba(0,0,0,.25); }
+.phone.ios .sheet { background: var(--card2); -webkit-backdrop-filter: blur(28px) saturate(1.9); backdrop-filter: blur(28px) saturate(1.9); border-top: 1px solid var(--rim); }
+/* Android: Material 3 Expressive */
+.phone.android {
+  --surface: #f8fcf4; --p-fg: #172116; --p-fg2: #47573f; --card: #eaf4e1; --card2: #f1f8ea; --rim: transparent;
+  --line: #c6d8ba; --pri: #3a5f3a; --on-pri: #ffffff; --ton: #c8f6c8; --on-ton: #1d301d;
+  --leer: #3a5f3a; --leer-bg: #90ee90; --on-leer: #1d301d; --danger: #ba1a1a; --ring: #1a73e8; --warn: #7a4b00;
+  --r-out: 24px; --r-in: 6px; --pill-bg: #f1f8ea; --snack: #2a3a29; --on-snack: #eefcee; --snack-act: #90ee90;
+}
+.phone.android.dark {
+  --surface: #101510; --p-fg: #e2ecdc; --p-fg2: #b7c8ad; --card: #1c261b; --card2: #253124;
+  --line: #3d4f3a; --pri: #90ee90; --on-pri: #1d301d; --ton: #3a5f3a; --on-ton: #c8f6c8;
+  --leer: #90ee90; --leer-bg: #3a5f3a; --on-leer: #c8f6c8; --danger: #ffb4ab; --ring: #8ab4ff; --warn: #ffcf8a;
+  --pill-bg: #172017; --snack: #dfe9da; --on-snack: #1d301d; --snack-act: #3a5f3a;
+}
+.phone.android .screen { background: var(--surface); }
+.phone.android .card { background: var(--card); }
+.phone.android .navbar, .phone.android .tray { background: var(--card); }
+.phone.android .sheet { background: var(--card2); }
+.phone.android .fbtn:active, .phone.android .tbtn:active { border-radius: 10px; }
+.phone :focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+.sbar { display: flex; justify-content: space-between; padding: 12px 26px 4px; font-size: 14px; font-weight: 600; flex: 0 0 auto; }
+.appbar { padding: 4px 14px 8px; flex: 0 0 auto; }
+.appbar .r1 { display: flex; align-items: center; gap: 6px; min-height: 36px; }
+.appbar .back { border: 0; background: none; color: var(--pri); padding: 6px 4px; cursor: pointer; font-size: 15px; display: inline-flex; align-items: center; gap: 2px; }
+.appbar .sp { flex: 1; }
+.bchip { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; padding: 5px 10px; border-radius: 999px; background: var(--ton); color: var(--on-ton); font-weight: 600; }
+.bchip.bump { animation: bump .5s var(--spring, cubic-bezier(.34,1.45,.5,1)); }
+@keyframes bump { 40% { transform: scale(1.15); } }
+.appbar h1 { font-size: 28px; margin: 2px 4px 0; letter-spacing: -.015em; font-weight: 700; }
+.phone.android .appbar h1 { font-weight: 500; font-size: 30px; }
+.content { flex: 1 1 auto; overflow-y: auto; padding: 4px 14px 18px; scrollbar-width: none; }
+.content::-webkit-scrollbar { display: none; }
+.bottom { position: relative; flex: 0 0 auto; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+.phone.android .bottom { padding: 0; gap: 0; }
+
+.fbtn, .tbtn, .dbtn, .ghost { border: 0; border-radius: 999px; padding: 8px 16px; min-height: 40px; cursor: pointer; font-weight: 600; font-size: 14px; transition: border-radius .2s; white-space: nowrap; }
+.fbtn { background: var(--pri); color: var(--on-pri); }
+.fbtn:disabled { opacity: .45; cursor: default; }
+.tbtn { background: var(--ton); color: var(--on-ton); }
+.dbtn { background: none; color: var(--danger); box-shadow: inset 0 0 0 1px currentColor; }
+.ghost { background: none; color: var(--pri); padding: 8px 10px; }
+.sm { min-height: 34px; padding: 5px 12px; font-size: 13px; }
+.ibtn { border: 0; background: none; color: var(--p-fg2); width: 40px; height: 40px; border-radius: 999px; display: inline-grid; place-items: center; cursor: pointer; flex: 0 0 auto; }
+.ibtn:hover { background: var(--ton); }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+svg.i.s { width: 14px; height: 14px; }
+
+.hint { font-size: 13px; color: var(--p-fg2); margin: 2px 4px 10px; }
+.hint.warn { color: var(--warn); }
+.sec { margin: 12px 0 0; }
+.sec h3 { font-size: 13px; font-weight: 600; color: var(--p-fg2); margin: 0 4px 6px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { border: 1px solid var(--line); background: var(--pill-bg); color: var(--p-fg); border-radius: 999px; padding: 5px 11px; min-height: 32px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.pill.leer { background: var(--leer-bg); color: var(--on-leer); border-color: var(--leer); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.pill.onb .cart { display: inline-block; }
+.cart { display: none; }
+.pill.edit { padding: 0; gap: 0; cursor: default; animation: wiggle .9s ease-in-out infinite; }
+.pill.edit:nth-child(2n) { animation-delay: -.45s; }
+@keyframes wiggle { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
+.pill.edit > button { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-decoration: inherit; }
+.pill.edit > button:first-child { padding: 5px 4px 5px 11px; min-height: 32px; }
+.pill.edit > .px { padding: 0 9px 0 5px; min-height: 32px; color: var(--p-fg2); font-size: 14px; }
+.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0%, 30% { box-shadow: 0 0 0 4px var(--leer-bg); } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+.addbox { padding: 10px; border-radius: var(--r-out); margin: 2px 0 10px; }
+.field { display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 0 6px 0 14px; background: var(--pill-bg); border: 1px solid var(--line); }
+.field input { flex: 1; min-width: 0; border: 0; background: none; color: var(--p-fg); padding: 10px 0; outline: none; }
+.field:focus-within { border-color: var(--pri); box-shadow: 0 0 0 2px var(--ring); }
+.sugg { list-style: none; margin: 8px 0 0; padding: 0; }
+.srow { display: flex; align-items: center; gap: 10px; padding: 6px 4px; }
+.srow + .srow { border-top: 1px solid var(--line); }
+.bimg { width: 30px; height: 30px; border-radius: 9px; background: var(--ton); color: var(--on-ton); display: grid; place-items: center; font-weight: 700; font-size: 14px; flex: 0 0 auto; }
+.bimg.own { background: none; border: 1px dashed var(--line); color: var(--p-fg2); }
+.st { flex: 1; min-width: 0; }
+.st b { display: block; font-weight: 600; }
+.st small { color: var(--p-fg2); font-size: 12px; }
+.badge { font-size: 12px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--p-fg2); white-space: nowrap; }
+.dupc { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border-radius: var(--r-out); margin: 0 0 10px; }
+.dupc p { margin: 0; flex: 1; font-size: 13px; }
+
+/* B: Zeilen */
+.list { border-radius: var(--r-out); overflow: hidden; margin: 0 0 8px; }
+.phone.android .list { background: none; display: flex; flex-direction: column; gap: 2px; }
+.phone.android .list > .row { background: var(--card); border-radius: var(--r-in); }
+.phone.android .list > .row:first-child { border-top-left-radius: var(--r-out); border-top-right-radius: var(--r-out); }
+.phone.android .list > .row:last-child { border-bottom-left-radius: var(--r-out); border-bottom-right-radius: var(--r-out); }
+.row { display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 4px; min-height: 52px; }
+.phone.ios .list > .row + .row { border-top: 1px solid var(--line); }
+.rname { flex: 1; min-width: 0; text-align: left; background: none; border: 0; color: inherit; padding: 6px 8px; cursor: pointer; border-radius: 12px; display: flex; align-items: center; gap: 4px; }
+.rname > span { flex: 1; min-width: 0; }
+.rname .t { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rname .s { display: block; font-size: 12px; color: var(--p-fg2); }
+.rname .s.low { color: var(--warn); }
+.rname .chev { color: var(--p-fg2); }
+.okchip { border: 0; border-radius: 999px; background: var(--ton); color: var(--on-ton); padding: 5px 11px; min-height: 34px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.h2row { display: flex; align-items: baseline; justify-content: space-between; margin: 12px 4px 6px; }
+.h2row h2 { font-size: 15px; margin: 0; }
+.h2row small { color: var(--p-fg2); }
+.disc { width: 100%; display: flex; align-items: center; justify-content: space-between; border: 0; padding: 14px 16px; border-radius: var(--r-out); color: var(--p-fg); cursor: pointer; font-weight: 600; margin: 4px 0 8px; }
+.disc svg { transition: transform .2s; }
+.disc[aria-expanded="true"] svg { transform: rotate(180deg); }
+.empty { padding: 14px 16px; border-radius: var(--r-out); color: var(--p-fg2); margin-bottom: 8px; }
+
+/* C: Reiter + Kacheln */
+.tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; margin: 8px 0 0; }
+.tabs button { flex: 1; border: 0; background: none; color: var(--p-fg); padding: 8px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.tabs button[aria-selected="true"] { background: var(--pri); color: var(--on-pri); }
+.shead { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: none; color: var(--p-fg2); padding: 6px 4px; cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; }
+.shead .c { margin-left: auto; color: var(--leer); }
+.shead svg { transition: transform .2s; }
+.shead[aria-expanded="false"] svg { transform: rotate(-90deg); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tile { display: flex; align-items: center; gap: 8px; padding: 8px 10px; min-height: 44px; border-radius: 14px; border: 1px solid var(--rim); color: var(--p-fg); text-align: left; cursor: pointer; font-size: 14px; }
+.phone.android .tile { border: 0; border-radius: var(--r-in); }
+.tile .dot { width: 20px; height: 20px; border-radius: 999px; flex: 0 0 auto; display: grid; place-items: center; background: var(--ton); color: var(--on-ton); }
+.tile .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.phone .screen .tile.leer { background: var(--leer-bg); color: var(--on-leer); }
+.tile.leer .lb { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.tile.leer .dot { background: none; box-shadow: inset 0 0 0 2px var(--leer); }
+.tile.leer .dot svg { display: none; }
+.tile .cart { color: inherit; }
+.tile.onb .cart { display: inline-block; }
+.mrow { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 0; min-height: 52px; }
+.phone.ios .list > .mrow + .mrow { border-top: 1px solid var(--line); }
+.phone.android .list > .mrow { background: var(--card); border-radius: var(--r-in); }
+.phone.android .list > .mrow:first-child { border-top-left-radius: var(--r-out); border-top-right-radius: var(--r-out); }
+.phone.android .list > .mrow:last-child { border-bottom-left-radius: var(--r-out); border-bottom-right-radius: var(--r-out); }
+.mrow .field { flex: 1; margin-left: 8px; }
+
+/* Leiste unten */
+.tray { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 22px; }
+.phone.android .tray { border-radius: 0; border-top: 1px solid var(--line); }
+.tray .tx { flex: 1; min-width: 0; font-size: 13px; }
+.tray .tx b { display: block; font-size: 14px; }
+.tray .tx span { color: var(--p-fg2); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navbar { display: flex; justify-content: space-around; padding: 6px 4px; border-radius: 30px; }
+.phone.android .navbar { border-radius: 0; padding: 8px 4px 14px; }
+.navbar button { border: 0; background: none; color: var(--p-fg2); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; padding: 4px 6px; cursor: pointer; flex: 1; min-width: 0; }
+.navbar button .ic { padding: 3px 16px; border-radius: 999px; display: grid; place-items: center; }
+.navbar button[aria-current="page"] { color: var(--p-fg); font-weight: 700; }
+.navbar button[aria-current="page"] .ic { background: var(--ton); color: var(--on-ton); }
+
+/* Blatt + Hinweis */
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 5; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 80%; overflow-y: auto; transform: translateY(105%); transition: transform .3s cubic-bezier(.2,0,0,1); border-radius: 28px 28px 0 0; padding: 8px 18px 24px; z-index: 6; visibility: hidden; }
+.sheet.on { transform: none; visibility: visible; }
+.sheet .grab { width: 36px; height: 4px; border-radius: 4px; background: var(--line); margin: 4px auto 10px; }
+.sheet h2 { font-size: 20px; margin: 0 0 2px; outline: none; }
+.sheet h3 { font-size: 13px; color: var(--p-fg2); margin: 14px 0 4px; font-weight: 600; }
+.sheet .sub { color: var(--p-fg2); font-size: 13px; margin: 0 0 10px; }
+.sheet .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.sheet .acts .dbtn { margin-right: auto; }
+.clist { list-style: none; padding: 0; margin: 0; }
+.crow { display: flex; align-items: center; gap: 12px; padding: 8px 2px; cursor: pointer; }
+.crow input { width: 20px; height: 20px; accent-color: var(--pri); flex: 0 0 auto; }
+.crow.dis { opacity: .55; cursor: default; }
+.crow small { display: block; color: var(--p-fg2); font-size: 12px; }
+.lbl { display: block; font-size: 12px; color: var(--p-fg2); margin: 6px 4px 4px; }
+.stepper { display: flex; align-items: center; gap: 10px; }
+.stepper output { min-width: 80px; text-align: center; font-weight: 600; }
+.snack { position: absolute; left: 12px; right: 12px; bottom: calc(100% + 8px); display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; min-height: 46px; border-radius: 14px; background: var(--snack); color: var(--on-snack); font-size: 14px; transform: translateY(12px); opacity: 0; pointer-events: none; transition: .2s; z-index: 4; }
+.snack.on { transform: none; opacity: 1; pointer-events: auto; }
+.snack span { flex: 1; min-width: 0; }
+.snack button { border: 0; background: none; color: var(--snack-act); font-weight: 700; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,700&display=swap">
+
+<div class="page">
+  <header class="top">
+    <h1>Grundvorrat – <span>drei Varianten</span></h1>
+    <p>Zum Antippen. Nichts kommt ohne sichtbare Bestätigung auf Bring!. Joshua entscheidet.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Variante" id="segV">
+        <button type="button" data-v="A" aria-pressed="true">A · Merken</button>
+        <button type="button" data-v="B" aria-pressed="false">B · Knopf</button>
+        <button type="button" data-v="C" aria-pressed="false">C · Sammeln</button>
+      </div>
+      <div class="seg" role="group" aria-label="Handy" id="segOS">
+        <button type="button" data-os="ios" aria-pressed="true">iPhone</button>
+        <button type="button" data-os="android" aria-pressed="false">Android</button>
+      </div>
+      <div class="seg" role="group" aria-label="Hell oder dunkel" id="segT">
+        <button type="button" data-t="light" aria-pressed="true">Hell</button>
+        <button type="button" data-t="dark" aria-pressed="false">Dunkel</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="phonewrap">
+      <div class="phone ios" id="phone">
+        <div class="screen">
+          <div class="sbar" aria-hidden="true"><span>9:41</span><span>5G ▮</span></div>
+          <header class="appbar" id="appbar"></header>
+          <main class="content" id="content" aria-label="Grundvorrat"></main>
+          <div class="bottom" id="bottom">
+            <div class="snack" id="snack" role="status" aria-live="polite"><span id="snackTx"></span><button type="button" id="snackBtn">Rückgängig</button></div>
+            <div id="tray"></div>
+            <nav class="navbar" aria-label="Navigation">
+              <button type="button" data-act="nav"><span class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span>Plan</button>
+              <button type="button" data-act="nav" aria-current="page"><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h11L21 7H6.2"/><circle cx="9" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg></span>Einkauf</button>
+              <button type="button" data-act="nav"><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 4c-5 3-9 9-10 16 7-1 13-5 16-10"/><path d="M15 3l2 4 4 2"/></svg></span>Rezepte</button>
+              <button type="button" data-act="nav"><span class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></span>Einstellungen</button>
+            </nav>
+          </div>
+          <div class="scrim" id="scrim"></div>
+          <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shT"></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <section class="box" id="info"></section>
+      <section class="box bringbox" aria-label="Bring!-Liste (Attrappe)">
+        <div class="bh"><h2>Bring!-Liste «Home»</h2><span class="count" id="bCount" aria-live="polite"></span></div>
+        <p class="muted">Attrappe: hier landet, was die Variante auf Bring! schreibt. «Abhaken» = in Bring! gekauft → im Vorrat wieder da.</p>
+        <ul id="bList"></ul>
+        <p class="log" id="bLog" aria-live="polite"></p>
+      </section>
+      <button type="button" class="reset" id="reset">Variante neu starten</button>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+// Bring!-Katalog de-CH (aus static/bring_catalog.js), nach Abteilung
+const CAT = {"Früchte & Gemüse":["Ananas","Aprikosen","Artischocken","Aubergine","Avocado","Bananen","Basilikum","Beeren","Birnen","Blumenkohl","Brokkoli","Brombeeren","Champignons","Cherrytomaten","Datteln","Erbsen","Erdbeeren","Feigen","Fenchel","Früchte","Frühlingszwiebeln","Gemüse","Grapefruit","Gurke","Heidelbeeren","Himbeeren","Ingwer","Kaki","Karotten","Kartoffeln","Kirschen","Kiwi","Knoblauch","Kohl","Kohlrabi","Koriander","Kräuter","Kürbis","Lattich","Lauch","Limette","Mais","Mandarinen","Mango","Melone","Nektarine","Oliven","Orange","Passionsfrucht","Peperoncini","Peperoni","Petersilie","Pfefferminze","Pfirsich","Pflaumen","Pilze","Radieschen","Rhabarber","Randen","Rucola","Salat","Salbei","Schnittlauch","Sellerie","Spargel","Spinat","Thymian","Tomaten","Trauben","Wassermelone","Zitrone","Zucchetti","Zwetschgen","Zwiebeln","Getrocknete Tomaten","Äpfel","Süsskartoffeln"],"Brot & Gebäck":["Baguette","Blätterteig","Brot","Brötchen","Gipfeli","Knäckebrot","Muffins","Pizzateig","Toast","Waffeln","Zopf"],"Milch & Käse":["Blauschimmelkäse","Butter","Creme fraiche","Eier","Feta","Fondue","Frischkäse","Gorgonzola","Hüttenkäse","Joghurt","Kräuterbutter","Käse","Margarine","Mascarpone","Milch","Mozzarella","Parmesan","Quark","Raclette","Rahm","Reibkäse","Ricotta","Sauerrahm","Soja Drink","Burrata"],"Fleisch & Fisch":["Aufschnitt","Bratwurst","Bresaola","Cervelat","Fisch","Fleisch","Wienerli","Garnelen","Hackfleisch","Kalbfleisch","Lachs","Lamm","Muscheln","Poulet","Pouletbrüstli","Rindfleisch","Rindsgeschnetzeltes","Rohschinken","Salami","Sardellen","Schinken","Schnitzel","Schweinefleisch","Speck","Steak","Thon","Thunfisch","Wurst","Cordon Bleu","Bündnerfleisch"],"Zutaten & Gewürze":["Ahornsirup","Apfelmus","Aromat","BBQ Sauce","Backpulver","Balsamico","Baumnüsse","Bohnen","Bouillon","Bratensauce","Dip","Essig","Essiggurken","Haselnüsse","Hefe","Ketchup","Kokosmilch","Linsen","Mandeln","Mayonnaise","Nüsse","Olivenöl","Oregano","Paniermehl","Paprikapulver","Pasta Sauce","Pelati","Pfefferkörner","Pfeffer","Pinienkerne","Puderzucker","Rosmarin","Salatsauce","Salz","Senf","Sojasauce","Speisestärke","Tomatenmark","Tomatensauce","Vanillezucker","Zimt","Zucker","Öl","Preiselbeer Sauce","Kartoffelstock","Silberzwiebeln","Mandelmus","Sauerkraut"],"Fertig- & Tiefkühlprodukte":["Chicken Wings","Chinesisches Essen","Fischstäbli","Gemüse gefroren","Glacé","Indisches Essen","Italienisches Essen","Lasagne","Pizza","Pommes Frites","Suppe","Thai Essen"],"Getreideprodukte":["Basmatireis","Corn Flakes","Couscous","Gnocchi","Griess","Haferflocken","Kichererbsen","Mehl","Müesli","Nudeln","Orecchiette","Pasta","Penne","Reis","Risottoreis","Spaghetti","Rösti","Tofu"],"Snacks & Süsswaren":["Brezeln","Dessert","Dörrobst","Erdnüsse","Gelee","Getreideriegel","Grissini","Guetzli","Honig","Kaugummi","Kekse","Konfitüre","Kuchen","Lebkuchen","Nougatcreme","Pommes Chips","Pop Corn","Schokolade","Snacks","Süssigkeiten","Torte","Tortilla Chips","Vanille Sauce"],"Getränke":["Apfelsaft","Zitronensaft","Bier","Champagner","Cidre","Cola","Cola Light","Eistee","Energy Drink","Fruchtsaft","Getränke","Gin","Kaffee","Kaffeebohnen","Kaffeepads","Kaffeekapseln","Kakao","Light Limonade","Limonade","Mineralwasser","Orangensaft","Prosecco","Rotwein","Rum","Schnaps","Sirup","Smoothie","Sportgetränk","Tee","Tonic Water","Vodka","Wasser","Weisswein","Whisky"]};
+const SECS = ["Früchte & Gemüse", "Brot & Gebäck", "Milch & Käse", "Fleisch & Fisch", "Zutaten & Gewürze", "Fertig- & Tiefkühlprodukte", "Getreideprodukte", "Snacks & Süsswaren", "Getränke", "Eigene Artikel"];
+const OWN = "Eigene Artikel";
+const SEC_OF = {}, CAT_NORM = {}, CAT_LIST = [];
+const norm = s => String(s).toLowerCase().replace(/\(.*?\)/g, "").replace(/ae/g, "ä").replace(/oe/g, "ö").replace(/ue/g, "ü").replace(/ß/g, "ss").replace(/[^a-z0-9äöüéèàç]/g, "");
+for (const sec in CAT) for (const n of CAT[sec]) { SEC_OF[n] = sec; CAT_NORM[norm(n)] = n; CAT_LIST.push(n); }
+const SYN = {};
+[["rüebli", "Karotten"], ["karotte", "Karotten"], ["teigwaren", "Pasta"], ["zitronen", "Zitrone"], ["maizena", "Speisestärke"], ["tomatenpüree", "Tomatenmark"], ["rapsöl", "Öl"], ["speiseöl", "Öl"], ["jodsalz", "Salz"], ["speisesalz", "Salz"], ["gemüsebouillon", "Bouillon"]]
+  .forEach(([k, v]) => { if (SEC_OF[v]) SYN[norm(k)] = v; });
+
+// Grundvorrat der WG (Vorrat-Name, Bring!-Name, «reicht noch für N Znacht»)
+const START = [
+  ["Kartoffeln (festkochend)", "Kartoffeln"], ["Kartoffeln (mehlig)", "Kartoffeln"], ["Zwiebeln (gelb)", "Zwiebeln"], ["Rote Zwiebeln", "Zwiebeln"],
+  ["Knoblauch", "Knoblauch"], ["Speiserüebli", "Karotten"], ["Zitrone", "Zitrone"], ["Ingwer", "Ingwer"],
+  ["Butter", "Butter"], ["Schweizer Butter", "Butter"], ["Rahm", "Rahm", 2], ["Joghurt nature", "Joghurt", 1], ["Eier", "Eier"], ["Milch", "Milch"], ["Parmesan", "Parmesan"],
+  ["Speisesalz / Jodsalz", "Salz"], ["Schwarzer Pfeffer", "Pfeffer"], ["Pfeffer (Mühle)", "Pfeffer"], ["Aromat (Knorr)", "Aromat"], ["Gemüsebouillon", "Bouillon"],
+  ["Paprikapulver", "Paprikapulver"], ["Zimt", "Zimt"], ["Oregano", "Oregano"], ["Olivenöl extra vergine", "Olivenöl", 2], ["Rapsöl / Speiseöl", "Öl"],
+  ["Kräuteressig", "Essig"], ["Aceto Balsamico", "Balsamico"], ["Salatsauce", "Salatsauce"], ["Thomy Senf", "Senf"], ["Mayonnaise", "Mayonnaise"], ["Ketchup", "Ketchup"],
+  ["Tomatenpüree (Tube)", "Tomatenmark", 1], ["Sojasauce", "Sojasauce"], ["Kristallzucker", "Zucker"], ["Backpulver", "Backpulver"], ["Maizena", "Speisestärke"], ["Kokosmilch", "Kokosmilch"],
+  ["Reis", "Reis", 1], ["Langkornreis", "Reis"], ["Weissmehl", "Mehl"], ["Spaghetti", "Spaghetti"], ["Teigwaren", "Pasta"], ["Haferflocken", "Haferflocken"],
+  ["Honig", "Honig"], ["Schokolade", "Schokolade"],
+  ["Soja Sauce", "Soja Sauce"], ["Currypulver", "Currypulver"], ["Muskatnuss", "Muskatnuss"], ["Chiliflocken", "Chiliflocken"], ["Bratbutter", "Bratbutter"]
+];
+const WEEK = [
+  { n: "Kürbis", spec: "Butternuss, 1 Stück" }, { n: "Lauch", spec: "2 Stangen" }, { n: "Hackfleisch", spec: "600 g" },
+  { n: "Grillkäse", spec: "200 g" }, { n: "Nüsslisalat", spec: "300 g" }
+];
+
+const INFO = {
+  A: {
+    title: "A · Merken – mit «Bring! füllen» senden",
+    idea: "Antippen merkt «leer» nur in BringFrisch. Auf Bring! kommt es erst mit «Bring! füllen» – zusammen mit dem Wochenplan, mit Häkchen pro Artikel und «Rückgängig».",
+    how: ["Pille antippen = leer (durchgestrichen), nochmals = wieder da. Bring! bleibt unberührt.",
+      "Unten steht «3 leer». «Bring! füllen» (derselbe Knopf wie im Plan) zeigt Plan + Vorrat mit Häkchen.",
+      "«Bearbeiten» oben rechts: Feld zum Hinzufügen, ✕ = wegnehmen, Pille antippen = umbenennen, Doppelte zusammenführen.",
+      "In Bring! abgehakt = im Vorrat wieder da."],
+    qa: [["Wann auf Bring!?", "Nur mit «Bring! füllen», nach der Häkchen-Liste."], ["Alltag / Verwalten", "Bearbeiten-Modus (Pillen wackeln, ✕)."], ["Auf einen Blick", "Alle Pillen wie heute, nach Bring!-Abteilung."]],
+    pro: "Ein einziger Weg auf Bring! für Plan und Vorrat; aus Versehen landet nichts auf der Liste. Pillen bleiben klein und durchgestrichen (Entscheid 16).",
+    con: "Was mitten in der Woche ausgeht, steht erst nach «Bring! füllen» auf der Liste. ~50 Pillen auf einmal.",
+    tryit: "Probier: «Olivenöl» antippen → unten «Bring! füllen». Dann «Bearbeiten» → «Olivenoel» oder «Kartoffeln» eintippen, Doppelte zusammenführen."
+  },
+  B: {
+    title: "B · Nur was fehlt – Knopf «auf Bring!» pro Artikel",
+    idea: "Oben nur, was leer oder bald leer ist, jede Zeile mit eigenem, beschriftetem Knopf «auf Bring!». Der Rest ist eingeklappt; ein Feld zum Suchen und Hinzufügen.",
+    how: ["Oben «Leer & bald leer» (bald leer = reicht noch für 2 Znacht oder weniger).",
+      "«auf Bring!» schreibt genau diesen Artikel, mit «Rückgängig». «da» = wieder voll.",
+      "«Alles da» aufklappen → bei einem Artikel «leer».",
+      "Zeile antippen = Blatt mit Name, «reicht noch für», Zusammenführen, Wegnehmen."],
+    qa: [["Wann auf Bring!?", "Pro Artikel, mit klar beschriftetem Knopf."], ["Alltag / Verwalten", "Verwalten hinter der Zeile (antippen → Blatt), Hinzufügen im Suchfeld."], ["Auf einen Blick", "Nur leer / bald leer; Rest eingeklappt, Suche."]],
+    pro: "Ruhig: man sieht nur, was zu tun ist. Sofort auf Bring!, wenn man will – aber nie aus Versehen.",
+    con: "Leer melden und auf Bring! sind zwei Tipps. Wer alles durchgehen will, muss aufklappen. Zeilen statt Pillen (weicht von Entscheid 16 ab).",
+    tryit: "Probier: bei «Olivenöl» «auf Bring!». «Alles da» öffnen → «leer». Oben «Olivenoel» oder «Rüebli» eintippen."
+  },
+  C: {
+    title: "C · Kontrollgang – sammeln, einmal senden",
+    idea: "Zwei Reiter: «Vorrat» zum Durchgehen (alles sichtbar) und «Verwalten». Leeres sammelt sich unten und geht nach einmal Prüfen auf Bring! – unabhängig vom Plan.",
+    how: ["Reiter «Vorrat»: Kachel antippen = leer, nochmals = da. Abteilungen einklappbar.",
+      "Unten sammelt sich «Für Bring! (3)». «Prüfen» zeigt die Liste mit Häkchen → «3 auf Bring!», danach «Rückgängig».",
+      "Reiter «Verwalten»: hinzufügen, Namen antippen = umbenennen, Papierkorb = wegnehmen, Doppelte zusammenführen."],
+    qa: [["Wann auf Bring!?", "Gesammelt, nach einmal Prüfen – jederzeit."], ["Alltag / Verwalten", "Eigener Reiter «Verwalten»."], ["Auf einen Blick", "Alles als Kacheln, Abteilungen einklappbar."]],
+    pro: "Klare Trennung: im Alltag kann man nichts löschen oder umbenennen. Mehrere Artikel mit einem Senden, auch mitten in der Woche.",
+    con: "Zwei Wege auf Bring! (hier und «Bring! füllen» im Plan). Kacheln brauchen mehr Platz als Pillen, mehr Scrollen.",
+    tryit: "Probier: «Olivenöl» und «Reis» antippen → unten «Prüfen». Dann Reiter «Verwalten» → «Kartoffeln» eintippen."
+  }
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const phone = $("phone"), content = $("content"), appbar = $("appbar"), tray = $("tray"), sheet = $("sheet"), scrim = $("scrim");
+const ICON = {
+  cart: '<svg class="i s cart" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 11h11L21 7H6.2"/><circle cx="9" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg>',
+  cartV: '<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 11h11L21 7H6.2"/><circle cx="9" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg>',
+  back: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+  down: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+  chev: '<svg class="i s chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+  check: '<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>',
+  plus: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  trash: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  x: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+};
+
+let V = "A", S, UI;
+function fresh() {
+  S = {
+    seq: 1, weekSent: false, log: "",
+    items: START.map(([name, bring, left], i) => ({ id: "i" + i, name, bring, sec: SEC_OF[bring] || OWN, status: bring === "Eier" ? "leer" : "da", left: left == null ? null : left })),
+    bring: [{ name: "Milch", spec: "", by: "Lukas" }, { name: "WC-Papier", spec: "", by: "Leonie" }, { name: "Eier", spec: "", by: "BringFrisch" }]
+  };
+  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, opener: null, flash: null, focusK: null };
+  prevBring = new Set(S.bring.map(b => b.name));
+}
+let prevBring = new Set();
+
+// ---------- Hilfen ----------
+const byId = id => S.items.find(x => x.id === id);
+const onBring = n => S.bring.some(b => norm(b.name) === norm(n));
+const bringEntry = n => S.bring.find(b => norm(b.name) === norm(n));
+const isOwn = it => !SEC_OF[it.bring];
+const pending = () => uniq(S.items.filter(it => it.status === "leer" && !onBring(it.bring)).map(it => it.bring));
+const uniq = arr => arr.filter((x, i) => arr.findIndex(y => norm(y) === norm(x)) === i);
+function groups(items) {
+  const g = new Map();
+  items.forEach(it => { if (!g.has(it.sec)) g.set(it.sec, []); g.get(it.sec).push(it); });
+  const rank = s => { const i = SECS.indexOf(s); return i < 0 ? 99 : i; };
+  return [...g.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
+}
+function dupGroups() {
+  const m = new Map();
+  S.items.forEach(it => { const k = norm(it.bring); if (!m.has(k)) m.set(k, []); m.get(k).push(it); });
+  return [...m.entries()].filter(([, v]) => v.length > 1);
+}
+function lev(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+const catMatch = q => { const n = norm(q); return CAT_NORM[n] || SYN[n] || null; };
+function suggest(q) {
+  const n = norm(q); if (!n) return [];
+  const out = new Map();
+  if (SYN[n]) out.set(SYN[n], -1);
+  for (const name of CAT_LIST) {
+    const nn = norm(name);
+    let sc = 9;
+    if (nn === n) sc = 0; else if (nn.startsWith(n)) sc = 1; else if (nn.includes(n)) sc = 2;
+    else if (n.length >= 4 && Math.abs(nn.length - n.length) <= 2 && lev(n, nn) <= (n.length > 7 ? 2 : 1)) sc = 3;
+    if (sc < 9 && !(out.has(name) && out.get(name) <= sc)) out.set(name, sc);
+  }
+  return [...out.entries()].sort((a, b) => a[1] - b[1] || a[0].length - b[0].length).slice(0, 5).map(e => e[0]);
+}
+const findExisting = n => S.items.find(it => norm(it.bring) === norm(n) || norm(it.name) === norm(n));
+function suggestHTML(q) {
+  const t = q.trim(); if (!t) return "";
+  const list = suggest(t), own = findExisting(t);
+  let rows = "";
+  if (own && !list.some(n => norm(n) === norm(own.bring))) rows += sugRow(own.bring, own.sec, own);
+  list.forEach(n => { rows += sugRow(n, SEC_OF[n], findExisting(n)); });
+  if (!rows) return `<p class="hint warn">«${esc(t)}» gibt es in Bring! nicht. Zuerst in Bring! als eigenen Artikel anlegen, dann nochmals suchen.</p>`;
+  return `<ul class="sugg" aria-label="Vorschläge aus Bring!">${rows}</ul>`;
+}
+function sugRow(n, sec, ex) {
+  const own = sec === OWN || !SEC_OF[n];
+  return `<li class="srow"><span class="bimg${own ? " own" : ""}" aria-hidden="true">${esc(n[0])}</span><span class="st"><b>${esc(n)}</b><small>${esc(own ? "Eigener Artikel" : sec)}</small></span>${ex
+    ? `<span class="badge">ist schon da${norm(ex.name) !== norm(n) ? " (" + esc(ex.name) + ")" : ""}</span>`
+    : `<button type="button" class="fbtn sm" data-act="add" data-name="${esc(n)}">Hinzufügen</button>`}</li>`;
+}
+
+// ---------- Aktionen ----------
+let snackT = null, snackUndo = null;
+function snack(msg, undo) {
+  $("snackTx").textContent = msg;
+  snackUndo = undo || null;
+  $("snackBtn").hidden = !undo;
+  $("snack").classList.add("on");
+  clearTimeout(snackT);
+  snackT = setTimeout(() => $("snack").classList.remove("on"), 6000);
+}
+$("snackBtn").onclick = () => {
+  if (snackUndo) { const u = snackUndo; snackUndo = null; u(); }
+  $("snack").classList.remove("on");
+};
+function act(msg, fn, undoable = true) {
+  const snap = JSON.stringify(S);
+  fn();
+  render();
+  if (msg) snack(msg, undoable ? () => { S = JSON.parse(snap); S.log = "Rückgängig gemacht"; render(); } : null);
+}
+function addItem(name) {
+  const id = "n" + (S.seq++);
+  act(`${name} hinzugefügt`, () => {
+    S.items.push({ id, name, bring: name, sec: SEC_OF[name] || OWN, status: "da", left: null });
+    UI.addA = UI.addC = UI.qB = ""; UI.flash = id;
+  });
+}
+function removeItem(id) {
+  const it = byId(id); if (!it) return;
+  act(`${it.bring} weggenommen`, () => { S.items = S.items.filter(x => x.id !== id); closeSheet(true); });
+}
+function renameItem(id, val) {
+  const it = byId(id), t = String(val || "").trim();
+  if (!it || !t) return;
+  const m = catMatch(t), nn = m || t;
+  if (norm(nn) === norm(it.bring) && nn === it.name) { UI.editing = null; closeSheet(true); render(); return; }
+  const other = norm(nn) === norm(it.bring) ? null : S.items.find(x => x !== it && norm(x.bring) === norm(nn));
+  act(other ? `Mit «${other.name}» zusammengeführt` : `Umbenannt: ${nn}`, () => {
+    if (other) { if (it.status === "leer") other.status = "leer"; S.items = S.items.filter(x => x !== it); UI.flash = other.id; }
+    else { it.name = nn; it.bring = nn; it.sec = m ? SEC_OF[m] : OWN; UI.flash = it.id; }
+    UI.editing = null; closeSheet(true);
+  });
+}
+function mergeKey(key, silent) {
+  const g = S.items.filter(x => norm(x.bring) === key); if (g.length < 2) return;
+  const keep = g.find(x => SEC_OF[x.bring]) || g[0];
+  const name = CAT_NORM[key] || keep.bring;
+  keep.name = keep.bring = name; keep.sec = SEC_OF[name] || OWN;
+  keep.status = g.some(x => x.status === "leer") ? "leer" : "da";
+  const lefts = g.map(x => x.left).filter(x => x != null);
+  keep.left = lefts.length ? Math.min(...lefts) : null;
+  S.items = S.items.filter(x => !g.includes(x) || x === keep);
+  if (!silent) UI.flash = keep.id;
+}
+function sendToBring(names, msg, week) {
+  act(msg, () => {
+    if (week) S.weekSent = true;
+    names.forEach(n => {
+      if (onBring(n)) return;
+      const w = WEEK.find(x => x.n === n);
+      S.bring.push({ name: n, spec: w ? w.spec : "", by: "BringFrisch" });
+    });
+    S.log = `BringFrisch hat ${names.length} Artikel gesetzt.`;
+    closeSheet(true);
+  });
+}
+function toggleLeer(it) {
+  const was = it.status;
+  it.status = was === "leer" ? "da" : "leer";
+  if (it.status === "da") it.left = null;
+  UI.flash = null;
+  render();
+  if (it.status === "da" && onBring(it.bring)) snack(`${it.bring} wieder da – steht noch auf Bring!`);
+}
+
+// ---------- Blätter ----------
+function openSheet(fn, opener) {
+  UI.sheetFn = fn; UI.opener = opener ? keyOf(opener) : null;
+  sheet.classList.add("on"); scrim.classList.add("on");
+  ["appbar", "content", "bottom"].forEach(id => $(id).inert = true);
+  render();
+  const h = sheet.querySelector("h2"); if (h) h.focus();
+}
+function closeSheet(silent) {
+  if (!UI.sheetFn) return;
+  UI.sheetFn = null; UI.sheetName = null;
+  sheet.classList.remove("on"); scrim.classList.remove("on");
+  ["appbar", "content", "bottom"].forEach(id => $(id).inert = false);
+  if (!silent) { render(); restore(UI.opener); }
+  else UI.focusK = UI.opener;
+}
+scrim.onclick = () => closeSheet();
+
+function itemSheet(id) {
+  return () => {
+    const it = byId(id); if (!it) return "";
+    const dupe = S.items.filter(x => x !== it && norm(x.bring) === norm(it.bring));
+    const val = UI.sheetName != null ? UI.sheetName : it.name;
+    const own = isOwn(it);
+    const left = it.left;
+    return `<div class="grab"></div>
+      <h2 id="shT" tabindex="-1">${esc(it.bring)}</h2>
+      <p class="sub">${own ? "Eigener Artikel in Bring! (ohne Bild)" : "Bring!-Artikel mit Bild · " + esc(it.sec)}${onBring(it.bring) ? " · steht auf Bring!" : ""}</p>
+      <label class="lbl" for="shName">Name</label>
+      <div class="field"><input id="shName" data-k="sheetName" value="${esc(val)}" autocomplete="off"></div>
+      <p class="hint" id="rhint">${renameHint(val)}</p>
+      ${V === "B" ? `<span class="lbl">Reicht noch für</span><div class="stepper">
+        <button type="button" class="ibtn" data-act="left-" data-id="${id}" aria-label="weniger">−</button>
+        <output aria-live="polite">${left == null ? "voll" : left === 0 ? "leer" : "~" + left + " Znacht"}</output>
+        <button type="button" class="ibtn" data-act="left+" data-id="${id}" aria-label="mehr">+</button></div>` : ""}
+      ${dupe.length ? `<div class="card dupc"><p>Doppelt: ${dupe.map(d => "«" + esc(d.name) + "»").join(", ")} ist auch «${esc(it.bring)}».</p><button type="button" class="tbtn sm" data-act="mergeOne" data-key="${esc(norm(it.bring))}">Zusammenführen</button></div>` : ""}
+      <div class="acts"><button type="button" class="dbtn" data-act="del" data-id="${id}">Wegnehmen</button><button type="button" class="ghost" data-act="close">Abbrechen</button><button type="button" class="fbtn" data-act="rename" data-id="${id}">Speichern</button></div>`;
+  };
+}
+function renameHint(v) {
+  const t = String(v).trim(); if (!t) return "";
+  const m = catMatch(t);
+  return m ? `Auf Bring! als «${esc(m)}» (mit Bild)` : `Kein Bring!-Artikel – bleibt eigener Artikel «${esc(t)}»`;
+}
+function mergeSheet() {
+  const g = dupGroups();
+  if (!g.length) return `<div class="grab"></div><h2 id="shT" tabindex="-1">Keine Doppelten mehr</h2><p class="sub">Jeder Bring!-Artikel steht nur einmal im Vorrat.</p><div class="acts"><button type="button" class="fbtn" data-act="close">Fertig</button></div>`;
+  return `<div class="grab"></div><h2 id="shT" tabindex="-1">Doppelte zusammenführen</h2>
+    <p class="sub">Diese Einträge landen in Bring! auf demselben Artikel.</p>
+    <ul class="sugg">${g.map(([k, items]) => `<li class="srow"><span class="bimg${SEC_OF[CAT_NORM[k]] ? "" : " own"}" aria-hidden="true">${esc((CAT_NORM[k] || items[0].bring)[0])}</span><span class="st"><b>${esc(CAT_NORM[k] || items[0].bring)}</b><small>${items.map(x => esc(x.name)).join(" + ")}</small></span><button type="button" class="tbtn sm" data-act="mergeOne" data-key="${esc(k)}">Zusammenführen</button></li>`).join("")}</ul>
+    <div class="acts"><button type="button" class="ghost" data-act="close">Schliessen</button><button type="button" class="fbtn" data-act="mergeAll">Alle zusammenführen</button></div>`;
+}
+let confirmCfg = null;
+function confirmSheet(title, sub, grp) {
+  confirmCfg = grp;
+  return () => `<div class="grab"></div><h2 id="shT" tabindex="-1">${esc(title)}</h2><p class="sub">${esc(sub)}</p>
+    ${grp.map(g => `<h3>${esc(g.title)}</h3>${g.items.length ? `<ul class="clist">${g.items.map(x => `<li><label class="crow${x.disabled ? " dis" : ""}"><input type="checkbox" data-ck="${esc(x.key)}"${x.checked ? " checked" : ""}${x.disabled ? " disabled" : ""}><span><b>${esc(x.label)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ""}</span></label></li>`).join("")}</ul>` : `<p class="hint">Nichts.</p>`}`).join("")}
+    <div class="acts"><button type="button" class="ghost" data-act="close">Abbrechen</button><button type="button" class="fbtn" data-act="send" id="sendBtn">…</button></div>`;
+}
+function updateSend() {
+  const b = $("sendBtn"); if (!b) return;
+  const n = sheet.querySelectorAll("[data-ck]:checked:not(:disabled)").length;
+  b.textContent = n ? `${n} auf Bring!` : "Nichts gewählt";
+  b.disabled = !n;
+}
+function vorratRows() {
+  const rows = pending().map(n => ({ key: "v:" + n, label: n, sub: "Grundvorrat · leer", checked: true }));
+  uniq(S.items.filter(it => it.status === "leer" && onBring(it.bring)).map(it => it.bring))
+    .forEach(n => rows.push({ key: "x:" + n, label: n, sub: "schon auf Bring!", checked: true, disabled: true }));
+  return rows;
+}
+function openFillA(opener) {
+  const plan = WEEK.map(w => onBring(w.n) ? { key: "x:" + w.n, label: w.n, sub: "schon auf Bring!", checked: true, disabled: true }
+    : { key: "w:" + w.n, label: w.n, sub: w.spec, checked: !S.weekSent });
+  openSheet(confirmSheet("Bring! füllen", "KW 46 · Häkchen weg = kommt nicht auf die Liste.", [{ title: "Aus dem Plan", items: plan }, { title: "Grundvorrat", items: vorratRows() }]), opener);
+}
+function openSendC(opener) {
+  openSheet(confirmSheet("Auf Bring! setzen", "Häkchen weg = kommt nicht auf die Liste.", [{ title: "Grundvorrat", items: vorratRows() }]), opener);
+}
+
+// ---------- Ansichten ----------
+function appbarHTML() {
+  const n = S.bring.length;
+  let right = `<span class="bchip" id="bchip" aria-label="${n} Artikel auf Bring!">${ICON.cartV}${n}</span>`;
+  if (V === "A") right += `<button type="button" class="${UI.edit ? "fbtn" : "tbtn"} sm" data-act="edit" aria-pressed="${UI.edit}">${UI.edit ? "Fertig" : "Bearbeiten"}</button>`;
+  let h = `<div class="r1"><button type="button" class="back" data-act="nav">${ICON.back}Einkauf</button><span class="sp"></span>${right}</div><h1>Grundvorrat</h1>`;
+  if (V === "C") h += `<div class="tabs card" role="tablist" aria-label="Ansicht">
+    <button type="button" role="tab" data-act="tab" data-tab="vorrat" aria-selected="${UI.tab === "vorrat"}">Vorrat</button>
+    <button type="button" role="tab" data-act="tab" data-tab="verwalten" aria-selected="${UI.tab === "verwalten"}">Verwalten</button></div>`;
+  return h;
+}
+function dupCard() {
+  const g = dupGroups(); if (!g.length) return "";
+  const n = g.reduce((s, [, v]) => s + v.length, 0);
+  return `<div class="card dupc"><p><b>${n} Einträge doppelt</b><br>${g.map(([k, v]) => esc(CAT_NORM[k] || v[0].bring) + " ×" + v.length).join(", ")}</p><button type="button" class="tbtn sm" data-act="merge">Ansehen</button></div>`;
+}
+function addBox(k, ph) {
+  return `<div class="card addbox"><div class="field">${ICON.plus}<input data-k="${k}" value="${esc(UI[k])}" placeholder="${esc(ph)}" aria-label="${esc(ph)}" autocomplete="off" enterkeyhint="done"></div><div id="sugg">${suggestHTML(UI[k])}</div></div>`;
+}
+const fl = it => UI.flash === it.id ? " flash" : "";
+
+function viewA() {
+  let h = "";
+  if (UI.edit) h += addBox("addA", "Artikel hinzufügen (wie in Bring!)") + dupCard() + `<p class="hint">Pille antippen = umbenennen · ✕ = wegnehmen</p>`;
+  else h += `<p class="hint">Antippen = leer · nochmals = wieder da</p>`;
+  for (const [sec, items] of groups(S.items)) {
+    h += `<section class="sec"><h3>${esc(sec)}</h3><div class="pills">`;
+    for (const it of items) {
+      const leer = it.status === "leer", ob = onBring(it.bring);
+      const cls = `pill${leer ? " leer" : ""}${ob ? " onb" : ""}${fl(it)}`;
+      const lab = `${esc(it.bring)}${ICON.cart}`;
+      const aria = `${it.bring}${it.name !== it.bring ? " (" + it.name + ")" : ""}${ob ? ", steht auf Bring!" : ""}`;
+      h += UI.edit
+        ? `<span class="${cls} edit"><button type="button" data-act="item" data-id="${it.id}" aria-label="${esc(aria)} bearbeiten">${lab}</button><button type="button" class="px" data-act="del" data-id="${it.id}" aria-label="${esc(it.bring)} wegnehmen">✕</button></span>`
+        : `<button type="button" class="${cls}" data-act="toggle" data-id="${it.id}" aria-pressed="${leer}" aria-label="${esc(aria)}${leer ? ", leer" : ""}">${lab}</button>`;
+    }
+    h += `</div></section>`;
+  }
+  return h;
+}
+function trayA() {
+  if (UI.edit) return "";
+  const p = pending().length;
+  const sent = uniq(S.items.filter(it => it.status === "leer" && onBring(it.bring)).map(it => it.bring)).length;
+  return `<div class="tray"><div class="tx"><b>${p ? p + " leer" : "Nichts leer"}</b><span>${p ? "kommt mit «Bring! füllen»" : sent ? sent + " leer, schon auf Bring!" : "Plan und Vorrat"}</span></div><button type="button" class="fbtn" data-act="fillA">Bring! füllen</button></div>`;
+}
+
+function rowB(it, top) {
+  const ob = onBring(it.bring), e = bringEntry(it.bring);
+  let sub = "", low = false;
+  if (top) {
+    if (ob) sub = e && e.by !== "BringFrisch" ? `steht auf Bring! (${e.by})` : "steht auf Bring!";
+    else if (it.status === "leer") { sub = "leer"; low = true; }
+    else { sub = `reicht noch für ~${it.left} Znacht`; low = true; }
+  } else sub = it.name !== it.bring ? it.name : "";
+  const name = `<button type="button" class="rname" data-act="item" data-id="${it.id}"><span><span class="t">${esc(it.bring)}</span>${sub ? `<span class="s${low ? " low" : ""}">${esc(sub)}</span>` : ""}</span>${ICON.chev}</button>`;
+  if (!top) return `<div class="row${fl(it)}">${name}<button type="button" class="tbtn sm" data-act="leer" data-id="${it.id}" aria-label="${esc(it.bring)} ist leer">leer</button></div>`;
+  const bbtn = ob
+    ? `<button type="button" class="okchip" data-act="unbring" data-id="${it.id}" aria-label="${esc(it.bring)} steht auf Bring! – wieder wegnehmen">${ICON.check}auf Bring!</button>`
+    : `<button type="button" class="fbtn sm" data-act="bring" data-id="${it.id}">auf Bring!</button>`;
+  return `<div class="row${fl(it)}">${name}<button type="button" class="ghost sm" data-act="da" data-id="${it.id}" aria-label="${esc(it.bring)} ist wieder da">da</button>${bbtn}</div>`;
+}
+function viewB() {
+  const q = UI.qB.trim();
+  let h = `<div class="field card" style="margin:2px 0 10px">${ICON.search}<input type="search" data-k="qB" value="${esc(UI.qB)}" placeholder="Suchen oder hinzufügen" aria-label="Suchen oder hinzufügen" autocomplete="off"></div>`;
+  if (q) {
+    const n = norm(q);
+    const hits = S.items.filter(it => norm(it.bring).includes(n) || norm(it.name).includes(n));
+    h += `<div class="h2row"><h2>Im Vorrat</h2><small>${hits.length}</small></div>`;
+    h += hits.length ? `<div class="list card">${hits.map(it => rowB(it, it.status === "leer" || (it.left != null && it.left <= 2))).join("")}</div>` : `<div class="empty card">Nicht im Vorrat.</div>`;
+    h += `<div class="h2row"><h2>Neu hinzufügen</h2><small>aus Bring!</small></div><div class="card addbox" id="sugg">${suggestHTML(q)}</div>`;
+    return h;
+  }
+  const top = S.items.filter(it => it.status === "leer" || (it.left != null && it.left <= 2));
+  const rest = S.items.filter(it => !top.includes(it));
+  h += `<div class="h2row"><h2>Leer & bald leer</h2><small>${top.length}</small></div>`;
+  h += top.length ? `<div class="list card">${top.map(it => rowB(it, true)).join("")}</div>` : `<div class="empty card">Alles da.</div>`;
+  h += `<button type="button" class="disc card" data-act="rest" aria-expanded="${UI.openRest}"><span>Alles da · ${rest.length}</span>${ICON.down}</button>`;
+  if (UI.openRest) {
+    h += dupCard();
+    for (const [sec, items] of groups(rest)) h += `<section class="sec"><h3>${esc(sec)}</h3><div class="list card">${items.map(it => rowB(it, false)).join("")}</div></section>`;
+  }
+  return h;
+}
+
+function viewC() {
+  let h = "";
+  if (UI.tab === "vorrat") {
+    for (const [sec, items] of groups(S.items)) {
+      const open = !UI.coll[sec];
+      const nl = items.filter(it => it.status === "leer").length;
+      h += `<section class="sec"><button type="button" class="shead" data-act="coll" data-sec="${esc(sec)}" aria-expanded="${open}">${ICON.down}<span>${esc(sec)}</span><span class="c">${nl ? nl + " leer" : ""}</span></button>`;
+      if (open) h += `<div class="tiles">${items.map(it => {
+        const leer = it.status === "leer", ob = onBring(it.bring);
+        return `<button type="button" class="tile card${leer ? " leer" : ""}${ob ? " onb" : ""}${fl(it)}" data-act="toggle" data-id="${it.id}" aria-pressed="${leer}" aria-label="${esc(it.bring)}${leer ? ", leer" : ", da"}${ob ? ", steht auf Bring!" : ""}"><span class="dot">${ICON.check}</span><span class="lb">${esc(it.bring)}</span>${ICON.cart}</button>`;
+      }).join("")}</div>`;
+      h += `</section>`;
+    }
+    return h;
+  }
+  h += addBox("addC", "Artikel hinzufügen (wie in Bring!)") + dupCard();
+  for (const [sec, items] of groups(S.items)) {
+    h += `<section class="sec"><h3>${esc(sec)}</h3><div class="list card">`;
+    for (const it of items) {
+      if (UI.editing === it.id) {
+        h += `<div class="mrow"><div class="field"><input data-k="ren-${it.id}" value="${esc(UI.renVal)}" aria-label="Neuer Name für ${esc(it.bring)}" autocomplete="off"></div><button type="button" class="fbtn sm" data-act="rename" data-id="${it.id}">OK</button><button type="button" class="ibtn" data-act="renCancel" aria-label="Abbrechen">${ICON.x}</button></div>`;
+        h += `<p class="hint" id="rhint" style="margin:0 12px 8px">${renameHint(UI.renVal)}</p>`;
+      } else {
+        h += `<div class="mrow${fl(it)}"><button type="button" class="rname" data-act="ren" data-id="${it.id}" aria-label="${esc(it.bring)} umbenennen"><span><span class="t">${esc(it.bring)}</span>${it.name !== it.bring ? `<span class="s">${esc(it.name)}</span>` : ""}</span></button><button type="button" class="ibtn" data-act="del" data-id="${it.id}" aria-label="${esc(it.bring)} wegnehmen">${ICON.trash}</button></div>`;
+      }
+    }
+    h += `</div></section>`;
+  }
+  return h;
+}
+function trayC() {
+  if (UI.tab !== "vorrat") return "";
+  const p = pending();
+  if (!p.length) return "";
+  return `<div class="tray"><div class="tx"><b>Für Bring! (${p.length})</b><span>${esc(p.join(", "))}</span></div><button type="button" class="fbtn" data-act="sendC">Prüfen</button></div>`;
+}
+
+function infoHTML() {
+  const d = INFO[V];
+  return `<h2>${esc(d.title)}</h2><p>${esc(d.idea)}</p>
+    <h3>So funktioniert es</h3><ul>${d.how.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+    <dl class="qa">${d.qa.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}</dl>
+    <h3>Abwägen</h3><p class="pro"><b>Vorteil:</b> ${esc(d.pro)}</p><p class="pro"><b>Nachteil:</b> ${esc(d.con)}</p>
+    <p class="try">${esc(d.tryit)}</p>`;
+}
+function bringHTML() {
+  $("bCount").textContent = S.bring.length + " Artikel";
+  $("bList").innerHTML = S.bring.map((b, i) => `<li class="${prevBring.has(b.name) ? "" : "new"}"><span class="n">${esc(b.name)}${b.spec ? `<small>${esc(b.spec)}</small>` : ""}</span><span class="by">${esc(b.by)}</span><button type="button" data-bi="${i}" aria-label="${esc(b.name)} in Bring! abhaken">Abhaken</button></li>`).join("") || `<li><span class="n muted">Liste leer</span></li>`;
+  $("bLog").textContent = S.log || "";
+  const grew = S.bring.some(b => !prevBring.has(b.name));
+  prevBring = new Set(S.bring.map(b => b.name));
+  return grew;
+}
+
+// ---------- Fokus erhalten ----------
+function keyOf(el) {
+  if (!el || !el.dataset) return null;
+  if (el.dataset.k) return "k:" + el.dataset.k;
+  if (el.dataset.act) return "a:" + el.dataset.act + ":" + (el.dataset.id || el.dataset.tab || el.dataset.sec || el.dataset.key || "");
+  return null;
+}
+function restore(k) {
+  if (!k) return false;
+  const els = phone.querySelectorAll("[data-k],[data-act]");
+  for (const el of els) if (keyOf(el) === k && !el.closest("[inert]")) { el.focus({ preventScroll: false }); return el; }
+  return false;
+}
+function render() {
+  const ae = document.activeElement;
+  const k = UI.focusK || (phone.contains(ae) ? keyOf(ae) : null);
+  const sel = ae && ae.dataset && ae.dataset.k && typeof ae.selectionStart === "number" ? ae.selectionStart : null;
+  UI.focusK = null;
+  const scroll = content.scrollTop;
+  appbar.innerHTML = appbarHTML();
+  content.innerHTML = V === "A" ? viewA() : V === "B" ? viewB() : viewC();
+  tray.innerHTML = V === "A" ? trayA() : V === "C" ? trayC() : "";
+  if (UI.sheetFn) { sheet.innerHTML = UI.sheetFn(); updateSend(); }
+  content.scrollTop = scroll;
+  const el = restore(k);
+  if (el && sel != null && el.setSelectionRange) { try { el.setSelectionRange(sel, sel); } catch (e) { /* type=search */ } }
+  if (bringHTML()) { const c = $("bchip"); if (c) c.classList.add("bump"); }
+  if (UI.flash) { UI.flash = null; const f = content.querySelector(".flash"); if (f) f.scrollIntoView({ block: "nearest" }); }
+}
+
+// ---------- Ereignisse ----------
+function onAct(b) {
+  const a = b.dataset.act, id = b.dataset.id, it = id ? byId(id) : null;
+  switch (a) {
+    case "nav": snack("Nur Vorschau: hier geht es nur um den Grundvorrat."); break;
+    case "edit": UI.edit = !UI.edit; render(); break;
+    case "toggle": if (it) toggleLeer(it); break;
+    case "item": openSheet(itemSheet(id), b); break;
+    case "del": removeItem(id); break;
+    case "close": closeSheet(); break;
+    case "merge": openSheet(mergeSheet, b); break;
+    case "mergeOne": act("Zusammengeführt", () => { mergeKey(b.dataset.key); if (UI.sheetFn && UI.sheetFn !== mergeSheet) closeSheet(true); }); break;
+    case "mergeAll": act("Alle Doppelten zusammengeführt", () => { dupGroups().forEach(([k2]) => mergeKey(k2, true)); closeSheet(true); }); break;
+    case "add": addItem(b.dataset.name); break;
+    case "rename": {
+      const inp = phone.querySelector(`[data-k="sheetName"]`) || phone.querySelector(`[data-k="ren-${id}"]`);
+      renameItem(id, inp ? inp.value : ""); break;
+    }
+    case "ren": UI.editing = id; UI.renVal = it ? it.bring : ""; UI.focusK = "k:ren-" + id; render(); break;
+    case "renCancel": { const e = UI.editing; UI.editing = null; UI.focusK = "a:ren:" + e; render(); break; }
+    case "fillA": openFillA(b); break;
+    case "sendC": openSendC(b); break;
+    case "send": {
+      const keys = [...sheet.querySelectorAll("[data-ck]:checked:not(:disabled)")].map(x => x.dataset.ck);
+      const names = keys.map(x => x.slice(2));
+      sendToBring(names, `${names.length} auf Bring! ✓`, V === "A");
+      break;
+    }
+    case "leer": if (it) act(`${it.bring} ist leer`, () => { it.status = "leer"; UI.flash = it.id; }); break;
+    case "da": if (it) act(`${it.bring} wieder da`, () => { it.status = "da"; it.left = null; }); break;
+    case "bring": if (it) act(`${it.bring} auf Bring! ✓`, () => { S.bring.push({ name: it.bring, spec: "", by: "BringFrisch" }); S.log = `BringFrisch hat «${it.bring}» gesetzt.`; }); break;
+    case "unbring": {
+      if (!it) break;
+      const e = bringEntry(it.bring);
+      if (e && e.by !== "BringFrisch") { snack(`${e.by} hat ${it.bring} gesetzt – in Bring! abhaken`); break; }
+      act(`${it.bring} von Bring! genommen`, () => { S.bring = S.bring.filter(x => x !== e); S.log = `BringFrisch hat «${it.bring}» wieder entfernt.`; });
+      break;
+    }
+    case "rest": UI.openRest = !UI.openRest; render(); break;
+    case "left-": case "left+": if (it) {
+      const cur = it.left == null ? 6 : it.left;
+      const nx = a === "left-" ? Math.max(0, cur - 1) : cur + 1;
+      it.left = nx >= 6 ? null : nx; it.status = nx === 0 ? "leer" : (it.status === "leer" && nx > 0 ? "da" : it.status);
+      render();
+    } break;
+    case "tab": UI.tab = b.dataset.tab; UI.editing = null; render(); break;
+    case "coll": UI.coll[b.dataset.sec] = !UI.coll[b.dataset.sec]; render(); break;
+  }
+}
+phone.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (b && phone.contains(b) && !b.disabled) onAct(b);
+});
+phone.addEventListener("change", e => { if (e.target.dataset.ck) updateSend(); });
+phone.addEventListener("input", e => {
+  const k = e.target.dataset.k; if (!k) return;
+  if (k === "qB") { UI.qB = e.target.value; render(); }
+  else if (k === "addA" || k === "addC") { UI[k] = e.target.value; const box = $("sugg"); if (box) box.innerHTML = suggestHTML(e.target.value); }
+  else if (k === "sheetName" || k.startsWith("ren-")) {
+    if (k === "sheetName") UI.sheetName = e.target.value; else UI.renVal = e.target.value;
+    const h = $("rhint"); if (h) h.innerHTML = renameHint(e.target.value);
+  }
+});
+phone.addEventListener("keydown", e => {
+  const k = e.target.dataset && e.target.dataset.k;
+  if (e.key === "Escape") {
+    if (UI.editing) { onAct({ dataset: { act: "renCancel" } }); e.preventDefault(); }
+    else if (UI.sheetFn) { closeSheet(); e.preventDefault(); }
+    return;
+  }
+  if (e.key !== "Enter" || !k) return;
+  e.preventDefault();
+  if (k === "addA" || k === "addC" || k === "qB") { const b = $("sugg") && $("sugg").querySelector('[data-act="add"]'); if (b) b.click(); }
+  else if (k === "sheetName" || k.startsWith("ren-")) { const b = phone.querySelector('[data-act="rename"]'); if (b) b.click(); }
+});
+$("bList").addEventListener("click", e => {
+  const b = e.target.closest("[data-bi]"); if (!b) return;
+  const entry = S.bring[+b.dataset.bi]; if (!entry) return;
+  S.bring.splice(+b.dataset.bi, 1);
+  const hit = S.items.filter(it => norm(it.bring) === norm(entry.name));
+  hit.forEach(it => { it.status = "da"; it.left = null; });
+  S.log = `«${entry.name}» in Bring! abgehakt${hit.length ? " → im Vorrat wieder da" : ""}.`;
+  render();
+  const nb = $("bList").querySelector("[data-bi]"); if (nb) nb.focus();
+});
+
+// ---------- Umschalter ----------
+function seg(id, attr, val) { $(id).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === val))); }
+let OS = /android/i.test(navigator.userAgent) ? "android" : "ios";
+let TH = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+function applyLook() {
+  phone.className = `phone ${OS}${TH === "dark" ? " dark" : ""}`;
+  document.documentElement.setAttribute("data-theme", TH);
+  seg("segOS", "os", OS); seg("segT", "t", TH);
+}
+function setVariant(v) {
+  V = v; seg("segV", "v", v);
+  sheet.classList.remove("on"); scrim.classList.remove("on");
+  ["appbar", "content", "bottom"].forEach(id => $(id).inert = false);
+  fresh();
+  $("snack").classList.remove("on");
+  $("info").innerHTML = infoHTML();
+  render();
+  content.scrollTop = 0;
+}
+$("segV").onclick = e => { const b = e.target.closest("[data-v]"); if (b) setVariant(b.dataset.v); };
+$("segOS").onclick = e => { const b = e.target.closest("[data-os]"); if (b) { OS = b.dataset.os; applyLook(); } };
+$("segT").onclick = e => { const b = e.target.closest("[data-t]"); if (b) { TH = b.dataset.t; applyLook(); } };
+$("reset").onclick = () => setVariant(V);
+
+applyLook();
+setVariant("A");
+})();
+</script>
