@@ -937,16 +937,30 @@ await step(B, "Pop-up «Wochenwahl starten» öffnet die Wochenwahl mit 14 Geric
 });
 
 const card = k => `#voteGrid .vcard:nth-child(${k + 1})`;
-await step(B, "Wochenwahl als Leonie: 3 Gerichte antippen, Wunschtag Mi, eines wieder abwählen", async () => {
+// Memory-Karte umdrehen (Bild antippen), dann ist die Rückseite mit «Wählen» und Wunschtag bedienbar
+async function flipOpen(P, k) {
+  if (await P.page.$eval(card(k), c => c.classList.contains("open"))) return;
+  await tap(P, `${card(k)} .vfront`);
+  await until(P, s => document.querySelector(s).classList.contains("open"), `Karte ${k} dreht nicht um`, card(k));
+}
+async function likeCard(P, k) { await flipOpen(P, k); await tap(P, `${card(k)} [data-like]`); }
+await step(B, "Wochenwahl als Leonie (Memory: Karte umdrehen): 3 Gerichte wählen, Wunschtag Mi, ↩ zurück aufs Bild, eines wieder abwählen", async () => {
   await choose(B, "#voteMe", "leonie");
   for (const k of [0, 1, 2]) {
-    await tap(B, `${card(k)} [data-like]`);
+    await likeCard(B, k);
     await until(B, s => document.querySelector(`${s} [data-like]`).getAttribute("aria-pressed") === "true", `Gericht ${k} nicht gewählt`, card(k));
   }
   expect((await text(B, "#voteMine")) === "3 gewählt", "Zähler");
+  await flipOpen(B, 0);
   await tap(B, `${card(0)} [data-wish][data-day="2"]`);
   await until(B, s => document.querySelector(`${s} [data-wish][data-day="2"]`).getAttribute("aria-pressed") === "true", "Wunschtag nicht gesetzt", card(0));
-  await tap(B, `${card(2)} [data-like]`);
+  expect((await text(B, `${card(0)} .vwish`)) === "Mi", "Wunschtag fehlt vorne auf dem Bild");
+  const link = await B.page.$eval(`${card(0)} .vlink`, a => ({ href: a.href, text: a.textContent, target: a.target })).catch(() => null);
+  expect(link && link.href.startsWith("https://") && link.target === "_blank" && /^(Rezept auf .+|Auf Fooby suchen) ↗$/.test(link.text), `Rückseite: Link zum Rezept fehlt (${JSON.stringify(link)})`);
+  await shot(B, "02a-wochenwahl-rueckseite");
+  await tap(B, `${card(0)} .vturn`);
+  await until(B, s => !document.querySelector(s).classList.contains("open"), "↩ dreht nicht zurück aufs Bild", card(0));
+  await likeCard(B, 2);
   await until(B, () => document.getElementById("voteMine").textContent === "2 gewählt", "Abwählen klappt nicht");
   expect((await text(B, "#voteWho")) === "1 von 4 haben gewählt", await text(B, "#voteWho"));
 });
@@ -960,7 +974,7 @@ await step(B, "Wochenwahl: Bilder von der Rezeptseite (WG-Server legt sie ab, Ha
 
 await step(B, "Wochenwahl als Jo (gleiches Handy, sofort gewechselt): 2 Gerichte; beide Stimmen kommen beim WG-Server an", async () => {
   await choose(B, "#voteMe", "jo"); // innerhalb von 0.5 s nach Leonies letzter Wahl (Regression: Stimme ging verloren)
-  for (const k of [1, 3]) await tap(B, `${card(k)} [data-like]`);
+  for (const k of [1, 3]) await likeCard(B, k);
   await until(B, () => document.getElementById("voteMine").textContent === "2 gewählt", "Jo: 2 gewählt fehlt");
   await until(B, s => document.querySelectorAll(`${s} .mini`).length === 2, "Gericht 2 hat nicht 2 Stimmen", card(1));
   expect((await text(B, "#voteRank .rank-row .t")) === cand[1], "Ranking: Gericht mit 2 Stimmen nicht zuoberst");
@@ -1397,7 +1411,7 @@ await step(C, "Kalender-Symbol mit rotem Punkt: Wochenwahl für KW 47, 1 Stimme,
   await until(C, () => document.getElementById("voteDialog").open && document.querySelectorAll("#voteGrid .vcard").length === 14, "Wochenwahl geht nicht auf");
   expect((await text(C, "#voteSubtitle")).startsWith("KW 47 (nächste Woche)"), await text(C, "#voteSubtitle"));
   expect((await text(C, "#secTitle")) === "Nächste Woche", "Ansicht nicht auf nächster Woche");
-  await tap(C, `${card(4)} [data-like]`);
+  await likeCard(C, 4);
   await clearToasts(C);
   await tap(C, "#voteApplyBtn");
   await toastIs(C, /Plan übernommen \(6 ohne Stimme aufgefüllt\)/);

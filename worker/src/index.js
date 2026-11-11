@@ -590,7 +590,15 @@ function events(doc, { me = "", dl = false } = {}) {
 // Bild zum Rezept (Wochenwahl): einmal von der Rezeptseite holen (og:image bzw. schema.org image) und im
 // WG-Server ablegen – nur für verbundene WGs (PIN), nie im öffentlichen Repo. Pro Rezept-Link genau ein Abruf,
 // danach aus dem Speicher; gibt es kein Bild, merkt sich der Server das 7 Tage (kein erneutes Anfragen).
-const IMG_MAX = 900_000;
+const IMG_MAX = 1_600_000;
+const IMG_V = 2; // «kein Bild» aus älteren Versionen (z.B. Betty Bossi zu gross) wird neu geprüft
+// kleinere Fassung des Vorschaubilds, wo die Seite das anbietet (Betty Bossi liefert sonst bis 1.2 MB)
+function smallerImage(u) {
+  const s = u.toString();
+  if (u.hostname === "media.bettybossi.ch" && /\/-FJPG$/.test(s)) return s.replace(/\/-FJPG$/, "/-B640-FJPG");
+  if (u.hostname === "res.cloudinary.com") return s.replace(/\/w_1200,h_630,/, "/w_640,h_400,");
+  return s;
+}
 async function recipeImage(env, link) {
   let u;
   try { u = new URL(String(link || "")); } catch { throw httpError(400, "Kein Link"); }
@@ -602,10 +610,10 @@ async function recipeImage(env, link) {
   const hit = await kv.getWithMetadata(key, "arrayBuffer");
   if (hit && hit.value != null) {
     // kein Bild = 204 (kein Fehler: der Browser meldet 404 sonst als Fehler in der Konsole)
-    if (hit.metadata && hit.metadata.none) return new Response(null, { status: 204 });
-    return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg");
+    if (hit.metadata && hit.metadata.none) { if (hit.metadata.v === IMG_V) return new Response(null, { status: 204 }); }
+    else return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg");
   }
-  const none = async () => { await kv.put(key, "", { metadata: { none: true }, expirationTtl: 7 * 86400 }); return new Response(null, { status: 204 }); };
+  const none = async () => { await kv.put(key, "", { metadata: { none: true, v: IMG_V }, expirationTtl: 7 * 86400 }); return new Response(null, { status: 204 }); };
   const UA = { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)" };
   let html = "";
   try {
@@ -623,14 +631,19 @@ async function recipeImage(env, link) {
   let imgUrl;
   try { imgUrl = new URL(src.replace(/&amp;/g, "&"), u); } catch { return none(); }
   if (imgUrl.protocol !== "https:" || BLOCKED_HOSTS.test(imgUrl.hostname)) return none();
-  let buf, type;
-  try {
-    const res = await fetch(imgUrl.toString(), { headers: { ...UA, Accept: "image/avif,image/webp,image/jpeg,image/png,image/*" }, redirect: "follow" });
-    type = (res.headers.get("Content-Type") || "").split(";")[0].trim();
-    if (!res.ok || !/^image\/(jpeg|png|webp|avif|gif)$/.test(type)) return none();
-    buf = await res.arrayBuffer();
-  } catch { return none(); }
-  if (!buf.byteLength || buf.byteLength > IMG_MAX) return none();
+  const getImg = async url => {
+    try {
+      const res = await fetch(url, { headers: { ...UA, Accept: "image/avif,image/webp,image/jpeg,image/png,image/*" }, redirect: "follow" });
+      const type = (res.headers.get("Content-Type") || "").split(";")[0].trim();
+      if (!res.ok || !/^image\/(jpeg|png|webp|avif|gif)$/.test(type)) return null;
+      const buf = await res.arrayBuffer();
+      return buf.byteLength && buf.byteLength <= IMG_MAX ? { buf, type } : null;
+    } catch { return null; }
+  };
+  const small = smallerImage(imgUrl);
+  const got = (small !== imgUrl.toString() && await getImg(small)) || await getImg(imgUrl.toString());
+  if (!got) return none();
+  const { buf, type } = got;
   await kv.put(key, buf, { metadata: { type, from: imgUrl.hostname } });
   return send(buf, type);
 }

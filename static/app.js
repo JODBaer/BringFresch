@@ -135,6 +135,14 @@
   // Link zum Rezept: Original-Seite, sonst die Suche auf Fooby mit dem Menü (lieber suchen als falsch verlinken;
   // Fooby und Swissmilk nehmen den Suchbegriff im Link an, Betty Bossi und Migusto nicht).
   // Schnelles/Reste (Fertigpizza, Resteessen …) brauchen keinen. Links prüfen: tests/links_live.mjs
+  // «Rezept auf Fooby ↗» bzw. «Auf Fooby suchen ↗»
+  function recipeLinkLabel(r) {
+    if (!r.source_url) return "Auf Fooby suchen ↗";
+    let h = "";
+    try { h = new URL(r.source_url).hostname.replace(/^www\./, ""); } catch (e) { /* kein Link */ }
+    const site = { "fooby.ch": "Fooby", "bettybossi.ch": "Betty Bossi", "migusto.migros.ch": "Migusto", "swissmilk.ch": "Swissmilk" }[h] || h;
+    return `Rezept auf ${site} ↗`;
+  }
   function recipeHref(r) {
     if (r.source_url) return r.source_url;
     if (!r.title || r.empty || r.quick || r.is_leftovers) return "";
@@ -962,6 +970,7 @@
     await Promise.all([worker(), worker(), worker()]); // höchstens 3 gleichzeitig
   }
 
+  let voteOpen = null; // umgedrehte Memory-Karte (Gericht-ID)
   function renderVote() {
     const short = initialsMap();
     const mine = myVote();
@@ -973,17 +982,28 @@
       const r = recipeById(id);
       const on = mine.likes.includes(id);
       const wish = mine.days[id];
+      // Memory-Karte: vorne Bild + Titel, Antippen dreht um; hinten Infos, «Wählen», Wunschtag, ↩ zurück aufs Bild
       return `
-        <div class="vcard${on ? " on" : ""}">
-          <button class="tap" type="button" data-like="${esc(id)}" aria-pressed="${on}" aria-label="${esc(r.title)} ${on ? "abwählen" : "wählen"}"></button>
-          ${on ? `<span class="tick" aria-hidden="true">✓</span>` : ""}
-          ${r.source_url && connected()
-            ? `<span class="vimg${imgState(r.source_url)}" data-img="${esc(r.source_url)}" data-emoji="${dishEmoji(r)}" aria-hidden="true"${imgCache.get(r.source_url) ? ` style="background-image:url(${imgCache.get(r.source_url)})"` : ""}></span>`
-            : `<span class="vimg none" data-emoji="${dishEmoji(r)}" aria-hidden="true"></span>`}
-          <span class="vt">${esc(r.title)}</span>
-          <span class="vm">${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${recipeHref(r) ? ` · <a href="${esc(recipeHref(r))}" target="_blank" rel="noopener">🌐</a>` : ""}</span>
-          ${on ? `<span class="days-pick" role="group" aria-label="Wunschtag">${DAYS.map((d, i) => `<button type="button" data-wish="${esc(id)}" data-day="${i}" aria-pressed="${wish === i}">${d.slice(0, 2)}</button>`).join("")}</span>` : ""}
-          <span class="vv">${votersOf(id).map(m => `<span class="mini" title="${esc(m.name)}">${esc(short[m.id])}</span>`).join("")}</span>
+        <div class="vcard${on ? " on" : ""}${voteOpen === id ? " open" : ""}" data-id="${esc(id)}">
+          <div class="vflip">
+            <button class="vfront" type="button" data-flip="${esc(id)}" aria-label="${esc(r.title)} umdrehen">
+              ${r.source_url && connected()
+                ? `<span class="vimg${imgState(r.source_url)}" data-img="${esc(r.source_url)}" data-emoji="${dishEmoji(r)}" aria-hidden="true"${imgCache.get(r.source_url) ? ` style="background-image:url(${imgCache.get(r.source_url)})"` : ""}></span>`
+                : `<span class="vimg none" data-emoji="${dishEmoji(r)}" aria-hidden="true"></span>`}
+              <span class="vband">${esc(r.title)}</span>
+              ${on ? `<span class="tick" aria-hidden="true">✓</span>` : ""}
+              ${on && wish != null ? `<span class="vwish">${DAYS[wish].slice(0, 2)}</span>` : ""}
+              <span class="vv">${votersOf(id).map(m => `<span class="mini" title="${esc(m.name)}">${esc(short[m.id])}</span>`).join("")}</span>
+            </button>
+            <div class="vback">
+              <span class="vt">${esc(r.title)}</span>
+              <span class="vm">${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.</span>
+              ${recipeHref(r) ? `<a class="vlink" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${esc(recipeLinkLabel(r))}</a>` : ""}
+              <button class="vpick" type="button" data-like="${esc(id)}" aria-pressed="${on}">${on ? "✓ Gewählt" : "Wählen"}</button>
+              ${on ? `<span class="days-pick" role="group" aria-label="Wunschtag">${DAYS.map((d, i) => `<button type="button" data-wish="${esc(id)}" data-day="${i}" aria-pressed="${wish === i}">${d.slice(0, 2)}</button>`).join("")}</span>` : ""}
+              <button class="vturn" type="button" data-flip="${esc(id)}" aria-label="zurück zum Bild">↩</button>
+            </div>
+          </div>
         </div>`;
     }).join("");
 
@@ -1001,6 +1021,7 @@
 
   let votePoll = null;
   function openVote() {
+    voteOpen = null;
     vote = loadVote();
     saveVote();
     renderVote();
@@ -1036,6 +1057,22 @@
   };
 
   $("voteGrid").addEventListener("click", e => {
+    const flip = e.target.closest("[data-flip]");
+    if (flip) {
+      // nur Klassen umschalten (nicht neu zeichnen), damit die Drehung sichtbar ist; immer nur eine Karte offen
+      const id = flip.dataset.flip;
+      voteOpen = voteOpen === id ? null : id;
+      document.querySelectorAll("#voteGrid .vcard").forEach(c => {
+        const open = c.dataset.id === voteOpen;
+        if (open === c.classList.contains("open")) return;
+        // Karte hebt sich beim Drehen an (grösser, Schatten), landet danach wieder
+        c.classList.add("lift");
+        clearTimeout(c._lift);
+        c._lift = setTimeout(() => c.classList.remove("lift"), 280);
+        c.classList.toggle("open", open);
+      });
+      return;
+    }
     const wish = e.target.closest("[data-wish]");
     if (wish) {
       const mine = myVote();
