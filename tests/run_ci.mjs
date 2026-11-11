@@ -53,6 +53,7 @@ results.push([`Syntax (${syntaxFiles.length} Dateien)`, bad.length === 0]);
 // 2. Tests
 step("App (jsdom)", node, ["app.test.js"]);
 step("Zutaten-Abgleich (alle Rezepte)", node, ["zutaten.test.js"]);
+step("Einkaufsliste aller Rezepte (fester Stand)", node, ["einkauf_snapshot.test.js"]);
 step("Integration (2 Handys + Worker)", node, ["integration.test.mjs"]);
 step("Abgleich (gleichzeitige Änderungen, falsche Uhr)", node, ["sync_merge.test.mjs"]);
 step("Worker", node, ["../worker/test.mjs"]);

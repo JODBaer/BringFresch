@@ -2,7 +2,7 @@
   "name": "bringfrisch-tests",
   "private": true,
   "scripts": {
-    "test": "node app.test.js && node zutaten.test.js && node integration.test.mjs && node sync_merge.test.mjs && node ../worker/test.mjs && node release_build.test.mjs",
+    "test": "node app.test.js && node zutaten.test.js && node einkauf_snapshot.test.js && node integration.test.mjs && node sync_merge.test.mjs && node ../worker/test.mjs && node release_build.test.mjs",
     "layout": "node layout_check.mjs",
     "ci": "node run_ci.mjs",
     "ui": "node ui_e2e.mjs",
