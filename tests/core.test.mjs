@@ -37,5 +37,20 @@ check(by("Weissmehl").isStaple && !by("Mehlig kochende Kartoffeln").isStaple, "W
 check(list.some(i => /Speckwürfeli/.test(i.name) && i.amount === 150) && list.some(i => /Grillkäse/.test(i.name) && i.amount === 100), "150 g Fleisch pro Fleisch-Esser, 100 g Grillkäse pro Vegi");
 check(C.shoppingList({ plan: [{ ...day, empty: true }], members, staples: [], bringItems: [] }).length === 0, "offener Tag kauft nichts");
 
+// Wochenwahl
+const ms = [{ id: "a", diet: "fleisch" }, { id: "b", diet: "vegi" }, { id: "c", diet: "fleisch" }];
+check(C.effectiveDiet(["a", "c"], ms) === "fleisch" && C.effectiveDiet(["a", "b"], ms) === "vegi", "ein Vegi am Tisch = vegi für alle");
+const rec = (id, diet, extra) => ({ id, diet, season_months: [11], ...extra });
+const all = [...Array.from({ length: 8 }, (_, i) => rec("v" + i, "vegi")), ...Array.from({ length: 8 }, (_, i) => rec("f" + i, "fleisch")), rec("q1", "vegi", { quick: true }), rec("q2", "fleisch", { quick: true })];
+const cand = C.pickCandidates(all, 11, 14, 2);
+check(cand.length === 14 && new Set(cand).size === 14, "14 Gerichte, keines doppelt");
+check(cand.slice(0, 12).every((id, i) => id[0] === (i % 2 ? "f" : "v")) && cand.slice(12).every(id => id[0] === "q"), "abwechselnd vegi / Fleisch, die letzten 2 sind Schnelles");
+const votes = { a: { likes: ["x", "y"], days: { y: 2 } }, b: { likes: ["y"], days: {} }, c: { likes: [], days: {} } };
+check(C.ranking(["x", "y", "z"], ms, votes).map(r => r.id).join() === "y,x,z", "Rangliste: 2 Stimmen vor 1 vor 0");
+const week = Array.from({ length: 7 }, () => ({ eaters: ["a", "b", "c"] }));
+check(C.assignDays(["y", "x"], week, ms, votes).y === 2, "Wunschtag Mittwoch wird respektiert");
+week[2].eaters = ["c"]; week[0].eaters = ["a", "b"];
+check(C.assignDays(["x"], week, ms, votes).x === 0, "ohne Wunschtag: Tag, an dem die Fans da sind");
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

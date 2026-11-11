@@ -219,36 +219,14 @@
   }
 
   // Gemeinsamer Nenner der Anwesenden: vegan > vegi > fleisch
-  function effectiveDiet(eaterIds) {
-    const diets = (eaterIds || []).map(id => (state.members.find(m => m.id === id) || {}).diet);
-    if (diets.includes("vegan")) return "vegan";
-    if (diets.includes("vegi")) return "vegi";
-    return "fleisch";
-  }
+  const effectiveDiet = eaterIds => CORE.effectiveDiet(eaterIds, state.members);
 
-  function fitsDiet(recipe, diet) {
-    if (diet === "vegan") return recipe.diet === "vegan";
-    if (diet === "vegi") return recipe.diet === "vegi" || recipe.diet === "vegan";
-    return true;
-  }
+  const { fitsDiet } = CORE;
 
-  function inSeason(recipe, month = currentMonth()) {
-    return !recipe.season_months || recipe.season_months.includes(month);
-  }
+  const inSeason = (recipe, month = currentMonth()) => CORE.inSeason(recipe, month);
 
   // Zufallsrezept passend zur Diät, saisonal bevorzugt, möglichst ohne Wiederholung
-  function pickRecipe(diet, excludeIds = []) {
-    const all = allRecipes();
-    const fitting = all.filter(r => fitsDiet(r, diet));
-    const pool = fitting.length ? fitting : all;
-    const tiers = [
-      pool.filter(r => inSeason(r) && !excludeIds.includes(r.id)),
-      pool.filter(r => !excludeIds.includes(r.id)),
-      pool
-    ];
-    const tier = tiers.find(t => t.length > 0) || [];
-    return tier[Math.floor(Math.random() * tier.length)];
-  }
+  const pickRecipe = (diet, excludeIds = []) => CORE.pickRecipe(allRecipes(), diet, excludeIds, currentMonth());
 
   function makeDay(recipe, dayIdx, previous) {
     const prev = previous || {};
@@ -535,7 +513,7 @@
   const PLAN_SIZE = 7;
 
   const recipeById = id => allRecipes().find(r => String(r.id) === String(id));
-  const dietGroup = r => (r.diet === "fleisch" ? "fleisch" : "vegi");
+  const { dietGroup } = CORE;
 
   const nextWeekKey = () => weekKey(plusWeek());
   const canPlanNext = () => todayIndex() >= 3; // ab Donnerstag
@@ -580,41 +558,14 @@
     }
   }
 
-  function shuffled(list) {
-    const a = [...list];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
 
   // Ersatz-Gericht: zuerst saisonal + gleiche Gruppe, dann saisonal, dann irgendeins
   // quick = Schnelles/Reste (Pizza, Nuggets, Gnocchi …): eigener Topf, damit sie das Saison-Memory nicht fluten
-  function backupRecipe(group, excludeIds, quick = false) {
-    const all = allRecipes().filter(r => !excludeIds.includes(String(r.id)) && !!r.quick === quick);
-    const tiers = [
-      all.filter(r => inSeason(r) && dietGroup(r) === group),
-      all.filter(r => inSeason(r)),
-      all.filter(r => dietGroup(r) === group),
-      all
-    ];
-    const tier = tiers.find(t => t.length) || [];
-    return tier[Math.floor(Math.random() * tier.length)];
-  }
+  const backupRecipe = (group, excludeIds, quick = false) => CORE.backupRecipe(allRecipes(), group, excludeIds, quick, currentMonth());
 
   // 14 Kandidaten: halb vegi (inkl. vegan), halb Fleisch, saisonal zuerst
   const QUICK_SLOTS = 2; // pro Woche 2 schnelle Sachen / Resteessen im Memory
-  function pickCandidates() {
-    const ids = [];
-    for (let i = 0; i < GRID_SIZE; i++) {
-      const quick = i >= GRID_SIZE - QUICK_SLOTS;
-      const r = backupRecipe(i % 2 === 0 ? "vegi" : "fleisch", ids, quick) || backupRecipe(i % 2 === 0 ? "vegi" : "fleisch", ids, !quick);
-      if (!r) break;
-      ids.push(String(r.id));
-    }
-    return ids;
-  }
+  const pickCandidates = () => CORE.pickCandidates(allRecipes(), currentMonth(), GRID_SIZE, QUICK_SLOTS);
 
   const voteKey = week => `${VOTE_KEY}_${week}`;
   function loadVote() {
@@ -680,15 +631,9 @@
     return vote.votes[id];
   }
 
-  function votersOf(recipeId) {
-    return state.members.filter(m => ((vote.votes[m.id] || {}).likes || []).includes(recipeId));
-  }
+  const votersOf = recipeId => CORE.votersOf(state.members, vote.votes, recipeId);
 
-  function ranking() {
-    return vote.candidates
-      .map((id, order) => ({ id, order, voters: votersOf(id) }))
-      .sort((a, b) => b.voters.length - a.voters.length || a.order - b.order);
-  }
+  const ranking = () => CORE.ranking(vote.candidates, state.members, vote.votes);
 
   // Bilder zu den Gerichten: der WG-Server holt sie einmal von der Rezeptseite; das Handy merkt sie sich (Cache «bf-img»)
   const imgCache = new Map(); // source_url -> Objekt-URL, "" = kein Bild
@@ -920,24 +865,7 @@
   };
 
   // Faire Tagesverteilung: Gericht auf Tag, an dem seine Fans zuhause sind (+2 je Fan), Wunschtag +3
-  function assignDays(recipeIds) {
-    const score = (id, day) => votersOf(id).reduce((s, m) => {
-      const v = vote.votes[m.id];
-      return s + (state.plan[day].eaters.includes(m.id) ? 2 : 0) + (v.days[id] === day ? 3 : 0);
-    }, 0);
-    const pairs = [];
-    recipeIds.forEach(id => DAYS.forEach((_, day) => pairs.push({ id, day, s: score(id, day) })));
-    pairs.sort((a, b) => b.s - a.s || a.day - b.day);
-    const result = {};
-    const usedDays = new Set();
-    pairs.forEach(p => {
-      if (result[p.id] === undefined && !usedDays.has(p.day)) {
-        result[p.id] = p.day;
-        usedDays.add(p.day);
-      }
-    });
-    return result; // recipeId -> dayIdx
-  }
+  const assignDays = recipeIds => CORE.assignDays(recipeIds, state.plan, state.members, vote.votes);
 
   $("voteApplyBtn").onclick = () => {
     const top = ranking().slice(0, PLAN_SIZE);

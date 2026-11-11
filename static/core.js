@@ -296,7 +296,89 @@
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Rezeptwahl und Wochenwahl: was passt zu wem, was hat Saison, wer hat was gewählt, welches Gericht an welchem Tag
+  // ---------------------------------------------------------------------------
+  // Strengste Ernährung der Esser: ein Vegi am Tisch = vegi für alle
+  function effectiveDiet(eaterIds, members) {
+    const diets = (eaterIds || []).map(id => (members.find(m => m.id === id) || {}).diet);
+    if (diets.includes("vegan")) return "vegan";
+    if (diets.includes("vegi")) return "vegi";
+    return "fleisch";
+  }
+  function fitsDiet(recipe, diet) {
+    if (diet === "vegan") return recipe.diet === "vegan";
+    if (diet === "vegi") return recipe.diet === "vegi" || recipe.diet === "vegan";
+    return true;
+  }
+  const inSeason = (recipe, month) => !recipe.season_months || recipe.season_months.includes(month);
+  const dietGroup = r => (r.diet === "fleisch" ? "fleisch" : "vegi");
+  // Zufälliges Gericht: zuerst Saison und noch nicht gebraucht, dann noch nicht gebraucht, dann irgendeines
+  function pickRecipe(all, diet, excludeIds, month) {
+    const fitting = all.filter(r => fitsDiet(r, diet));
+    const pool = fitting.length ? fitting : all;
+    const tiers = [
+      pool.filter(r => inSeason(r, month) && !excludeIds.includes(r.id)),
+      pool.filter(r => !excludeIds.includes(r.id)),
+      pool
+    ];
+    const tier = tiers.find(t => t.length > 0) || [];
+    return tier[Math.floor(Math.random() * tier.length)];
+  }
+  // Ein Gericht für die Wochenwahl: Saison + Gruppe (vegi/fleisch), sonst Saison, sonst Gruppe, sonst irgendeines
+  function backupRecipe(all, group, excludeIds, quick, month) {
+    const free = all.filter(r => !excludeIds.includes(String(r.id)) && !!r.quick === !!quick);
+    const tiers = [
+      free.filter(r => inSeason(r, month) && dietGroup(r) === group),
+      free.filter(r => inSeason(r, month)),
+      free.filter(r => dietGroup(r) === group),
+      free
+    ];
+    const tier = tiers.find(t => t.length) || [];
+    return tier[Math.floor(Math.random() * tier.length)];
+  }
+  // Die Gerichte der Wochenwahl: abwechselnd vegi / Fleisch, die letzten «quickSlots» sind Schnelles & Reste, nie doppelt
+  function pickCandidates(all, month, gridSize, quickSlots) {
+    const ids = [];
+    for (let i = 0; i < gridSize; i++) {
+      const quick = i >= gridSize - quickSlots;
+      const group = i % 2 === 0 ? "vegi" : "fleisch";
+      const r = backupRecipe(all, group, ids, quick, month) || backupRecipe(all, group, ids, !quick, month);
+      if (!r) break;
+      ids.push(String(r.id));
+    }
+    return ids;
+  }
+  // votes = { mitbewohnerId: { likes: [rezeptId], days: { rezeptId: tagIdx } } }
+  const votersOf = (members, votes, recipeId) => members.filter(m => ((votes[m.id] || {}).likes || []).includes(recipeId));
+  // Rangliste: meiste Stimmen zuerst, bei Gleichstand die Reihenfolge im Raster
+  function ranking(candidates, members, votes) {
+    return candidates
+      .map((id, order) => ({ id, order, voters: votersOf(members, votes, id) }))
+      .sort((a, b) => b.voters.length - a.voters.length || a.order - b.order);
+  }
+  // Gerichte auf Tage verteilen: 2 Punkte pro Fan, der an dem Tag isst, 3 Punkte für den Wunschtag -> rezeptId: tagIdx
+  function assignDays(recipeIds, plan, members, votes) {
+    const score = (id, day) => votersOf(members, votes, id).reduce((s, m) => {
+      const v = votes[m.id];
+      return s + (plan[day].eaters.includes(m.id) ? 2 : 0) + (v.days[id] === day ? 3 : 0);
+    }, 0);
+    const pairs = [];
+    recipeIds.forEach(id => plan.forEach((_, day) => pairs.push({ id, day, s: score(id, day) })));
+    pairs.sort((a, b) => b.s - a.s || a.day - b.day);
+    const result = {};
+    const usedDays = new Set();
+    pairs.forEach(p => {
+      if (result[p.id] === undefined && !usedDays.has(p.day)) {
+        result[p.id] = p.day;
+        usedDays.add(p.day);
+      }
+    });
+    return result;
+  }
+
   root.BF_CORE = {
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, votersOf, ranking, assignDays,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList
   };
