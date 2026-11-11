@@ -19,6 +19,7 @@ const env = { WG: KV, WG_PIN: "1234", CAL_TOKEN: "cal-secret", BRING_EMAIL: "bot
 const bringCalls = [];
 const bringList = [{ name: "Milch", specification: "" }];
 const wgPuts = [];
+let tokenNo = 0, expireToken = false;
 let imgFetches = 0;
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
@@ -26,8 +27,10 @@ globalThis.fetch = async (url, init = {}) => {
   if (url.endsWith("/bringauth")) {
     const p = new URLSearchParams(init.body);
     if (p.get("password") !== "pw") return new Response("", { status: 401 });
-    return Response.json({ uuid: "u1", access_token: "tok", bringListUUID: "list-1" });
+    tokenNo++;
+    return Response.json({ uuid: "u1", access_token: "tok", bringListUUID: "list-1", expires_in: 604800 });
   }
+  if (expireToken && url.includes("getbring.com")) { expireToken = false; return new Response("", { status: 401 }); }
   if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home-test" }, { listUuid: "list-wg", name: "WG" }, { listUuid: "list-sh", name: "Sonnenhof" }] });
   if (url.includes("/bringlists/list-wg") && (init.method || "GET") === "GET") return Response.json({ items: { purchase: wgPuts.map(n => ({ itemId: n })) } });
   if (url.includes("/bringlists/list-wg") && init.method === "PUT") { wgPuts.push(new URLSearchParams(init.body).get("purchase")); return new Response(null, { status: 204 }); }
@@ -303,6 +306,19 @@ const snap0 = { has: p => [...store.keys()].some(k => k.startsWith(p)) };
 for (let i = 0; i < 10; i++) await call("/wg", { wg: "Sonnenhof", pin: "0000" });
 r = await sh("/wg");
 check(r.status === 429, "nach 10 falschen PINs ist die WG kurz gesperrt");
+// Bring!-Anmeldung wird gemerkt: kein neuer Login pro Aufruf; lehnt Bring! sie ab (401), einmal frisch anmelden
+{
+  const logins = () => bringCalls.filter(c => c.url.endsWith("/bringauth")).length;
+  await call("/bring/list");
+  const n = logins();
+  await call("/bring/list"); await call("/bring/list");
+  check(logins() === n, `zwei weitere Aufrufe ohne neuen Bring!-Login (${logins() - n})`);
+  expireToken = true; // Bring! kennt die gemerkte Anmeldung nicht mehr
+  r = await call("/bring/list");
+  check(r.status === 200 && logins() === n + 1, `abgelaufene Anmeldung: einmal neu angemeldet, Aufruf klappt (${r.status}, ${logins() - n})`);
+  const snapT = JSON.parse(store.get("backup:" + (await backup(env, new Date("2026-11-13T03:00:00Z"))).day)).keys;
+  check(store.has("bringtoken") && !("bringtoken" in snapT), "gemerkte Anmeldung liegt im Speicher, aber nicht in der Sicherung");
+}
 // Abgleich: «base» = Stempel, auf dem die Änderung aufbaut
 {
   const week7 = t => Array.from({ length: 7 }, (_, i) => ({ title: t + i, eaters: [] }));

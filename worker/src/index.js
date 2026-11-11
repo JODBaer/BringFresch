@@ -184,7 +184,7 @@ export async function backup(env, now = new Date()) {
   let cursor;
   do {
     const page = await env.WG.list({ cursor });
-    for (const k of page.keys) if (!/^(backup|fail|lock|img):/.test(k.name)) keys[k.name] = await env.WG.get(k.name);
+    for (const k of page.keys) if (!/^(backup|fail|lock|img):|^bringtoken$/.test(k.name)) keys[k.name] = await env.WG.get(k.name);
     cursor = page.list_complete === false ? page.cursor : undefined;
   } while (cursor);
   await env.WG.put("backup:" + day, JSON.stringify({ day, keys }), { expirationTtl: 30 * 86400 });
@@ -298,8 +298,19 @@ function timingSafeEqual(a, b) {
 
 // ---------------------------------------------------------------------------------------------
 // Bring!
-async function bringLogin(env, allowNoList = false) {
+// Anmeldung bei Bring! merken statt bei jedem Aufruf neu anmelden: im Speicher der laufenden Worker-Instanz und in KV
+// (`bringtoken`, läuft mit der Anmeldung ab, nicht in der Sicherung). Lehnt Bring! die gemerkte Anmeldung ab (401),
+// meldet sich der Worker einmal frisch an (bringFetch). Neues Passwort/Konto = andere Kennung = neue Anmeldung.
+let memToken = null;
+async function bringAuth(env, fresh) {
   if (!env.BRING_EMAIL || !env.BRING_PASSWORD) throw httpError(500, "Bring!-Zugang im Worker nicht eingerichtet");
+  const kv = env.RAW || env.WG, now = Date.now();
+  const id = await pinHash(env.BRING_EMAIL.trim(), env.BRING_PASSWORD);
+  if (!fresh) {
+    if (memToken && memToken.id === id && memToken.exp > now) return memToken;
+    const t = await kv.get("bringtoken", "json");
+    if (t && t.id === id && t.exp > now) return (memToken = t);
+  }
   const res = await fetch(BRING + "bringauth", {
     method: "POST",
     headers: { ...BRING_HEADERS, "Content-Type": "application/x-www-form-urlencoded" },
@@ -312,24 +323,45 @@ async function bringLogin(env, allowNoList = false) {
   if (!res.ok) throw httpError(502, `Bring!-Login fehlgeschlagen (${res.status})`);
   const data = await res.json();
   if (!data.uuid || !data.access_token) throw httpError(502, "Bring!-Antwort unvollständig");
-  const headers = { ...BRING_HEADERS, "X-BRING-USER-UUID": data.uuid, Authorization: `Bearer ${data.access_token}` };
+  const ttl = Math.min(Math.max(+data.expires_in || 3600, 300), 6 * 86400); // Sekunden; ohne Angabe eine Stunde
+  memToken = { id, uuid: data.uuid, access_token: data.access_token, bringListUUID: data.bringListUUID, exp: now + (ttl - 120) * 1000 };
+  await kv.put("bringtoken", JSON.stringify(memToken), { expirationTtl: ttl });
+  return memToken;
+}
+const authHeaders = t => ({ ...BRING_HEADERS, "X-BRING-USER-UUID": t.uuid, Authorization: `Bearer ${t.access_token}` });
+// Aufruf an Bring! mit gemerkter Anmeldung; bei 401 einmal frisch anmelden und wiederholen
+async function bringFetch(s, url, init = {}) {
+  const go = () => fetch(url, { ...init, headers: { ...s.headers, ...(init.headers || {}) } });
+  let res = await go();
+  if (res.status === 401 && s.env && !s.renewed) {
+    s.renewed = true;
+    s.headers = authHeaders(await bringAuth(s.env, true));
+    res = await go();
+  }
+  return res;
+}
+
+async function bringLogin(env, allowNoList = false) {
+  const data = await bringAuth(env);
+  const headers = authHeaders(data);
+  const who = { env, userUuid: data.uuid, headers };
   if (env.ONLY_LIST_NAME) {
     // Test-Server: immer genau diese Liste (per Name), egal was gespeichert ist
-    const lists = await fetchLists(data.uuid, headers);
+    const lists = await fetchLists(who);
     // mehrere Namen erlaubt («Home-test,Home»): der erste vorhandene gilt (Liste kann in Bring! umbenannt werden)
     const hit = testListNames(env.ONLY_LIST_NAME).map(n => lists.find(l => sameListName(l.name, n))).find(Boolean);
     if (!hit) throw httpError(502, `Test-Server: Liste «${env.ONLY_LIST_NAME}» im Bot-Konto nicht gefunden (Bot sieht ${lists.length} Listen) – ist sie mit dem Bot geteilt?`);
-    return { listUuid: hit.uuid, userUuid: data.uuid, headers, lists };
+    return { ...who, listUuid: hit.uuid, lists };
   }
   const chosen = await env.WG.get("bringList");
   const mainList = (env.RAW ? await env.RAW.get("bringList") : chosen) || env.BRING_LIST_UUID || data.bringListUUID;
   const extra = !!(env.WG_CTX && !env.WG_CTX.main);
   // Weitere WGs: nie still in die Liste der ersten WG schreiben – erst wählen
   const listUuid = extra ? chosen : chosen || mainList;
-  if (!listUuid && extra && allowNoList) return { listUuid: null, userUuid: data.uuid, headers, mainList };
+  if (!listUuid && extra && allowNoList) return { ...who, listUuid: null, mainList };
   if (!listUuid && extra) throw httpError(409, "Noch keine Bring!-Liste gewählt – unter Einstellungen die WG-Liste wählen");
   if (!listUuid) throw httpError(502, "Bring!-Antwort unvollständig");
-  return { listUuid, userUuid: data.uuid, headers, mainList };
+  return { ...who, listUuid, mainList };
 }
 
 // Namen der Test-Liste (gehört der Test-Version). «Home» = alter Name, solange die Liste in Bring! nicht umbenannt ist
@@ -337,8 +369,8 @@ const testListNames = v => String(v || "Home-test,Home").split(",").map(s => s.t
 // «Home-test», «Home-Test», «Home test», «hometest» gelten als gleich
 const sameListName = (a, b) => String(a).toLowerCase().replace(/[^a-z0-9]/g, "") === String(b).toLowerCase().replace(/[^a-z0-9]/g, "");
 
-async function fetchLists(userUuid, headers) {
-  const res = await fetch(`${BRING}bringusers/${userUuid}/lists`, { headers });
+async function fetchLists(s) {
+  const res = await bringFetch(s, `${BRING}bringusers/${s.userUuid}/lists`);
   if (!res.ok) throw httpError(502, `Bring!-Listen nicht lesbar (${res.status})`);
   const data = await res.json();
   return (data.lists || []).map(l => ({ uuid: l.listUuid, name: l.name }));
@@ -347,7 +379,7 @@ async function fetchLists(userUuid, headers) {
 // Alle Listen des Bot-Kontos (zum Einrichten: welche ist die WG-Liste?)
 async function bringLists(env) {
   const s = await bringLogin(env, true);
-  let lists = s.lists || (await fetchLists(s.userUuid, s.headers));
+  let lists = s.lists || (await fetchLists(s));
   // WG-Server: die Test-Liste («Home-test») ist eine gemeinsame Spielwiese zum Ausprobieren. Wählbar nur, solange eine WG
   // noch keine eigene Liste mit dem Bot verknüpft hat (oder gerade auf der Test-Liste ist); sie gehört nie einer WG.
   const isTest = l => testListNames(env.TEST_LIST_NAME).some(n => sameListName(l.name, n));
@@ -386,7 +418,7 @@ async function bringSetTarget(env, { uuid }) {
 
 // Liste mit Mengenangaben: [{ name, spec }]
 async function bringDetails(s) {
-  const res = await fetch(`${BRING}bringlists/${s.listUuid}`, { headers: s.headers });
+  const res = await bringFetch(s, `${BRING}bringlists/${s.listUuid}`);
   if (!res.ok) throw httpError(502, `Bring!-Liste nicht lesbar (${res.status})`);
   const data = await res.json();
   const purchase = (data.items && data.items.purchase) || data.purchase || [];
@@ -418,9 +450,9 @@ async function bringList(env) {
 }
 
 function bringPut(s, params) {
-  return fetch(`${BRING}bringlists/${s.listUuid}`, {
+  return bringFetch(s, `${BRING}bringlists/${s.listUuid}`, {
     method: "PUT",
-    headers: { ...s.headers, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+    headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
     body: new URLSearchParams(params),
   });
 }
