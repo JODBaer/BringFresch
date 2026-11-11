@@ -107,6 +107,16 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 - [ ] **Grundvorrat neu gestalten – zusammen mit Joshua, nach dem Umbau** (Rückmeldung Joshua 11.11.2026, v1.7.0)
   - **Wer**: Joshua baut den Grundvorrat mit einem **lokalen Chat** (Entscheid 11.11.2026). Laut Joshua war das Ändern im Grundvorrat schon vor v1.7.0 defekt – zuerst den heutigen Fehler nachstellen, dann neu gestalten
   - **Entwurf als Startpunkt**: `docs/design/grundvorrat-varianten.html` – drei klickbare Varianten (A «Merken» = erst mit «Bring! füllen» senden, B «Knopf» pro Artikel, C «Sammeln» und einmal bestätigen), iPhone/Android, hell/dunkel. Von einem Agenten entworfen und vorzeitig gestoppt; einmal im Browser geöffnet (keine Fehler, Variante A sichtbar), Varianten B und C nicht durchgeklickt. Nur Vorschlag, nichts entschieden
+  - **Rückmeldung Joshua zum Entwurf** (Kommentare auf der Entwurfsseite, 11.11.2026) – Anforderungen für den Neubau:
+    - Eine der Varianten gefällt «fast am besten» (welche, ist noch offen – nachfragen). Bedienung gefällt; die **Übersicht über alles** noch nicht: «jedes Element ist für sich geschlossen»
+    - **Menge sichtbar**: die Verwaltung zeigt pro Artikel, wie viel noch da ist – in Znacht-Einheiten oder g / ml / Stück
+    - Klar zeigen, **wie ein Artikel voll wird und wie er sich leert** (heute im Entwurf unklar, auch beim Bearbeiten)
+    - **Bereinigungs-Modus**: alles einmal der Reihe nach durchgehen (Menge bestätigen / korrigieren)
+    - **Drei Spalten** und sichtbar: was **knapp** wird, was **diese Woche gebraucht** und abgebucht wird
+    - **Ab 2 Stück Rest**: wieder auf Bring! setzen. **In Bring! gekauft** → Vorrat mit der gekauften Anzahl auffüllen
+    - Vorrat-Artikel sind auf Bring! **als solche erkennbar** (Vermerk am Bring!-Eintrag)
+    - **Über 1 Jahr im Vorrat**: anmerken
+    - Technisch zu klären: Bring! meldet nur «nicht mehr auf der Liste», nicht wie viel gekauft wurde → Menge aus der Mengenangabe des Eintrags nehmen oder kurz nachfragen. Vermerk am Bring!-Eintrag geht nur über die Mengenangabe (z.B. «Vorrat · 2 Stk»), ein eigenes Feld gibt es nicht. «Seit wann im Vorrat» wird heute nicht gespeichert → Datum ab Einführung mitführen
   - **Was nicht gefällt**: Die Verwaltung schreibt beim Antippen **direkt auf Bring!**; auch **Hinzufügen und Wegnehmen** sind so nicht gut
   - **Vorgehen**: nichts im Alleingang bauen. Zuerst 2–3 Varianten als HTML zum Antippen zeigen (Design-Fragen entscheidet Joshua selbst), dann bauen. Erst nach dem Umbau von `app.js` (Schritte 3 und 5 in `docs/refactoring-plan.md`), damit die Ansicht nur einmal angefasst wird
   - **Zu klären** (Fragen an Joshua, nicht vorentscheiden):
