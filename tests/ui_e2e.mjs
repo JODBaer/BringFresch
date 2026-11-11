@@ -937,30 +937,40 @@ await step(B, "Pop-up «Wochenwahl starten» öffnet die Wochenwahl mit 14 Geric
 });
 
 const card = k => `#voteGrid .vcard:nth-child(${k + 1})`;
-// Memory-Karte umdrehen (Bild antippen), dann ist die Rückseite mit «Wählen» und Wunschtag bedienbar
+// Memory-Karte: Bild antippen = umdrehen = wählen; Rückseite mit Wunschtag und «Abwählen»
+const isLiked = (P, k) => P.page.$eval(`${card(k)} [data-like]`, b => b.getAttribute("aria-pressed") === "true");
 async function flipOpen(P, k) {
   if (await P.page.$eval(card(k), c => c.classList.contains("open"))) return;
   await tap(P, `${card(k)} .vfront`);
   await until(P, s => document.querySelector(s).classList.contains("open"), `Karte ${k} dreht nicht um`, card(k));
 }
-async function likeCard(P, k) { await flipOpen(P, k); await tap(P, `${card(k)} [data-like]`); }
-await step(B, "Wochenwahl als Leonie (Memory: Karte umdrehen): 3 Gerichte wählen, Wunschtag Mi, ↩ zurück aufs Bild, eines wieder abwählen", async () => {
+async function likeCard(P, k) {
+  if (await P.page.$eval(card(k), c => c.classList.contains("open"))) { if (!(await isLiked(P, k))) await tap(P, `${card(k)} [data-like]`); }
+  else await flipOpen(P, k);
+  await until(P, s => document.querySelector(`${s} [data-like]`).getAttribute("aria-pressed") === "true", `Gericht ${k} nicht gewählt`, card(k));
+}
+async function unlikeCard(P, k) { await flipOpen(P, k); await tap(P, `${card(k)} [data-like]`); }
+await step(B, "Wochenwahl als Leonie (Memory: Umdrehen = wählen): 3 Gerichte, Wunschtag Mi, «egal», Titel + 🌐 vorne und hinten, zurückdrehen bleibt gewählt, eines abwählen", async () => {
   await choose(B, "#voteMe", "leonie");
-  for (const k of [0, 1, 2]) {
-    await likeCard(B, k);
-    await until(B, s => document.querySelector(`${s} [data-like]`).getAttribute("aria-pressed") === "true", `Gericht ${k} nicht gewählt`, card(k));
-  }
+  for (const k of [0, 1, 2]) await likeCard(B, k);
   expect((await text(B, "#voteMine")) === "3 gewählt", "Zähler");
   await flipOpen(B, 0);
   await tap(B, `${card(0)} [data-wish][data-day="2"]`);
   await until(B, s => document.querySelector(`${s} [data-wish][data-day="2"]`).getAttribute("aria-pressed") === "true", "Wunschtag nicht gesetzt", card(0));
   expect((await text(B, `${card(0)} .vwish`)) === "Mi", "Wunschtag fehlt vorne auf dem Bild");
-  const link = await B.page.$eval(`${card(0)} .vlink`, a => ({ href: a.href, text: a.textContent, target: a.target })).catch(() => null);
-  expect(link && link.href.startsWith("https://") && link.target === "_blank" && /^(Rezept auf .+|Auf Fooby suchen) ↗$/.test(link.text), `Rückseite: Link zum Rezept fehlt (${JSON.stringify(link)})`);
+  await tap(B, `${card(0)} [data-wish][data-day="-1"]`); // «egal» = kein Wunschtag
+  await until(B, s => document.querySelector(`${s} .egal`).getAttribute("aria-pressed") === "true" && !document.querySelector(`${s} [data-day="2"][aria-pressed="true"]`), "«egal» setzt den Wunschtag nicht zurück", card(0));
+  await tap(B, `${card(0)} [data-wish][data-day="2"]`);
+  await until(B, s => document.querySelector(`${s} [data-wish][data-day="2"]`).getAttribute("aria-pressed") === "true", "Wunschtag nicht wieder gesetzt", card(0));
+  const links = await B.page.$$eval(`${card(0)} .vgo`, l => l.map(a => ({ href: a.href, label: a.getAttribute("aria-label"), target: a.target, w: a.getBoundingClientRect().width })));
+  expect(links.length === 2 && links.every(a => a.href.startsWith("https://") && a.target === "_blank" && a.w >= 32 && /^(Rezept auf .+|Auf Fooby suchen) ↗$/.test(a.label)), `🌐-Link zum Rezept vorne und hinten (${JSON.stringify(links)})`);
+  const bands = await B.page.$$eval(`${card(0)} .vband`, l => l.map(b => b.textContent));
+  expect(bands.length === 2 && bands[0] === bands[1] && /Min\./.test(bands[0]), `Titel und Beschreibung vorne und hinten gleich (${JSON.stringify(bands)})`);
   await shot(B, "02a-wochenwahl-rueckseite");
-  await tap(B, `${card(0)} .vturn`);
-  await until(B, s => !document.querySelector(s).classList.contains("open"), "↩ dreht nicht zurück aufs Bild", card(0));
-  await likeCard(B, 2);
+  await tap(B, `${card(0)} .vback .vbt`); // irgendwo auf die Rückseite tippen = zurück aufs Bild
+  await until(B, s => !document.querySelector(s).classList.contains("open"), "Antippen dreht nicht zurück aufs Bild", card(0));
+  expect(await isLiked(B, 0), "zurückdrehen hat abgewählt");
+  await unlikeCard(B, 2);
   await until(B, () => document.getElementById("voteMine").textContent === "2 gewählt", "Abwählen klappt nicht");
   expect((await text(B, "#voteWho")) === "1 von 4 haben gewählt", await text(B, "#voteWho"));
 });

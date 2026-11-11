@@ -252,24 +252,33 @@
     /* Licht beim Drehen: die Seite, die sich wegdreht, wird dunkler */
     .vfront::after, .vback::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, rgba(255, 255, 255, .18), rgba(0, 0, 0, .35)); opacity: 0; transition: opacity .3s; pointer-events: none; }
     .vcard.lift .vfront::after, .vcard.lift .vback::after { opacity: 1; }
-    .vfront { border: 0; padding: 0; margin: 0; display: block; width: 100%; text-align: left; font: inherit; color: #fff; background: var(--line); cursor: pointer; }
+    .vfront { display: block; color: #fff; background: var(--line); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .vback { cursor: pointer; }
+    .vfront:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     .vcard.open .vfront { visibility: hidden; }
-    .vback {
-      transform: rotateY(180deg); visibility: hidden; background: var(--surface); border: 1px solid var(--line);
-      padding: 10px; display: flex; flex-direction: column; gap: 7px;
-    }
+    .vback { transform: rotateY(180deg); visibility: hidden; background: var(--surface); border: 1px solid var(--line); }
     .vcard.open .vback { visibility: visible; }
     .vcard.on .vfront { box-shadow: inset 0 0 0 3px var(--accent); }
     .vcard.on .vback { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
     .vcard .vimg { position: absolute; inset: 0; display: grid; place-items: center; background: var(--line) center / cover no-repeat; transition: opacity .3s; opacity: .5; }
     .vcard .vimg.ok { opacity: 1; }
     .vcard .vimg.none { opacity: 1; background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
-    .vcard .vimg.none::after { content: attr(data-emoji); font-size: 52px; line-height: 1; margin-bottom: 24px; filter: saturate(.85); }
-    .vcard .vband {
-      position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 10px 9px; background: linear-gradient(transparent, rgba(0, 0, 0, .65));
-      font-size: 13px; font-weight: 700; line-height: 1.25; text-shadow: 0 1px 2px rgba(0, 0, 0, .4);
-      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-    }
+    .vcard .vimg.none::after { content: attr(data-emoji); font-size: 52px; line-height: 1; margin-bottom: 40px; filter: saturate(.85); }
+    /* Vignette: ab der Bildmitte dunkler, damit Titel und Beschreibung gut lesbar sind */
+    .vcard .vshade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(0, 0, 0, .18) 0%, transparent 22%, transparent 34%, rgba(0, 0, 0, .55) 62%, rgba(0, 0, 0, .82) 100%); }
+    /* Titel, Beschreibung, 🌐: vorne und hinten an derselben Stelle (bleiben beim Umdrehen) */
+    .vcard .vband { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 40px 10px 10px; display: flex; flex-direction: column; gap: 2px; }
+    .vfront .vband { text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+    .vback .vband { color: var(--fg); }
+    .vcard .vbt { font-size: 13.5px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: anywhere; }
+    .vcard .vbm { font-size: 11px; font-weight: 600; opacity: .9; }
+    .vback .vbm { color: var(--muted); opacity: 1; }
+    /* Link zum Rezept: blaue Weltkugel, 36 px Fläche zum Treffen */
+    .vcard .vgo { position: absolute; right: 2px; bottom: 2px; z-index: 1; width: 36px; height: 36px; display: grid; place-items: center; font-size: 19px; line-height: 1; text-decoration: none; border-radius: 50%; }
+    .vfront .vgo { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6)); }
+    .vcard .vtop { position: absolute; left: 0; right: 0; top: 0; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .vcard .days-l { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+    .vcard.on .days-l { color: var(--fg); }
     .vcard .vv { position: absolute; top: 8px; left: 8px; right: 40px; display: flex; gap: 3px; flex-wrap: wrap; }
     .vcard .vv .mini { background: rgba(255, 255, 255, .92); color: #1d2a17; }
     .vcard .tick {
@@ -277,12 +286,9 @@
       background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 14px; font-weight: 800;
     }
     .vcard .vwish { position: absolute; top: 40px; right: 6px; background: rgba(255, 255, 255, .92); color: #1d2a17; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 99px; }
-    .vcard .vt { font-size: 14px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-    .vcard .vm { font-size: 11.5px; color: var(--muted); }
-    .vcard .vlink { font-size: 12.5px; font-weight: 700; color: var(--fg); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 2px; }
-    .vcard .vpick { border: 0; border-radius: 11px; padding: 9px; font-weight: 800; font-size: 13px; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--fg); }
-    .vcard.on .vpick { background: var(--accent); color: var(--on-accent); }
-    .vcard .vturn { margin-top: auto; align-self: flex-end; border: 0; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--fg); font-size: 15px; }
+    .vcard .days-pick { flex-wrap: wrap; gap: 3px; }
+    .vcard .days-pick button { flex: 1 0 calc((100% - 9px) / 4); padding: 5px 0; }
+    .vcard .vpick { align-self: stretch; border: 0; border-radius: 9px; padding: 8px 10px; font-weight: 700; font-size: 12.5px; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--fg); }
     @media (prefers-reduced-motion: reduce) { .vcard, .vflip, .vfront, .vback { transition: none; } .vcard.lift { transform: none; } }
     .mini { min-width: 20px; height: 20px; border-radius: 6px; font-size: 10px; font-weight: 800; display: inline-grid; place-items: center; background: var(--fg); color: var(--bg); padding: 0 3px; }
     .days-pick { display: flex; gap: 2px; }
