@@ -665,7 +665,7 @@ await step(A, "Einstellungen: Über BringFrisch (Version, GitHub, Impressum)", a
 await step(A, "Über BringFrisch: Version + «Aktualisieren» in einer Zeile, gleicht ab und prüft die Version; Statusleiste im Design", async () => {
   await goTab(A, "wg");
   const top = await A.page.evaluate(() => { const c = document.getElementById("versionCard"); return { inAbout: !!c.closest(".card") && c.closest(".card").previousElementSibling.textContent.includes("Über BringFrisch"), btn: !!c.querySelector("#updateBtn"), v: document.getElementById("appVersionTop").textContent, repo: document.getElementById("repoLinkTop").href }; });
-  expect(top.inAbout && top.btn && /^\d+\.\d+\.\d+$/.test(top.v) && top.repo === "https://github.com/jodbaer/BringFresch", `Version/Aktualisieren nicht unter «Über»: ${JSON.stringify(top)}`);
+  expect(top.inAbout && top.btn && /^\d+\.\d+\.\d+$/.test(top.v) && top.repo === "https://bringfrisch-test.bringfrisch-worker.workers.dev/", `Version/Aktualisieren nicht unter «Über»: ${JSON.stringify(top)}`);
   await clearToasts(A);
   await tap(A, "#updateBtn");
   await toastIs(A, /Alles aktuell|Neueste Version/);
