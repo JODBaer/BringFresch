@@ -982,30 +982,34 @@
       const r = recipeById(id);
       const on = mine.likes.includes(id);
       const wish = mine.days[id];
-      // Memory-Karte: überall antippen dreht um (ausser Link und Knöpfe); vorne Bild, Titel, Vegi/Fleisch, Zeit, Link;
-      // hinten dasselbe plus «Wählen» und Wunschtag (oder «egal»)
+      // Memory-Karte: Umdrehen = wählen. Titel, Beschreibung und 🌐-Link stehen vorne wie hinten an derselben Stelle;
+      // hinten oben Wunschtag (oder «egal») und «Doch nicht». Antippen irgendwo dreht zurück (bleibt gewählt).
       const href = recipeHref(r);
       const meta = `${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.`;
-      const link = cls => href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener" aria-label="${esc(recipeLinkLabel(r))}" title="${esc(recipeLinkLabel(r))}">↗</a>` : "";
+      const band = `<span class="vband"><span class="vbt">${esc(r.title)}</span><span class="vbm">${meta}</span></span>${href
+        ? `<a class="vgo" href="${esc(href)}" target="_blank" rel="noopener" aria-label="${esc(recipeLinkLabel(r))}" title="${esc(recipeLinkLabel(r))}">🌐</a>` : ""}`;
       return `
         <div class="vcard${on ? " on" : ""}${voteOpen === id ? " open" : ""}" data-id="${esc(id)}">
           <div class="vflip">
-            <div class="vfront" role="button" tabindex="0" aria-label="${esc(r.title)} umdrehen">
+            <div class="vfront" role="button" tabindex="0" aria-label="${esc(r.title)} ${on ? "umdrehen" : "wählen"}">
               ${r.source_url && connected()
                 ? `<span class="vimg${imgState(r.source_url)}" data-img="${esc(r.source_url)}" data-emoji="${dishEmoji(r)}" aria-hidden="true"${imgCache.get(r.source_url) ? ` style="background-image:url(${imgCache.get(r.source_url)})"` : ""}></span>`
                 : `<span class="vimg none" data-emoji="${dishEmoji(r)}" aria-hidden="true"></span>`}
-              <span class="vband"><span class="vbt">${esc(r.title)}</span><span class="vbm">${meta}</span></span>
-              ${link("vgo vgo-front")}
+              <span class="vshade" aria-hidden="true"></span>
+              ${band}
               ${on ? `<span class="tick" aria-hidden="true">✓</span>` : ""}
               ${on && wish != null ? `<span class="vwish">${DAYS[wish].slice(0, 2)}</span>` : ""}
               <span class="vv">${votersOf(id).map(m => `<span class="mini" title="${esc(m.name)}">${esc(short[m.id])}</span>`).join("")}</span>
             </div>
             <div class="vback" role="group" aria-label="${esc(r.title)}">
-              <span class="vhead"><span class="vt">${esc(r.title)}</span>${link("vgo")}</span>
-              <span class="vm">${meta}</span>
-              ${href ? `<span class="vsite">${esc(recipeLinkLabel(r))}</span>` : ""}
-              <button class="vpick" type="button" data-like="${esc(id)}" aria-pressed="${on}">${on ? "✓ Gewählt" : "Wählen"}</button>
-              ${on ? `<span class="days-pick" role="group" aria-label="Wunschtag">${DAYS.map((d, i) => `<button type="button" data-wish="${esc(id)}" data-day="${i}" aria-pressed="${wish === i}">${d.slice(0, 2)}</button>`).join("")}<button type="button" class="egal" data-wish="${esc(id)}" data-day="-1" aria-pressed="${wish == null}">egal</button></span>` : ""}
+              <span class="vtop">
+                <span class="vt" hidden>${esc(r.title)}</span>
+                <span class="vm" hidden>${meta}</span>
+                <span class="days-l">${on ? "✓ Gewählt · Wunschtag?" : "Nicht gewählt"}</span>
+                ${on ? `<span class="days-pick" role="group" aria-label="Wunschtag">${DAYS.map((d, i) => `<button type="button" data-wish="${esc(id)}" data-day="${i}" aria-pressed="${wish === i}">${d.slice(0, 2)}</button>`).join("")}<button type="button" class="egal" data-wish="${esc(id)}" data-day="-1" aria-pressed="${wish == null}">egal</button></span>` : ""}
+                <button class="vpick" type="button" data-like="${esc(id)}" aria-pressed="${on}">${on ? "Doch nicht" : "Wählen"}</button>
+              </span>
+              ${band}
             </div>
           </div>
         </div>`;
@@ -1068,18 +1072,17 @@
     if (e.target.closest("a")) return; // Link zum Rezept: öffnen, nicht umdrehen
     const card = e.target.closest(".vcard");
     if (card && !e.target.closest("[data-like], [data-wish]")) {
-      // ganze Karte = umdrehen; nur Klassen umschalten (nicht neu zeichnen), damit die Drehung sichtbar ist; immer nur eine Karte offen
+      // ganze Karte = umdrehen; Umdrehen aufs Bild-Rückseite = wählen (zurückdrehen lässt es gewählt)
       const id = card.dataset.id;
-      voteOpen = voteOpen === id ? null : id;
-      document.querySelectorAll("#voteGrid .vcard").forEach(c => {
-        const open = c.dataset.id === voteOpen;
-        if (open === c.classList.contains("open")) return;
-        // Karte hebt sich beim Drehen an (grösser, Schatten), landet danach wieder
-        c.classList.add("lift");
-        clearTimeout(c._lift);
-        c._lift = setTimeout(() => c.classList.remove("lift"), 280);
-        c.classList.toggle("open", open);
-      });
+      const opening = voteOpen !== id;
+      const mine = myVote();
+      if (opening && !mine.likes.includes(id)) {
+        mine.likes.push(id);
+        saveVote();
+        pushMyVote();
+        renderVote(); // zeichnet noch mit der alten offenen Karte – gedreht wird gleich danach
+      }
+      flipTo(opening ? id : null);
       return;
     }
     const wish = e.target.closest("[data-wish]");
@@ -1097,7 +1100,8 @@
     if (!like) return;
     const mine = myVote();
     const id = like.dataset.like;
-    if (mine.likes.includes(id)) {
+    const off = mine.likes.includes(id);
+    if (off) {
       mine.likes = mine.likes.filter(x => x !== id);
       delete mine.days[id];
     } else {
@@ -1106,7 +1110,23 @@
     saveVote();
     pushMyVote();
     renderVote();
+    if (off && voteOpen === id) flipTo(null); // abgewählt: zurück aufs Bild
   });
+
+  // Karten drehen: nur Klassen umschalten (nicht neu zeichnen), damit die Drehung sichtbar ist; immer nur eine Karte offen
+  function flipTo(id) {
+    voteOpen = id;
+    document.querySelectorAll("#voteGrid .vcard").forEach(c => {
+      const open = c.dataset.id === voteOpen;
+      if (open === c.classList.contains("open")) return;
+      void c.offsetWidth; // frisch gezeichnete Karte: Ausgangslage festhalten, sonst springt sie ohne Drehung
+      // Karte hebt sich beim Drehen an (grösser, Schatten), landet danach wieder
+      c.classList.add("lift");
+      clearTimeout(c._lift);
+      c._lift = setTimeout(() => c.classList.remove("lift"), 280);
+      c.classList.toggle("open", open);
+    });
+  }
 
   // Nur Gerichte ohne Stimme werden durch saisonale Reserve ersetzt
   $("voteShuffleBtn").onclick = () => {
