@@ -999,7 +999,6 @@
                 : `<span class="vimg none" data-emoji="${dishEmoji(r)}" aria-hidden="true"></span>`}
               <span class="vshade" aria-hidden="true"></span>
               ${band}
-              ${on ? `<span class="tick" aria-hidden="true">✓</span>` : ""}
               ${on && wish != null ? `<span class="vwish">${DAYS[wish].slice(0, 2)}</span>` : ""}
               <span class="vv">${votersOf(id).map(m => `<span class="mini" title="${esc(m.name)}">${esc(short[m.id])}</span>`).join("")}</span>
             </div>

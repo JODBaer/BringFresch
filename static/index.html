@@ -254,12 +254,13 @@
     .vcard.lift .vfront::after, .vcard.lift .vback::after { opacity: 1; }
     .vfront { display: block; color: #fff; background: var(--line); cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .vback { cursor: pointer; }
-    .vfront:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .vfront:focus-visible { outline: 2px solid var(--fg); outline-offset: 5px; }
     .vcard.open .vfront { visibility: hidden; }
     .vback { transform: rotateY(180deg); visibility: hidden; background: var(--surface); border: 1px solid var(--line); }
     .vcard.open .vback { visibility: visible; }
-    .vcard.on .vfront { box-shadow: inset 0 0 0 3px var(--accent); }
-    .vcard.on .vback { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+    /* gewählt = Umrandung (kein Haken): Rahmen in der Akzentfarbe rund um die Karte, vorne wie hinten */
+    .vcard.on .vfront, .vcard.on .vback { outline: 3.5px solid var(--accent); outline-offset: 1px; }
+    .vcard.on .vback { border-color: var(--accent); }
     .vcard .vimg { position: absolute; inset: 0; display: grid; place-items: center; background: var(--line) center / cover no-repeat; transition: opacity .3s; opacity: .5; }
     .vcard .vimg.ok { opacity: 1; }
     .vcard .vimg.none { opacity: 1; background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
@@ -281,11 +282,7 @@
     .vcard.on .days-l { color: var(--fg); }
     .vcard .vv { position: absolute; top: 8px; left: 8px; right: 40px; display: flex; gap: 3px; flex-wrap: wrap; }
     .vcard .vv .mini { background: rgba(255, 255, 255, .92); color: #1d2a17; }
-    .vcard .tick {
-      position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; box-shadow: 0 0 0 2px #fff;
-      background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 14px; font-weight: 800;
-    }
-    .vcard .vwish { position: absolute; top: 40px; right: 6px; background: rgba(255, 255, 255, .92); color: #1d2a17; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 99px; }
+    .vcard .vwish { position: absolute; top: 8px; right: 8px; background: rgba(255, 255, 255, .92); color: #1d2a17; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 99px; }
     .vcard .days-pick { flex-wrap: wrap; gap: 3px; }
     .vcard .days-pick button { flex: 1 0 calc((100% - 9px) / 4); padding: 5px 0; }
     .vcard .vpick { align-self: stretch; border: 0; border-radius: 9px; padding: 8px 10px; font-weight: 700; font-size: 12.5px; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--fg); }
