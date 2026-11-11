@@ -50,6 +50,7 @@ Was Variante C nach seinen Kommentaren zeigt (alles nur im Entwurf, nichts in de
 - Schalter «Woche gekocht» bucht ab, zurückschieben = rückgängig
 - Knappes (≤ 2) wird gesammelt und nach «Prüfen» gesendet, nie von selbst; Bring!-Eintrag mit Vermerk «Vorrat · Menge»; in Bring! abgehakt = Vorrat + eine Packung
 - **Aufbau (letzter Stand):** vorne beim **Einkauf** stehen «Grundvorrat – knapp», «Diese Woche aus dem Vorrat», der Schalter «Woche gekocht» (ab Montag wird die letzte Woche von selbst abgebucht) und «Für Bring!». Dahinter **ein** Grundvorrat (kein Reiter «Verwalten» mehr): hinzufügen, Übersicht, alle Kacheln
+- «Alles da» schon beim Einkauf aufklappbar (jeder Artikel mit Menge); Standard-Grundvorrat aus 50 Bring!-Standardartikeln (Liste in `plan.md`)
 - Wegnehmen: Kachel lange drücken → Karte dreht sich → «Wegnehmen» (mit Rückgängig); auch im Blatt möglich
 - **ein** Blatt pro Artikel, überall gleich (aus «Vorrat» und «Verwalten»): Bring!-Bild (im Entwurf Platzhalter), Menge, Infos, Name ändern, Doppelte zusammenführen, wegnehmen
 - Inventur (einmal im Jahr, vier Knöpfe pro Artikel), Knopf unauffällig am Ende der Liste; Markierung «über ein Jahr im Vorrat»

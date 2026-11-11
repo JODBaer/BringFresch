@@ -392,27 +392,36 @@ const SYN = {};
   .forEach(([k, v]) => { if (SEC_OF[v]) SYN[norm(k)] = v; });
 
 // Grundvorrat der WG (Vorrat-Name, Bring!-Name, «reicht noch für N Znacht»)
+// Standard-Grundvorrat für einen gängigen Haushalt: nur Standardartikel aus dem Bring!-Katalog (mit Bild, richtige Abteilung),
+// jeder genau einmal. Die drei letzten Einträge sind nur Beispiele für «Doppelte zusammenführen» und «Eigene Artikel».
 const START = [
-  ["Kartoffeln (festkochend)", "Kartoffeln"], ["Kartoffeln (mehlig)", "Kartoffeln"], ["Zwiebeln (gelb)", "Zwiebeln"], ["Rote Zwiebeln", "Zwiebeln"],
-  ["Knoblauch", "Knoblauch"], ["Speiserüebli", "Karotten"], ["Zitrone", "Zitrone"], ["Ingwer", "Ingwer"],
-  ["Butter", "Butter"], ["Schweizer Butter", "Butter"], ["Rahm", "Rahm", 2], ["Joghurt nature", "Joghurt", 1], ["Eier", "Eier"], ["Milch", "Milch"], ["Parmesan", "Parmesan"],
-  ["Speisesalz / Jodsalz", "Salz"], ["Schwarzer Pfeffer", "Pfeffer"], ["Pfeffer (Mühle)", "Pfeffer"], ["Aromat (Knorr)", "Aromat"], ["Gemüsebouillon", "Bouillon"],
-  ["Paprikapulver", "Paprikapulver"], ["Zimt", "Zimt"], ["Oregano", "Oregano"], ["Olivenöl extra vergine", "Olivenöl", 2], ["Rapsöl / Speiseöl", "Öl"],
-  ["Kräuteressig", "Essig"], ["Aceto Balsamico", "Balsamico"], ["Salatsauce", "Salatsauce"], ["Thomy Senf", "Senf"], ["Mayonnaise", "Mayonnaise"], ["Ketchup", "Ketchup"],
-  ["Tomatenpüree (Tube)", "Tomatenmark", 1], ["Sojasauce", "Sojasauce"], ["Kristallzucker", "Zucker"], ["Backpulver", "Backpulver"], ["Maizena", "Speisestärke"], ["Kokosmilch", "Kokosmilch"],
-  ["Reis", "Reis", 1], ["Langkornreis", "Reis"], ["Weissmehl", "Mehl"], ["Spaghetti", "Spaghetti"], ["Teigwaren", "Pasta"], ["Haferflocken", "Haferflocken"],
-  ["Honig", "Honig"], ["Schokolade", "Schokolade"],
-  ["Soja Sauce", "Soja Sauce"], ["Currypulver", "Currypulver"], ["Muskatnuss", "Muskatnuss"], ["Chiliflocken", "Chiliflocken"], ["Bratbutter", "Bratbutter"]
+  // Früchte & Gemüse
+  ["Zwiebeln", "Zwiebeln"], ["Knoblauch", "Knoblauch"], ["Kartoffeln", "Kartoffeln"], ["Karotten", "Karotten"], ["Zitrone", "Zitrone"], ["Ingwer", "Ingwer"],
+  // Milch & Käse
+  ["Milch", "Milch"], ["Butter", "Butter"], ["Eier", "Eier"], ["Rahm", "Rahm", 2], ["Joghurt", "Joghurt", 1], ["Reibkäse", "Reibkäse"], ["Parmesan", "Parmesan"],
+  // Zutaten & Gewürze
+  ["Salz", "Salz"], ["Pfeffer", "Pfeffer"], ["Bouillon", "Bouillon"], ["Aromat", "Aromat"], ["Paprikapulver", "Paprikapulver"], ["Oregano", "Oregano"], ["Zimt", "Zimt"], ["Olivenöl", "Olivenöl", 2], ["Öl", "Öl"], ["Essig", "Essig"], ["Balsamico", "Balsamico"], ["Senf", "Senf"], ["Ketchup", "Ketchup"], ["Mayonnaise", "Mayonnaise"], ["Sojasauce", "Sojasauce"], ["Tomatenmark", "Tomatenmark", 1], ["Pelati", "Pelati"], ["Zucker", "Zucker"], ["Backpulver", "Backpulver"], ["Hefe", "Hefe"], ["Vanillezucker", "Vanillezucker"], ["Speisestärke", "Speisestärke"], ["Kokosmilch", "Kokosmilch"], ["Linsen", "Linsen"],
+  // Getreideprodukte
+  ["Mehl", "Mehl"], ["Reis", "Reis", 1], ["Risottoreis", "Risottoreis"], ["Pasta", "Pasta"], ["Spaghetti", "Spaghetti"], ["Haferflocken", "Haferflocken"], ["Couscous", "Couscous"], ["Kichererbsen", "Kichererbsen"],
+  // Snacks & Süsswaren
+  ["Honig", "Honig"], ["Konfitüre", "Konfitüre"], ["Schokolade", "Schokolade"],
+  // Getränke
+  ["Kaffee", "Kaffee"], ["Tee", "Tee"],
+  // Beispiele (nicht Teil des Standards)
+  ["Schweizer Butter", "Butter"], ["Soja Sauce", "Soja Sauce"], ["Currypulver", "Currypulver"]
 ];
 // Variante C: Menge pro Artikel. [noch da, Einheit, eine Packung, diese Woche gebraucht, im Vorrat seit]
 const QTY = {
   "Eier": [0, "Stk", 10, 0], "Rahm": [2, "Stk", 2, 1], "Olivenöl": [3, "Znacht", 15, 2], "Tomatenmark": [1, "Stk", 2, 0], "Reis": [4, "Znacht", 6, 1],
   "Joghurt": [1, "Stk", 4, 0], "Zwiebeln": [5, "Stk", 6, 2], "Knoblauch": [6, "Znacht", 8, 1], "Bouillon": [7, "Znacht", 10, 1], "Kokosmilch": [3, "Stk", 2, 1],
   "Butter": [2, "Stk", 2, 0], "Milch": [2, "Stk", 2, 0], "Zitrone": [3, "Stk", 3, 0], "Zimt": [9, "Znacht", 10, 0, "2024-09"], "Backpulver": [8, "Znacht", 10, 0, "2025-02"],
-  "Speisestärke": [7, "Znacht", 10, 0, "2025-05"], "Currypulver": [5, "Znacht", 10, 1, "2025-08"], "Salz": [10, "Znacht", 10, 1], "Pfeffer": [8, "Znacht", 10, 1]
+  "Speisestärke": [7, "Znacht", 10, 0, "2025-05"], "Currypulver": [5, "Znacht", 10, 1, "2025-08"], "Salz": [10, "Znacht", 10, 1], "Pfeffer": [8, "Znacht", 10, 1],
+  "Pelati": [3, "Stk", 3, 1], "Reibkäse": [1, "Stk", 2, 1], "Parmesan": [1, "Stk", 1, 0], "Hefe": [2, "Stk", 2, 0], "Konfitüre": [1, "Stk", 1, 0], "Schokolade": [3, "Stk", 3, 0],
+  "Kaffee": [1, "Stk", 1, 0], "Tee": [1, "Stk", 1, 0], "Honig": [1, "Stk", 1, 0], "Karotten": [6, "Stk", 8, 2], "Kichererbsen": [2, "Stk", 2, 0], "Vanillezucker": [4, "Stk", 5, 0, "2025-03"]
 };
 // Was ist «1 Stück»? (frei änderbar im Blatt zum Artikel)
-const SIZE = { "Milch": "1 l", "Rahm": "2.5 dl", "Butter": "250 g", "Joghurt": "500 g", "Tomatenmark": "200 g", "Kokosmilch": "400 ml", "Eier": "", "Zitrone": "", "Zwiebeln": "" };
+const SIZE = { "Milch": "1 l", "Rahm": "2.5 dl", "Butter": "250 g", "Joghurt": "500 g", "Tomatenmark": "200 g", "Kokosmilch": "400 ml", "Pelati": "400 g", "Reibkäse": "200 g", "Parmesan": "200 g",
+  "Hefe": "42 g", "Konfitüre": "1 Glas", "Schokolade": "100 g", "Kaffee": "500 g", "Tee": "20 Beutel", "Honig": "500 g", "Kichererbsen": "1 Dose", "Vanillezucker": "1 Beutel" };
 const MIN = 2, NOW_YM = "2026-11";
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 const WEEK = [
@@ -448,17 +457,18 @@ const INFO = {
   C: {
     title: "C · Mengen im Blick – vorne beim Einkauf, dahinter ein Grundvorrat",
     idea: "Vorne beim Einkauf steht, was zählt: was knapp ist, was die Woche aus dem Vorrat braucht, der Schalter zum Abbuchen und «Für Bring!». Dahinter liegt der ganze Grundvorrat als eine Ansicht – Verwalten ist kein eigener Reiter mehr.",
-    how: ["Einkauf (vorne): «Grundvorrat – knapp» (2 oder weniger) und «Diese Woche aus dem Vorrat» (Menge vorher → nachher), drei Kacheln pro Zeile.",
+    how: ["Einkauf (vorne): «Grundvorrat – knapp» (2 oder weniger) und «Diese Woche aus dem Vorrat» (Menge vorher → nachher), drei Kacheln pro Zeile. «Alles da» lässt sich gleich dort aufklappen und zeigt jeden Artikel mit Menge.",
+      "Der Vorrat im Entwurf ist ein Standard für einen gängigen Haushalt: 50 Standardartikel aus dem Bring!-Katalog, jeder einmal (plus 3 Beispiele für Doppelte und eigene Artikel).",
       "Schalter «Woche gekocht» bucht ab, zurückschieben = rückgängig. Ab Montag wird die letzte Woche von selbst abgebucht.",
       "Knappes steht unten bei «Für Bring!». «Prüfen» zeigt die Liste mit Häkchen; der Bring!-Eintrag trägt den Vermerk «Vorrat · Menge». In Bring! abhaken = gekauft → Vorrat um eine Packung grösser.",
-      "«Ganzer Grundvorrat»: alle Artikel, umstellbar «Abteilung» (wie in Bring!) oder «Dringend». Oben Artikel hinzufügen und die Übersicht in einer Zeile.",
+      "«Grundvorrat verwalten»: alle Artikel, umstellbar «Abteilung» (wie in Bring!) oder «Dringend». Oben Artikel hinzufügen und die Übersicht in einer Zeile.",
       "Kachel antippen = ein Blatt mit allem: Bring!-Bild (im Entwurf Platzhalter), Menge, «1 Stück =», Infos, Name ändern, Doppelte zusammenführen, wegnehmen.",
       "Kachel lange drücken (am Computer: Rechtsklick) = Karte dreht sich, hinten «Wegnehmen» – mit «Rückgängig».",
       "Inventur wie im Betrieb, einmal im Jahr: Knopf unauffällig ganz am Ende des Grundvorrats. Was über ein Jahr im Vorrat ist, ist markiert."],
     qa: [["Wann auf Bring!?", "Knappes wird gesammelt und nach einmal Prüfen gesendet – nie von selbst."], ["Alltag / Verwalten", "Alltag vorne beim Einkauf, alles andere im Grundvorrat (eine Ansicht)."], ["Auf einen Blick", "Vorne nur Knappes und was die Woche braucht; dahinter alles, drei Kacheln pro Zeile."]],
     pro: "Im Alltag sieht man vorne nur, was zu tun ist. Ein Grundvorrat statt zwei fast gleicher Reiter. Nichts landet unbemerkt auf Bring!.",
     con: "Mengen stimmen nur mit der Inventur und wenn Gekauftes in Bring! abgehakt wird. Lange drücken muss man kennen (das Blatt hat «Wegnehmen» auch). Lange Namen werden abgeschnitten.",
-    tryit: "Probier: Schalter «Woche gekocht» an und aus → unten «Prüfen» → senden → rechts «Abhaken». Dann «Ganzer Grundvorrat» → Kachel antippen → Kachel lange drücken → «Wegnehmen»."
+    tryit: "Probier: Schalter «Woche gekocht» an und aus → unten «Prüfen» → senden → rechts «Abhaken». «Alles da» aufklappen. Dann «Grundvorrat verwalten» → Kachel antippen → Kachel lange drücken → «Wegnehmen»."
   }
 };
 
@@ -489,7 +499,7 @@ function fresh() {
     }),
     bring: [{ name: "Milch", spec: "", by: "Lukas" }, { name: "WC-Papier", spec: "", by: "Leonie" }, { name: "Eier", spec: "", by: "BringFrisch" }]
   };
-  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "abteilung", page: "einkauf", flip: null, opener: null, flash: null, focusK: null };
+  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "abteilung", page: "einkauf", flip: null, openAll: false, opener: null, flash: null, focusK: null };
   prevBring = new Set(S.bring.map(b => b.name));
 }
 let prevBring = new Set();
@@ -499,7 +509,9 @@ const byId = id => S.items.find(x => x.id === id);
 const onBring = n => S.bring.some(b => norm(b.name) === norm(n));
 const bringEntry = n => S.bring.find(b => norm(b.name) === norm(n));
 const isOwn = it => !SEC_OF[it.bring];
-const knapp = it => it.qty <= MIN;
+// Knapp: 2 oder weniger – bei Artikeln, von denen man nur 1–2 Packungen hat, erst wenn weniger als eine volle Packung da ist
+const thr = it => Math.min(MIN, Math.max(0, it.full - 1));
+const knapp = it => it.qty <= thr(it);
 const pending = () => uniq(S.items.filter(it => (V === "C" ? knapp(it) : it.status === "leer") && !onBring(it.bring)).map(it => it.bring));
 const stk = (n, it) => it.size ? `${n} × ${it.size}` : `${n} Stk`;
 const fmt = it => it.qty === 0 ? "leer" : it.unit === "Stk" ? (it.size ? `${it.qty} Stück à ${it.size}` : `${it.qty} Stk`) : `reicht für ~${it.qty} Znacht`;
@@ -707,7 +719,7 @@ function qtySheet(id) {
       <ul class="facts">
         <li>Eine Packung = ${esc(pack(it))}. In Bring! abgehakt = so viel kommt dazu.</li>
         <li>${it.use ? `Diese Woche bucht der Plan ${it.use} ab.` : "Diese Woche braucht der Plan nichts davon."}</li>
-        <li${knapp(it) ? ' class="w"' : ""}>${ob ? "Steht schon auf Bring!." : knapp(it) ? "Knapp: steht unten bei «Für Bring!»." : `Ab ${MIN} oder weniger kommt es zu «Für Bring!».`}</li>
+        <li${knapp(it) ? ' class="w"' : ""}>${ob ? "Steht schon auf Bring!." : knapp(it) ? "Knapp: steht unten bei «Für Bring!»." : thr(it) ? `Ab ${thr(it)} oder weniger kommt es zu «Für Bring!».` : "Kommt zu «Für Bring!», sobald es leer ist."}</li>
         <li${isOld(it) ? ' class="w"' : ""}>Im Vorrat seit ${esc(sinceText(it))}${isOld(it) ? " – über ein Jahr. Noch gut?" : ""}</li>
       </ul>
       <label class="lbl" for="shName">Name</label>
@@ -869,10 +881,14 @@ function viewC() {
   if (UI.page === "einkauf") {
     // Vorne beim Einkauf: Plan der Woche, Knappes aus dem Vorrat, Schalter zum Abbuchen
     h += `<section class="sec"><h3>Aus dem Plan · KW 46</h3><div class="list card">${WEEK.map(w => `<div class="planrow"><span>${esc(w.n)}${onBring(w.n) ? " " + ICON.cartV : ""}</span><span>${esc(w.spec)}</span></div>`).join("")}</div></section>`;
-    h += sec("knapp", "Grundvorrat – knapp", S.items.filter(knapp), "Nichts knapp.", "2 oder weniger");
+    h += sec("knapp", "Grundvorrat – knapp", S.items.filter(knapp), "Nichts knapp.", "geht bald aus");
     h += `<div class="cbar">${sw}<span class="note">Bucht ab, was der Plan aus dem Vorrat braucht. Ab Montag geschieht das für die letzte Woche von selbst.</span></div>`;
     h += sec("woche", "Diese Woche aus dem Vorrat", S.items.filter(it => it.use > 0 && !knapp(it)), "Der Plan braucht nichts aus dem Vorrat.", S.cooked ? "abgebucht" : "wird abgebucht");
-    h += `<button type="button" class="golink" data-act="goVorrat"><span>Ganzer Grundvorrat · ${S.items.length} Artikel</span>${ICON.chev}</button>`;
+    {
+      const rest = S.items.filter(it => !knapp(it) && !it.use);
+      h += `<section class="sec col da"><button type="button" class="shead" data-act="openAll" aria-expanded="${UI.openAll}">${ICON.down}<span>Alles da · ${rest.length}</span><span class="c">${UI.openAll ? "" : "aufklappen"}</span></button>${UI.openAll ? `<div class="grid3">${rest.map(tile).join("")}</div>` : ""}</section>`;
+    }
+    h += `<button type="button" class="golink" data-act="goVorrat"><span>Grundvorrat verwalten · hinzufügen, Inventur</span>${ICON.chev}</button>`;
     return h;
   }
 
@@ -947,6 +963,7 @@ function onAct(b) {
   const a = b.dataset.act, id = b.dataset.id, it = id ? byId(id) : null;
   switch (a) {
     case "nav": if (V === "C") { UI.page = "einkauf"; UI.flip = null; render(); content.scrollTop = 0; } else snack("Nur Vorschau: hier geht es nur um den Grundvorrat."); break;
+    case "openAll": UI.openAll = !UI.openAll; render(); break;
     case "goVorrat": UI.page = "vorrat"; UI.flip = null; render(); content.scrollTop = 0; break;
     case "unflip": UI.flip = null; UI.focusK = "a:qty:" + id; render(); break;
     case "edit": UI.edit = !UI.edit; render(); break;
