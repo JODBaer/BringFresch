@@ -944,7 +944,7 @@ async function flipOpen(P, k) {
   await until(P, s => document.querySelector(s).classList.contains("open"), `Karte ${k} dreht nicht um`, card(k));
 }
 async function likeCard(P, k) { await flipOpen(P, k); await tap(P, `${card(k)} [data-like]`); }
-await step(B, "Wochenwahl als Leonie (Memory: Karte umdrehen): 3 Gerichte wählen, Wunschtag Mi, ↩ zurück aufs Bild, eines wieder abwählen", async () => {
+await step(B, "Wochenwahl als Leonie (Memory: Karte überall antippen = umdrehen): 3 Gerichte wählen, Wunschtag Mi, «egal», Link vorne + hinten, eines wieder abwählen", async () => {
   await choose(B, "#voteMe", "leonie");
   for (const k of [0, 1, 2]) {
     await likeCard(B, k);
@@ -955,10 +955,15 @@ await step(B, "Wochenwahl als Leonie (Memory: Karte umdrehen): 3 Gerichte wähle
   await tap(B, `${card(0)} [data-wish][data-day="2"]`);
   await until(B, s => document.querySelector(`${s} [data-wish][data-day="2"]`).getAttribute("aria-pressed") === "true", "Wunschtag nicht gesetzt", card(0));
   expect((await text(B, `${card(0)} .vwish`)) === "Mi", "Wunschtag fehlt vorne auf dem Bild");
-  const link = await B.page.$eval(`${card(0)} .vlink`, a => ({ href: a.href, text: a.textContent, target: a.target })).catch(() => null);
-  expect(link && link.href.startsWith("https://") && link.target === "_blank" && /^(Rezept auf .+|Auf Fooby suchen) ↗$/.test(link.text), `Rückseite: Link zum Rezept fehlt (${JSON.stringify(link)})`);
+  await tap(B, `${card(0)} [data-wish][data-day="-1"]`); // «egal» = kein Wunschtag
+  await until(B, s => document.querySelector(`${s} .egal`).getAttribute("aria-pressed") === "true" && !document.querySelector(`${s} [data-day="2"][aria-pressed="true"]`), "«egal» setzt den Wunschtag nicht zurück", card(0));
+  await tap(B, `${card(0)} [data-wish][data-day="2"]`);
+  await until(B, s => document.querySelector(`${s} [data-wish][data-day="2"]`).getAttribute("aria-pressed") === "true", "Wunschtag nicht wieder gesetzt", card(0));
+  const links = await B.page.$$eval(`${card(0)} .vgo`, l => l.map(a => ({ href: a.href, label: a.getAttribute("aria-label"), target: a.target, w: a.getBoundingClientRect().width })));
+  expect(links.length === 2 && links.every(a => a.href.startsWith("https://") && a.target === "_blank" && a.w >= 44 && /^(Rezept auf .+|Auf Fooby suchen) ↗$/.test(a.label)), `Link zum Rezept vorne und hinten, gross genug (${JSON.stringify(links)})`);
+  expect(/Min\./.test(await text(B, `${card(0)} .vbm`)), "vorne fehlen Vegi/Fleisch und Zeit");
   await shot(B, "02a-wochenwahl-rueckseite");
-  await tap(B, `${card(0)} .vturn`);
+  await tap(B, `${card(0)} .vt`); // irgendwo auf die Rückseite tippen = zurück aufs Bild
   await until(B, s => !document.querySelector(s).classList.contains("open"), "↩ dreht nicht zurück aufs Bild", card(0));
   await likeCard(B, 2);
   await until(B, () => document.getElementById("voteMine").textContent === "2 gewählt", "Abwählen klappt nicht");

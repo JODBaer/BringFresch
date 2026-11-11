@@ -252,7 +252,9 @@
     /* Licht beim Drehen: die Seite, die sich wegdreht, wird dunkler */
     .vfront::after, .vback::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, rgba(255, 255, 255, .18), rgba(0, 0, 0, .35)); opacity: 0; transition: opacity .3s; pointer-events: none; }
     .vcard.lift .vfront::after, .vcard.lift .vback::after { opacity: 1; }
-    .vfront { border: 0; padding: 0; margin: 0; display: block; width: 100%; text-align: left; font: inherit; color: #fff; background: var(--line); cursor: pointer; }
+    .vfront { display: block; color: #fff; background: var(--line); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .vback { cursor: pointer; }
+    .vfront:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     .vcard.open .vfront { visibility: hidden; }
     .vback {
       transform: rotateY(180deg); visibility: hidden; background: var(--surface); border: 1px solid var(--line);
@@ -266,10 +268,21 @@
     .vcard .vimg.none { opacity: 1; background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
     .vcard .vimg.none::after { content: attr(data-emoji); font-size: 52px; line-height: 1; margin-bottom: 24px; filter: saturate(.85); }
     .vcard .vband {
-      position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 10px 9px; background: linear-gradient(transparent, rgba(0, 0, 0, .65));
-      font-size: 13px; font-weight: 700; line-height: 1.25; text-shadow: 0 1px 2px rgba(0, 0, 0, .4);
-      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 30px 56px 9px 10px; background: linear-gradient(transparent, rgba(0, 0, 0, .7));
+      display: flex; flex-direction: column; gap: 2px; text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
     }
+    .vcard .vbt { font-size: 13px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .vcard .vbm { font-size: 11px; font-weight: 600; opacity: .9; }
+    /* Link zum Rezept: grosser runder Knopf (44 px), gut zu treffen */
+    .vcard .vgo {
+      flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; text-decoration: none;
+      font-size: 20px; font-weight: 800; line-height: 1; background: var(--accent); color: var(--on-accent); box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+    }
+    .vcard .vgo-front { position: absolute; right: 8px; bottom: 8px; z-index: 1; }
+    .vcard .vhead { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
+    .vcard .vhead .vt { min-width: 0; }
+    .vcard .vt, .vcard .vbt { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: anywhere; } /* lange Wörter trennen statt abschneiden */
+    .vcard .vsite { font-size: 11px; color: var(--muted); margin-top: -4px; }
     .vcard .vv { position: absolute; top: 8px; left: 8px; right: 40px; display: flex; gap: 3px; flex-wrap: wrap; }
     .vcard .vv .mini { background: rgba(255, 255, 255, .92); color: #1d2a17; }
     .vcard .tick {
@@ -279,10 +292,11 @@
     .vcard .vwish { position: absolute; top: 40px; right: 6px; background: rgba(255, 255, 255, .92); color: #1d2a17; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 99px; }
     .vcard .vt { font-size: 14px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .vcard .vm { font-size: 11.5px; color: var(--muted); }
-    .vcard .vlink { font-size: 12.5px; font-weight: 700; color: var(--fg); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 2px; }
+    .vcard .days-pick { flex-wrap: wrap; gap: 3px; }
+    .vcard .days-pick button { flex: 1 0 calc((100% - 9px) / 4); padding: 5px 0; }
+    .vcard .days-pick .egal { flex-basis: calc((100% - 9px) / 4); }
     .vcard .vpick { border: 0; border-radius: 11px; padding: 9px; font-weight: 800; font-size: 13px; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--fg); }
     .vcard.on .vpick { background: var(--accent); color: var(--on-accent); }
-    .vcard .vturn { margin-top: auto; align-self: flex-end; border: 0; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--fg); font-size: 15px; }
     @media (prefers-reduced-motion: reduce) { .vcard, .vflip, .vfront, .vback { transition: none; } .vcard.lift { transform: none; } }
     .mini { min-width: 20px; height: 20px; border-radius: 6px; font-size: 10px; font-weight: 800; display: inline-grid; place-items: center; background: var(--fg); color: var(--bg); padding: 0 3px; }
     .days-pick { display: flex; gap: 2px; }
