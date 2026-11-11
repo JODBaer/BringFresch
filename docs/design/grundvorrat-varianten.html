@@ -253,6 +253,32 @@ svg.i.s { width: 14px; height: 14px; }
 .snack span { flex: 1; min-width: 0; }
 .snack button { border: 0; background: none; color: var(--snack-act); font-weight: 700; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+/* Variante C: Mengen, drei Spalten, Bereinigen */
+.cbar { display: flex; gap: 8px; margin: 10px 0 10px; flex-wrap: wrap; align-items: center; }
+.cbar .note { font-size: 12px; color: var(--p-fg2); flex: 1; min-width: 120px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.col h3 { font-size: 13px; font-weight: 700; margin: 0 4px 6px; color: var(--p-fg2); display: flex; gap: 6px; align-items: baseline; }
+.col h3 small { font-weight: 400; font-size: 12px; }
+.col.knapp h3 { color: var(--warn); }
+.col .none { font-size: 12px; color: var(--p-fg2); padding: 2px 4px 6px; margin: 0; }
+.inv { padding: 12px 14px; border-radius: 16px; margin: 10px 0 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.inv .tx { flex: 1; min-width: 150px; font-size: 13px; }
+.inv .tx b { display: block; font-size: 14px; }
+.inv.due .tx span { color: var(--warn); }
+.qt { display: block; width: 100%; text-align: left; padding: 7px 8px; margin: 0; border-radius: 12px; border: 1px solid var(--rim); color: var(--p-fg); cursor: pointer; font: inherit; min-height: 46px; }
+.qt .n { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qt .q { display: block; font-size: 11.5px; color: var(--p-fg2); }
+.qt .old { display: block; font-size: 10.5px; color: var(--warn); }
+.qt.low { border-color: var(--warn); }
+.qt.low .q { color: var(--warn); font-weight: 600; }
+.phone .screen .qt.zero { background: var(--leer-bg); color: var(--on-leer); border-color: var(--leer); }
+.qt.zero .q, .qt.zero .old { color: inherit; }
+.qbtns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; }
+.qbtns button { padding: 12px 4px; border-radius: 14px; border: 1px solid var(--rim); background: none; color: var(--p-fg); font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; min-height: 48px; }
+.qbtns button[aria-pressed="true"] { background: var(--pri); color: var(--on-pri); border-color: transparent; }
+.cleanN { font-size: 26px; font-weight: 700; margin: 6px 0 2px; }
+.facts { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--p-fg2); display: grid; gap: 4px; }
+.facts .w { color: var(--warn); }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,700&display=swap">
 
@@ -340,6 +366,15 @@ const START = [
   ["Honig", "Honig"], ["Schokolade", "Schokolade"],
   ["Soja Sauce", "Soja Sauce"], ["Currypulver", "Currypulver"], ["Muskatnuss", "Muskatnuss"], ["Chiliflocken", "Chiliflocken"], ["Bratbutter", "Bratbutter"]
 ];
+// Variante C: Menge pro Artikel. [noch da, Einheit, eine Packung, diese Woche gebraucht, im Vorrat seit]
+const QTY = {
+  "Eier": [0, "Stk", 10, 0], "Rahm": [2, "Stk", 2, 1], "Olivenöl": [3, "Znacht", 15, 2], "Tomatenmark": [1, "Stk", 2, 0], "Reis": [4, "Znacht", 6, 1],
+  "Joghurt": [1, "Stk", 4, 0], "Zwiebeln": [5, "Stk", 6, 2], "Knoblauch": [6, "Znacht", 8, 1], "Bouillon": [7, "Znacht", 10, 1], "Kokosmilch": [3, "Stk", 2, 1],
+  "Butter": [2, "Stk", 2, 0], "Milch": [2, "Stk", 2, 0], "Zitrone": [3, "Stk", 3, 0], "Zimt": [9, "Znacht", 10, 0, "2024-09"], "Backpulver": [8, "Znacht", 10, 0, "2025-02"],
+  "Speisestärke": [7, "Znacht", 10, 0, "2025-05"], "Currypulver": [5, "Znacht", 10, 1, "2025-08"], "Salz": [10, "Znacht", 10, 1], "Pfeffer": [8, "Znacht", 10, 1]
+};
+const MIN = 2, NOW_YM = "2026-11";
+const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 const WEEK = [
   { n: "Kürbis", spec: "Butternuss, 1 Stück" }, { n: "Lauch", spec: "2 Stangen" }, { n: "Hackfleisch", spec: "600 g" },
   { n: "Grillkäse", spec: "200 g" }, { n: "Nüsslisalat", spec: "300 g" }
@@ -371,15 +406,18 @@ const INFO = {
     tryit: "Probier: bei «Olivenöl» «auf Bring!». «Alles da» öffnen → «leer». Oben «Olivenoel» oder «Rüebli» eintippen."
   },
   C: {
-    title: "C · Kontrollgang – sammeln, einmal senden",
-    idea: "Zwei Reiter: «Vorrat» zum Durchgehen (alles sichtbar) und «Verwalten». Leeres sammelt sich unten und geht nach einmal Prüfen auf Bring! – unabhängig vom Plan.",
-    how: ["Reiter «Vorrat»: Kachel antippen = leer, nochmals = da. Abteilungen einklappbar.",
-      "Unten sammelt sich «Für Bring! (3)». «Prüfen» zeigt die Liste mit Häkchen → «3 auf Bring!», danach «Rückgängig».",
-      "Reiter «Verwalten»: hinzufügen, Namen antippen = umbenennen, Papierkorb = wegnehmen, Doppelte zusammenführen."],
-    qa: [["Wann auf Bring!?", "Gesammelt, nach einmal Prüfen – jederzeit."], ["Alltag / Verwalten", "Eigener Reiter «Verwalten»."], ["Auf einen Blick", "Alles als Kacheln, Abteilungen einklappbar."]],
-    pro: "Klare Trennung: im Alltag kann man nichts löschen oder umbenennen. Mehrere Artikel mit einem Senden, auch mitten in der Woche.",
-    con: "Zwei Wege auf Bring! (hier und «Bring! füllen» im Plan). Kacheln brauchen mehr Platz als Pillen, mehr Scrollen.",
-    tryit: "Probier: «Olivenöl» und «Reis» antippen → unten «Prüfen». Dann Reiter «Verwalten» → «Kartoffeln» eintippen."
+    title: "C · Kontrollgang mit Mengen – sammeln, einmal senden",
+    idea: "Jeder Artikel hat eine Menge (Stück oder «reicht für N Znacht»). Drei Kacheln pro Zeile zeigen auf einen Blick, was knapp ist, was diese Woche gebraucht wird (Menge vorher → nachher) und was da ist. Knappes sammelt sich unten und geht nach einmal Prüfen auf Bring!.",
+    how: ["Drei Kacheln pro Zeile, jede mit Menge. Oben «Knapp» (2 oder weniger), dann «Diese Woche gebraucht» (wird vom Plan abgebucht), dann «Alles da». Kachel antippen = Menge ändern.",
+      "Leeren: jeder gekochte Tag bucht ab («Woche kochen» zeigt es), oder von Hand mit − / «Fast leer» / «Leer».",
+      "Füllen: in Bring! abhaken = gekauft → Vorrat um eine Packung grösser. Oder von Hand «Voll».",
+      "Knappes steht unten bei «Für Bring!». «Prüfen» zeigt die Liste mit Häkchen; der Bring!-Eintrag trägt den Vermerk «Vorrat · Menge».",
+      "Inventur wie im Betrieb, einmal im Jahr: jeden Artikel einmal zeigen, vier Knöpfe (Leer / Fast leer / Halb / Voll). Der Knopf steht bei «Verwalten» (in der App: Einstellungen) und meldet sich, wenn sie fällig ist.",
+      "Was über ein Jahr im Vorrat ist, ist markiert. Reiter «Verwalten»: hinzufügen, umbenennen, wegnehmen, Doppelte zusammenführen."],
+    qa: [["Wann auf Bring!?", "Knappes wird gesammelt und nach einmal Prüfen gesendet – nie von selbst."], ["Alltag / Verwalten", "Eigener Reiter «Verwalten»."], ["Auf einen Blick", "Drei Kacheln pro Zeile mit Menge; Knappes zuoberst."]],
+    pro: "Man sieht, wie viel da ist und was als Nächstes ausgeht. Nichts landet unbemerkt auf Bring!. Im Alltag kann man nichts löschen.",
+    con: "Mengen stimmen nur mit der Inventur und wenn Gekauftes in Bring! abgehakt wird. Zwei Wege auf Bring! (hier und «Bring! füllen» im Plan). Lange Namen werden in drei Kacheln pro Zeile abgeschnitten.",
+    tryit: "Probier: «Woche kochen» → Olivenöl wird knapp → unten «Prüfen» → senden → rechts in der Bring!-Liste «Abhaken». Dann Reiter «Verwalten» → «Inventur starten»."
   }
 };
 
@@ -402,11 +440,15 @@ const ICON = {
 let V = "A", S, UI;
 function fresh() {
   S = {
-    seq: 1, weekSent: false, log: "",
-    items: START.map(([name, bring, left], i) => ({ id: "i" + i, name, bring, sec: SEC_OF[bring] || OWN, status: bring === "Eier" ? "leer" : "da", left: left == null ? null : left })),
+    seq: 1, weekSent: false, log: "", inv: "2025-10",
+    items: START.map(([name, bring, left], i) => {
+      const q = QTY[bring] || [[6, 9, 4, 8, 5, 10, 7][i % 7], "Znacht", 10, 0];
+      return { id: "i" + i, name, bring, sec: SEC_OF[bring] || OWN, status: bring === "Eier" ? "leer" : "da", left: left == null ? null : left,
+        qty: q[0], unit: q[1], full: q[2], use: q[3], since: q[4] || `2026-0${1 + i % 9}` };
+    }),
     bring: [{ name: "Milch", spec: "", by: "Lukas" }, { name: "WC-Papier", spec: "", by: "Leonie" }, { name: "Eier", spec: "", by: "BringFrisch" }]
   };
-  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, opener: null, flash: null, focusK: null };
+  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, opener: null, flash: null, focusK: null };
   prevBring = new Set(S.bring.map(b => b.name));
 }
 let prevBring = new Set();
@@ -416,7 +458,15 @@ const byId = id => S.items.find(x => x.id === id);
 const onBring = n => S.bring.some(b => norm(b.name) === norm(n));
 const bringEntry = n => S.bring.find(b => norm(b.name) === norm(n));
 const isOwn = it => !SEC_OF[it.bring];
-const pending = () => uniq(S.items.filter(it => it.status === "leer" && !onBring(it.bring)).map(it => it.bring));
+const knapp = it => it.qty <= MIN;
+const pending = () => uniq(S.items.filter(it => (V === "C" ? knapp(it) : it.status === "leer") && !onBring(it.bring)).map(it => it.bring));
+const fmt = it => it.qty === 0 ? "leer" : it.unit === "Stk" ? `${it.qty} Stk` : `reicht für ~${it.qty} Znacht`;
+const fmtShort = it => it.qty === 0 ? "leer" : it.unit === "Stk" ? `${it.qty} Stk` : `~${it.qty} Znacht`;
+const pack = it => it.unit === "Stk" ? `${it.full} Stk` : `${it.full} Znacht`;
+const isOld = it => { const [y, m] = it.since.split("-").map(Number), [ny, nm] = NOW_YM.split("-").map(Number); return (ny - y) * 12 + (nm - m) > 12; };
+const sinceText = it => { const [y, m] = it.since.split("-").map(Number); return `${MONTHS[m - 1]} ${y}`; };
+function setQty(it, n) { it.qty = Math.max(0, n); it.status = it.qty === 0 ? "leer" : "da"; }
+const LEVELS = it => [["Leer", 0], ["Fast leer", 1], ["Halb", Math.max(2, Math.ceil(it.full / 2))], ["Voll", it.full]];
 const uniq = arr => arr.filter((x, i) => arr.findIndex(y => norm(y) === norm(x)) === i);
 function groups(items) {
   const g = new Map();
@@ -490,7 +540,7 @@ function act(msg, fn, undoable = true) {
 function addItem(name) {
   const id = "n" + (S.seq++);
   act(`${name} hinzugefügt`, () => {
-    S.items.push({ id, name, bring: name, sec: SEC_OF[name] || OWN, status: "da", left: null });
+    S.items.push({ id, name, bring: name, sec: SEC_OF[name] || OWN, status: "da", left: null, qty: 10, unit: "Znacht", full: 10, use: 0, since: NOW_YM });
     UI.addA = UI.addC = UI.qB = ""; UI.flash = id;
   });
 }
@@ -527,7 +577,8 @@ function sendToBring(names, msg, week) {
     names.forEach(n => {
       if (onBring(n)) return;
       const w = WEEK.find(x => x.n === n);
-      S.bring.push({ name: n, spec: w ? w.spec : "", by: "BringFrisch" });
+      const vi = V === "C" ? S.items.find(x => x.bring === n) : null;
+      S.bring.push({ name: n, spec: w ? w.spec : vi ? `Vorrat · ${pack(vi)}` : "", by: "BringFrisch" });
     });
     S.log = `BringFrisch hat ${names.length} Artikel gesetzt.`;
     closeSheet(true);
@@ -594,6 +645,42 @@ function mergeSheet() {
     <ul class="sugg">${g.map(([k, items]) => `<li class="srow"><span class="bimg${SEC_OF[CAT_NORM[k]] ? "" : " own"}" aria-hidden="true">${esc((CAT_NORM[k] || items[0].bring)[0])}</span><span class="st"><b>${esc(CAT_NORM[k] || items[0].bring)}</b><small>${items.map(x => esc(x.name)).join(" + ")}</small></span><button type="button" class="tbtn sm" data-act="mergeOne" data-key="${esc(k)}">Zusammenführen</button></li>`).join("")}</ul>
     <div class="acts"><button type="button" class="ghost" data-act="close">Schliessen</button><button type="button" class="fbtn" data-act="mergeAll">Alle zusammenführen</button></div>`;
 }
+function qtySheet(id) {
+  return () => {
+    const it = byId(id); if (!it) return "";
+    const ob = onBring(it.bring);
+    return `<div class="grab"></div>
+      <h2 id="shT" tabindex="-1">${esc(it.bring)}</h2>
+      <p class="sub">${it.name !== it.bring ? esc(it.name) + " · " : ""}${esc(it.sec)}</p>
+      <span class="lbl">Noch da</span>
+      <div class="stepper"><button type="button" class="ibtn" data-act="q-" data-id="${id}" aria-label="weniger">−</button>
+        <output aria-live="polite">${esc(fmt(it))}</output>
+        <button type="button" class="ibtn" data-act="q+" data-id="${id}" aria-label="mehr">+</button></div>
+      <div class="qbtns">${LEVELS(it).map(([t, n]) => `<button type="button" data-act="qset" data-id="${id}" data-n="${n}" aria-pressed="${it.qty === n}">${t}</button>`).join("")}</div>
+      <ul class="facts">
+        <li>Eine Packung = ${esc(pack(it))}. In Bring! abgehakt = so viel kommt dazu.</li>
+        <li>${it.use ? `Diese Woche bucht der Plan ${it.use} ab.` : "Diese Woche braucht der Plan nichts davon."}</li>
+        <li${knapp(it) ? ' class="w"' : ""}>${ob ? "Steht schon auf Bring!." : knapp(it) ? "Knapp: steht unten bei «Für Bring!»." : `Ab ${MIN} oder weniger kommt es zu «Für Bring!».`}</li>
+        <li${isOld(it) ? ' class="w"' : ""}>Im Vorrat seit ${esc(sinceText(it))}${isOld(it) ? " – über ein Jahr. Noch gut?" : ""}</li>
+      </ul>
+      <div class="acts"><button type="button" class="fbtn" data-act="close">Fertig</button></div>`;
+  };
+}
+function cleanSheet() {
+  const it = S.items[UI.clean]; if (!it) return "";
+  return `<div class="grab"></div>
+    <h2 id="shT" tabindex="-1">Inventur · ${UI.clean + 1} von ${S.items.length}</h2>
+    <p class="sub">Einmal im Jahr alles durchgehen: wie viel ist wirklich noch da?</p>
+    <div class="cleanN">${esc(it.bring)}</div>
+    <p class="sub">${it.name !== it.bring ? esc(it.name) + " · " : ""}bisher: ${esc(fmt(it))}${isOld(it) ? ` · seit ${esc(sinceText(it))}` : ""}</p>
+    <div class="qbtns">${LEVELS(it).map(([t, n]) => `<button type="button" data-act="cleanSet" data-n="${n}">${t}</button>`).join("")}</div>
+    <div class="acts"><button type="button" class="ghost" data-act="close">Aufhören</button><button type="button" class="tbtn" data-act="cleanSkip">Stimmt so</button></div>`;
+}
+function cleanNext() {
+  UI.clean++;
+  if (UI.clean >= S.items.length) { S.inv = NOW_YM; closeSheet(true); snack("Inventur abgeschlossen ✓"); }
+  render();
+}
 let confirmCfg = null;
 function confirmSheet(title, sub, grp) {
   confirmCfg = grp;
@@ -608,8 +695,11 @@ function updateSend() {
   b.disabled = !n;
 }
 function vorratRows() {
-  const rows = pending().map(n => ({ key: "v:" + n, label: n, sub: "Grundvorrat · leer", checked: true }));
-  uniq(S.items.filter(it => it.status === "leer" && onBring(it.bring)).map(it => it.bring))
+  const rows = pending().map(n => {
+    const it = S.items.find(x => x.bring === n);
+    return { key: "v:" + n, label: n, sub: V === "C" && it ? `Vorrat · noch ${fmtShort(it)} → 1 Packung (${pack(it)})` : "Grundvorrat · leer", checked: true };
+  });
+  uniq(S.items.filter(it => (V === "C" ? knapp(it) : it.status === "leer") && onBring(it.bring)).map(it => it.bring))
     .forEach(n => rows.push({ key: "x:" + n, label: n, sub: "schon auf Bring!", checked: true, disabled: true }));
   return rows;
 }
@@ -710,17 +800,24 @@ function viewB() {
 function viewC() {
   let h = "";
   if (UI.tab === "vorrat") {
-    for (const [sec, items] of groups(S.items)) {
-      const open = !UI.coll[sec];
-      const nl = items.filter(it => it.status === "leer").length;
-      h += `<section class="sec"><button type="button" class="shead" data-act="coll" data-sec="${esc(sec)}" aria-expanded="${open}">${ICON.down}<span>${esc(sec)}</span><span class="c">${nl ? nl + " leer" : ""}</span></button>`;
-      if (open) h += `<div class="tiles">${items.map(it => {
-        const leer = it.status === "leer", ob = onBring(it.bring);
-        return `<button type="button" class="tile card${leer ? " leer" : ""}${ob ? " onb" : ""}${fl(it)}" data-act="toggle" data-id="${it.id}" aria-pressed="${leer}" aria-label="${esc(it.bring)}${leer ? ", leer" : ", da"}${ob ? ", steht auf Bring!" : ""}"><span class="dot">${ICON.check}</span><span class="lb">${esc(it.bring)}</span>${ICON.cart}</button>`;
-      }).join("")}</div>`;
-      h += `</section>`;
-    }
+    const tile = it => {
+      const ob = onBring(it.bring), low = knapp(it);
+      const use = it.use ? ` → ${Math.max(0, it.qty - it.use)}` : "";
+      return `<button type="button" class="qt card${it.qty === 0 ? " zero" : low ? " low" : ""}${fl(it)}" data-act="qty" data-id="${it.id}" aria-label="${esc(it.bring)}, ${esc(fmt(it))}${ob ? ", steht auf Bring!" : ""}">
+        <span class="n">${esc(it.bring)}${ob ? " " + ICON.cartV : ""}</span><span class="q">${esc(fmtShort(it))}${esc(use)}</span>${isOld(it) ? `<span class="old">seit ${esc(sinceText(it))}</span>` : ""}</button>`;
+    };
+    const cols = [
+      ["knapp", "Knapp", S.items.filter(knapp), "Nichts knapp.", "2 oder weniger"],
+      ["woche", "Diese Woche gebraucht", S.items.filter(it => !knapp(it) && it.use > 0), "Der Plan braucht nichts aus dem Vorrat.", "wird abgebucht"],
+      ["da", "Alles da", S.items.filter(it => !knapp(it) && !it.use), "–", ""]
+    ];
+    h += `<div class="cbar"><button type="button" class="tbtn sm" data-act="cook">Woche kochen</button><span class="note">Kachel antippen = Menge ändern</span></div>`;
+    h += cols.map(([k, t, list, none, hint]) => `<section class="sec col ${k}" aria-label="${t}"><h3><span>${t}</span><small>${list.length}${hint ? " · " + hint : ""}</small></h3>${list.length ? `<div class="grid3">${list.map(tile).join("")}</div>` : `<p class="none">${none}</p>`}</section>`).join("");
     return h;
+  }
+  {
+    const [y, m] = S.inv.split("-").map(Number), [ny, nm] = NOW_YM.split("-").map(Number), due = (ny - y) * 12 + (nm - m) >= 12;
+    h += `<div class="inv card${due ? " due" : ""}"><div class="tx"><b>Inventur</b><span>Letzte: ${MONTHS[m - 1]} ${y}${due ? " – fällig (einmal im Jahr)" : ""}. In der App unter Einstellungen.</span></div><button type="button" class="${due ? "fbtn" : "tbtn"}" data-act="clean">Inventur starten</button></div>`;
   }
   h += addBox("addC", "Artikel hinzufügen (wie in Bring!)") + dupCard();
   for (const [sec, items] of groups(S.items)) {
@@ -741,7 +838,7 @@ function trayC() {
   if (UI.tab !== "vorrat") return "";
   const p = pending();
   if (!p.length) return "";
-  return `<div class="tray"><div class="tx"><b>Für Bring! (${p.length})</b><span>${esc(p.join(", "))}</span></div><button type="button" class="fbtn" data-act="sendC">Prüfen</button></div>`;
+  return `<div class="tray"><div class="tx"><b>Für Bring! (${p.length}) · knapp</b><span>${esc(p.join(", "))}</span></div><button type="button" class="fbtn" data-act="sendC">Prüfen</button></div>`;
 }
 
 function infoHTML() {
@@ -836,6 +933,17 @@ function onAct(b) {
       it.left = nx >= 6 ? null : nx; it.status = nx === 0 ? "leer" : (it.status === "leer" && nx > 0 ? "da" : it.status);
       render();
     } break;
+    case "qty": openSheet(qtySheet(id), b); break;
+    case "q-": case "q+": if (it) { setQty(it, it.qty + (a === "q+" ? 1 : -1)); render(); } break;
+    case "qset": if (it) { setQty(it, +b.dataset.n); render(); } break;
+    case "clean": UI.clean = 0; openSheet(cleanSheet, b); break;
+    case "cleanSet": { const c = S.items[UI.clean]; if (c) setQty(c, +b.dataset.n); cleanNext(); break; }
+    case "cleanSkip": cleanNext(); break;
+    case "cook": {
+      const used = S.items.filter(x => x.use > 0);
+      act(`Woche gekocht: ${used.length} Artikel abgebucht`, () => used.forEach(x => setQty(x, x.qty - x.use)));
+      break;
+    }
     case "tab": UI.tab = b.dataset.tab; UI.editing = null; render(); break;
     case "coll": UI.coll[b.dataset.sec] = !UI.coll[b.dataset.sec]; render(); break;
   }
@@ -873,6 +981,11 @@ $("bList").addEventListener("click", e => {
   const hit = S.items.filter(it => norm(it.bring) === norm(entry.name));
   hit.forEach(it => { it.status = "da"; it.left = null; });
   S.log = `«${entry.name}» in Bring! abgehakt${hit.length ? " → im Vorrat wieder da" : ""}.`;
+  if (V === "C" && hit.length) {
+    const it = hit[0];
+    setQty(it, it.qty + it.full); it.since = NOW_YM;
+    S.log = `«${entry.name}» in Bring! abgehakt = gekauft → Vorrat +${pack(it)} (jetzt ${fmtShort(it)}).`;
+  }
   render();
   const nb = $("bList").querySelector("[data-bi]"); if (nb) nb.focus();
 });
