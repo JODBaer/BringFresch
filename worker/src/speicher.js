@@ -19,8 +19,10 @@ export async function backup(env, now = new Date()) {
 // und sendet nochmals. Ohne «base» (ältere App) wie bisher: der neue Stand ersetzt den alten. Stempel steigen immer.
 export async function putDoc(env, key, doc, base, opts) {
   const cur = base != null ? await env.WG.get(key, "json") : null;
-  if (cur && cur.updated && cur.updated !== +base) return json({ ok: false, conflict: true, error: "Inzwischen von jemand anderem geändert", ...cur }, 409);
-  doc.updated = Math.max(Date.now(), ((cur && cur.updated) || 0) + 1);
+  // Konflikt nur, wenn der gespeicherte Stand NEUER ist als der, auf dem die App aufbaut. Ist er älter, hat KV beim
+  // Lesen noch den alten Stand geliefert (kurz nach dem Speichern möglich) – dann gilt die Änderung der App.
+  if (cur && cur.updated > +base) return json({ ok: false, conflict: true, error: "Inzwischen von jemand anderem geändert", ...cur }, 409);
+  doc.updated = Math.max(Date.now(), ((cur && cur.updated) || 0) + 1, (+base || 0) + 1);
   await env.WG.put(key, JSON.stringify(doc), opts);
   return json({ ok: true, updated: doc.updated });
 }

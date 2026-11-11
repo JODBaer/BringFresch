@@ -14,12 +14,14 @@ let fails = 0;
 const check = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-const store = new Map();
+const store = new Map(), old = new Map();
+let staleMs = 0;
 const env = {
   WG_PIN: "4711", CAL_TOKEN: "cal", BRING_EMAIL: "bot@x.ch", BRING_PASSWORD: "pw",
   WG: {
-    async get(k, t) { const v = store.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
-    async put(k, v) { store.set(k, v); },
+    // Wie Cloudflare KV: direkt nach dem Speichern kann ein Lesen noch kurz den alten Stand liefern (staleMs > 0)
+    async get(k, t) { const o = old.get(k); const v = o && Date.now() < o.until ? o.value : store.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
+    async put(k, v) { if (staleMs) old.set(k, { value: store.get(k), until: Date.now() + staleMs }); store.set(k, v); },
     async delete(k) { store.delete(k); },
     async list({ prefix = "" } = {}) { return { keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) }; },
   },
@@ -142,6 +144,39 @@ check(serverPlan()[1].leftover_buffer === 4 && serverPlan()[5].leftover_buffer =
 const D = phone("leonie", { preset: { bringfrisch_plan_updated: 5 } });
 await wait(400);
 check(localPlan(D)[5].leftover_buffer === 6 && D.localStorage.getItem("bringfrisch_base_plan"), "Handy ohne gemerkten Stand lädt den WG-Plan und merkt ihn sich");
+
+// 6. Speicher des Servers antwortet kurz mit dem alten Stand (Cloudflare KV): eigene Änderungen dürfen nicht zurückspringen
+staleMs = 4000;
+setBuf(A, 3, 1);        // A ändert Donnerstag ...
+await wait(1900);
+pull(A);                // ... und zieht gleich herunter: der Server liefert noch den alten Plan
+await wait(900);
+check(localPlan(A)[3].leftover_buffer === 1, "nach Speichern + Herunterziehen bleibt die eigene Änderung (alter Stand vom Server wird nicht übernommen)");
+setBuf(A, 0, 3);        // zweite Änderung, solange der Server noch den alten Stand liest
+await wait(2300);
+check(localPlan(A)[3].leftover_buffer === 1 && localPlan(A)[0].leftover_buffer === 3, "zweite Änderung kurz danach: die erste bleibt");
+{
+  const w = A;
+  w.document.getElementById("openStaplesBtn").click();
+  await wait(300);
+  const tileOf = n => [...w.document.querySelectorAll("#staplesList .btile")].find(t => t.querySelector(".bname").textContent === n);
+  tileOf("Senf").click();
+  await wait(1500);
+  pull(w);
+  await wait(900);
+  tileOf("Honig").click();
+  await wait(1500);
+  pull(w);
+  await wait(900);
+  check(mark(w, /Senf/).in_stock === false && mark(w, /Honig/).in_stock === false, "Grundvorrat: zwei Meldungen nacheinander bleiben beide, auch wenn der Server kurz den alten Stand liefert");
+}
+await wait(4200);       // Speicher ist wieder aktuell
+staleMs = 0;
+pull(A);
+await wait(900);
+check(serverPlan()[3].leftover_buffer === 1 && serverPlan()[0].leftover_buffer === 3 && localPlan(A)[3].leftover_buffer === 1, "danach stimmen Server und Handy überein");
+const svEnd = JSON.parse(store.get("vorrat")).staples;
+check(svEnd.find(s => /Senf/.test(s.name)).in_stock === false && svEnd.find(s => /Honig/.test(s.name)).in_stock === false, "Server kennt beide Vorrat-Meldungen");
 
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

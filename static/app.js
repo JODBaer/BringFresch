@@ -3,6 +3,14 @@
 (() => {
   "use strict";
 
+  // Alte Seite aus dem Cache zusammen mit neuem app.js (core.js / store.js fehlen dann): einmal frisch laden statt abstürzen
+  if (!window.BF_CORE || !window.BF_STORE) {
+    try {
+      if (!sessionStorage.getItem("bf-reload")) { sessionStorage.setItem("bf-reload", "1"); location.reload(); }
+    } catch (e) { /* ohne Speicher: Seite von Hand neu laden */ }
+    return;
+  }
+
   const DATA = window.BRINGFRISCH_DATA || {};
   // Reine Regeln (auch vom WG-Server benutzt): core.js
   const CORE = window.BF_CORE;
@@ -1454,7 +1462,7 @@
   // ---------------------------------------------------------------------------
   // Abgleich mit dem WG-Server ohne Uhrenvergleich: pro Dokument (Plan, nächste Woche, Vorrat, Einstellungen)
   // merkt sich das Handy den Stand, den der Server beim letzten Abgleich hatte (Stempel des Servers + Inhalt).
-  //   lokal geändert  = eigener Stempel ≠ gemerkter Stempel      Server geändert = Server-Stempel ≠ gemerkter Stempel
+  //   lokal geändert  = eigener Stempel ≠ gemerkter Stempel      Server geändert = Server-Stempel neuer als der gemerkte
   // Nur einer geändert -> der gilt. Beide geändert -> zusammenführen: pro Tag / Artikel / Einstellung gewinnt, wer
   // seit dem gemeinsamen Stand etwas geändert hat (beide denselben: dieses Handy). Beim Senden geht der gemerkte
   // Stempel mit («base»); hat inzwischen jemand gespeichert, antwortet der Server 409 mit seinem Stand.
@@ -1480,10 +1488,15 @@
   // "take" = Stand des Servers übernehmen · "push" = meinen senden · "merge" = zusammenführen · "" = gleich
   function syncCase(b, localStamp, remoteStamp) {
     if (!b) return remoteStamp > localStamp ? "take" : localStamp > remoteStamp ? "push" : ""; // Handy ohne gemerkten Stand: wie früher
-    const dirty = localStamp !== b.updated, moved = remoteStamp !== b.updated;
+    // «Server geändert» heisst: sein Stempel ist NEUER als der gemerkte. Ein älterer Stempel ist kein fremder Stand,
+    // sondern ein verspätetes Lesen (der Speicher des Servers liefert kurz nach dem Speichern noch den alten Stand)
+    // und wird nie übernommen. Beide Stempel stammen vom Server – Handy-Uhren spielen keine Rolle.
+    const dirty = localStamp !== b.updated, moved = remoteStamp > b.updated;
     return dirty && moved ? "merge" : dirty ? "push" : moved ? "take" : "";
   }
   const conflictOf = e => (e && e.status === 409 && e.data && e.data.conflict ? e.data : null);
+  // Zusammenführen nur mit einem wirklich neueren Stand; sonst gilt der gemerkte weiter
+  const newer = (name, remote) => { const b = baseOf(name); return !b || remote.updated > b.updated; };
 
   let planPushTimer = null;
   async function pushPlanNow(again) {
@@ -1506,6 +1519,7 @@
     }
   }
   function mergePlan(remote) {
+    if (!newer("plan", remote)) return;
     const theirs = normalizeWeek(remote.plan), b = baseOf("plan");
     setCurrentPlan(merge3(b && b.data, currentPlan(), theirs, byIndex, dayView));
     setBase("plan", remote.updated, planViews(theirs));
@@ -1534,6 +1548,7 @@
     }
   }
   function mergeNext(remote) {
+    { const b = baseOf("next"); if (b && b.week === nextDoc.week && remote.updated <= b.updated) return; }
     const theirs = normalizeWeek(remote.plan), b = baseOf("next");
     nextDoc = { week: nextDoc.week, plan: merge3(b && b.week === nextDoc.week ? b.data : null, nextDoc.plan, theirs, byIndex, dayView), updated: Date.now() };
     save(NEXT_KEY, nextDoc);
@@ -1558,6 +1573,7 @@
     }
   }
   function mergeVorrat(remote) {
+    if (!newer("vorrat", remote)) return;
     const b = baseOf("vorrat");
     state.staples = merge3(b && b.data, state.staples, remote.staples, stapleKey);
     save(KEYS.staples, state.staples);
@@ -1678,6 +1694,7 @@
     }
   }
   function mergeSettings(remote) {
+    if (!newer("settings", remote)) return;
     const b = baseOf("settings");
     const merged = Object.fromEntries(merge3(b && b.data, Object.entries(wgSettings()), Object.entries(remote.settings), e => e[0]));
     applySettings(merged);

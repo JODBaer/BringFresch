@@ -343,6 +343,11 @@ check(r.status === 429, "nach 10 falschen PINs ist die WG kurz gesperrt");
   check(r.status === 409 || r.status === 200, "Vorrat nimmt «base» an");
   r = await call("/settings", { method: "PUT", body: { settings: { members: [{ id: "a", name: "A" }] }, base: 12345 } });
   check(r.status === 409, "Einstellungen: veraltetes «base» wird abgelehnt");
+  // Die App kennt schon einen neueren Stand als der Speicher gerade liefert (KV liest kurz nach dem Speichern alt): kein Konflikt
+  const cur = await (await call("/plan")).json();
+  r = await call("/plan", { method: "PUT", body: { week: "2026-W46", plan: week7("e"), base: cur.updated + 5000 } });
+  const later = await r.json();
+  check(r.status === 200 && later.updated > cur.updated + 5000, "«base» neuer als der gelesene Stand: wird gespeichert, Stempel liegt darüber");
 }
 check(!snap0.has("fail:gibtsnicht:"), "unbekannter WG-Name schreibt nichts in den Speicher (Gratis-Kontingent)");
 // Sperre gilt pro Absender: ein anderes Handy (andere IP) kommt weiter rein
