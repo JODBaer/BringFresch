@@ -104,6 +104,15 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - Danach wie heute: Mengen für `servings`, Bring!-Katalog-Abbildung, Fleisch-Erkennung (Hackfleisch → «Fleisch»), Saison optional
   - Tests: Worker mit nachgebauter Modell-Antwort (kein Netz), UI-Schritt «Foto wählen → Formular gefüllt»; Live-Test nur von Hand
   - Offen: welcher Dienst/Modell, Kosten pro Bild, Handschrift unterstützen?
+- [ ] **Grundvorrat neu gestalten – zusammen mit Joshua, nach dem Umbau** (Rückmeldung Joshua 11.11.2026, v1.7.0)
+  - **Was nicht gefällt**: Die Verwaltung schreibt beim Antippen **direkt auf Bring!**; auch **Hinzufügen und Wegnehmen** sind so nicht gut
+  - **Vorgehen**: nichts im Alleingang bauen. Zuerst 2–3 Varianten als HTML zum Antippen zeigen (Design-Fragen entscheidet Joshua selbst), dann bauen. Erst nach dem Umbau von `app.js` (Schritte 3 und 5 in `docs/refactoring-plan.md`), damit die Ansicht nur einmal angefasst wird
+  - **Zu klären** (Fragen an Joshua, nicht vorentscheiden):
+    - Soll «leer» zuerst nur in BringFrisch gemerkt werden und erst mit «Bring! füllen» auf die Liste kommen (mit Nachfragen und «Rückgängig» wie beim Plan)? Oder ein eigener, klar beschrifteter Knopf «auf Bring!» pro Artikel?
+    - Verwalten (hinzufügen, wegnehmen, umbenennen) getrennt vom täglichen «ist leer» – eigener Bearbeiten-Modus?
+    - Wie viel soll man auf einen Blick sehen: alle ~45 Pillen oder nur «bald leer / leer» und der Rest eingeklappt?
+  - **Im Bild aufgefallen** (heutiger Stand, als Aufgabe für den Neubau): mehrere Vorrat-Einträge zeigen denselben Bring!-Namen und stehen darum doppelt da – Kartoffeln ×2, Zwiebeln ×2, Butter ×2, Pfeffer ×2, Reis ×2; dazu «Sojasauce» und «Soja Sauce» (eigener Artikel). Zusammenführen bzw. beim Hinzufügen verhindern
+  - **Berührt**: Fachregel «Grundvorrat wie Bring!: Antippen = direkt auf Bring!» in `CLAUDE.md`, Entscheid 16 (Pillen klein, durchgestrichen) und die Punkte «Leer melden» / «Wegnehmen» im nächsten Eintrag – alle erst nach Joshuas Entscheid anpassen
 - [ ] **Grundvorrat verwalten** (besser als heute)
   - **Hinzufügen**: Eingabe schlägt Bring!-Artikel vor (Autokorrektur auf den Bring!-Namen, z.B. «Olivenoel» → «Olivenöl», mit Bild); nicht doppelt (gleicher Bring!-Artikel schon im Vorrat → «Ist schon da»)
   - **Nicht gefunden**: Hinweis «Gibt es in Bring! nicht – bitte zuerst in Bring! als eigenen Artikel anlegen», dann erneut suchen

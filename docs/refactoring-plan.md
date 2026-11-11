@@ -95,6 +95,8 @@ Heute viermal von Hand «neuerer gewinnt» (Plan, nächste Woche, Vorrat, Einste
 
 `views/plan`, `einkauf`, `saison`, `einstellungen`, `wochenwahl`, `willkommen`, `theme`. CSS aus `index.html` in Dateien pro Bereich. Zusammen mit dem geplanten Redesign der drei alten Seiten erledigen (plan.md), nicht vorher separat.
 
+Danach, nicht vorher: **Grundvorrat neu gestalten zusammen mit Joshua** (siehe `plan.md`, Rückmeldung 11.11.2026: direktes Schreiben auf Bring!, Hinzufügen und Wegnehmen gefallen so nicht). Varianten zuerst als HTML zeigen.
+
 ## Schritt 6 – Worker – teilweise erledigt
 
 Gebaut: `bringAuth` merkt die Anmeldung (Instanz + KV `bringtoken`, nicht in der Sicherung), `bringFetch` meldet bei 401 einmal frisch an.
