@@ -2835,8 +2835,9 @@
   $("appVersionTop").textContent = APP_VERSION;
 
   // Aktualisieren: erst eigene Änderungen senden und den Stand der WG holen, dann neue App-Version laden
-  const verNum = v => String(v || "0").split(".").map(n => parseInt(n, 10) || 0);
-  const isNewer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+  // «1.6.8-test.3» = [1, 6, 8, 3] (Test-Version: 4. Zahl = Commits seit dem Release)
+  const verNum = v => String(v || "0").split(/[^0-9]+/).filter(Boolean).map(n => parseInt(n, 10));
+  const isNewer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < 4; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
   async function latestVersion() {
     const r = await fetch(`app.js?v=${Date.now()}`, { cache: "no-store" });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);

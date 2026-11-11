@@ -36,8 +36,33 @@ try {
   // Ungültige Version wird abgelehnt
   const r3 = spawnSync(process.execPath, [path.join(root, "tools", "build_site.mjs"), out, "1.2"], { encoding: "utf8" });
   check(r3.status !== 0, "Version «1.2» wird abgelehnt");
+  // Test-Version (tools/build_stage.mjs): Nummer steht VOR der WG-Version, «Aktualisieren» erkennt neuere Test-Builds
+  const stageOut = path.join(out, "stage");
+  const r4 = spawnSync(process.execPath, [path.join(root, "tools", "build_stage.mjs"), "1.6.8-test.3", stageOut], { encoding: "utf8" });
+  process.stdout.write((r4.stdout || "") + (r4.stderr || ""));
+  const stageApp = r4.status === 0 ? readFileSync(path.join(stageOut, "app.js"), "utf8") : "";
+  check(/^[ \t]*const APP_VERSION = "1\.6\.8-test\.3";/m.test(stageApp), "Test-Version: Versionszeile 1.6.8-test.3");
+  check(!!pattern && stageApp.includes(pattern.trim()), "Test-Version: Suchmuster in «Aktualisieren» unverändert");
+  const r5 = spawnSync(process.execPath, ["--check", path.join(stageOut, "app.js")], { encoding: "utf8" });
+  check(r5.status === 0, "Test-Version: app.js gültiges JavaScript");
 } finally {
   rmSync(out, { recursive: true, force: true });
+}
+
+// Versionsnummern: Test-Version = letzter Tag + 1 Patch + Commits; Vergleich wie in app.js («Aktualisieren»)
+{
+  const m = /^v?(\d+)\.(\d+)\.(\d+)$/;
+  const stageVersion = (tag, n) => { const x = m.exec(tag || ""); return x ? `${x[1]}.${x[2]}.${+x[3] + 1}-test.${+n || 0}` : ""; };
+  const appSrc = readFileSync(path.join(root, "static", "app.js"), "utf8");
+  const verNumSrc = appSrc.match(/const verNum = (v => .*);/)[1], isNewerSrc = appSrc.match(/const isNewer = (\(a, b\) => .*);/)[1];
+  const isNewer = new Function(`const verNum = ${verNumSrc}; return ${isNewerSrc};`)();
+  const tool = readFileSync(path.join(root, "tools", "build_stage.mjs"), "utf8");
+  check(tool.includes("`${m[1]}.${m[2]}.${+m[3] + 1}-test.${+commits || 0}`"), "build_stage.mjs rechnet die Version wie hier geprüft");
+  check(stageVersion("v1.6.7", "3") === "1.6.8-test.3", "v1.6.7 + 3 Commits = 1.6.8-test.3");
+  check(isNewer(stageVersion("v1.6.7", "0"), "1.6.7"), "Test-Version 1.6.8-test.0 ist neuer als WG-Version 1.6.7");
+  check(isNewer("1.6.8-test.4", "1.6.8-test.3"), "neuerer Test-Build wird erkannt");
+  check(!isNewer("1.6.8-test.3", "1.6.8-test.3"), "gleicher Test-Build: nichts Neues");
+  check(isNewer("1.7.0", "1.6.9") && !isNewer("1.6.9", "1.7.0") && isNewer("1.10.0", "1.9.9"), "normale Versionen wie bisher");
 }
 console.log(failed ? `\nFAIL: ${failed}` : "\nALLES OK");
 process.exit(failed ? 1 : 0);
