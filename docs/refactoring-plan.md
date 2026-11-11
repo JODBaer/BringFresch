@@ -63,7 +63,16 @@ Unit-Tests für `core/` direkt in Node (ohne jsdom) – schnell.
 
 Ein Objekt für den ganzen Zustand inkl. angezeigter Woche; alle localStorage-Schlüssel und ihre Migrationen (`LEGACY_KEYS`, alte Wochenwahl) an einer Stelle; `subscribe` statt verstreuter `refresh()`-Aufrufe. Keine Änderung am gespeicherten Format.
 
-## Schritt 4 – Sync mit Versionsnummern
+## Schritt 4 – Sync mit Versionsnummern – erledigt
+
+Gebaut, einfacher als unten skizziert: als Version dient der Server-Stempel `updated` selbst (kein neues Feld, alte Dokumente passen).
+- Worker `putDoc`: `base` ≠ gespeicherter Stempel → `409` mit aktuellem Dokument; Stempel steigen immer. Ohne `base` wie früher.
+- App: `bringfrisch_base_<plan|next|vorrat|settings>` = Stempel + Inhalt beim letzten Abgleich. `syncCase` (take / push / merge) vergleicht nur auf Gleichheit, nie zwei Uhren. `merge3` pro Tag (`dayView`: was ein Mensch ändert), pro Vorrat-Artikel, pro Einstellung.
+- Handys ohne gemerkten Stand (direkt nach dem Update) verhalten sich einmal wie früher.
+- Tests: `tests/sync_merge.test.mjs` (rot mit altem Code), `worker/test.mjs`.
+- Bekannte Grenze: KV kann nicht «prüfen und schreiben» in einem Schritt; zwei Speicherungen in derselben Sekunde können sich noch überholen. Für eine WG vernachlässigbar, mit D1 ganz lösbar.
+
+Ursprüngliche Skizze:
 
 Heute viermal von Hand «neuerer gewinnt» (Plan, nächste Woche, Vorrat, Einstellungen), Vergleich Handy-Uhr gegen Server-Uhr, PUT ohne Vorbedingung.
 

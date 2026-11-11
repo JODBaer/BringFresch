@@ -54,6 +54,7 @@ results.push([`Syntax (${syntaxFiles.length} Dateien)`, bad.length === 0]);
 step("App (jsdom)", node, ["app.test.js"]);
 step("Zutaten-Abgleich (alle Rezepte)", node, ["zutaten.test.js"]);
 step("Integration (2 Handys + Worker)", node, ["integration.test.mjs"]);
+step("Abgleich (gleichzeitige Änderungen, falsche Uhr)", node, ["sync_merge.test.mjs"]);
 step("Worker", node, ["../worker/test.mjs"]);
 step("Release-Build (wie GitHub Pages)", node, ["release_build.test.mjs"]);
 const shotArg = args.includes("--shots") ? ["--shots"] : [];

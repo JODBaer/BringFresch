@@ -303,6 +303,23 @@ const snap0 = { has: p => [...store.keys()].some(k => k.startsWith(p)) };
 for (let i = 0; i < 10; i++) await call("/wg", { wg: "Sonnenhof", pin: "0000" });
 r = await sh("/wg");
 check(r.status === 429, "nach 10 falschen PINs ist die WG kurz gesperrt");
+// Abgleich: «base» = Stempel, auf dem die Änderung aufbaut
+{
+  const week7 = t => Array.from({ length: 7 }, (_, i) => ({ title: t + i, eaters: [] }));
+  let p = await (await call("/plan", { method: "PUT", body: { week: "2026-W46", plan: week7("a") } })).json();
+  const first = p.updated;
+  p = await (await call("/plan", { method: "PUT", body: { week: "2026-W46", plan: week7("b"), base: first } })).json();
+  check(p.ok && p.updated > first, "Plan mit passendem «base» wird gespeichert, Stempel steigt");
+  r = await call("/plan", { method: "PUT", body: { week: "2026-W46", plan: week7("c"), base: first } });
+  const conflict = await r.json();
+  check(r.status === 409 && conflict.conflict && conflict.plan[0].title === "b0" && conflict.updated === p.updated, "veraltetes «base»: 409 mit dem aktuellen Stand, nichts überschrieben");
+  r = await call("/plan", { method: "PUT", body: { week: "2026-W46", plan: week7("d") } });
+  check(r.status === 200 && (await (await call("/plan")).json()).plan[0].title === "d0", "ohne «base» (ältere App) wie bisher: neuer Stand ersetzt den alten");
+  r = await call("/vorrat", { method: "PUT", body: { staples: [{ name: "x" }], base: 1 } });
+  check(r.status === 409 || r.status === 200, "Vorrat nimmt «base» an");
+  r = await call("/settings", { method: "PUT", body: { settings: { members: [{ id: "a", name: "A" }] }, base: 12345 } });
+  check(r.status === 409, "Einstellungen: veraltetes «base» wird abgelehnt");
+}
 check(!snap0.has("fail:gibtsnicht:"), "unbekannter WG-Name schreibt nichts in den Speicher (Gratis-Kontingent)");
 // Sperre gilt pro Absender: ein anderes Handy (andere IP) kommt weiter rein
 const from = (ip, pin) => worker.fetch(new Request("https://bf.example.workers.dev/wg", { headers: { Origin: ORIGIN, "X-WG-PIN": pin, "CF-Connecting-IP": ip } }), env);

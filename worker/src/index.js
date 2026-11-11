@@ -122,9 +122,7 @@ async function route(request, env, url) {
   if (path === "/plan" && method === "PUT") {
     const data = await body(request);
     if (!Array.isArray(data.plan) || data.plan.length !== 7) throw httpError(400, "plan ungültig");
-    const doc = { week: data.week, plan: data.plan, members: data.members || [], dinnerTime: data.dinnerTime || "18:30", updated: Date.now() };
-    await env.WG.put("plan", JSON.stringify(doc));
-    return json({ ok: true, updated: doc.updated });
+    return putDoc(env, "plan", { week: data.week, plan: data.plan, members: data.members || [], dinnerTime: data.dinnerTime || "18:30" }, data.base);
   }
 
   // Plan einer bestimmten Woche (die nächste Woche wird ab Donnerstag schon geplant)
@@ -133,9 +131,7 @@ async function route(request, env, url) {
   if (planWeek && method === "PUT") {
     const data = await body(request);
     if (!Array.isArray(data.plan) || data.plan.length !== 7) throw httpError(400, "plan ungültig");
-    const doc = { week: planWeek[1], plan: data.plan, members: data.members || [], dinnerTime: data.dinnerTime || "18:30", updated: Date.now() };
-    await env.WG.put(`plan:${planWeek[1]}`, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 35 });
-    return json({ ok: true, updated: doc.updated });
+    return putDoc(env, `plan:${planWeek[1]}`, { week: planWeek[1], plan: data.plan, members: data.members || [], dinnerTime: data.dinnerTime || "18:30" }, data.base, { expirationTtl: 60 * 60 * 24 * 35 });
   }
 
   // Grundvorrat der WG – Wahrheit liegt in BringFrisch (Bring! sagt nur, was auf der Liste steht)
@@ -143,9 +139,7 @@ async function route(request, env, url) {
   if (path === "/vorrat" && method === "PUT") {
     const data = await body(request);
     if (!Array.isArray(data.staples) || data.staples.length > 300) throw httpError(400, "Vorrat ungültig");
-    const doc = { staples: data.staples, updated: Date.now() };
-    await env.WG.put("vorrat", JSON.stringify(doc));
-    return json({ ok: true, updated: doc.updated });
+    return putDoc(env, "vorrat", { staples: data.staples }, data.base);
   }
 
   // WG-Einstellungen für alle Handys: Mitbewohner, Znacht-Zeit, Rezept-Webseiten, eigene Rezepte (neuerer Stand gewinnt)
@@ -157,9 +151,7 @@ async function route(request, env, url) {
       || st.members.some(m => !m || typeof m.id !== "string" || typeof m.name !== "string")) throw httpError(400, "Einstellungen ungültig");
     const raw = JSON.stringify(st);
     if (raw.length > 400000) throw httpError(400, "Einstellungen zu gross");
-    const doc = { settings: st, updated: Date.now() };
-    await env.WG.put("settings", JSON.stringify(doc));
-    return json({ ok: true, updated: doc.updated });
+    return putDoc(env, "settings", { settings: st }, data.base);
   }
 
   if (path === "/recipe" && method === "GET") return json(await importRecipe(url.searchParams.get("url")));
@@ -197,6 +189,17 @@ export async function backup(env, now = new Date()) {
   } while (cursor);
   await env.WG.put("backup:" + day, JSON.stringify({ day, keys }), { expirationTtl: 30 * 86400 });
   return { day, count: Object.keys(keys).length };
+}
+
+// Dokument der WG speichern. Schickt die App «base» mit (Stempel des Standes, auf dem ihre Änderung aufbaut) und hat
+// inzwischen jemand anderes gespeichert, wird nichts überschrieben: 409 mit dem aktuellen Stand, die App führt zusammen
+// und sendet nochmals. Ohne «base» (ältere App) wie bisher: der neue Stand ersetzt den alten. Stempel steigen immer.
+async function putDoc(env, key, doc, base, opts) {
+  const cur = base != null ? await env.WG.get(key, "json") : null;
+  if (cur && cur.updated && cur.updated !== +base) return json({ ok: false, conflict: true, error: "Inzwischen von jemand anderem geändert", ...cur }, 409);
+  doc.updated = Math.max(Date.now(), ((cur && cur.updated) || 0) + 1);
+  await env.WG.put(key, JSON.stringify(doc), opts);
+  return json({ ok: true, updated: doc.updated });
 }
 
 function json(data, status = 200, headers = {}) {

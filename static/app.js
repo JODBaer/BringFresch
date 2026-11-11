@@ -119,12 +119,7 @@
     try { online = connected(); } catch (e) { /* beim Start noch nicht bereit */ }
     if (!online) return;
     clearTimeout(vorratTimer);
-    vorratTimer = setTimeout(() => {
-      vorratTimer = null;
-      api("/vorrat", { method: "PUT", body: { staples: state.staples } })
-        .then(r => save(VORRAT_UPDATED_KEY, r.updated))
-        .catch(e => setSyncStatus(e.message, false));
-    }, 800);
+    vorratTimer = setTimeout(() => pushVorratNow().catch(e => setSyncStatus(e.message, false)), 800);
   };
 
   // ---------------------------------------------------------------------------
@@ -1722,7 +1717,7 @@
     });
     let data = {};
     try { data = await res.json(); } catch (e) { /* keine JSON-Antwort */ }
-    if (!res.ok) throw new Error(data.error || `Verbindungsfehler (${res.status})`);
+    if (!res.ok) throw Object.assign(new Error(data.error || `Verbindungsfehler (${res.status})`), { status: res.status, data });
     return data;
   }
 
@@ -1733,27 +1728,119 @@
     el.style.color = ok ? "var(--accent)" : "var(--muted)";
   }
 
+  // ---------------------------------------------------------------------------
+  // Abgleich mit dem WG-Server ohne Uhrenvergleich: pro Dokument (Plan, nächste Woche, Vorrat, Einstellungen)
+  // merkt sich das Handy den Stand, den der Server beim letzten Abgleich hatte (Stempel des Servers + Inhalt).
+  //   lokal geändert  = eigener Stempel ≠ gemerkter Stempel      Server geändert = Server-Stempel ≠ gemerkter Stempel
+  // Nur einer geändert -> der gilt. Beide geändert -> zusammenführen: pro Tag / Artikel / Einstellung gewinnt, wer
+  // seit dem gemeinsamen Stand etwas geändert hat (beide denselben: dieses Handy). Beim Senden geht der gemerkte
+  // Stempel mit («base»); hat inzwischen jemand gespeichert, antwortet der Server 409 mit seinem Stand.
+  // ---------------------------------------------------------------------------
+  const baseKey = n => `bringfrisch_base_${n}`;
+  const baseOf = n => load(baseKey(n), null); // { updated, data, week? }
+  const setBase = (n, updated, data, extra) => save(baseKey(n), { updated, data, ...(extra || {}) });
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  // Was ein Mensch an einem Tag ändert (Rezeptdaten selbst kommen aus der Datenbank und zählen nicht als Änderung)
+  const dayView = d => d && [d.id, d.title, [...(d.eaters || [])].sort(), d.leftover_buffer, d.extra_guests || 0, d.time || "", !!d.empty, d.servings || 0];
+  const planViews = plan => (plan || []).map(dayView);
+  const byIndex = (x, i) => i;
+  function merge3(base, mine, theirs, keyOf, view = x => x) {
+    if (!Array.isArray(base)) return mine; // kein gemeinsamer Stand bekannt: dieses Handy gilt (wie früher)
+    const b = new Map(base.map((x, i) => [keyOf(x, i), x]));
+    const m = new Map(mine.map((x, i) => [keyOf(x, i), x]));
+    const t = new Set(theirs.map(keyOf));
+    const changed = k => !same(m.has(k) ? view(m.get(k)) : undefined, b.get(k));
+    const out = [];
+    theirs.forEach((x, i) => { const k = keyOf(x, i); if (!changed(k)) out.push(x); else if (m.has(k)) out.push(m.get(k)); });
+    mine.forEach((x, i) => { const k = keyOf(x, i); if (!t.has(k) && changed(k)) out.push(x); }); // hier neu (oder dort gelöscht, hier geändert)
+    return out;
+  }
+  // "take" = Stand des Servers übernehmen · "push" = meinen senden · "merge" = zusammenführen · "" = gleich
+  function syncCase(b, localStamp, remoteStamp) {
+    if (!b) return remoteStamp > localStamp ? "take" : localStamp > remoteStamp ? "push" : ""; // Handy ohne gemerkten Stand: wie früher
+    const dirty = localStamp !== b.updated, moved = remoteStamp !== b.updated;
+    return dirty && moved ? "merge" : dirty ? "push" : moved ? "take" : "";
+  }
+  const conflictOf = e => (e && e.status === 409 && e.data && e.data.conflict ? e.data : null);
+
   let planPushTimer = null;
-  async function pushPlanNow() {
+  async function pushPlanNow(again) {
     clearTimeout(planPushTimer);
     planPushTimer = null; // sonst schickt jedes spätere Herunterziehen den alten Plan wieder hoch
-    const r = await api("/plan", {
-      method: "PUT",
-      body: { week: weekKey(), plan: currentPlan(), members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
-    });
-    save(PLAN_UPDATED_KEY, r.updated);
+    const b = baseOf("plan");
+    try {
+      const r = await api("/plan", {
+        method: "PUT",
+        body: { week: weekKey(), plan: currentPlan(), members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), ...(b ? { base: b.updated } : {}) }
+      });
+      save(PLAN_UPDATED_KEY, r.updated);
+      setBase("plan", r.updated, planViews(currentPlan()));
+    } catch (e) {
+      const theirs = conflictOf(e);
+      if (!theirs || again || !Array.isArray(theirs.plan)) throw e;
+      mergePlan(theirs); // jemand war schneller: zusammenführen und nochmals senden
+      await pushPlanNow(true);
+      refresh();
+    }
+  }
+  function mergePlan(remote) {
+    const theirs = normalizeWeek(remote.plan), b = baseOf("plan");
+    setCurrentPlan(merge3(b && b.data, currentPlan(), theirs, byIndex, dayView));
+    setBase("plan", remote.updated, planViews(theirs));
+    save(PLAN_UPDATED_KEY, Date.now());
   }
   let nextPushTimer = null;
-  async function pushNextNow() {
+  async function pushNextNow(again) {
     clearTimeout(nextPushTimer);
     nextPushTimer = null;
     if (!nextDoc) return;
-    const r = await api(`/plan/${nextDoc.week}`, {
-      method: "PUT",
-      body: { plan: nextDoc.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30") }
-    });
-    nextDoc.updated = r.updated;
+    const b = baseOf("next");
+    try {
+      const r = await api(`/plan/${nextDoc.week}`, {
+        method: "PUT",
+        body: { plan: nextDoc.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), ...(b && b.week === nextDoc.week ? { base: b.updated } : {}) }
+      });
+      nextDoc.updated = r.updated;
+      save(NEXT_KEY, nextDoc);
+      setBase("next", r.updated, planViews(nextDoc.plan), { week: nextDoc.week });
+    } catch (e) {
+      const theirs = conflictOf(e);
+      if (!theirs || again || !Array.isArray(theirs.plan)) throw e;
+      mergeNext(theirs);
+      await pushNextNow(true);
+      refresh();
+    }
+  }
+  function mergeNext(remote) {
+    const theirs = normalizeWeek(remote.plan), b = baseOf("next");
+    nextDoc = { week: nextDoc.week, plan: merge3(b && b.week === nextDoc.week ? b.data : null, nextDoc.plan, theirs, byIndex, dayView), updated: Date.now() };
     save(NEXT_KEY, nextDoc);
+    setBase("next", remote.updated, planViews(theirs), { week: nextDoc.week });
+    if (viewNext) state.plan = nextDoc.plan;
+  }
+  const stapleKey = st => String(st.name).toLowerCase();
+  async function pushVorratNow(again) {
+    clearTimeout(vorratTimer);
+    vorratTimer = null;
+    const b = baseOf("vorrat");
+    try {
+      const r = await api("/vorrat", { method: "PUT", body: { staples: state.staples, ...(b ? { base: b.updated } : {}) } });
+      save(VORRAT_UPDATED_KEY, r.updated);
+      setBase("vorrat", r.updated, state.staples);
+    } catch (e) {
+      const theirs = conflictOf(e);
+      if (!theirs || again || !Array.isArray(theirs.staples)) throw e;
+      mergeVorrat(theirs);
+      await pushVorratNow(true);
+      refresh();
+    }
+  }
+  function mergeVorrat(remote) {
+    const b = baseOf("vorrat");
+    state.staples = merge3(b && b.data, state.staples, remote.staples, stapleKey);
+    save(KEYS.staples, state.staples);
+    setBase("vorrat", remote.updated, remote.staples);
+    save(VORRAT_UPDATED_KEY, Date.now());
   }
   function scheduleNextPush() {
     if (!connected()) return;
@@ -1775,12 +1862,7 @@
     try {
       if (planPushTimer) await pushPlanNow();
       if (nextPushTimer) await pushNextNow();
-      if (vorratTimer) {
-        clearTimeout(vorratTimer);
-        vorratTimer = null;
-        const r = await api("/vorrat", { method: "PUT", body: { staples: state.staples } });
-        save(VORRAT_UPDATED_KEY, r.updated);
-      }
+      if (vorratTimer) await pushVorratNow();
       await pullShared();
       if ($("voteDialog").open) await pullVote();
       const okSync = $("syncStatus").textContent.startsWith("Verbunden");
@@ -1853,8 +1935,18 @@
     settingsTimer = null;
     if (!connected()) return showSettingsState("Nur auf diesem Handy (nicht verbunden)"), false;
     try {
-      const { updated } = await api("/settings", { method: "PUT", body: { settings: wgSettings() } });
+      const b = baseOf("settings");
+      let updated;
+      try {
+        ({ updated } = await api("/settings", { method: "PUT", body: { settings: wgSettings(), ...(b ? { base: b.updated } : {}) } }));
+      } catch (e) {
+        const theirs = conflictOf(e);
+        if (!theirs || !theirs.settings) throw e;
+        mergeSettings(theirs); // jemand war schneller: zusammenführen und nochmals senden
+        ({ updated } = await api("/settings", { method: "PUT", body: { settings: wgSettings(), base: theirs.updated } }));
+      }
       save(SETTINGS_UPDATED_KEY, updated);
+      setBase("settings", updated, Object.entries(wgSettings()));
       settingsServer = true;
       showSettingsState("Für alle gespeichert ✓");
       return true;
@@ -1863,6 +1955,13 @@
       showSettingsState(settingsServer ? e.message : "WG-Server zu alt – bitte aktualisieren");
       return false;
     }
+  }
+  function mergeSettings(remote) {
+    const b = baseOf("settings");
+    const merged = Object.fromEntries(merge3(b && b.data, Object.entries(wgSettings()), Object.entries(remote.settings), e => e[0]));
+    applySettings(merged);
+    setBase("settings", remote.updated, Object.entries(remote.settings));
+    save(SETTINGS_UPDATED_KEY, Date.now());
   }
   function applySettings(st) {
     if (Array.isArray(st.members) && st.members.length) {
@@ -1902,25 +2001,38 @@
         canPlanNext() ? api(`/plan/${nextWeekKey()}`).catch(() => null) : null,
         api("/settings").catch(e => { if (/Endpunkt/.test(e.message)) settingsServer = false; return null; })
       ]);
-      // WG-Einstellungen: neuerer Stand gewinnt; hat der Server noch keine, bekommt er unsere
+      // WG-Einstellungen: hat der Server noch keine, bekommt er unsere; sonst siehe «Abgleich» oben
       if (remoteSettings) {
         settingsServer = true;
-        const localSet = load(SETTINGS_UPDATED_KEY, 0);
-        if (remoteSettings.settings && remoteSettings.updated > localSet) {
+        const todo = remoteSettings.settings ? syncCase(baseOf("settings"), load(SETTINGS_UPDATED_KEY, 0), remoteSettings.updated) : "push";
+        if (todo === "take") {
           applySettings(remoteSettings.settings);
           save(SETTINGS_UPDATED_KEY, remoteSettings.updated);
+          setBase("settings", remoteSettings.updated, Object.entries(wgSettings()));
           showSettingsState("Aktuell ✓");
-        } else if (!remoteSettings.settings || localSet > remoteSettings.updated) {
+        } else if (todo === "merge") {
+          mergeSettings(remoteSettings);
           await pushSettingsNow();
-        } else showSettingsState("Aktuell ✓");
+        } else if (todo === "push") {
+          await pushSettingsNow();
+        } else {
+          if (!baseOf("settings")) setBase("settings", remoteSettings.updated, Object.entries(wgSettings()));
+          showSettingsState("Aktuell ✓");
+        }
       }
-      // Grundvorrat: neuerer Stand gewinnt; hat der Server noch keinen, bekommt er unseren
-      if (Array.isArray(vorrat.staples) && vorrat.updated > load(VORRAT_UPDATED_KEY, 0)) {
-        state.staples = vorrat.staples;
-        save(KEYS.staples, state.staples);
-        save(VORRAT_UPDATED_KEY, vorrat.updated);
-      } else if (!Array.isArray(vorrat.staples) || vorrat.updated < load(VORRAT_UPDATED_KEY, 0)) {
-        saveStaples();
+      // Grundvorrat: hat der Server noch keinen, bekommt er unseren
+      {
+        const todo = Array.isArray(vorrat.staples) ? syncCase(baseOf("vorrat"), load(VORRAT_UPDATED_KEY, 0), vorrat.updated) : "push";
+        if (todo === "take") {
+          state.staples = vorrat.staples;
+          save(KEYS.staples, state.staples);
+          save(VORRAT_UPDATED_KEY, vorrat.updated);
+          setBase("vorrat", vorrat.updated, vorrat.staples);
+        } else if (todo === "merge") {
+          mergeVorrat(vorrat);
+          saveStaples();
+        } else if (todo === "push") saveStaples();
+        else if (!baseOf("vorrat")) setBase("vorrat", vorrat.updated, state.staples);
       }
       setBringList(bring);
       const localUpdated = load(PLAN_UPDATED_KEY, 0);
@@ -1929,23 +2041,41 @@
       if (promoted && !isOpenWeek(promoted.plan) && promoted.updated > localUpdated) {
         setCurrentPlan(normalizeWeek(promoted.plan));
         save(PLAN_UPDATED_KEY, Date.now());
+        try { localStorage.removeItem(baseKey("plan")); } catch (e) { /* egal */ } // neue Woche: dieser Plan ersetzt den alten ganz
         await pushPlanNow();
         toast("Neue Woche: euer geplanter Plan gilt jetzt");
-      } else if (remote.plan && remote.updated > localUpdated) {
-        if (!settingsServer && Array.isArray(remote.members) && remote.members.length) state.members = remote.members;
-        setCurrentPlan(normalizeWeek(remote.plan));
-        save(KEYS.members, state.members);
-        save(PLAN_UPDATED_KEY, remote.updated);
-        renderMembers();
-        toast("Wochenplan der WG geladen");
+      } else if (remote.plan) {
+        const todo = syncCase(baseOf("plan"), localUpdated, remote.updated);
+        if (todo === "take") {
+          if (!settingsServer && Array.isArray(remote.members) && remote.members.length) state.members = remote.members;
+          const theirs = normalizeWeek(remote.plan);
+          setCurrentPlan(theirs);
+          save(KEYS.members, state.members);
+          save(PLAN_UPDATED_KEY, remote.updated);
+          setBase("plan", remote.updated, planViews(theirs));
+          renderMembers();
+          toast("Wochenplan der WG geladen");
+        } else if (todo === "merge") {
+          mergePlan(remote);
+          await pushPlanNow();
+          toast("Wochenplan der WG übernommen – deine Änderungen bleiben");
+        } else if (todo === "" && !baseOf("plan")) setBase("plan", remote.updated, planViews(currentPlan()));
       }
-      // Nächste Woche: neuerer Stand gewinnt
+      // Nächste Woche
       const localNext = nextDoc && nextDoc.week === nextWeekKey() ? nextDoc.updated || 0 : 0;
-      if (remoteNext && Array.isArray(remoteNext.plan) && remoteNext.updated > localNext) {
-        nextDoc = { week: nextWeekKey(), plan: normalizeWeek(remoteNext.plan), updated: remoteNext.updated };
-        save(NEXT_KEY, nextDoc);
-        if (viewNext) state.plan = nextDoc.plan;
-      } else if (remoteNext && localNext > (remoteNext.updated || 0)) {
+      if (remoteNext && Array.isArray(remoteNext.plan)) {
+        const b = baseOf("next");
+        const todo = localNext ? syncCase(b && b.week === nextWeekKey() ? b : null, localNext, remoteNext.updated) : "take";
+        if (todo === "take") {
+          nextDoc = { week: nextWeekKey(), plan: normalizeWeek(remoteNext.plan), updated: remoteNext.updated };
+          save(NEXT_KEY, nextDoc);
+          setBase("next", remoteNext.updated, planViews(nextDoc.plan), { week: nextDoc.week });
+          if (viewNext) state.plan = nextDoc.plan;
+        } else if (todo === "merge") {
+          mergeNext(remoteNext);
+          await pushNextNow();
+        } else if (todo === "push") scheduleNextPush();
+      } else if (remoteNext && localNext) {
         scheduleNextPush();
       }
       renderHeader();
@@ -2098,6 +2228,7 @@
   // Andere WG: der Stand des Servers gilt (sonst landen Plan und Mitbewohner der alten WG in der neuen)
   function forgetWgStand() {
     [PLAN_UPDATED_KEY, VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY].forEach(k => save(k, 0));
+    try { ["plan", "next", "vorrat", "settings"].forEach(n => localStorage.removeItem(baseKey(n))); } catch (e) { /* egal */ }
     nextDoc = null;
     try { localStorage.removeItem(NEXT_KEY); } catch (e) { /* egal */ }
   }
@@ -2155,6 +2286,7 @@
     if (!fresh) {
       applySettings(remote.settings);
       save(SETTINGS_UPDATED_KEY, remote.updated);
+      setBase("settings", remote.updated, Object.entries(wgSettings()));
     }
     welcomeFresh = fresh;
     renderWelcomeWho();
