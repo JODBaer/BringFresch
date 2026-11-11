@@ -301,6 +301,19 @@ svg.i.s { width: 14px; height: 14px; }
 .bimg small { position: absolute; bottom: 2px; left: 0; right: 0; text-align: center; font-size: 8.5px; font-weight: 500; opacity: .8; }
 .renrow { display: flex; gap: 8px; align-items: center; }
 .renrow .field { flex: 1; }
+.qt.back { display: flex; flex-direction: column; justify-content: space-between; gap: 4px; cursor: default; border-color: var(--danger); animation: flipin .28s ease-out; }
+.qt.back .n { font-size: 12px; }
+.qt.back .bk { display: flex; gap: 4px; }
+.qt.back .bk button { flex: 1; min-height: 34px; border-radius: 10px; border: 0; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.qt.back .bk .rm { background: var(--danger); color: #fff; }
+.phone.dark .qt.back .bk .rm { color: #2a0b08; }
+.qt.back .bk .no { background: var(--ton); color: var(--on-ton); flex: 0 0 34px; }
+@keyframes flipin { from { transform: rotateY(90deg); } to { transform: rotateY(0); } }
+@media (prefers-reduced-motion: reduce) { .qt.back { animation: none; } }
+.golink { display: flex; width: 100%; justify-content: space-between; align-items: center; margin: 14px 0 4px; padding: 12px 14px; border-radius: 16px; border: 0; font: inherit; font-weight: 600; cursor: pointer; background: var(--ton); color: var(--on-ton); min-height: 48px; }
+.planrow { display: flex; justify-content: space-between; gap: 10px; padding: 9px 14px; font-size: 14px; }
+.planrow + .planrow { border-top: 1px solid var(--rim); }
+.planrow span:last-child { color: var(--p-fg2); font-size: 13px; text-align: right; }
 .cleanN { font-size: 26px; font-weight: 700; margin: 6px 0 2px; }
 .facts { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--p-fg2); display: grid; gap: 4px; }
 .facts .w { color: var(--warn); }
@@ -433,21 +446,19 @@ const INFO = {
     tryit: "Probier: bei «Olivenöl» «auf Bring!». «Alles da» öffnen → «leer». Oben «Olivenoel» oder «Rüebli» eintippen."
   },
   C: {
-    title: "C · Kontrollgang mit Mengen – sammeln, einmal senden",
-    idea: "Jeder Artikel hat eine Menge (Stück oder «reicht für N Znacht»). Drei Kacheln pro Zeile zeigen auf einen Blick, was knapp ist, was diese Woche gebraucht wird (Menge vorher → nachher) und was da ist. Knappes sammelt sich unten und geht nach einmal Prüfen auf Bring!.",
-    how: ["Drei Kacheln pro Zeile, jede mit Menge. Umstellbar: «Dringend» (Knapp · Diese Woche gebraucht · Alles da) oder «Abteilung» (wie in Bring!: Früchte & Gemüse, Milch & Käse …). Oben steht die Übersicht in einer Zeile.",
-      "Leeren: jeder gekochte Tag bucht ab. Der Schalter «Woche gekocht» zeigt es – zurückschieben macht es rückgängig. Oder von Hand: Kachel antippen, − / «Fast leer» / «Leer».",
-      "Stück hat eine Grösse: «2 × 1 l» Milch, «2 × 250 g» Butter. Im Blatt zum Artikel bei «1 Stück =» änderbar.",
-      "Füllen: in Bring! abhaken = gekauft → Vorrat um eine Packung grösser. Oder von Hand «Voll».",
-      "Knappes steht unten bei «Für Bring!». «Prüfen» zeigt die Liste mit Häkchen; der Bring!-Eintrag trägt den Vermerk «Vorrat · Menge».",
-      "Inventur wie im Betrieb, einmal im Jahr: jeden Artikel einmal zeigen, vier Knöpfe (Leer / Fast leer / Halb / Voll). Der Knopf steht unauffällig ganz am Ende der Liste und meldet sich, wenn sie fällig ist.",
-      "Ein Blatt pro Artikel, überall gleich (aus «Vorrat» und aus «Verwalten»): Bring!-Bild, Menge, alle Infos, Name ändern, Doppelte zusammenführen, wegnehmen. Das Bild ist im Entwurf ein Platzhalter.",
-      "Reiter «Verwalten»: dieselbe Aufteilung, aber jede Kachel zusätzlich mit − + und ✕ (wegnehmen, mit Rückgängig). Oben: Artikel hinzufügen.",
-      "Was über ein Jahr im Vorrat ist, ist markiert."],
-    qa: [["Wann auf Bring!?", "Knappes wird gesammelt und nach einmal Prüfen gesendet – nie von selbst."], ["Alltag / Verwalten", "Eigener Reiter «Verwalten»."], ["Auf einen Blick", "Drei Kacheln pro Zeile mit Menge; Knappes zuoberst."]],
-    pro: "Man sieht, wie viel da ist und was als Nächstes ausgeht. Nichts landet unbemerkt auf Bring!. Im Alltag kann man nichts löschen.",
-    con: "Mengen stimmen nur mit der Inventur und wenn Gekauftes in Bring! abgehakt wird. Zwei Wege auf Bring! (hier und «Bring! füllen» im Plan). Lange Namen werden in drei Kacheln pro Zeile abgeschnitten.",
-    tryit: "Probier: Schalter «Woche gekocht» an und wieder aus → «Abteilung» → Milch antippen → unten «Prüfen» → senden → rechts «Abhaken». Reiter «Verwalten»: − + ✕. Ganz unten im Vorrat: «Inventur starten»."
+    title: "C · Mengen im Blick – vorne beim Einkauf, dahinter ein Grundvorrat",
+    idea: "Vorne beim Einkauf steht, was zählt: was knapp ist, was die Woche aus dem Vorrat braucht, der Schalter zum Abbuchen und «Für Bring!». Dahinter liegt der ganze Grundvorrat als eine Ansicht – Verwalten ist kein eigener Reiter mehr.",
+    how: ["Einkauf (vorne): «Grundvorrat – knapp» (2 oder weniger) und «Diese Woche aus dem Vorrat» (Menge vorher → nachher), drei Kacheln pro Zeile.",
+      "Schalter «Woche gekocht» bucht ab, zurückschieben = rückgängig. Ab Montag wird die letzte Woche von selbst abgebucht.",
+      "Knappes steht unten bei «Für Bring!». «Prüfen» zeigt die Liste mit Häkchen; der Bring!-Eintrag trägt den Vermerk «Vorrat · Menge». In Bring! abhaken = gekauft → Vorrat um eine Packung grösser.",
+      "«Ganzer Grundvorrat»: alle Artikel, umstellbar «Abteilung» (wie in Bring!) oder «Dringend». Oben Artikel hinzufügen und die Übersicht in einer Zeile.",
+      "Kachel antippen = ein Blatt mit allem: Bring!-Bild (im Entwurf Platzhalter), Menge, «1 Stück =», Infos, Name ändern, Doppelte zusammenführen, wegnehmen.",
+      "Kachel lange drücken (am Computer: Rechtsklick) = Karte dreht sich, hinten «Wegnehmen» – mit «Rückgängig».",
+      "Inventur wie im Betrieb, einmal im Jahr: Knopf unauffällig ganz am Ende des Grundvorrats. Was über ein Jahr im Vorrat ist, ist markiert."],
+    qa: [["Wann auf Bring!?", "Knappes wird gesammelt und nach einmal Prüfen gesendet – nie von selbst."], ["Alltag / Verwalten", "Alltag vorne beim Einkauf, alles andere im Grundvorrat (eine Ansicht)."], ["Auf einen Blick", "Vorne nur Knappes und was die Woche braucht; dahinter alles, drei Kacheln pro Zeile."]],
+    pro: "Im Alltag sieht man vorne nur, was zu tun ist. Ein Grundvorrat statt zwei fast gleicher Reiter. Nichts landet unbemerkt auf Bring!.",
+    con: "Mengen stimmen nur mit der Inventur und wenn Gekauftes in Bring! abgehakt wird. Lange drücken muss man kennen (das Blatt hat «Wegnehmen» auch). Lange Namen werden abgeschnitten.",
+    tryit: "Probier: Schalter «Woche gekocht» an und aus → unten «Prüfen» → senden → rechts «Abhaken». Dann «Ganzer Grundvorrat» → Kachel antippen → Kachel lange drücken → «Wegnehmen»."
   }
 };
 
@@ -478,7 +489,7 @@ function fresh() {
     }),
     bring: [{ name: "Milch", spec: "", by: "Lukas" }, { name: "WC-Papier", spec: "", by: "Leonie" }, { name: "Eier", spec: "", by: "BringFrisch" }]
   };
-  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "dringend", opener: null, flash: null, focusK: null };
+  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "abteilung", page: "einkauf", flip: null, opener: null, flash: null, focusK: null };
   prevBring = new Set(S.bring.map(b => b.name));
 }
 let prevBring = new Set();
@@ -757,11 +768,8 @@ function appbarHTML() {
   const n = S.bring.length;
   let right = `<span class="bchip" id="bchip" aria-label="${n} Artikel auf Bring!">${ICON.cartV}${n}</span>`;
   if (V === "A") right += `<button type="button" class="${UI.edit ? "fbtn" : "tbtn"} sm" data-act="edit" aria-pressed="${UI.edit}">${UI.edit ? "Fertig" : "Bearbeiten"}</button>`;
-  let h = `<div class="r1"><button type="button" class="back" data-act="nav">${ICON.back}Einkauf</button><span class="sp"></span>${right}</div><h1>Grundvorrat</h1>`;
-  if (V === "C") h += `<div class="tabs card" role="tablist" aria-label="Ansicht">
-    <button type="button" role="tab" data-act="tab" data-tab="vorrat" aria-selected="${UI.tab === "vorrat"}">Vorrat</button>
-    <button type="button" role="tab" data-act="tab" data-tab="verwalten" aria-selected="${UI.tab === "verwalten"}">Verwalten</button></div>`;
-  return h;
+  if (V === "C" && UI.page === "einkauf") return `<div class="r1"><span class="sp"></span>${right}</div><h1>Einkauf</h1>`;
+  return `<div class="r1"><button type="button" class="back" data-act="nav">${ICON.back}Einkauf</button><span class="sp"></span>${right}</div><h1>Grundvorrat</h1>`;
 }
 function dupCard() {
   const g = dupGroups(); if (!g.length) return "";
@@ -848,30 +856,40 @@ function sectionsC() {
 }
 function viewC() {
   let h = "";
-  const manage = UI.tab !== "vorrat";
   const useText = it => !it.use ? "" : S.cooked ? ` (−${it.use})` : ` → ${Math.max(0, it.qty - it.use)}`;
   const cls = it => `qt card${it.qty === 0 ? " zero" : knapp(it) ? " low" : ""}${fl(it)}`;
   const inner = it => `<span class="n">${esc(it.bring)}${onBring(it.bring) ? " " + ICON.cartV : ""}</span><span class="q">${esc(fmtShort(it))}${esc(useText(it))}</span>${isOld(it) ? `<span class="old">seit ${esc(sinceText(it))}</span>` : ""}`;
-  const tile = it => manage
-    ? `<div class="${cls(it)} mt"><button type="button" class="mn" data-act="item" data-id="${it.id}" aria-label="${esc(it.bring)}, ${esc(fmt(it))}, öffnen">${inner(it)}</button>
-        <div class="mb"><button type="button" data-act="q-" data-id="${it.id}" aria-label="${esc(it.bring)} weniger">−</button><button type="button" data-act="q+" data-id="${it.id}" aria-label="${esc(it.bring)} mehr">+</button><button type="button" class="x" data-act="del" data-id="${it.id}" aria-label="${esc(it.bring)} wegnehmen">✕</button></div></div>`
-    : `<button type="button" class="${cls(it)}" data-act="qty" data-id="${it.id}" aria-label="${esc(it.bring)}, ${esc(fmt(it))}${onBring(it.bring) ? ", steht auf Bring!" : ""}">${inner(it)}</button>`;
-  const grpSeg = `<span class="mseg" role="group" aria-label="Aufteilung"><button type="button" data-act="grp" data-g="dringend" aria-pressed="${UI.grp === "dringend"}">Dringend</button><button type="button" data-act="grp" data-g="abteilung" aria-pressed="${UI.grp === "abteilung"}">Abteilung</button></span>`;
-  if (manage) h += addBox("addC", "Artikel hinzufügen (wie in Bring!)") + dupCard();
+  // Vorderseite: antippen = alles zum Artikel. Lange drücken = Karte dreht sich, hinten «Wegnehmen».
+  const tile = it => UI.flip === it.id
+    ? `<div class="qt card back"><span class="n">${esc(it.bring)}</span><div class="bk"><button type="button" class="rm" data-act="del" data-id="${it.id}">Wegnehmen</button><button type="button" class="no" data-act="unflip" data-id="${it.id}" aria-label="Zurückdrehen">↩</button></div></div>`
+    : `<button type="button" class="${cls(it)}" data-act="qty" data-id="${it.id}" data-hold="1" aria-label="${esc(it.bring)}, ${esc(fmt(it))}${onBring(it.bring) ? ", steht auf Bring!" : ""}. Lange drücken zum Wegnehmen">${inner(it)}</button>`;
+  const sec = (k, t, list, none, hint) => `<section class="sec col ${k}" aria-label="${esc(t)}"><h3><span>${esc(t)}</span><small>${list.length}${hint ? " · " + hint : ""}</small></h3>${list.length ? `<div class="grid3">${list.map(tile).join("")}</div>` : `<p class="none">${none}</p>`}</section>`;
+  const sw = `<button type="button" class="sw" role="switch" data-act="cookSw" aria-checked="${!!S.cooked}"><i></i><span>Woche gekocht</span></button>`;
+
+  if (UI.page === "einkauf") {
+    // Vorne beim Einkauf: Plan der Woche, Knappes aus dem Vorrat, Schalter zum Abbuchen
+    h += `<section class="sec"><h3>Aus dem Plan · KW 46</h3><div class="list card">${WEEK.map(w => `<div class="planrow"><span>${esc(w.n)}${onBring(w.n) ? " " + ICON.cartV : ""}</span><span>${esc(w.spec)}</span></div>`).join("")}</div></section>`;
+    h += sec("knapp", "Grundvorrat – knapp", S.items.filter(knapp), "Nichts knapp.", "2 oder weniger");
+    h += `<div class="cbar">${sw}<span class="note">Bucht ab, was der Plan aus dem Vorrat braucht. Ab Montag geschieht das für die letzte Woche von selbst.</span></div>`;
+    h += sec("woche", "Diese Woche aus dem Vorrat", S.items.filter(it => it.use > 0 && !knapp(it)), "Der Plan braucht nichts aus dem Vorrat.", S.cooked ? "abgebucht" : "wird abgebucht");
+    h += `<button type="button" class="golink" data-act="goVorrat"><span>Ganzer Grundvorrat · ${S.items.length} Artikel</span>${ICON.chev}</button>`;
+    return h;
+  }
+
+  // Grundvorrat: eine Ansicht für alles (kein eigener Reiter «Verwalten» mehr)
   const nK = S.items.filter(knapp).length, nW = S.items.filter(it => it.use > 0).length, nO = S.items.filter(isOld).length;
+  h += addBox("addC", "Artikel hinzufügen (wie in Bring!)") + dupCard();
   h += `<p class="sum">${S.items.length} Artikel · <b>${nK} knapp</b> · ${nW} diese Woche gebraucht${nO ? ` · <b>${nO} über ein Jahr</b>` : ""}</p>`;
-  h += manage
-    ? `<div class="cbar"><span class="note">Name antippen = alles zum Artikel · − + = Menge · ✕ = wegnehmen</span>${grpSeg}</div>`
-    : `<div class="cbar"><button type="button" class="sw" role="switch" data-act="cookSw" aria-checked="${!!S.cooked}"><i></i><span>Woche gekocht</span></button>${grpSeg}</div>`;
-  h += sectionsC().map(([k, t, list, none, hint]) => `<section class="sec col ${k}" aria-label="${esc(t)}"><h3><span>${esc(t)}</span><small>${list.length}${hint ? " · " + hint : ""}</small></h3>${list.length ? `<div class="grid3">${list.map(tile).join("")}</div>` : `<p class="none">${none}</p>`}</section>`).join("");
-  if (!manage) {
+  h += `<div class="cbar"><span class="note">Antippen = alles zum Artikel · lange drücken = wegnehmen</span><span class="mseg" role="group" aria-label="Aufteilung"><button type="button" data-act="grp" data-g="abteilung" aria-pressed="${UI.grp === "abteilung"}">Abteilung</button><button type="button" data-act="grp" data-g="dringend" aria-pressed="${UI.grp === "dringend"}">Dringend</button></span></div>`;
+  h += sectionsC().map(([k, t, list, none, hint]) => sec(k, t, list, none, hint)).join("");
+  {
     const [y, m] = S.inv.split("-").map(Number), [ny, nm] = NOW_YM.split("-").map(Number), due = (ny - y) * 12 + (nm - m) >= 12;
     h += `<div class="inv card${due ? " due" : ""}"><div class="tx"><b>Inventur</b><span>Letzte: ${MONTHS[m - 1]} ${y}${due ? " – fällig (einmal im Jahr)" : ""}</span></div><button type="button" class="${due ? "fbtn" : "tbtn"}" data-act="clean">Inventur starten</button></div>`;
   }
   return h;
 }
 function trayC() {
-  if (UI.tab !== "vorrat") return "";
+  if (UI.page !== "einkauf") return "";
   const p = pending();
   if (!p.length) return "";
   return `<div class="tray"><div class="tx"><b>Für Bring! (${p.length}) · knapp</b><span>${esc(p.join(", "))}</span></div><button type="button" class="fbtn" data-act="sendC">Prüfen</button></div>`;
@@ -928,11 +946,13 @@ function render() {
 function onAct(b) {
   const a = b.dataset.act, id = b.dataset.id, it = id ? byId(id) : null;
   switch (a) {
-    case "nav": snack("Nur Vorschau: hier geht es nur um den Grundvorrat."); break;
+    case "nav": if (V === "C") { UI.page = "einkauf"; UI.flip = null; render(); content.scrollTop = 0; } else snack("Nur Vorschau: hier geht es nur um den Grundvorrat."); break;
+    case "goVorrat": UI.page = "vorrat"; UI.flip = null; render(); content.scrollTop = 0; break;
+    case "unflip": UI.flip = null; UI.focusK = "a:qty:" + id; render(); break;
     case "edit": UI.edit = !UI.edit; render(); break;
     case "toggle": if (it) toggleLeer(it); break;
     case "item": openSheet(V === "C" ? qtySheet(id) : itemSheet(id), b); break;
-    case "del": removeItem(id); break;
+    case "del": UI.flip = null; removeItem(id); break;
     case "close": closeSheet(); break;
     case "merge": openSheet(mergeSheet, b); break;
     case "mergeOne": act("Zusammengeführt", () => { mergeKey(b.dataset.key); if (UI.sheetFn && UI.sheetFn !== mergeSheet) closeSheet(true); }); break;
@@ -986,9 +1006,22 @@ function onAct(b) {
     case "coll": UI.coll[b.dataset.sec] = !UI.coll[b.dataset.sec]; render(); break;
   }
 }
+// Lange drücken (oder Rechtsklick) auf eine Kachel: Karte dreht sich, hinten steht «Wegnehmen»
+let holdT = null, held = false;
+function flipCard(el) { held = true; UI.flip = el.dataset.id; UI.focusK = "a:del:" + el.dataset.id; render(); }
+phone.addEventListener("pointerdown", e => {
+  const b = e.target.closest("[data-hold]"); held = false; clearTimeout(holdT);
+  if (b) holdT = setTimeout(() => flipCard(b), 500);
+});
+["pointerup", "pointerleave", "pointercancel", "pointermove"].forEach(t => phone.addEventListener(t, e => { if (t !== "pointermove" || Math.abs(e.movementX) + Math.abs(e.movementY) > 6) clearTimeout(holdT); }));
+phone.addEventListener("contextmenu", e => { const b = e.target.closest("[data-hold]"); if (b) { e.preventDefault(); clearTimeout(holdT); flipCard(b); } });
 phone.addEventListener("click", e => {
+  if (held) { held = false; e.preventDefault(); return; }
   const b = e.target.closest("[data-act]");
-  if (b && phone.contains(b) && !b.disabled) onAct(b);
+  if (b && phone.contains(b) && !b.disabled) {
+    if (UI.flip && b.dataset.act !== "del" && b.dataset.act !== "unflip") UI.flip = null;
+    onAct(b);
+  }
 });
 phone.addEventListener("change", e => { if (e.target.dataset.ck) updateSend(); });
 phone.addEventListener("input", e => {
