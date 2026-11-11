@@ -14,7 +14,7 @@ WG: Joshua, Lukas, Leonie = Fleisch · Jo = Vegi (keine Veganer).
   - `standalone_data.js` – Grundvorrat, VSGP-Saisondaten (`season_items`), Monatsnews, 10 Klassiker-Rezepte
   - `recipes_imported.js` – generiert von `tools/import_recipes.py merge`, nicht von Hand ändern
   - `recipe_importer.js` – eigene Rezepte (localStorage)
-  - `sw.js` – Network-First; bei Asset-Änderungen `CACHE_NAME` hochzählen
+  - `sw.js` – Network-First, nach 2.5 s ohne Antwort aus dem Cache (schwacher Empfang); bei Asset-Änderungen `CACHE_NAME` hochzählen (im Release setzt `build_site.mjs` die Version ein)
 - **`worker/`** – Cloudflare Worker (Free): Bring!-Sync über ein Bot-Konto (Secrets), Wochenwahl + Plan in KV, iCal-Abo `/cal/:token.ics`, Rezept-Link-Import. PIN-geschützt (`X-WG-PIN`). Setup: `worker/README.md`.
 - **`tools/import_recipes.py`** – einmaliger, höflicher Import (schema.org) von Betty Bossi, Migusto, Fooby, Swissmilk. Nur Fakten, keine Texte. Nicht für weiteres Massen-Scraping verwenden. Bilder: nur das Vorschaubild (og:image) holt der Worker einzeln beim ersten Anzeigen in der Wochenwahl (`/img`, KV `img:<sha1>`, nur mit PIN, nicht in der Sicherung) – nie ins öffentliche Repo.
 

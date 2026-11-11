@@ -24,6 +24,7 @@ try {
   check(decl.length === 1 && decl[0].includes('"9.8.7"'), `genau eine Versionszeile, mit 9.8.7 (${decl.map(l => l.trim()).join(" | ")})`);
   const changed = built.filter((l, i) => l !== src[i]);
   check(changed.length === 1, `nur diese eine Zeile verändert (${changed.length})`);
+  check(readFileSync(path.join(out, "static", "sw.js"), "utf8").includes("'bringfrisch-cache-9.8.7'"), "Cache des Service Workers heisst wie die Version");
   const pattern = src.find(l => /\.match\(\/const APP_VERSION/.test(l));
   check(!pattern || built.includes(pattern), "Suchmuster in «Aktualisieren» unverändert");
   check(existsSync(path.join(out, "index.html")) && existsSync(path.join(out, "static", "index.html")), "index.html + static/ vorhanden");

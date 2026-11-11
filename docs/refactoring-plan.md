@@ -1,7 +1,8 @@
 # Refactoring-Plan (Arbeitsfassung für Claude)
 
 Stand 10.11.2026, App 1.5.2, abgeglichen mit `main` bis `c2e3b74`. Überblick mit Diagramm: `docs/architektur-review.html`.
-**Schritt 0 ist gebaut**, der Rest noch nicht. Reihenfolge einhalten; jeder Schritt ist einzeln releasbar und endet mit `cd tests && npm run ci` grün.
+**Gebaut: Schritte 0, 1, 4, 7 und von Schritt 6 die gemerkte Bring!-Anmeldung.**
+**Offen: 2, 3, 5, Rest von 6, 8.** Die Schritte 2, 3 und 5 schneiden `app.js` gross um. Sie warten, bis der laufende Umbau der Rezeptauswahl (anderer Chat) auf `main` ist – sonst kollidieren beide – und bis Joshua den Bündler entschieden hat (Schritt 2). Reihenfolge einhalten; jeder Schritt ist einzeln releasbar und endet mit `cd tests && npm run ci` grün.
 Regeln aus `CLAUDE.md` gelten (eigener Worktree, nur eigene Pfade committen, neue Funktion = neuer Schritt in `tests/ui_e2e.mjs`).
 
 ## Ausgangslage (gemessen)
@@ -39,7 +40,9 @@ Ursprünglicher Befund:
 4. **PIN-Sperre für die erste WG** (`requireWg`): der Zweig für `MAIN_WG` zählt keine Fehlversuche. Gleiche Zählung (`fail:`/`lock:`) wie bei weiteren WGs; Test in `worker/test.mjs`.
 5. Klein: `importRecipe` mit `redirect: "manual"` und Host-Prüfung pro Weiterleitung (max. 3).
 
-## Schritt 1 – Sicherheitsnetz vor dem Verschieben
+## Schritt 1 – Sicherheitsnetz vor dem Verschieben – erledigt
+
+Gebaut: `tests/einkauf_snapshot.test.js` + `tests/snapshots/einkauf.json` (98 Rezepte in 14 Wochen, 863 Zeilen, 2 s). Liest die Einkaufsliste aus der Ansicht; `bringPayload` ist noch nicht abgedeckt.
 
 Schnappschuss-Test: für jedes Rezept (98) mit fester WG und festem Puffer `computeShopping` + `bringPayload` → JSON in `tests/snapshots/`. Jede spätere Abweichung muss bewusst bestätigt werden.
 
@@ -86,13 +89,20 @@ Heute viermal von Hand «neuerer gewinnt» (Plan, nächste Woche, Vorrat, Einste
 
 `views/plan`, `einkauf`, `saison`, `einstellungen`, `wochenwahl`, `willkommen`, `theme`. CSS aus `index.html` in Dateien pro Bereich. Zusammen mit dem geplanten Redesign der drei alten Seiten erledigen (plan.md), nicht vorher separat.
 
-## Schritt 6 – Worker
+## Schritt 6 – Worker – teilweise erledigt
+
+Gebaut: `bringAuth` merkt die Anmeldung (Instanz + KV `bringtoken`, nicht in der Sicherung), `bringFetch` meldet bei 401 einmal frisch an.
+Offen: Datei aufteilen (wartet wie Schritt 2 auf den Umbau der Rezeptauswahl), Batch-Schnittstelle (braucht einen Live-Test gegen «Home-test», geht nicht ohne Zugangsdaten).
 
 - Aufteilen: `router`, `auth`, `bring`, `speicher`, `kalender`, `rezept-import`, `sicherung`.
 - `bringLogin`: Access-Token im Speicher des Workers und in KV halten (Ablaufzeit aus der Bring!-Antwort), bei 401 neu anmelden. Spart einen Aufruf pro Anfrage.
 - Batch-Schnittstelle `PUT bringlists/{uuid}/items` (plan.md «Später») → ein Aufruf statt einer pro Artikel, 45er-Limit fällt weg. Zuerst gegen «Home-test» live prüfen (`tests/stage_live.mjs`).
 
-## Schritt 7 – Start und Cache
+## Schritt 7 – Start und Cache – erledigt (ohne Schrift)
+
+Gebaut: `sw.js` bleibt Network-First, wartet aber höchstens 2.5 s und liefert dann aus dem Cache (danach 30 s direkt aus dem Cache). Gemessen mit 15 s langsamem Netz: 2.6 s statt über 15 s. `build_site.mjs` setzt im Release die Version als Cache-Namen ein.
+Bewusst nicht «zuerst Cache»: das hätte geändert, wann eine neue Version ankommt.
+Offen: Schrift kürzen (braucht `fonttools`, optischer Vergleich nötig).
 
 - `sw.js`: App-Dateien zuerst aus dem Cache, im Hintergrund aktualisieren; die bestehende Versionsprüfung (`checkUpdate`) meldet Neues.
 - `CACHE_NAME` und Assetliste beim Bauen aus der Version erzeugen (heute von Hand hochzählen).

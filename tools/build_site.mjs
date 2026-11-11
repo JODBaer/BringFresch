@@ -29,6 +29,11 @@ if (version) {
   const hits = src.split(/\r?\n/).filter(l => /^[ \t]*const APP_VERSION = "[^"]*";[ \t]*$/.test(l)).length;
   if (hits !== 1) fail(`app.js: ${hits} Zeilen «const APP_VERSION = "…";» statt genau 1`);
   writeFileSync(file, src.replace(decl, `$1const APP_VERSION = "${version}";`));
+  // Cache des Service Workers heisst wie die Version: jede Veröffentlichung räumt den alten Cache von selbst weg
+  const sw = path.join(out, "static", "sw.js");
+  const swSrc = readFileSync(sw, "utf8");
+  if (!/bringfrisch-cache-v\d+/.test(swSrc)) fail("sw.js: CACHE_NAME «bringfrisch-cache-v…» nicht gefunden");
+  writeFileSync(sw, swSrc.replace(/bringfrisch-cache-v\d+/, `bringfrisch-cache-${version}`));
 }
 
 // Alles, was veröffentlicht wird, muss gültiges JavaScript sein.
