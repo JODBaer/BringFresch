@@ -293,6 +293,14 @@ svg.i.s { width: 14px; height: 14px; }
 .mt .mb button:hover { background: var(--ton); }
 .mt .mb .x { color: var(--danger); font-size: 14px; }
 @media (prefers-reduced-motion: reduce) { .sw i, .sw i::after { transition: none; } }
+.shhead { display: flex; gap: 12px; align-items: center; margin: 0 0 6px; }
+.shhead h2 { margin: 0; }
+.shhead .sub { margin: 2px 0 0; }
+.bimg { width: 56px; height: 56px; border-radius: 14px; flex: 0 0 auto; display: grid; place-items: center; background: var(--ton); color: var(--on-ton); font-size: 24px; font-weight: 700; position: relative; }
+.bimg.own { background: none; border: 1px dashed var(--rim); color: var(--p-fg2); }
+.bimg small { position: absolute; bottom: 2px; left: 0; right: 0; text-align: center; font-size: 8.5px; font-weight: 500; opacity: .8; }
+.renrow { display: flex; gap: 8px; align-items: center; }
+.renrow .field { flex: 1; }
 .cleanN { font-size: 26px; font-weight: 700; margin: 6px 0 2px; }
 .facts { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--p-fg2); display: grid; gap: 4px; }
 .facts .w { color: var(--warn); }
@@ -433,7 +441,8 @@ const INFO = {
       "Füllen: in Bring! abhaken = gekauft → Vorrat um eine Packung grösser. Oder von Hand «Voll».",
       "Knappes steht unten bei «Für Bring!». «Prüfen» zeigt die Liste mit Häkchen; der Bring!-Eintrag trägt den Vermerk «Vorrat · Menge».",
       "Inventur wie im Betrieb, einmal im Jahr: jeden Artikel einmal zeigen, vier Knöpfe (Leer / Fast leer / Halb / Voll). Der Knopf steht unauffällig ganz am Ende der Liste und meldet sich, wenn sie fällig ist.",
-      "Reiter «Verwalten»: dieselbe Aufteilung, aber jede Kachel mit − + und ✕ (wegnehmen, mit Rückgängig). Name antippen = umbenennen, Doppelte zusammenführen. Oben: Artikel hinzufügen.",
+      "Ein Blatt pro Artikel, überall gleich (aus «Vorrat» und aus «Verwalten»): Bring!-Bild, Menge, alle Infos, Name ändern, Doppelte zusammenführen, wegnehmen. Das Bild ist im Entwurf ein Platzhalter.",
+      "Reiter «Verwalten»: dieselbe Aufteilung, aber jede Kachel zusätzlich mit − + und ✕ (wegnehmen, mit Rückgängig). Oben: Artikel hinzufügen.",
       "Was über ein Jahr im Vorrat ist, ist markiert."],
     qa: [["Wann auf Bring!?", "Knappes wird gesammelt und nach einmal Prüfen gesendet – nie von selbst."], ["Alltag / Verwalten", "Eigener Reiter «Verwalten»."], ["Auf einen Blick", "Drei Kacheln pro Zeile mit Menge; Knappes zuoberst."]],
     pro: "Man sieht, wie viel da ist und was als Nächstes ausgeht. Nichts landet unbemerkt auf Bring!. Im Alltag kann man nichts löschen.",
@@ -667,13 +676,17 @@ function mergeSheet() {
     <ul class="sugg">${g.map(([k, items]) => `<li class="srow"><span class="bimg${SEC_OF[CAT_NORM[k]] ? "" : " own"}" aria-hidden="true">${esc((CAT_NORM[k] || items[0].bring)[0])}</span><span class="st"><b>${esc(CAT_NORM[k] || items[0].bring)}</b><small>${items.map(x => esc(x.name)).join(" + ")}</small></span><button type="button" class="tbtn sm" data-act="mergeOne" data-key="${esc(k)}">Zusammenführen</button></li>`).join("")}</ul>
     <div class="acts"><button type="button" class="ghost" data-act="close">Schliessen</button><button type="button" class="fbtn" data-act="mergeAll">Alle zusammenführen</button></div>`;
 }
+// Ein Blatt für alles zum Artikel – gleich, ob aus «Vorrat» oder «Verwalten» geöffnet: Bring!-Bild, Menge, Infos, Name, Wegnehmen
 function qtySheet(id) {
   return () => {
     const it = byId(id); if (!it) return "";
-    const ob = onBring(it.bring);
+    const ob = onBring(it.bring), own = isOwn(it);
+    const dupe = S.items.filter(x => x !== it && norm(x.bring) === norm(it.bring));
+    const val = UI.sheetName != null ? UI.sheetName : it.name;
     return `<div class="grab"></div>
-      <h2 id="shT" tabindex="-1">${esc(it.bring)}</h2>
-      <p class="sub">${it.name !== it.bring ? esc(it.name) + " · " : ""}${esc(it.sec)}</p>
+      <div class="shhead"><span class="bimg${own ? " own" : ""}" aria-hidden="true">${esc(it.bring.charAt(0))}<small>${own ? "kein Bild" : "Bring!-Bild"}</small></span>
+        <div><h2 id="shT" tabindex="-1">${esc(it.bring)}</h2>
+        <p class="sub">${own ? "Eigener Artikel in Bring! (ohne Bild)" : "Bring!-Artikel · " + esc(it.sec)}${ob ? " · steht auf Bring!" : ""}</p></div></div>
       <span class="lbl">Noch da</span>
       <div class="stepper"><button type="button" class="ibtn" data-act="q-" data-id="${id}" aria-label="weniger">−</button>
         <output aria-live="polite">${esc(fmt(it))}</output>
@@ -686,7 +699,11 @@ function qtySheet(id) {
         <li${knapp(it) ? ' class="w"' : ""}>${ob ? "Steht schon auf Bring!." : knapp(it) ? "Knapp: steht unten bei «Für Bring!»." : `Ab ${MIN} oder weniger kommt es zu «Für Bring!».`}</li>
         <li${isOld(it) ? ' class="w"' : ""}>Im Vorrat seit ${esc(sinceText(it))}${isOld(it) ? " – über ein Jahr. Noch gut?" : ""}</li>
       </ul>
-      <div class="acts"><button type="button" class="fbtn" data-act="close">Fertig</button></div>`;
+      <label class="lbl" for="shName">Name</label>
+      <div class="renrow"><div class="field"><input id="shName" data-k="sheetName" value="${esc(val)}" autocomplete="off"></div><button type="button" class="tbtn sm" data-act="rename" data-id="${id}">Umbenennen</button></div>
+      <p class="hint" id="rhint">${renameHint(val)}</p>
+      ${dupe.length ? `<div class="card dupc"><p>Doppelt: ${dupe.map(d => "«" + esc(d.name) + "»").join(", ")} ist auch «${esc(it.bring)}».</p><button type="button" class="tbtn sm" data-act="mergeOne" data-key="${esc(norm(it.bring))}">Zusammenführen</button></div>` : ""}
+      <div class="acts"><button type="button" class="dbtn" data-act="del" data-id="${id}">Wegnehmen</button><button type="button" class="fbtn" data-act="close">Fertig</button></div>`;
   };
 }
 function cleanSheet() {
@@ -836,7 +853,7 @@ function viewC() {
   const cls = it => `qt card${it.qty === 0 ? " zero" : knapp(it) ? " low" : ""}${fl(it)}`;
   const inner = it => `<span class="n">${esc(it.bring)}${onBring(it.bring) ? " " + ICON.cartV : ""}</span><span class="q">${esc(fmtShort(it))}${esc(useText(it))}</span>${isOld(it) ? `<span class="old">seit ${esc(sinceText(it))}</span>` : ""}`;
   const tile = it => manage
-    ? `<div class="${cls(it)} mt"><button type="button" class="mn" data-act="item" data-id="${it.id}" aria-label="${esc(it.bring)} umbenennen, ${esc(fmt(it))}">${inner(it)}</button>
+    ? `<div class="${cls(it)} mt"><button type="button" class="mn" data-act="item" data-id="${it.id}" aria-label="${esc(it.bring)}, ${esc(fmt(it))}, öffnen">${inner(it)}</button>
         <div class="mb"><button type="button" data-act="q-" data-id="${it.id}" aria-label="${esc(it.bring)} weniger">−</button><button type="button" data-act="q+" data-id="${it.id}" aria-label="${esc(it.bring)} mehr">+</button><button type="button" class="x" data-act="del" data-id="${it.id}" aria-label="${esc(it.bring)} wegnehmen">✕</button></div></div>`
     : `<button type="button" class="${cls(it)}" data-act="qty" data-id="${it.id}" aria-label="${esc(it.bring)}, ${esc(fmt(it))}${onBring(it.bring) ? ", steht auf Bring!" : ""}">${inner(it)}</button>`;
   const grpSeg = `<span class="mseg" role="group" aria-label="Aufteilung"><button type="button" data-act="grp" data-g="dringend" aria-pressed="${UI.grp === "dringend"}">Dringend</button><button type="button" data-act="grp" data-g="abteilung" aria-pressed="${UI.grp === "abteilung"}">Abteilung</button></span>`;
@@ -844,7 +861,7 @@ function viewC() {
   const nK = S.items.filter(knapp).length, nW = S.items.filter(it => it.use > 0).length, nO = S.items.filter(isOld).length;
   h += `<p class="sum">${S.items.length} Artikel · <b>${nK} knapp</b> · ${nW} diese Woche gebraucht${nO ? ` · <b>${nO} über ein Jahr</b>` : ""}</p>`;
   h += manage
-    ? `<div class="cbar"><span class="note">Name antippen = umbenennen · − + = Menge · ✕ = wegnehmen</span>${grpSeg}</div>`
+    ? `<div class="cbar"><span class="note">Name antippen = alles zum Artikel · − + = Menge · ✕ = wegnehmen</span>${grpSeg}</div>`
     : `<div class="cbar"><button type="button" class="sw" role="switch" data-act="cookSw" aria-checked="${!!S.cooked}"><i></i><span>Woche gekocht</span></button>${grpSeg}</div>`;
   h += sectionsC().map(([k, t, list, none, hint]) => `<section class="sec col ${k}" aria-label="${esc(t)}"><h3><span>${esc(t)}</span><small>${list.length}${hint ? " · " + hint : ""}</small></h3>${list.length ? `<div class="grid3">${list.map(tile).join("")}</div>` : `<p class="none">${none}</p>`}</section>`).join("");
   if (!manage) {
@@ -914,7 +931,7 @@ function onAct(b) {
     case "nav": snack("Nur Vorschau: hier geht es nur um den Grundvorrat."); break;
     case "edit": UI.edit = !UI.edit; render(); break;
     case "toggle": if (it) toggleLeer(it); break;
-    case "item": openSheet(itemSheet(id), b); break;
+    case "item": openSheet(V === "C" ? qtySheet(id) : itemSheet(id), b); break;
     case "del": removeItem(id); break;
     case "close": closeSheet(); break;
     case "merge": openSheet(mergeSheet, b); break;
