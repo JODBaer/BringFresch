@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'bringfrisch-cache-v48';
+﻿const CACHE_NAME = 'bringfrisch-cache-v49';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const STATIC_ASSETS = [
   './standalone_data.js',
   './recipes_imported.js',
   './bring_catalog.js',
+  './core.js',
   './fonts/roboto-flex-latin.woff2',
   './icon-180.png',
   './icon-192.png',

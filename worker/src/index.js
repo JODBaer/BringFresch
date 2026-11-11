@@ -34,6 +34,10 @@
 // WG-Server: «Home-test» (TEST_LIST_NAME) gehört immer der Test-Version und ist für keine WG wählbar
 // KV-Binding: WG
 
+// Reine Regeln, die auch die App benutzt (Wochenrechnung): dieselbe Datei wie im Browser, legt BF_CORE ab
+import "../../static/core.js";
+const { mondayOf, weekAfter } = globalThis.BF_CORE;
+
 const BRING = "https://api.getbring.com/rest/v2/";
 // Öffentlicher Schlüssel der Bring!-Web-App (aus python-bring-api übernommen)
 const BRING_HEADERS = {
@@ -528,16 +532,6 @@ async function getWeek(env, key) {
 // Kalender-Abo (iCal)
 const DAY_NAMES = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
-function mondayOf(weekKey) {
-  const m = /^(\d{4})-W(\d{2})$/.exec(weekKey || "");
-  if (!m) return null;
-  const year = +m[1], week = +m[2];
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const monday = new Date(jan4);
-  monday.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7) + (week - 1) * 7);
-  return monday;
-}
-
 function icsEscape(s) {
   return String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 }
@@ -592,16 +586,6 @@ async function calendar(env, token, params = new URLSearchParams()) {
 }
 
 // KW nach der angegebenen ("2026-W46" -> "2026-W47")
-function weekAfter(weekKey) {
-  const monday = mondayOf(weekKey);
-  if (!monday) return null;
-  const thu = new Date(monday);
-  thu.setUTCDate(monday.getUTCDate() + 7 + 3);
-  const jan1 = new Date(Date.UTC(thu.getUTCFullYear(), 0, 1));
-  const week = Math.floor((thu - jan1) / 86400000 / 7) + 1;
-  return `${thu.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
-}
-
 // Termine einer Woche (noch offene Tage bekommen keinen)
 function events(doc, { me = "", dl = false } = {}) {
   const lines = [];

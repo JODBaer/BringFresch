@@ -46,7 +46,13 @@ Gebaut: `tests/einkauf_snapshot.test.js` + `tests/snapshots/einkauf.json` (98 Re
 
 Schnappschuss-Test: für jedes Rezept (98) mit fester WG und festem Puffer `computeShopping` + `bringPayload` → JSON in `tests/snapshots/`. Jede spätere Abweichung muss bewusst bestätigt werden.
 
-## Schritt 2 – `core/` herauslösen
+## Schritt 2 – `core/` herauslösen – erster Teil erledigt (Variante 3, ohne Bündler)
+
+Entscheid Joshua 11.11.2026: zuerst **Variante 3** (eine Regel-Datei als gewöhnliches Script, die App und Worker laden), **später Variante 4** (echte Browser-Module, dann Tests umbauen). Kein esbuild.
+Gebaut: `static/core.js` (`BF_CORE`): Woche (`isoWeek`, `weekKey`, `plusWeek`, `mondayOf`, `weekAfter`), `portionsFor`, Zutaten (`cleanIngredient`, `formatAmount`, `hasWord`, `inStaples`, `bringLookup`, `bringItemId`, `bringPayload`), `shoppingList(state)`. Der Worker importiert dieselbe Datei (Wrangler-Bündel geprüft). `tests/core.test.mjs` läuft ohne Browser.
+Offen: Wochenwahl-Regeln (`pickCandidates`, `ranking`, `assignDays`, `generateWeek`) – erst, wenn der Umbau der Wochenwahl zur Ruhe gekommen ist.
+
+Ursprüngliche Skizze (mit Bündler):
 
 Reine Funktionen, kein `window`, kein `document`, kein `localStorage`, Eingaben als Parameter:
 

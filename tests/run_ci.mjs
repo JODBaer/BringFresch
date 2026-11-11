@@ -51,6 +51,7 @@ if (!bad.length) console.log(`PASS  ${syntaxFiles.join(", ")}`);
 results.push([`Syntax (${syntaxFiles.length} Dateien)`, bad.length === 0]);
 
 // 2. Tests
+step("Regeln direkt (core.js)", node, ["core.test.mjs"]);
 step("App (jsdom)", node, ["app.test.js"]);
 step("Zutaten-Abgleich (alle Rezepte)", node, ["zutaten.test.js"]);
 step("Einkaufsliste aller Rezepte (fester Stand)", node, ["einkauf_snapshot.test.js"]);
