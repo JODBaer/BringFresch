@@ -1,5 +1,5 @@
 // BringFrisch – WG-Menüplaner mit Schweizer Saisongemüse und Bring!-Übergabe.
-// Läuft komplett im Browser; alle Daten liegen in localStorage.
+// Läuft komplett im Browser; alle Daten liegen in localStorage (store.js), die reinen Regeln in core.js.
 (() => {
   "use strict";
 
@@ -29,44 +29,18 @@
   const TEST_URL = "https://bringfrisch-test.bringfrisch-worker.workers.dev"; // Test-Version (tools/build_stage.mjs)
   const LIVE_URL = "https://jodbaer.github.io/BringFresch/";
   const DEFAULT_SYNC_URL = "https://bringfrisch.bringfrisch-worker.workers.dev";
-  const SYNC_KEY = "bringfrisch_sync";
-  const PLAN_UPDATED_KEY = "bringfrisch_plan_updated";
-  const VORRAT_UPDATED_KEY = "bringfrisch_vorrat_updated";
-  const DINNER_KEY = "bringfrisch_dinner_time";
 
-  const KEYS = {
-    plan: "bringfrisch_current_plan",
-    members: "bringfrisch_members",
-    staples: "bringfrisch_user_staples"
-  };
+  // Speicher auf dem Handy: alle Schlüssel, Lesen und Schreiben stehen in store.js
+  const STORE = window.BF_STORE;
+  const { load, save, remove, baseKey } = STORE;
+  const {
+    SYNC_KEY, PLAN_UPDATED_KEY, VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, PLAN_WEEK_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY,
+    VOTE_KEY, ME_KEY, WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY
+  } = STORE.KEYS;
+  const KEYS = { plan: STORE.KEYS.PLAN_KEY, members: STORE.KEYS.MEMBERS_KEY, staples: STORE.KEYS.STAPLES_KEY };
 
-  // Altlasten früherer Versionen (Logins, Layouts, Tiefkühler …) einmalig entfernen
-  const LEGACY_KEYS = [
-    "bringfrisch_phone_bring_creds", "bringfrisch_layout_mode", "bringfrisch_theme_mode",
-    "bringfrisch_wg_id", "bringfrisch_persons", "bringfrisch_diet", "bringfrisch_freezer_pantry"
-  ];
-
-  // ---------------------------------------------------------------------------
-  // Speicher
-  // ---------------------------------------------------------------------------
-  function load(key, fallback) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) {
-      return fallback;
-    }
-  }
-
-  function save(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (e) {
-      console.warn("Speichern fehlgeschlagen", key, e);
-    }
-  }
-
-  LEGACY_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* egal */ } });
+  // Altlasten früherer Versionen einmalig entfernen
+  STORE.LEGACY_KEYS.forEach(remove);
 
   function loadMembers() {
     const saved = load(KEYS.members, null);
@@ -91,8 +65,6 @@
   };
 
   // Nächste Woche (ab Donnerstag): eigener Plan pro KW. state.plan ist immer die angezeigte Woche.
-  const NEXT_KEY = "bringfrisch_next_plan"; // { week, plan, updated }
-  const PLAN_WEEK_KEY = "bringfrisch_plan_week"; // KW, zu der der gespeicherte Plan gehört
   let viewNext = false; // zeigt gerade die nächste Woche
   let curPlan = null; // Plan der laufenden Woche, solange die nächste angezeigt wird
   let nextDoc = load(NEXT_KEY, null);
@@ -507,8 +479,6 @@
   // ---------------------------------------------------------------------------
   // Wochenwahl (Memory): 14 Saison-Gerichte, alle tippen Favoriten an, Top 7 → Plan
   // ---------------------------------------------------------------------------
-  const VOTE_KEY = "bringfrisch_week_vote";
-  const ME_KEY = "bringfrisch_me";
   const GRID_SIZE = 14;
   const PLAN_SIZE = 7;
 
@@ -878,7 +848,7 @@
     state.plan = next;
     savePlan();
     refresh();
-    save(`bringfrisch_wahl_${vote.week}`, true);
+    save(STORE.wahlKey(vote.week), true);
     markWahl();
     $("voteDialog").close();
     toast(withVotes < PLAN_SIZE ? `Plan übernommen (${PLAN_SIZE - withVotes} ohne Stimme aufgefüllt)` : "Plan übernommen", {
@@ -1112,7 +1082,6 @@
   });
 
   // Rezepte-Tab: Webseiten zum Stöbern (eigene dazu), Link einfügen, meine Rezepte
-  const SITES_KEY = "bringfrisch_recipe_sites";
   const DEFAULT_SITES = [
     ["Betty Bossi", "https://www.bettybossi.ch/de/rezepte/"],
     ["Swissmilk", "https://www.swissmilk.ch/de/rezepte-kochideen/"],
@@ -1490,7 +1459,6 @@
   // seit dem gemeinsamen Stand etwas geändert hat (beide denselben: dieses Handy). Beim Senden geht der gemerkte
   // Stempel mit («base»); hat inzwischen jemand gespeichert, antwortet der Server 409 mit seinem Stand.
   // ---------------------------------------------------------------------------
-  const baseKey = n => `bringfrisch_base_${n}`;
   const baseOf = n => load(baseKey(n), null); // { updated, data, week? }
   const setBase = (n, updated, data, extra) => save(baseKey(n), { updated, data, ...(extra || {}) });
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -1673,7 +1641,6 @@
   // WG-Einstellungen für alle Handys (neuerer Stand gewinnt): Mitbewohner, Znacht-Zeit,
   // Rezept-Webseiten, eigene Rezepte. Pro Handy bleiben: PIN, «Ich bin», Stil, Farben.
   // ---------------------------------------------------------------------------
-  const SETTINGS_UPDATED_KEY = "bringfrisch_settings_updated";
   let settingsTimer = null, settingsServer = true;
   function wgSettings() {
     return { members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), recipeSites: mySites, customRecipes: importer.customRecipes };
@@ -1795,7 +1762,7 @@
       if (promoted && !isOpenWeek(promoted.plan) && promoted.updated > localUpdated) {
         setCurrentPlan(normalizeWeek(promoted.plan));
         save(PLAN_UPDATED_KEY, Date.now());
-        try { localStorage.removeItem(baseKey("plan")); } catch (e) { /* egal */ } // neue Woche: dieser Plan ersetzt den alten ganz
+        remove(baseKey("plan")); // neue Woche: dieser Plan ersetzt den alten ganz
         await pushPlanNow();
         toast("Neue Woche: euer geplanter Plan gilt jetzt");
       } else if (remote.plan) {
@@ -1982,16 +1949,14 @@
   // Andere WG: der Stand des Servers gilt (sonst landen Plan und Mitbewohner der alten WG in der neuen)
   function forgetWgStand() {
     [PLAN_UPDATED_KEY, VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY].forEach(k => save(k, 0));
-    try { ["plan", "next", "vorrat", "settings"].forEach(n => localStorage.removeItem(baseKey(n))); } catch (e) { /* egal */ }
+    ["plan", "next", "vorrat", "settings"].forEach(n => remove(baseKey(n)));
     nextDoc = null;
-    try { localStorage.removeItem(NEXT_KEY); } catch (e) { /* egal */ }
+    remove(NEXT_KEY);
   }
 
   // ---------------------------------------------------------------------------
   // Erster Start: WG-Name + PIN, dann «Wer bist du?». Wer schon verbunden ist, sieht das nie.
   // ---------------------------------------------------------------------------
-  const WELCOME_KEY = "bringfrisch_welcome";
-  const TERMS_KEY = "bringfrisch_terms"; // wann Nutzungsbedingungen/Datenschutz akzeptiert (mit «Verbinden»)
   const TERMS_VERSION = "2026-11";
   function openWelcome() {
     $("welcomeJoin").hidden = false;
@@ -2387,7 +2352,6 @@
   // ---------------------------------------------------------------------------
   // Menü wechseln: Blatt von unten, «Beliebt bei euch» oben
   // ---------------------------------------------------------------------------
-  const COUNTS_KEY = "bringfrisch_dish_counts";
   function dishCounts() {
     let c = load(COUNTS_KEY, null);
     if (!c) {
@@ -2540,12 +2504,11 @@
     document.documentElement.style.setProperty("--flower", shape(6, 9));
   })();
 
-  const OS_KEY = "bf-os";
   function currentOs() { return document.documentElement.classList.contains("m3") ? "m3" : "glass"; }
   function setOs(v) {
     document.documentElement.classList.remove("m3", "glass");
     document.documentElement.classList.add(v);
-    try { localStorage.setItem(OS_KEY, v); } catch (e) { /* ohne Speicher: nur für diese Sitzung */ }
+    STORE.saveText(OS_KEY, v);
     osLabels();
     applyTheme();
     fitDensity();
@@ -2561,7 +2524,6 @@
   // Farben: Akzent und Hintergrund pro Handy wählbar (je 3 Vorgaben + eigene Farbe).
   // «Standard» = die Farben aus index.html; sonst werden die Tokens aus der Wahl berechnet.
   // ---------------------------------------------------------------------------
-  const THEME_KEY = "bf-theme";
   const ACCENTS = [["", "Hellgrün", "#90ee90"], ["#93c572", "Pistazie", "#93c572"], ["#8ecae6", "Himmelblau", "#8ecae6"]];
   const BGS = [["", "Standard", "#f3f9ee"], ["#f7f7f5", "Weiss", "#f7f7f5"], ["#f4ede1", "Sand", "#f4ede1"]];
   let theme = { accent: "", bg: "", ...(load(THEME_KEY, {}) || {}) };
@@ -2628,9 +2590,8 @@
   }
 
   // Hell / Dunkel / Automatisch (pro Handy). Das CSS hört nur auf html.dark; index.html setzt es schon vor dem ersten Bild.
-  const MODE_KEY = "bf-mode";
   const darkMq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-  const getMode = () => { try { const m = localStorage.getItem(MODE_KEY); return m === "light" || m === "dark" ? m : "auto"; } catch (e) { return "auto"; } };
+  const getMode = () => { const m = STORE.loadText(MODE_KEY); return m === "light" || m === "dark" ? m : "auto"; };
   const isDark = () => { const m = getMode(); return m === "dark" || (m === "auto" && !!(darkMq && darkMq.matches)); };
   function applyTheme() {
     document.documentElement.classList.toggle("dark", isDark());
@@ -2653,7 +2614,7 @@
   if (darkMq && darkMq.addEventListener) darkMq.addEventListener("change", applyTheme);
   $("modeSelect").onchange = () => {
     const v = $("modeSelect").value;
-    try { if (v === "auto") localStorage.removeItem(MODE_KEY); else localStorage.setItem(MODE_KEY, v); } catch (e) { /* ohne Speicher: nur jetzt */ }
+    if (v === "auto") remove(MODE_KEY); else STORE.saveText(MODE_KEY, v);
     applyTheme();
     toast(v === "auto" ? "Hell/Dunkel wie das Handy ✓" : v === "dark" ? "Dunkel ✓" : "Hell ✓");
   };
@@ -2702,7 +2663,7 @@
 
   // Wochenwahl-Pop-up: beim Start, wenn für diese Woche noch nichts gewählt ist
   function wahlDone(week = shownWeek()) {
-    if (load(`bringfrisch_wahl_${week}`, false)) return true;
+    if (load(STORE.wahlKey(week), false)) return true;
     if (week === nextWeekKey() && nextDoc && nextDoc.week === week && Array.isArray(nextDoc.plan) && nextDoc.plan.every(d => !d.empty)) return true;
     const v = load(voteKey(week), null);
     const me = load(ME_KEY, null);
@@ -2892,18 +2853,18 @@
   if (rolled) state.plan = nextDoc.plan;
   if (nextDoc && nextDoc.week <= weekKey()) {
     nextDoc = null;
-    try { localStorage.removeItem(NEXT_KEY); } catch (e) { /* egal */ }
+    remove(NEXT_KEY);
   }
   save(PLAN_WEEK_KEY, weekKey());
   // Alte Wochenwahlen aufräumen (je Woche gespeichert)
   try {
-    Object.keys(localStorage).forEach(k => {
+    STORE.allKeys().forEach(k => {
       const m = /^bringfrisch_(?:week_vote_|wahl_)(\d{4}-W\d{2})$/.exec(k);
-      if (m && m[1] < weekKey()) localStorage.removeItem(k);
+      if (m && m[1] < weekKey()) remove(k);
     });
     const oldVote = load(VOTE_KEY, null);
     if (oldVote && oldVote.week === weekKey() && !load(voteKey(oldVote.week), null)) save(voteKey(oldVote.week), oldVote);
-    localStorage.removeItem(VOTE_KEY);
+    remove(VOTE_KEY);
   } catch (e) { /* ohne Speicher */ }
   normalizePlan();
   if (fromLink || rolled) {

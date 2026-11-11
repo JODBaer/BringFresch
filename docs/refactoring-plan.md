@@ -68,7 +68,10 @@ Reine Funktionen, kein `window`, kein `document`, kein `localStorage`, Eingaben 
 Mit esbuild anzupassen: `tools/build_site.mjs`, `tools/build_stage.mjs`, `tests/run_ci.mjs` (Syntaxcheck), `sw.js`-Assetliste, README «lokal ansehen».
 Unit-Tests für `core/` direkt in Node (ohne jsdom) – schnell.
 
-## Schritt 3 – `store`
+## Schritt 3 – `store` – Speicher erledigt, Zustand offen
+
+Gebaut (11.11.2026): `static/store.js` (`BF_STORE`) mit allen Schlüsseln (gemeinsam / Abgleich / nur dieses Handy), `load`, `save`, `remove`, `loadText`, `saveText`, `allKeys`; `app.js` greift nicht mehr direkt auf `localStorage` zu.
+Offen: der Zustand selbst (`state` plus `viewNext`, `curPlan`, `nextDoc`, `sync`, `vote`) in einem Objekt mit `subscribe`. Das gehört zum Aufteilen der Ansichten (Schritt 5 / Variante 4), weil erst dann klar ist, welche Ansicht was braucht.
 
 Ein Objekt für den ganzen Zustand inkl. angezeigter Woche; alle localStorage-Schlüssel und ihre Migrationen (`LEGACY_KEYS`, alte Wochenwahl) an einer Stelle; `subscribe` statt verstreuter `refresh()`-Aufrufe. Keine Änderung am gespeicherten Format.
 
