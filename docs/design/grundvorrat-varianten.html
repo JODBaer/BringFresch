@@ -457,7 +457,8 @@ const INFO = {
   C: {
     title: "C · Mengen im Blick – vorne beim Einkauf, dahinter ein Grundvorrat",
     idea: "Vorne beim Einkauf steht, was zählt: was knapp ist, was die Woche aus dem Vorrat braucht, der Schalter zum Abbuchen und «Für Bring!». Dahinter liegt der ganze Grundvorrat als eine Ansicht – Verwalten ist kein eigener Reiter mehr.",
-    how: ["Einkauf (vorne): «Grundvorrat – knapp» (2 oder weniger) und «Diese Woche aus dem Vorrat» (Menge vorher → nachher), drei Kacheln pro Zeile. «Alles da» lässt sich gleich dort aufklappen und zeigt jeden Artikel mit Menge.",
+    how: ["Einkauf (vorne) hat dieselben drei Bereiche wie heute: «Kaufen» (aus dem Plan, plus was im Vorrat knapp wird), «Auf Bring!», «Vorrat».",
+      "Bereich «Vorrat»: Schalter «Woche gekocht», darunter «Knapp» (hier tauchen neue Kacheln auf, sobald etwas ausgeht), «Diese Woche aus dem Vorrat» (Menge vorher → nachher) und «Alles da» zum Aufklappen. Ganz unten: «Grundvorrat verwalten».",
       "Der Vorrat im Entwurf ist ein Standard für einen gängigen Haushalt: 50 Standardartikel aus dem Bring!-Katalog, jeder einmal (plus 3 Beispiele für Doppelte und eigene Artikel).",
       "Schalter «Woche gekocht» bucht ab, zurückschieben = rückgängig. Ab Montag wird die letzte Woche von selbst abgebucht.",
       "Knappes steht unten bei «Für Bring!». «Prüfen» zeigt die Liste mit Häkchen; der Bring!-Eintrag trägt den Vermerk «Vorrat · Menge». In Bring! abhaken = gekauft → Vorrat um eine Packung grösser.",
@@ -468,7 +469,7 @@ const INFO = {
     qa: [["Wann auf Bring!?", "Knappes wird gesammelt und nach einmal Prüfen gesendet – nie von selbst."], ["Alltag / Verwalten", "Alltag vorne beim Einkauf, alles andere im Grundvorrat (eine Ansicht)."], ["Auf einen Blick", "Vorne nur Knappes und was die Woche braucht; dahinter alles, drei Kacheln pro Zeile."]],
     pro: "Im Alltag sieht man vorne nur, was zu tun ist. Ein Grundvorrat statt zwei fast gleicher Reiter. Nichts landet unbemerkt auf Bring!.",
     con: "Mengen stimmen nur mit der Inventur und wenn Gekauftes in Bring! abgehakt wird. Lange drücken muss man kennen (das Blatt hat «Wegnehmen» auch). Lange Namen werden abgeschnitten.",
-    tryit: "Probier: Schalter «Woche gekocht» an und aus → unten «Prüfen» → senden → rechts «Abhaken». «Alles da» aufklappen. Dann «Grundvorrat verwalten» → Kachel antippen → Kachel lange drücken → «Wegnehmen»."
+    tryit: "Probier: Bereich «Vorrat» → Schalter «Woche gekocht» an: bei «Knapp» kommen Kacheln dazu → Bereich «Kaufen» → unten «Prüfen» → senden → «Auf Bring!». «Alles da» aufklappen. Dann «Grundvorrat verwalten» → Kachel antippen → Kachel lange drücken → «Wegnehmen»."
   }
 };
 
@@ -499,7 +500,7 @@ function fresh() {
     }),
     bring: [{ name: "Milch", spec: "", by: "Lukas" }, { name: "WC-Papier", spec: "", by: "Leonie" }, { name: "Eier", spec: "", by: "BringFrisch" }]
   };
-  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "abteilung", page: "einkauf", flip: null, openAll: false, opener: null, flash: null, focusK: null };
+  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "abteilung", page: "einkauf", seg: "kaufen", flip: null, openAll: false, opener: null, flash: null, focusK: null };
   prevBring = new Set(S.bring.map(b => b.name));
 }
 let prevBring = new Set();
@@ -879,16 +880,24 @@ function viewC() {
   const sw = `<button type="button" class="sw" role="switch" data-act="cookSw" aria-checked="${!!S.cooked}"><i></i><span>Woche gekocht</span></button>`;
 
   if (UI.page === "einkauf") {
-    // Vorne beim Einkauf: Plan der Woche, Knappes aus dem Vorrat, Schalter zum Abbuchen
-    h += `<section class="sec"><h3>Aus dem Plan · KW 46</h3><div class="list card">${WEEK.map(w => `<div class="planrow"><span>${esc(w.n)}${onBring(w.n) ? " " + ICON.cartV : ""}</span><span>${esc(w.spec)}</span></div>`).join("")}</div></section>`;
-    h += sec("knapp", "Grundvorrat – knapp", S.items.filter(knapp), "Nichts knapp.", "geht bald aus");
-    h += `<div class="cbar">${sw}<span class="note">Bucht ab, was der Plan aus dem Vorrat braucht. Ab Montag geschieht das für die letzte Woche von selbst.</span></div>`;
-    h += sec("woche", "Diese Woche aus dem Vorrat", S.items.filter(it => it.use > 0 && !knapp(it)), "Der Plan braucht nichts aus dem Vorrat.", S.cooked ? "abgebucht" : "wird abgebucht");
-    {
+    // Vorne beim Einkauf: dieselben drei Bereiche wie heute (Kaufen · Auf Bring! · Vorrat)
+    const buy = WEEK.filter(w => !onBring(w.n)), kn = S.items.filter(knapp), knBuy = kn.filter(it => !onBring(it.bring));
+    const segs = [["kaufen", "Kaufen", buy.length + knBuy.length], ["bring", "Auf Bring!", S.bring.length], ["vorrat", "Vorrat", S.items.length]];
+    h += `<div class="tabs card" role="tablist" aria-label="Einkaufsliste">${segs.map(([k, t, n]) => `<button type="button" role="tab" data-act="seg" data-seg="${k}" aria-selected="${UI.seg === k}">${t} ${n}</button>`).join("")}</div>`;
+    const rows = list => `<div class="list card">${list.map(([a, b2]) => `<div class="planrow"><span>${a}</span><span>${b2}</span></div>`).join("")}</div>`;
+    if (UI.seg === "kaufen") {
+      h += `<section class="sec"><h3>Aus dem Plan · KW 46</h3>${buy.length ? rows(buy.map(w => [esc(w.n), esc(w.spec)])) : `<p class="none">Alles aus dem Plan steht auf Bring!.</p>`}</section>`;
+      h += sec("knapp", "Aus dem Vorrat – wird knapp", knBuy, "Nichts knapp.", "kommt mit «Prüfen» auf Bring!");
+    } else if (UI.seg === "bring") {
+      h += `<section class="sec"><h3>Steht auf Bring!</h3>${S.bring.length ? rows(S.bring.map(x => [esc(x.name), esc(x.spec || x.by)])) : `<p class="none">Die Liste ist leer.</p>`}</section>`;
+    } else {
+      h += `<div class="cbar">${sw}<span class="note">Bucht ab, was der Plan aus dem Vorrat braucht. Ab Montag geschieht das für die letzte Woche von selbst.</span></div>`;
+      h += sec("knapp", "Knapp", kn, "Nichts knapp.", "geht bald aus");
+      h += sec("woche", "Diese Woche aus dem Vorrat", S.items.filter(it => it.use > 0 && !knapp(it)), "Der Plan braucht nichts aus dem Vorrat.", S.cooked ? "abgebucht" : "wird abgebucht");
       const rest = S.items.filter(it => !knapp(it) && !it.use);
       h += `<section class="sec col da"><button type="button" class="shead" data-act="openAll" aria-expanded="${UI.openAll}">${ICON.down}<span>Alles da · ${rest.length}</span><span class="c">${UI.openAll ? "" : "aufklappen"}</span></button>${UI.openAll ? `<div class="grid3">${rest.map(tile).join("")}</div>` : ""}</section>`;
+      h += `<button type="button" class="golink" data-act="goVorrat"><span>Grundvorrat verwalten · hinzufügen, Inventur</span>${ICON.chev}</button>`;
     }
-    h += `<button type="button" class="golink" data-act="goVorrat"><span>Grundvorrat verwalten · hinzufügen, Inventur</span>${ICON.chev}</button>`;
     return h;
   }
 
@@ -905,7 +914,7 @@ function viewC() {
   return h;
 }
 function trayC() {
-  if (UI.page !== "einkauf") return "";
+  if (UI.page !== "einkauf" || UI.seg === "bring") return "";
   const p = pending();
   if (!p.length) return "";
   return `<div class="tray"><div class="tx"><b>Für Bring! (${p.length}) · knapp</b><span>${esc(p.join(", "))}</span></div><button type="button" class="fbtn" data-act="sendC">Prüfen</button></div>`;
@@ -963,6 +972,7 @@ function onAct(b) {
   const a = b.dataset.act, id = b.dataset.id, it = id ? byId(id) : null;
   switch (a) {
     case "nav": if (V === "C") { UI.page = "einkauf"; UI.flip = null; render(); content.scrollTop = 0; } else snack("Nur Vorschau: hier geht es nur um den Grundvorrat."); break;
+    case "seg": UI.seg = b.dataset.seg; UI.flip = null; render(); content.scrollTop = 0; break;
     case "openAll": UI.openAll = !UI.openAll; render(); break;
     case "goVorrat": UI.page = "vorrat"; UI.flip = null; render(); content.scrollTop = 0; break;
     case "unflip": UI.flip = null; UI.focusK = "a:qty:" + id; render(); break;

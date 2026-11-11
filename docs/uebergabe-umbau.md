@@ -1,6 +1,6 @@
 # Übergabe: Umbau (Review-Chat) → nächster Chat
 
-Stand 11.11.2026 abends. `main` enthält alles unten Genannte. **Live für die WG ist `v1.7.2`** (`eab7427`).
+Stand 11.11.2026 spät. `main` enthält alles unten Genannte. Für den Einstieg: Abschnitt 0 (Startprompt) am Ende von Abschnitt 4. **Live für die WG ist `v1.7.2`** (`eab7427`).
 Arbeitsregeln stehen in `CLAUDE.md`; Einzelheiten zum Umbau in `docs/refactoring-plan.md`, Überblick mit Diagramm in `docs/architektur-review.html`.
 
 ## 1. Zuerst: `v1.7.3` veröffentlichen
@@ -40,22 +40,43 @@ Befehle einzeln ausführen (PowerShell kennt kein `&&`). Der Cloud-Chat kann kei
 3. **Schrift kürzen**: Roboto Flex 196 KB, grösste Datei. Braucht `fonttools` und einen optischen Vergleich (`layout_check.mjs --shots`).
 4. **Grundvorrat neu** (siehe 4).
 
-## 4. Grundvorrat – Stand der Diskussion mit Joshua
+## 4. Grundvorrat – Stand mit Joshua
 
-Entwurf zum Antippen: `docs/design/grundvorrat-varianten.html` (auch als Artifact veröffentlicht). **Variante C ist vorne, entschieden ist noch nichts.**
-Laut Joshua war das Ändern im heutigen Grundvorrat schon vor `v1.7.0` defekt → zuerst nachstellen.
-Was Variante C nach seinen Kommentaren zeigt (alles nur im Entwurf, nichts in der App):
-- Menge pro Artikel: Stück mit Grösse («2 × 1 l», «1 Stück =» änderbar) oder «reicht für ~N Znacht»
-- drei Kacheln pro Zeile; Aufteilung umstellbar «Dringend» (Knapp · Diese Woche gebraucht · Alles da) / «Abteilung» (wie Bring!); Übersicht in einer Zeile
-- Schalter «Woche gekocht» bucht ab, zurückschieben = rückgängig
-- Knappes (≤ 2) wird gesammelt und nach «Prüfen» gesendet, nie von selbst; Bring!-Eintrag mit Vermerk «Vorrat · Menge»; in Bring! abgehakt = Vorrat + eine Packung
-- **Aufbau (letzter Stand):** vorne beim **Einkauf** stehen «Grundvorrat – knapp», «Diese Woche aus dem Vorrat», der Schalter «Woche gekocht» (ab Montag wird die letzte Woche von selbst abgebucht) und «Für Bring!». Dahinter **ein** Grundvorrat (kein Reiter «Verwalten» mehr): hinzufügen, Übersicht, alle Kacheln
-- «Alles da» schon beim Einkauf aufklappbar (jeder Artikel mit Menge); Standard-Grundvorrat aus 50 Bring!-Standardartikeln (Liste in `plan.md`)
-- Wegnehmen: Kachel lange drücken → Karte dreht sich → «Wegnehmen» (mit Rückgängig); auch im Blatt möglich
-- **ein** Blatt pro Artikel, überall gleich (aus «Vorrat» und «Verwalten»): Bring!-Bild (im Entwurf Platzhalter), Menge, Infos, Name ändern, Doppelte zusammenführen, wegnehmen
-- Inventur (einmal im Jahr, vier Knöpfe pro Artikel), Knopf unauffällig am Ende der Liste; Markierung «über ein Jahr im Vorrat»
-Offen / von Joshua noch nicht bestätigt: Einheiten ohne Gramm / Milliliter; Knappes nie automatisch auf Bring!.
-Technische Grenzen: Bring! meldet nicht, wie viel gekauft wurde; Vermerk nur über die Mengenangabe; «seit wann im Vorrat» wird heute nicht gespeichert. Anforderungen ausführlich in `plan.md` («Grundvorrat neu gestalten»).
+**Entschieden (11.11.2026): Variante C.** Joshua: «Wir nehmen C, aber ich brauche noch ein paar Gedanken.» → Die Richtung steht, die Einzelheiten nicht. Vor dem Bauen mit ihm durchgehen; Änderungen zuerst im Entwurf zeigen (er kommentiert direkt auf der Seite).
+Entwurf zum Antippen: `docs/design/grundvorrat-varianten.html` (Varianten A und B sind der alte Vergleich; massgebend ist C). In der App ist davon **nichts** gebaut.
+Laut Joshua war das Ändern im heutigen Grundvorrat schon vor `v1.7.0` defekt → zuerst im echten Betrieb nachstellen (nicht reproduziert).
+
+So sieht C heute aus:
+- **Einkauf (vorne)** mit den drei gewohnten Bereichen:
+  - «Kaufen»: aus dem Plan + «Aus dem Vorrat – wird knapp»; unten «Für Bring! (n) · Prüfen» (Liste mit Häkchen, dann senden; Bring!-Eintrag mit Vermerk «Vorrat · Menge»)
+  - «Auf Bring!»: was auf der Liste steht
+  - «Vorrat»: Schalter «Woche gekocht» (bucht ab, zurück = rückgängig; ab Montag wird die letzte Woche von selbst abgebucht), «Knapp», «Diese Woche aus dem Vorrat» (vorher → nachher), «Alles da» aufklappbar, Knopf «Grundvorrat verwalten»
+- **Grundvorrat (dahinter)**: eine Ansicht – hinzufügen (Vorschlag aus Bring!-Namen), Übersicht in einer Zeile, drei Kacheln pro Zeile, Aufteilung umstellbar Abteilung / Dringend, Inventur-Knopf am Ende
+- **Kachel**: antippen = ein Blatt mit allem (Bring!-Bild – im Entwurf Platzhalter –, Menge − + und Leer / Fast leer / Halb / Voll, «1 Stück =», Infos, Name ändern, Doppelte zusammenführen, wegnehmen); lange drücken = Karte dreht sich, hinten «Wegnehmen» (mit Rückgängig)
+- **Mengen**: Stück mit Grösse («2 × 1 l») oder «reicht für ~N Znacht»; in Bring! abgehakt = Vorrat + eine Packung
+- **Knapp**: 2 oder weniger; bei Artikeln mit nur 1–2 Packungen erst unter einer vollen Packung
+- **Inventur** einmal im Jahr (vier Knöpfe pro Artikel); Markierung «über ein Jahr im Vorrat»
+- **Standard-Vorrat**: 50 Bring!-Standardartikel, Liste in `plan.md`
+
+Von Joshua noch offen / nicht bestätigt:
+- Kommentar «Übersicht über allem geht so, jedes Element ist für sich geschlossen» – ob die Übersichtszeile und die neue Einkauf-Seite das lösen
+- − + direkt auf der Kachel (war im Reiter «Verwalten», der weggefallen ist) – ja oder nein
+- drei Bereiche als Reiter (so im Entwurf) oder wirklich als drei Spalten nebeneinander (auf dem Handy zu schmal für Name + Menge – meine Einschätzung)
+- Einheiten ohne Gramm / Milliliter (mein Vorschlag); Knappes nie von selbst auf Bring! (mein Vorschlag, im Entwurf so)
+- Doppelte auch in Bring! zusammenführen: nur für Einträge möglich, die der Bot selbst gesetzt hat
+- Auswahl des Standard-Vorrats (meine Einschätzung, keine Kaufdaten)
+Technische Grenzen: Bring! meldet nicht, wie viel gekauft wurde; Vermerk nur über die Mengenangabe; «seit wann im Vorrat» wird heute nicht gespeichert; echte Bring!-Bilder gibt es nur für Katalogartikel.
+Betroffene Regeln beim Bau: `CLAUDE.md` «Grundvorrat wie Bring!: Antippen = direkt auf Bring!», Entscheide 16 und 22, `plan.md` «Grundvorrat verwalten» und «Grundvorrat zählt mit». Neue Daten pro Artikel (Menge, Einheit, Packung, Grösse, seit wann) gehören in `/vorrat` und laufen über den bestehenden Abgleich (`merge3` pro Artikel).
+
+## 0. Startprompt für den neuen Chat
+
+```
+Lies zuerst CLAUDE.md, dann docs/uebergabe-umbau.md, plan.md (Eintrag «Grundvorrat neu gestalten») und entscheide.md.
+Stand: main enthält den Umbau; live ist v1.7.2. Zuerst v1.7.3 veröffentlichen (Abschnitt 1 der Übergabe).
+Danach: Grundvorrat nach Variante C (docs/design/grundvorrat-varianten.html). Joshua hat C gewählt, will die
+Einzelheiten aber noch besprechen – nichts in der App bauen, bevor er die offenen Punkte (Abschnitt 4) geklärt hat.
+Änderungen am Entwurf zuerst zeigen. Vor jedem Abschluss: cd tests && npm run ci.
+```
 
 ## 5. Stolpersteine
 
