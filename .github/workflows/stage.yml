@@ -3,7 +3,7 @@
 #        https://bringfrisch-test.bringfrisch-worker.workers.dev  (schreibt nur in die Bring!-Liste «Home-test» des Bots)
 #      -> die Test-Seite zeigt immer den neusten Stand von main, auch wenn ein Test rot ist
 #   2. gleichzeitig: alle Offline-Tests (wie lokal: cd tests && npm ci && npm run ci)
-#   3. Live-Test gegen echtes Bring! («Home-test») auf der frisch aktualisierten Test-Version, räumt danach auf
+#   3. Live-Test gegen echtes Bring! («Home-test»), sobald Deploy + Tests fertig sind, räumt danach auf
 # Die WG-Version (GitHub Pages) kommt nur mit einem Release-Tag v* (deploy-pages.yml).
 # Secrets (GitHub > Settings > Secrets and variables > Actions):
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  -> Schritt 1 (ohne: wird übersprungen)
@@ -73,7 +73,8 @@ jobs:
           cd worker && npx --yes wrangler@4.159.0 deploy --env stage
 
   live:
-    needs: stage
+    # erst wenn die Tests grün sind: direkt nach dem Deploy antworten noch teils alte Worker-Instanzen (Live-Test sonst wackelig)
+    needs: [stage, test]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
