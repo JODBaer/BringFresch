@@ -48,6 +48,9 @@ globalThis.fetch = async (url, init = {}) => {
   if (url === "https://fooby.ch/de/rezepte/1/bild") return new Response(`<html><head><meta property="og:image" content="/img/bild.jpg?w=1200&amp;q=80"></head></html>`);
   if (url === "https://fooby.ch/img/bild.jpg?w=1200&q=80") { imgFetches++; return new Response(new Uint8Array([255, 216, 255, 1, 2, 3]), { headers: { "Content-Type": "image/jpeg" } }); }
   if (url === "https://fooby.ch/de/rezepte/2/ohne") { imgFetches++; return new Response("<html><head><title>ohne Bild</title></head></html>"); }
+  if (url === "https://www.bettybossi.ch/de/rezepte/rezept/gross-1/") return new Response(`<html><head><meta property="og:image" content="https://media.bettybossi.ch/image/1/image_x/-FJPG"></head></html>`);
+  if (url === "https://media.bettybossi.ch/image/1/image_x/-B640-FJPG") { imgFetches++; return new Response(new Uint8Array([255, 216, 255, 9]), { headers: { "Content-Type": "image/jpeg" } }); }
+  if (url === "https://media.bettybossi.ch/image/1/image_x/-FJPG") { imgFetches++; return new Response(new Uint8Array(2_000_000), { headers: { "Content-Type": "image/jpeg" } }); }
   if (url.startsWith("https://www.swissmilk.ch/")) {
     return new Response(`<html><head><meta property="og:title" content="Auberginenrollen - Rezept | Swissmilk"></head><body><h1>Navigieren</h1><table>
       <tr itemprop="recipeIngredient"><td colspan="2" class="Ingredient--text">Bratpfanne</td></tr>
@@ -222,8 +225,13 @@ r = await call("/img?url=" + encodeURIComponent(IMG_PAGE));
 check(r.status === 200 && (await r.arrayBuffer()).byteLength === 6 && imgFetches === 1, "zweites Mal aus dem Speicher (kein neuer Abruf)");
 r = await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/rezepte/2/ohne"));
 await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/rezepte/2/ohne"));
-check(r.status === 404 && imgFetches === 2, "Seite ohne Bild: 404, und der Server fragt nicht nochmals");
+check(r.status === 204 && imgFetches === 2, "Seite ohne Bild: 204 (leer, kein Fehler), und der Server fragt nicht nochmals");
 check((await call("/img?url=" + encodeURIComponent("http://localhost/x"))).status === 400, "nur normale https-Seiten");
+const BB = "https://www.bettybossi.ch/de/rezepte/rezept/gross-1/";
+const bbKey = "img:" + [...new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(BB)))].map(b => b.toString(16).padStart(2, "0")).join("");
+store.set(bbKey, ""); kvOpts.set(bbKey, { metadata: { none: true } }); // «kein Bild» aus der alten Version (Bild war zu gross)
+r = await call("/img?url=" + encodeURIComponent(BB));
+check(r.status === 200 && (await r.arrayBuffer()).byteLength === 4 && imgFetches === 3, `Betty Bossi: kleine Fassung (-B640) statt 2 MB; altes «kein Bild» wird neu geprüft (${r.status}, ${imgFetches})`);
 await backup(env, new Date("2026-11-10T03:00:00Z"));
 check(!Object.keys(JSON.parse(store.get("backup:2026-11-10")).keys).some(k => k.startsWith("img:")), "Bilder nicht in der täglichen Sicherung");
 
@@ -348,7 +356,7 @@ check(r.status === 200, "erste WG: andere Absender sind nicht mitgesperrt");
 r = await call("/recipe?url=" + encodeURIComponent("https://fooby.ch/de/intern"));
 check(r.status === 400 && internFetches === 0, `Weiterleitung auf eine interne Adresse wird nicht abgerufen (${r.status})`);
 r = await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/weiter"));
-check(r.status === 404, `normale Weiterleitung wird gefolgt (${r.status})`);
+check(r.status === 204, `normale Weiterleitung wird gefolgt, Seite ohne Bild = 204 (${r.status})`);
 const b3 = await backup(env, new Date("2026-11-12T03:00:00Z"));
 const snap3 = JSON.parse(store.get("backup:2026-11-12")).keys;
 check(snap3["w:sonnenhof:plan"] && !snap3["lock:sonnenhof"], `Sicherung enthält die zweite WG, keine Sperren (${b3.count})`);
