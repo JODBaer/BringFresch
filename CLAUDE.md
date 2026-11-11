@@ -10,6 +10,7 @@ WG: Joshua, Lukas, Leonie = Fleisch · Jo = Vegi (keine Veganer).
 ## Architektur
 
 - **`static/`** – PWA, Vanilla JS, keine Abhängigkeiten/CDNs, läuft offline. GitHub Pages (`https://jodbaer.github.io/BringFresch/`, Root-`index.html` leitet auf `static/` weiter).
+  - `index.html` – nur Aufbau der Seite (Tabs, Dialoge); `app.css` – gesamtes Aussehen (vorher im `<style>` von `index.html`). CSS-Änderungen gehören nach `app.css`
   - `core.js` – reine Regeln ohne Bildschirm/Speicher/Netz (Woche, Portionen, Zutaten-Namen, Bring!-Katalog-Abbildung, Einkaufsliste, Wochenwahl-Regeln), abgelegt unter `BF_CORE`. Dieselbe Datei lädt die App per `<script>` und der Worker per `import "../../static/core.js"`; direkt in Node testbar (`tests/core.test.mjs`). Neue Regeln hierhin, nicht nach `app.js`
   - `store.js` – Speicher auf dem Handy (`BF_STORE`): alle localStorage-Schlüssel an einer Stelle (gemeinsam / Abgleich / nur dieses Handy), `load`, `save`, `remove`. Neue Schlüssel hier eintragen; `app.js` greift nie direkt auf `localStorage` zu
   - `app.js` – Ansicht, Zustand, Wochenwahl, Worker-Anbindung

@@ -94,7 +94,10 @@ Heute viermal von Hand «neuerer gewinnt» (Plan, nächste Woche, Vorrat, Einste
 - Zeitstempel nur noch vom Server.
 - Tests: `tests/integration.test.mjs` (2 Handys) um «beide ändern verschiedene Tage» und «Handy-Uhr geht falsch» erweitern.
 
-## Schritt 5 – Ansichten und CSS
+## Schritt 5 – Ansichten und CSS – CSS erledigt, Ansichten offen
+
+Gebaut (11.11.2026): `static/app.css` (650 Zeilen, vorher `<style>` in `index.html`); `index.html` hat noch 439 Zeilen (27 KB statt 78 KB).
+Offen: `app.js` in Ansichten aufteilen. Das geht nicht als einfaches Verschieben: `app.js` ist eine einzige Funktion, in der sich ~150 Funktionen gegenseitig über gemeinsame Variablen aufrufen. Aufteilen heisst, diese Bezüge ausdrücklich zu machen – das ist die Arbeit von Variante 4 (echte Module, Tests umbauen) und gehört in ein eigenes, ruhiges Zeitfenster, in dem kein anderer Chat an `app.js` arbeitet.
 
 `views/plan`, `einkauf`, `saison`, `einstellungen`, `wochenwahl`, `willkommen`, `theme`. CSS aus `index.html` in Dateien pro Bereich. Zusammen mit dem geplanten Redesign der drei alten Seiten erledigen (plan.md), nicht vorher separat.
 
