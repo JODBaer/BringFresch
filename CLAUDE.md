@@ -10,13 +10,13 @@ WG: Joshua, Lukas, Leonie = Fleisch · Jo = Vegi (keine Veganer).
 ## Architektur
 
 - **`static/`** – PWA, Vanilla JS, keine Abhängigkeiten/CDNs, läuft offline. GitHub Pages (`https://jodbaer.github.io/BringFresch/`, Root-`index.html` leitet auf `static/` weiter).
-  - `core.js` – reine Regeln ohne Bildschirm/Speicher/Netz (Woche, Portionen, Zutaten-Namen, Bring!-Katalog-Abbildung, Einkaufsliste), abgelegt unter `BF_CORE`. Dieselbe Datei lädt die App per `<script>` und der Worker per `import "../../static/core.js"`; direkt in Node testbar (`tests/core.test.mjs`). Neue Regeln hierhin, nicht nach `app.js`
+  - `core.js` – reine Regeln ohne Bildschirm/Speicher/Netz (Woche, Portionen, Zutaten-Namen, Bring!-Katalog-Abbildung, Einkaufsliste, Wochenwahl-Regeln), abgelegt unter `BF_CORE`. Dieselbe Datei lädt die App per `<script>` und der Worker per `import "../../static/core.js"`; direkt in Node testbar (`tests/core.test.mjs`). Neue Regeln hierhin, nicht nach `app.js`
   - `app.js` – Ansicht, Zustand, Wochenwahl, Worker-Anbindung
   - `standalone_data.js` – Grundvorrat, VSGP-Saisondaten (`season_items`), Monatsnews, 10 Klassiker-Rezepte
   - `recipes_imported.js` – generiert von `tools/import_recipes.py merge`, nicht von Hand ändern
   - `recipe_importer.js` – eigene Rezepte (localStorage)
   - `sw.js` – Network-First, nach 2.5 s ohne Antwort aus dem Cache (schwacher Empfang); bei Asset-Änderungen `CACHE_NAME` hochzählen (im Release setzt `build_site.mjs` die Version ein)
-- **`worker/`** – Cloudflare Worker (Free): Bring!-Sync über ein Bot-Konto (Secrets), Wochenwahl + Plan in KV, iCal-Abo `/cal/:token.ics`, Rezept-Link-Import. PIN-geschützt (`X-WG-PIN`). Setup: `worker/README.md`.
+- **`worker/`** – Cloudflare Worker (Free): Bring!-Sync über ein Bot-Konto (Secrets), Wochenwahl + Plan in KV, iCal-Abo `/cal/:token.ics`, Rezept-Link-Import. PIN-geschützt (`X-WG-PIN`). Setup: `worker/README.md`. Dateien in `worker/src/`: `index.js` (Endpunkte), `auth.js` (WG, PIN, Sperre), `speicher.js` (Speichern mit Abgleich, Sicherung), `bring.js`, `kalender.js`, `rezept.js` (Link-Import, Bilder), `http.js` (Antworten, CORS, sicheres Abrufen).
 - **`tools/import_recipes.py`** – einmaliger, höflicher Import (schema.org) von Betty Bossi, Migusto, Fooby, Swissmilk. Nur Fakten, keine Texte. Nicht für weiteres Massen-Scraping verwenden. Bilder: nur das Vorschaubild (og:image) holt der Worker einzeln beim ersten Anzeigen in der Wochenwahl (`/img`, KV `img:<sha1>`, nur mit PIN, nicht in der Sicherung) – nie ins öffentliche Repo.
 
 Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.

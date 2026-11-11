@@ -16,7 +16,7 @@ const node = process.execPath;
 const env = { ...process.env, TZ: process.env.TZ || "Europe/Zurich" };
 
 const jsIn = dir => readdirSync(path.join(root, dir)).filter(f => /\.(m?js)$/.test(f)).map(f => path.join(dir, f));
-const syntaxFiles = [...jsIn("static"), "worker/src/index.js", "worker/test.mjs", ...jsIn("tests"), ...jsIn("tools")];
+const syntaxFiles = [...jsIn("static"), ...jsIn("worker/src"), "worker/test.mjs", ...jsIn("tests"), ...jsIn("tools")];
 
 const results = [];
 const failLines = []; // für die Zusammenfassung (lokal und auf der GitHub-Seite des Laufs)

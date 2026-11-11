@@ -50,7 +50,7 @@ Schnappschuss-Test: für jedes Rezept (98) mit fester WG und festem Puffer `comp
 
 Entscheid Joshua 11.11.2026: zuerst **Variante 3** (eine Regel-Datei als gewöhnliches Script, die App und Worker laden), **später Variante 4** (echte Browser-Module, dann Tests umbauen). Kein esbuild.
 Gebaut: `static/core.js` (`BF_CORE`): Woche (`isoWeek`, `weekKey`, `plusWeek`, `mondayOf`, `weekAfter`), `portionsFor`, Zutaten (`cleanIngredient`, `formatAmount`, `hasWord`, `inStaples`, `bringLookup`, `bringItemId`, `bringPayload`), `shoppingList(state)`. Der Worker importiert dieselbe Datei (Wrangler-Bündel geprüft). `tests/core.test.mjs` läuft ohne Browser.
-Offen: Wochenwahl-Regeln (`pickCandidates`, `ranking`, `assignDays`, `generateWeek`) – erst, wenn der Umbau der Wochenwahl zur Ruhe gekommen ist.
+Wochenwahl-Regeln sind seit 11.11.2026 ebenfalls in `core.js` (`pickCandidates`, `ranking`, `assignDays`, `pickRecipe`, `backupRecipe`, `effectiveDiet`, `inSeason`).
 
 Ursprüngliche Skizze (mit Bündler):
 
@@ -100,7 +100,8 @@ Danach, nicht vorher: **Grundvorrat neu gestalten zusammen mit Joshua** (siehe `
 ## Schritt 6 – Worker – teilweise erledigt
 
 Gebaut: `bringAuth` merkt die Anmeldung (Instanz + KV `bringtoken`, nicht in der Sicherung), `bringFetch` meldet bei 401 einmal frisch an.
-Offen: Datei aufteilen (wartet wie Schritt 2 auf den Umbau der Rezeptauswahl), Batch-Schnittstelle (braucht einen Live-Test gegen «Home-test», geht nicht ohne Zugangsdaten).
+Datei aufgeteilt (11.11.2026): `index.js` (Endpunkte), `auth.js`, `speicher.js`, `bring.js`, `kalender.js`, `rezept.js`, `http.js`; Wrangler-Bündel geprüft.
+Offen: Batch-Schnittstelle (braucht einen Live-Test gegen «Home-test», geht nicht ohne Zugangsdaten).
 
 - Aufteilen: `router`, `auth`, `bring`, `speicher`, `kalender`, `rezept-import`, `sicherung`.
 - `bringLogin`: Access-Token im Speicher des Workers und in KV halten (Ablaufzeit aus der Bring!-Antwort), bei 401 neu anmelden. Spart einen Aufruf pro Anfrage.
