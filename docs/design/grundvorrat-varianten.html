@@ -412,12 +412,12 @@ const INFO = {
       "Leeren: jeder gekochte Tag bucht ab («Woche kochen» zeigt es), oder von Hand mit − / «Fast leer» / «Leer».",
       "Füllen: in Bring! abhaken = gekauft → Vorrat um eine Packung grösser. Oder von Hand «Voll».",
       "Knappes steht unten bei «Für Bring!». «Prüfen» zeigt die Liste mit Häkchen; der Bring!-Eintrag trägt den Vermerk «Vorrat · Menge».",
-      "Inventur wie im Betrieb, einmal im Jahr: jeden Artikel einmal zeigen, vier Knöpfe (Leer / Fast leer / Halb / Voll). Der Knopf steht bei «Verwalten» (in der App: Einstellungen) und meldet sich, wenn sie fällig ist.",
+      "Inventur wie im Betrieb, einmal im Jahr: jeden Artikel einmal zeigen, vier Knöpfe (Leer / Fast leer / Halb / Voll). Der Knopf steht unauffällig ganz am Ende der Liste und meldet sich, wenn sie fällig ist.",
       "Was über ein Jahr im Vorrat ist, ist markiert. Reiter «Verwalten»: hinzufügen, umbenennen, wegnehmen, Doppelte zusammenführen."],
     qa: [["Wann auf Bring!?", "Knappes wird gesammelt und nach einmal Prüfen gesendet – nie von selbst."], ["Alltag / Verwalten", "Eigener Reiter «Verwalten»."], ["Auf einen Blick", "Drei Kacheln pro Zeile mit Menge; Knappes zuoberst."]],
     pro: "Man sieht, wie viel da ist und was als Nächstes ausgeht. Nichts landet unbemerkt auf Bring!. Im Alltag kann man nichts löschen.",
     con: "Mengen stimmen nur mit der Inventur und wenn Gekauftes in Bring! abgehakt wird. Zwei Wege auf Bring! (hier und «Bring! füllen» im Plan). Lange Namen werden in drei Kacheln pro Zeile abgeschnitten.",
-    tryit: "Probier: «Woche kochen» → Olivenöl wird knapp → unten «Prüfen» → senden → rechts in der Bring!-Liste «Abhaken». Dann Reiter «Verwalten» → «Inventur starten»."
+    tryit: "Probier: «Woche kochen» → Olivenöl wird knapp → unten «Prüfen» → senden → rechts in der Bring!-Liste «Abhaken». Dann ganz nach unten scrollen → «Inventur starten»."
   }
 };
 
@@ -812,12 +812,12 @@ function viewC() {
       ["da", "Alles da", S.items.filter(it => !knapp(it) && !it.use), "–", ""]
     ];
     h += `<div class="cbar"><button type="button" class="tbtn sm" data-act="cook">Woche kochen</button><span class="note">Kachel antippen = Menge ändern</span></div>`;
+    const invCard = () => {
+      const [y, m] = S.inv.split("-").map(Number), [ny, nm] = NOW_YM.split("-").map(Number), due = (ny - y) * 12 + (nm - m) >= 12;
+      return `<div class="inv card${due ? " due" : ""}"><div class="tx"><b>Inventur</b><span>Letzte: ${MONTHS[m - 1]} ${y}${due ? " – fällig (einmal im Jahr)" : ""}</span></div><button type="button" class="${due ? "fbtn" : "tbtn"}" data-act="clean">Inventur starten</button></div>`;
+    };
     h += cols.map(([k, t, list, none, hint]) => `<section class="sec col ${k}" aria-label="${t}"><h3><span>${t}</span><small>${list.length}${hint ? " · " + hint : ""}</small></h3>${list.length ? `<div class="grid3">${list.map(tile).join("")}</div>` : `<p class="none">${none}</p>`}</section>`).join("");
-    return h;
-  }
-  {
-    const [y, m] = S.inv.split("-").map(Number), [ny, nm] = NOW_YM.split("-").map(Number), due = (ny - y) * 12 + (nm - m) >= 12;
-    h += `<div class="inv card${due ? " due" : ""}"><div class="tx"><b>Inventur</b><span>Letzte: ${MONTHS[m - 1]} ${y}${due ? " – fällig (einmal im Jahr)" : ""}. In der App unter Einstellungen.</span></div><button type="button" class="${due ? "fbtn" : "tbtn"}" data-act="clean">Inventur starten</button></div>`;
+    return h + invCard();
   }
   h += addBox("addC", "Artikel hinzufügen (wie in Bring!)") + dupCard();
   for (const [sec, items] of groups(S.items)) {
