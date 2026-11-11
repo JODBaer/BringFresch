@@ -26,6 +26,8 @@
   // Spenden-Link (z.B. Wise «Pay me»-Link https://wise.com/pay/me/…); leer = Knopf ausgeblendet
   const DONATE_URL = "";
   const REPO_URL = "https://github.com/jodbaer/BringFresch";
+  const TEST_URL = "https://bringfrisch-test.bringfrisch-worker.workers.dev"; // Test-Version (tools/build_stage.mjs)
+  const LIVE_URL = "https://jodbaer.github.io/BringFresch/";
   const DEFAULT_SYNC_URL = "https://bringfrisch.bringfrisch-worker.workers.dev";
   const SYNC_KEY = "bringfrisch_sync";
   const PLAN_UPDATED_KEY = "bringfrisch_plan_updated";
@@ -2831,7 +2833,6 @@
   $("setVoteBtn").onclick = () => openVoteFor();
   $("repoLink").href = REPO_URL;
   $("appVersionTop").textContent = APP_VERSION;
-  $("repoLinkTop").href = REPO_URL;
 
   // Aktualisieren: erst eigene Änderungen senden und den Stand der WG holen, dann neue App-Version laden
   const verNum = v => String(v || "0").split(".").map(n => parseInt(n, 10) || 0);
@@ -2851,19 +2852,22 @@
     try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch (e) { /* egal */ }
     location.reload();
   }
-  const repoHtml = () => `Quellcode: <a href="${esc(REPO_URL)}" target="_blank" rel="noopener">GitHub ↗</a>`;
+  // Link neben der Version: in der WG-Version zur Test-Version, in der Test-Version zurück zur WG-Version (Quellcode steht in der Zeile darunter)
+  const IS_TEST = DEFAULT_SYNC_URL === TEST_URL;
+  const otherHtml = () => `<a id="repoLinkTop" href="${esc(IS_TEST ? LIVE_URL : TEST_URL)}" target="_blank" rel="noopener">${IS_TEST ? "WG-Version" : "Test-Version"} ↗</a>`;
+  $("updateState").innerHTML = otherHtml();
   async function checkUpdate(quiet) {
     try {
       const latest = await latestVersion();
       if (latest && isNewer(latest, APP_VERSION)) {
-        setUpdateState(`Neue Version <b>${esc(latest)}</b> verfügbar · ${repoHtml()}`, true);
+        setUpdateState(`Neue Version <b>${esc(latest)}</b> verfügbar · ${otherHtml()}`, true);
         if (quiet) toast(`Neue Version ${latest} verfügbar`, { label: "Laden", run: () => $("updateBtn").click() });
         return latest;
       }
-      if (!quiet) setUpdateState(`Neueste Version ✓ · ${repoHtml()}`);
+      if (!quiet) setUpdateState(`Neueste Version ✓ · ${otherHtml()}`);
       return null;
     } catch (e) {
-      if (!quiet) setUpdateState(`Offline – später nochmals · ${repoHtml()}`);
+      if (!quiet) setUpdateState(`Offline – später nochmals · ${otherHtml()}`);
       return null;
     }
   }
