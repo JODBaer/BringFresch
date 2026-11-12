@@ -1507,7 +1507,10 @@ await step(B, "Menü tauschen (Blatt «Tauschen mit»), Einkauf nach Gericht, Ka
   await until(B, ([a, b]) => document.querySelector('.prow[data-i="0"] .t').textContent.trim() === b && document.querySelector('.prow[data-i="1"] .t').textContent.trim() === a, "Mo ↔ Di nicht getauscht", [t0, t1]);
   await toastIs(B, /getauscht/);
   await goTab(B, "shop");
-  await until(B, t => [...document.querySelectorAll("#shopList .aisle.dish h3")].some(h => h.textContent.includes(t)), "Einkauf nicht nach Gericht", t1);
+  // dieses Handy hat schon alles auf Bring! gefüllt -> «Auf Bring!» zeigt die Gerichte
+  await tap(B, '#tab-shop .seg [data-filter="onBring"]');
+  await until(B, () => { const h = [...document.querySelectorAll("#shopList .aisle.dish h3")].map(x => x.textContent); return h.length > 1 && !h.some(x => /Obst & Gemüse|Milch & Käse|Fleisch & Fisch/.test(x)); }, "Einkauf nicht nach Gericht");
+  await tap(B, '#tab-shop .seg [data-filter="toBuy"]');
   await shot(B, "09c-einkauf-nach-gericht");
   await goTab(B, "plan");
   // Beliebtheit: Stimmen der Wochenwahl dieser WG (vom WG-Server) sortieren den Katalog
