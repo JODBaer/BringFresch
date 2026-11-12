@@ -71,7 +71,8 @@ class RecipeImporter {
     }
   }
 
-  createCustomRecipe({ title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "" }) {
+  // shared: für alle WGs sichtbar (Standard). Nur «false» wird gespeichert (fehlt = geteilt).
+  createCustomRecipe({ title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "", shared = true }) {
     const cleanUrl = (url || "").trim();
     const recipe = {
       id: "custom-" + Date.now(),
@@ -85,16 +86,17 @@ class RecipeImporter {
       season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
       is_custom: true
     };
+    if (shared === false) recipe.shared = false;
     if (cleanUrl) recipe.source_url = cleanUrl;
     // gleicher Link nochmals geholt -> bestehendes Rezept aktualisieren statt doppelt
     const same = cleanUrl && this.customRecipes.find(r => r.source_url === cleanUrl);
-    if (same) return this.updateCustomRecipe(same.id, { title, url: cleanUrl, diet, servings, ingredientsText, instructions });
+    if (same) return this.updateCustomRecipe(same.id, { title, url: cleanUrl, diet, servings, ingredientsText, instructions, shared });
     this.customRecipes.push(recipe);
     this.saveCustomRecipes();
     return recipe;
   }
 
-  updateCustomRecipe(id, { title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "" }) {
+  updateCustomRecipe(id, { title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "", shared = true }) {
     const r = this.customRecipes.find(x => x.id === id);
     if (!r) return null;
     const cleanUrl = (url || "").trim();
@@ -106,6 +108,7 @@ class RecipeImporter {
       instructions: (instructions || "").trim(),
     });
     if (cleanUrl) r.source_url = cleanUrl; else delete r.source_url;
+    if (shared === false) r.shared = false; else delete r.shared;
     this.saveCustomRecipes();
     return r;
   }

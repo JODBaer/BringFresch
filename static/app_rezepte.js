@@ -118,6 +118,7 @@
       if (f === "fleisch" && r.diet !== "fleisch") return false;
       if (f === "season" && !inSeason(r)) return false;
       if (f === "custom" && !r.is_custom && !String(r.id).startsWith("custom-")) return false;
+      if (f === "shared" && !r.shared_from) return false;
       if (q) {
         const hay = [r.title, ...(r.ingredients || []).map(i => i.name)].join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
@@ -134,7 +135,7 @@
           <div class="recipe-head">
             <div>
               <b>${esc(r.title)}</b>
-              <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}</small>
+              <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}${r.shared_from ? " · geteilt" : custom && r.shared === false ? " · nur unsere WG" : ""}</small>
             </div>
             ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : "🔎 Rezept suchen"}</a>` : ""}
           </div>
@@ -244,6 +245,7 @@
       $("recipeIngredients").value = importer.ingredientsToText(base.ingredients);
       $("recipeInstructions").value = base.instructions || "";
     }
+    $("recipeShared").checked = !(edit && edit.shared === false); // Standard: geteilt
     $("recipeDialog").showModal();
     $("catalogDialog").close();
     if (link) { $("recipeUrl").value = link; fetchRecipeLink(true); }
@@ -285,7 +287,8 @@
       diet: $("recipeDiet").value,
       servings: $("recipeServings").value,
       ingredientsText: $("recipeIngredients").value,
-      instructions: $("recipeInstructions").value
+      instructions: $("recipeInstructions").value,
+      shared: $("recipeShared").checked
     };
     const recipe = editingId ? importer.updateCustomRecipe(editingId, fields) : importer.createCustomRecipe(fields);
     const mode = state.catalogMode;
@@ -393,5 +396,5 @@
     }
   }
 
-  Object.assign(app, { setupSeason, openCatalog, openRecipeForm, linkIn, renderSites, renderMyRecipes });
+  Object.assign(app, { setupSeason, openCatalog, openRecipeForm, linkIn, renderSites, renderMyRecipes, renderCatalog });
 })();

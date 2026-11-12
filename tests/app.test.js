@@ -129,6 +129,30 @@ d.getElementById("recipeForm").dispatchEvent(new w.Event("submit", { cancelable:
 const p = plan0()[3];
 check(p.title === "Testgratin" && p.servings === 2, "eigenes Rezept gespeichert und eingeplant");
 check(p.ingredients[2].name === "Gemüsebouillon" && p.ingredients[2].unit === "Stk", "Parser: '500 Gemüsebouillon' wird nicht als 'g emüsebouillon' gelesen");
+{
+  const mine = JSON.parse(w.localStorage.getItem("bringfrisch_custom_recipes")).find(r => r.title === "Testgratin");
+  check(mine && mine.shared === undefined, "eigenes Rezept: standardmässig für alle WGs geteilt (kein shared:false)");
+  // Rezepte anderer WGs (Zwischenspeicher von /recipes/shared) gehören zum Bestand: Katalog, Filter «Andere WGs»
+  w.localStorage.setItem("bringfrisch_shared_recipes", JSON.stringify([{ id: "x-sonnenhof-custom-9", title: "Sonnenhof-Curry", diet: "vegi", servings: 4, ingredients: [{ name: "Kichererbsen", amount: "400", unit: "g" }], season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], shared_from: true }]));
+  d.querySelector("#days [data-pick='3']").click();
+  d.querySelector("#mlist [data-catalog]").click();
+  d.querySelector('#catalogFilters [data-filter="shared"]').click();
+  const rows = [...d.querySelectorAll("#catalogList .recipe")];
+  check(rows.length === 1 && rows[0].querySelector("b").textContent === "Sonnenhof-Curry" && /geteilt/.test(rows[0].querySelector("small").textContent), "Rezept einer anderen WG im Katalog, mit «geteilt»");
+  d.getElementById("newRecipeBtn").click();
+  check(d.getElementById("recipeShared").checked, "Formular: «Mit allen WGs teilen» vorgewählt");
+  d.getElementById("recipeTitle").value = "Nur für uns";
+  d.getElementById("recipeIngredients").value = "1 Stk Ei";
+  d.getElementById("recipeShared").checked = false;
+  d.getElementById("recipeForm").dispatchEvent(new w.Event("submit", { cancelable: true }));
+  const priv = JSON.parse(w.localStorage.getItem("bringfrisch_custom_recipes")).find(r => r.title === "Nur für uns");
+  check(priv && priv.shared === false, "abgewählt: Rezept bleibt in der eigenen WG (shared:false)");
+  w.localStorage.removeItem("bringfrisch_shared_recipes");
+  d.querySelector("#days [data-pick='3']").click();
+  d.querySelector("#mlist [data-catalog]").click();
+  d.querySelector('#catalogFilters [data-filter="all"]').click(); // Katalog wieder «Alle» für die nächsten Schritte
+  d.getElementById("catalogDialog").close();
+}
 
 // 7. Mitbewohner hinzufügen
 d.getElementById("newMemberName").value = "Mia";

@@ -349,6 +349,27 @@ check(!ls.lists.some(l => l.uuid === "list-sh"), "erste WG sieht die Liste der z
 r = await call("/cal/cal-sonnenhof-0123456789.ics", { pin: null });
 check(r.status === 200 && (await r.text()).includes("Sonnenhof-Risotto"), "Kalender-Abo der zweiten WG zeigt ihren Plan");
 check((await (await sh("/cal-link")).json()).url.endsWith("/cal/cal-sonnenhof-0123456789.ics"), "Kalender-Link pro WG");
+
+// 7b. Geteilte Rezepte: eigene Rezepte sind für alle WGs sichtbar (ausser abgewählt), Stimmen bleiben pro WG
+{
+const smem = [{ id: "a", name: "A" }];
+const srec = (id, title, extra = {}) => ({ id, title, diet: "vegi", servings: 4, ingredients: [{ name: "Lauch", amount: "500", unit: "g" }], ...extra });
+r = await call("/settings", { method: "PUT", body: { settings: { members: smem, customRecipes: [srec("custom-1", "Mamas Lauchgratin", { instructions: "Ofen 200°" }), srec("custom-2", "Geheimrezept", { shared: false })] } } });
+check(r.status === 200, "erste WG speichert zwei eigene Rezepte (eins nicht geteilt)");
+let shr = await (await sh("/recipes/shared")).json();
+const got = shr.recipes.find(x => x.title === "Mamas Lauchgratin");
+check(!!got && got.id.startsWith("x-") && got.id.endsWith("-custom-1") && got.shared_from === true && got.ingredients[0].name === "Lauch" && got.instructions === "Ofen 200°", `zweite WG sieht das geteilte Rezept der ersten (${got && got.id}), ohne WG-Namen`);
+check(!shr.recipes.some(x => x.title === "Geheimrezept"), "abgewähltes Rezept bleibt in der eigenen WG");
+check((await (await call("/recipes/shared")).json()).recipes.length === 0, "eigene Rezepte kommen nicht doppelt zurück");
+r = await sh("/settings", { method: "PUT", body: { settings: { members: smem, customRecipes: [srec("custom-1", "Sonnenhof-Curry")] } } });
+const fromMain = (await (await call("/recipes/shared")).json()).recipes;
+check(fromMain.length === 1 && fromMain[0].title === "Sonnenhof-Curry" && fromMain[0].shared_from === true && !JSON.stringify(fromMain).includes("Sonnenhof\""), "erste WG sieht das Rezept der zweiten (gleiche eigene id, trotzdem getrennt)");
+check((await (await sh("/recipes/shared")).json()).recipes.some(x => x.title === "Mamas Lauchgratin"), "zweite WG überschreibt die Rezepte der ersten nicht");
+r = await call("/settings", { method: "PUT", body: { settings: { members: smem, customRecipes: [] } } });
+check(!(await (await sh("/recipes/shared")).json()).recipes.some(x => x.title === "Mamas Lauchgratin"), "gelöschtes Rezept verschwindet auch bei den anderen");
+r = await call("/recipes/shared", { pin: "0000" });
+check(r.status === 401, "geteilte Rezepte nur mit PIN");
+}
 env.MAIN_WG = "Bärenhaus";
 r = await call("/wg", { wg: "barenhaus" });
 check(r.status === 200 && (await r.json()).main, "erste WG geht auch mit ihrem Namen (Umlaute egal)");

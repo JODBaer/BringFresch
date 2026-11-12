@@ -30,7 +30,8 @@
     VOTE_KEY: "bringfrisch_week_vote",             // alte Wochenwahl (vor «pro Woche»), wird beim Start umgezogen
     OS_KEY: "bf-os",                               // Stil iPhone / Android (auch in index.html gelesen)
     THEME_KEY: "bf-theme",                         // Farben
-    MODE_KEY: "bf-mode"                            // Hell / Dunkel (auch in index.html gelesen)
+    MODE_KEY: "bf-mode",                           // Hell / Dunkel (auch in index.html gelesen)
+    SHARED_RECIPES_KEY: "bringfrisch_shared_recipes" // Rezepte der anderen WGs (Zwischenspeicher von /recipes/shared, offline da)
   };
   // Schlüssel mit Zusatz
   const baseKey = name => `bringfrisch_base_${name}`;   // gemerkter Server-Stand: plan | next | vorrat | settings

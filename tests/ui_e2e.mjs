@@ -1466,6 +1466,37 @@ await step(B, "Katalog: «Anpassen» macht eine eigene Kopie (z.B. andere Person
   expect(mine.some(r => r.title === title && r.servings === 2), "Kopie mit 2 Personen nicht gespeichert");
 });
 
+await step(B, "Geteilte Rezepte: eigene gehen standardmässig an alle WGs, Rezepte einer anderen WG im Katalog («Andere WGs»)", async () => {
+  // eigene Rezepte dieser WG liegen nach dem Speichern der Einstellungen im gemeinsamen Bestand
+  for (let i = 0; i < 50 && !(kvJson("shared:wg1") || { recipes: [] }).recipes.length; i++) await new Promise(r => setTimeout(r, 100));
+  const mine = kvJson("shared:wg1");
+  expect(mine && mine.recipes.length > 0 && (kvJson("shared:index") || []).includes("wg1"), `eigene Rezepte nicht geteilt: ${JSON.stringify(mine)}`);
+  // eine andere WG hat ein Rezept geteilt
+  kv.set("shared:index", JSON.stringify([...(kvJson("shared:index") || []), "sonnenhof"]));
+  kv.set("shared:sonnenhof", JSON.stringify({ name: "Sonnenhof", updated: 1, recipes: [{ id: "custom-9", title: "Sonnenhof-Curry", diet: "vegi", servings: 4, prep_time_min: 30, ingredients: [{ name: "Kichererbsen", amount: "400", unit: "g" }], season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }] }));
+  await goTab(B, "wg");
+  await tap(B, "#syncNowBtn");
+  await until(B, () => (JSON.parse(localStorage.getItem("bringfrisch_shared_recipes") || "[]")).some(r => r.title === "Sonnenhof-Curry"), "geteiltes Rezept nicht abgeholt");
+  await goTab(B, "plan");
+  await tap(B, '.prow[data-i="3"] .t');
+  await tap(B, "#mlist [data-catalog]");
+  await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
+  await tap(B, '#catalogFilters [data-filter="shared"]');
+  await until(B, () => { const r = [...document.querySelectorAll("#catalogList .recipe")]; return r.length === 1 && r[0].querySelector("b").textContent === "Sonnenhof-Curry" && /geteilt/.test(r[0].querySelector("small").textContent); }, "Filter «Andere WGs» zeigt das Rezept der anderen WG nicht");
+  expect((await B.page.$eval("#catalogList [data-edit]", b => b.textContent)) === "Anpassen", "Rezept einer anderen WG: nur «Anpassen» (eigene Kopie), nicht bearbeiten");
+  await tap(B, "#catalogList [data-assign]");
+  await until(B, () => document.querySelector('.prow[data-i="3"] .t').textContent === "Sonnenhof-Curry", "Rezept der anderen WG nicht eingeplant");
+  // neues eigenes Rezept: «Mit allen WGs teilen» ist vorgewählt
+  await tap(B, '.prow[data-i="3"] .t');
+  await tap(B, "#mlist [data-catalog]");
+  await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
+  await tap(B, '#catalogFilters [data-filter="all"]');
+  await tap(B, "#newRecipeBtn");
+  await until(B, () => document.getElementById("recipeDialog").open && document.getElementById("recipeShared").checked, "«Mit allen WGs teilen» nicht vorgewählt");
+  await shot(B, "09b-rezept-teilen");
+  await closeDialog(B, "recipeDialog");
+});
+
 await step(B, "Navigation: jeder Tab, kein seitliches Scrollen; keine JS-Fehler, nichts ins Internet", async () => {
   for (const t of ["shop", "season", "wg", "plan"]) { await goTab(B, t); await noHScroll(B, t); await shot(B, `10-${t}`); }
   expect(B.errors.length === 0, B.errors.join(" | "));

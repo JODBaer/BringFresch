@@ -236,7 +236,12 @@
   // Rezepte & Wochenplan
   // ---------------------------------------------------------------------------
   function allRecipes() {
-    return [...(DATA.recipes || []), ...(window.BRINGFRISCH_IMPORTED || []), ...((importer && importer.customRecipes) || [])];
+    // gleicher Bestand für alle WGs: Katalog + eigene + geteilte der anderen WGs (Stimmen bleiben pro WG)
+    return [...(DATA.recipes || []), ...(window.BRINGFRISCH_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
+  }
+  function sharedRecipes() {
+    const list = load(STORE.KEYS.SHARED_RECIPES_KEY, []);
+    return Array.isArray(list) ? list : [];
   }
 
   // Gemeinsamer Nenner der Anwesenden: vegan > vegi > fleisch

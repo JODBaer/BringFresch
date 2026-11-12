@@ -43,6 +43,8 @@ Schema: [`worker/schema.sql`](../worker/schema.sql). Kurz:
 
 ## Geteilte Rezepte
 
+> **Stand 12.11.2026: ohne D1 gebaut** (KV, `worker/src/geteilt.js`): eigene Rezepte standardmässig für alle WGs geteilt (Joshua: «eigene immer standardmässig shared»), abwählbar pro Rezept. Der Rest dieses Abschnitts ist der ursprüngliche Entwurf.
+
 - **Eigenes Rezept:** «Für alle WGs teilen» ist ein Schalter beim Speichern, standardmässig aus.
 - **Geteilt:** nur Fakten (Titel, Zutaten, Mengen, Personen, Saison, Link). Kein kopierter Text von fremden Seiten, wie beim Import heute.
 - **Andere WGs:** Sie sehen geteilte Rezepte im Katalog unter «Von anderen WGs». Übernehmen bedeutet einen Eintrag in `wg_recipe`, keine Kopie. Ändern erstellt eine eigene Kopie, wie heute «Anpassen».

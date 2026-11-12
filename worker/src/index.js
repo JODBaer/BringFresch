@@ -18,6 +18,7 @@
 //   GET  /recipe?url=…                -> { title, servings, ingredients[], minutes }  (Rezept-Link importieren)
 //   GET/PUT /vorrat                   -> gemeinsamer Grundvorrat der WG
 //   GET/PUT /settings                 -> WG-Einstellungen (Mitbewohner, Znacht-Zeit, Rezept-Webseiten, eigene Rezepte)
+//   GET  /recipes/shared              -> { recipes } eigene Rezepte der anderen WGs (standardmässig geteilt)
 //   GET  /cal-link                    -> { url } Abo-Link für den Kalender
 //   GET  /cal/:token.ics              -> Kalender-Abo (iCal) mit allen Znacht der Woche
 //        ?me=<id>                     -> nur die Abende, an denen diese Person mitisst (persönliches Abo)
@@ -40,6 +41,7 @@ import { backup, getWeek, putDoc } from "./speicher.js";
 import { bringList, bringLists, bringRemove, bringSetTarget, bringSync } from "./bring.js";
 import { calendar } from "./kalender.js";
 import { importRecipe, recipeImage } from "./rezept.js";
+import { getShared, publishShared } from "./geteilt.js";
 // Für Tests und Werkzeuge
 export { backup } from "./speicher.js";
 export { pinHash, wgSlug } from "./auth.js";
@@ -132,8 +134,12 @@ async function route(request, env, url) {
       || st.members.some(m => !m || typeof m.id !== "string" || typeof m.name !== "string")) throw httpError(400, "Einstellungen ungültig");
     const raw = JSON.stringify(st);
     if (raw.length > 400000) throw httpError(400, "Einstellungen zu gross");
-    return putDoc(env, "settings", { settings: st }, data.base);
+    const res = await putDoc(env, "settings", { settings: st }, data.base);
+    if (res.status === 200) await publishShared(env, st); // eigene Rezepte für alle WGs (ausser abgewählte)
+    return res;
   }
+  // Geteilte Rezepte der anderen WGs (gleicher Bestand für alle; Stimmen und Rangliste bleiben pro WG)
+  if (path === "/recipes/shared" && method === "GET") return json(await getShared(env));
 
   if (path === "/recipe" && method === "GET") return json(await importRecipe(url.searchParams.get("url")));
 

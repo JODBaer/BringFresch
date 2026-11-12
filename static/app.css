@@ -787,3 +787,8 @@ button, a, label, summary, [role="button"], .item, .btile, .qt, .vrow, .dchip { 
 @media (prefers-reduced-motion: reduce) { .qt.back { animation: none; } .vsw i, .vsw i::after { transition: none; } }
 /* Blätter des Grundvorrats: deckend (im Glas-Stil schien die Seite durch) */
 #stapleItemDialog, #compareDialog, #invDialog { background: var(--bg); }
+
+/* Rezept: «Mit allen WGs teilen» */
+.share-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; font-weight: 600; }
+.share-toggle input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
+.share-toggle small { flex-basis: 100%; font-weight: 400; color: var(--muted); font-size: 12px; }

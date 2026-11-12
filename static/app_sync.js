@@ -5,7 +5,7 @@
   "use strict";
   const app = window.BF_APP;
   if (!app) return;
-  const { weekKey, bringPayload, importer, DEFAULT_MEMBERS, DEFAULT_SYNC_URL, load, save, remove, baseKey, SYNC_KEY,
+  const { STORE, weekKey, bringPayload, importer, DEFAULT_MEMBERS, DEFAULT_SYNC_URL, load, save, remove, baseKey, SYNC_KEY,
     PLAN_UPDATED_KEY, VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY, KEYS, state,
     currentPlan, otherPlan, saveStaples, $, esc, toast, normalizeWeek, refresh, nextWeekKey, canPlanNext, isOpenWeek,
     setCurrentPlan } = app;
@@ -315,11 +315,17 @@
   async function pullShared() {
     if (!connected()) return;
     try {
-      const [remote, bring, vorrat, remoteNext, remoteSettings] = await Promise.all([
+      const [remote, bring, vorrat, remoteNext, remoteSettings, shared] = await Promise.all([
         api("/plan"), api("/bring/list"), api("/vorrat"),
         canPlanNext() ? api(`/plan/${nextWeekKey()}`).catch(() => null) : null,
-        api("/settings").catch(e => { if (/Endpunkt/.test(e.message)) settingsServer = false; return null; })
+        api("/settings").catch(e => { if (/Endpunkt/.test(e.message)) settingsServer = false; return null; }),
+        api("/recipes/shared").catch(() => null) // älterer Server: keine geteilten Rezepte
       ]);
+      // Rezepte der anderen WGs: gleicher Bestand für alle, offline zwischengespeichert
+      if (shared && Array.isArray(shared.recipes)) {
+        const before = JSON.stringify(load(STORE.KEYS.SHARED_RECIPES_KEY, []));
+        if (before !== JSON.stringify(shared.recipes)) { save(STORE.KEYS.SHARED_RECIPES_KEY, shared.recipes); if (app.renderCatalog) app.renderCatalog(); }
+      }
       // WG-Einstellungen: hat der Server noch keine, bekommt er unsere; sonst siehe «Abgleich» oben
       if (remoteSettings) {
         settingsServer = true;
@@ -524,6 +530,7 @@
     ["plan", "next", "vorrat", "settings"].forEach(n => remove(baseKey(n)));
     state.nextDoc = null;
     remove(NEXT_KEY);
+    remove(STORE.KEYS.SHARED_RECIPES_KEY); // Rezepte der anderen WGs gehören zum WG-Server
   }
 
   Object.assign(app, { connected, api, setSyncStatus, setBase, pushPlanNow, pushNextNow, pushVorratNow,

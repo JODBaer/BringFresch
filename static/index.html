@@ -268,6 +268,7 @@
           <button type="button" data-filter="fleisch" aria-pressed="false">Fleisch</button>
           <button type="button" data-filter="season" aria-pressed="false">Saison</button>
           <button type="button" data-filter="custom" aria-pressed="false">Eigene</button>
+          <button type="button" data-filter="shared" aria-pressed="false">Andere WGs</button>
         </div>
         <div id="catalogList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
@@ -336,6 +337,7 @@
         <label class="field">Zubereitung <small>optional</small>
           <textarea id="recipeInstructions" style="min-height:70px;font-family:var(--font)"></textarea>
         </label>
+        <label class="share-toggle"><input type="checkbox" id="recipeShared" checked> Mit allen WGs teilen <small>andere WGs sehen Titel, Zutaten und Zubereitung</small></label>
         <button class="btn dark" type="submit" id="recipeSubmitBtn">Speichern &amp; einplanen</button>
       </div>
     </form>
