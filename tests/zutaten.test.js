@@ -4,10 +4,10 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
 const path = require("path");
 const { fixWindow, STANDARD_NOW } = require("./determinism");
+const { appHtml } = require("./app_html");
 
 const root = process.argv.find(a => !a.startsWith("--") && a !== process.argv[0] && a !== process.argv[1]) || path.join(__dirname, "..", "static");
-const html = fs.readFileSync(path.join(root, "index.html"), "utf8")
-  .replace(/<script src="([^"]+)"><\/script>/g, (_, f) => `<script>${fs.readFileSync(path.join(root, f), "utf8")}</script>`);
+const html = appHtml(root); // alle <script src> aus index.html eingebettet (app_html.js)
 const errors = [];
 const vc = new VirtualConsole();
 vc.on("jsdomError", e => errors.push(e.message));

@@ -7,13 +7,13 @@
 // Ablauf: Server erreichbar -> nur «Home-test» sichtbar -> Artikel setzen/ändern/wegnehmen
 //         -> Test-App (dist-stage) in jsdom: verbinden, «Bring! füllen», alles auf «Home-test» -> aufräumen.
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 const require = createRequire(import.meta.url);
 const { JSDOM, VirtualConsole } = require("jsdom");
 const { fixWindow } = require("./determinism.js");
+const { appHtml } = require("./app_html.js");
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = process.env.STAGE_URL || "https://bringfrisch-test.bringfrisch-worker.workers.dev";
@@ -75,8 +75,7 @@ try {
   const b = spawnSync(process.execPath, [path.join(here, "..", "tools", "build_stage.mjs")], { encoding: "utf8" });
   if (!check(b.status === 0, "Test-App gebaut (dist-stage)")) { console.log(b.stderr); finish(); }
   const dist = path.join(here, "..", "dist-stage");
-  const html = readFileSync(path.join(dist, "index.html"), "utf8")
-    .replace(/<script src="([^"]+)"><\/script>/g, (_, f) => `<script>${readFileSync(path.join(dist, f), "utf8")}</script>`);
+  const html = appHtml(dist); // alle <script src> eingebettet (app_html.js)
   const errors = [];
   const vc = new VirtualConsole();
   vc.on("jsdomError", e => errors.push(e.message));

@@ -6,6 +6,7 @@ import path from "path";
 const require = createRequire(import.meta.url);
 const { JSDOM, VirtualConsole } = require("jsdom");
 const { fixWindow, STANDARD_NOW } = require("./determinism.js");
+const { appHtml } = require("./app_html.js");
 
 const root = process.argv[2] || path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..", "static");
 const worker = (await import("file:///" + path.join(root, "..", "worker", "src", "index.js").replace(/\\/g, "/"))).default;
@@ -42,8 +43,7 @@ globalThis.fetch = async (url, init = {}) => {
   return new Response("?", { status: 599 });
 };
 
-const html = fs.readFileSync(path.join(root, "index.html"), "utf8")
-  .replace(/<script src="([^"]+)"><\/script>/g, (_, f) => `<script>${fs.readFileSync(path.join(root, f), "utf8")}</script>`);
+const html = appHtml(root); // alle <script src> aus index.html eingebettet (app_html.js)
 const errors = [];
 const vc = new VirtualConsole();
 vc.on("jsdomError", e => errors.push(e.message));
