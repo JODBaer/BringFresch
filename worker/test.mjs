@@ -19,7 +19,7 @@ const env = { WG: KV, WG_PIN: "1234", CAL_TOKEN: "cal-secret", BRING_EMAIL: "bot
 const bringCalls = [];
 const bringList = [{ name: "Milch", specification: "" }];
 const wgPuts = [];
-let tokenNo = 0, expireToken = false;
+let batchFail = false, tokenNo = 0, expireToken = false;
 let imgFetches = 0;
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
@@ -32,6 +32,15 @@ globalThis.fetch = async (url, init = {}) => {
   }
   if (expireToken && url.includes("getbring.com")) { expireToken = false; return new Response("", { status: 401 }); }
   if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home-test" }, { listUuid: "list-wg", name: "WG" }, { listUuid: "list-sh", name: "Sonnenhof" }] });
+  if (url.endsWith("/bringlists/list-1/items") && init.method === "PUT") { // Batch
+    if (batchFail) return new Response("kaputt", { status: 500 });
+    for (const c of JSON.parse(init.body).changes) {
+      const i = bringList.findIndex(x => x.name === c.itemId);
+      if (c.operation === "REMOVE") { if (i >= 0) bringList.splice(i, 1); } else if (i >= 0) bringList[i].specification = c.spec; else bringList.push({ name: c.itemId, specification: c.spec });
+    }
+    return new Response(null, { status: 204 });
+  }
+  if (url.endsWith("/bringlists/list-wg/items") && init.method === "PUT") { for (const c of JSON.parse(init.body).changes) if (c.operation !== "REMOVE") wgPuts.push(c.itemId); return new Response(null, { status: 204 }); }
   if (url.includes("/bringlists/list-wg") && (init.method || "GET") === "GET") return Response.json({ items: { purchase: wgPuts.map(n => ({ itemId: n })) } });
   if (url.includes("/bringlists/list-wg") && init.method === "PUT") { wgPuts.push(new URLSearchParams(init.body).get("purchase")); return new Response(null, { status: 204 }); }
   if (url.includes("/bringlists/list-1") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
@@ -93,9 +102,29 @@ r = await call("/bring/sync", { method: "POST", body: { items: [{ name: "Rüebli
 const sync = await r.json();
 check(sync.ok && sync.pushed === 2, "2 Artikel an Bring! gesendet");
 const put = bringCalls.find(c => c.init.method === "PUT");
-check(new URLSearchParams(put.init.body).get("specification") === "500 g" && put.init.headers.Authorization === "Bearer tok", "PUT mit Menge und Token");
+const pj = JSON.parse(put.init.body);
+check(sync.mode === "batch" && put.url.endsWith("/bringlists/list-1/items") && put.init.headers.Authorization === "Bearer tok" && /json/.test(put.init.headers["Content-Type"]), "Batch: PUT .../items mit JSON und Token");
+check(pj.changes.length === 2 && pj.changes[0].itemId === "Rüebli" && pj.changes[0].spec === "500 g" && pj.changes[0].operation === "TO_PURCHASE" && pj.changes[0].uuid && pj.changes[0].uuid !== pj.changes[1].uuid, "Batch enthält Name, Menge, Operation und je eine neue uuid");
+check(bringCalls.filter(c => c.init.method === "PUT").length === 1 && bringList.some(x => x.name === "Rüebli" && x.specification === "500 g"), "zwei Artikel = ein einziger PUT");
+bringCalls.length = 0;
 r = await call("/bring/sync", { method: "POST", body: { items: Array.from({ length: 60 }, (_, i) => ({ name: "x" + i })) } });
-check(r.status === 400, "mehr als 45 Artikel werden abgewiesen (Free-Plan-Limit)");
+let big = await r.json();
+check(r.status === 200 && big.pushed === 60 && big.mode === "batch" && bringCalls.filter(c => c.init.method === "PUT").length === 1, "60 Artikel (mehr als das alte Limit von 45) in einem einzigen Aufruf");
+bringCalls.length = 0;
+r = await call("/bring/remove", { method: "POST", body: { names: Array.from({ length: 60 }, (_, i) => "x" + i) } });
+const bigRm = await r.json();
+check(r.status === 200 && bigRm.removed === 60 && bringCalls.filter(c => c.init.method === "PUT").length === 1 && !bringList.some(x => /^x\d+$/.test(x.name)), "60 eigene Artikel in einem Aufruf wieder weg (Batch REMOVE)");
+// Rückfall: lehnt Bring! den Batch ab, geht es wie früher einzeln
+batchFail = true; bringCalls.length = 0;
+r = await call("/bring/sync", { method: "POST", body: { items: [{ name: "Fa1", spec: "1" }, { name: "Fa2", spec: "2" }] } });
+let fb = await r.json();
+check(fb.ok && fb.pushed === 2 && fb.mode === "single" && bringList.some(x => x.name === "Fa2" && x.specification === "2"), "Batch abgelehnt (500) -> Rückfall auf Einzelversand, alles angekommen");
+check(bringCalls.filter(c => c.init.method === "PUT" && !c.url.endsWith("/items")).length === 2, "Rückfall: je ein Aufruf pro Artikel");
+r = await call("/bring/remove", { method: "POST", body: { names: ["Fa1", "Fa2"] } });
+check((await r.json()).removed === 2 && !bringList.some(x => /^Fa/.test(x.name)), "Wegnehmen fällt ebenso zurück");
+batchFail = false;
+const own0 = (await (await call("/bring/list")).json()).mine;
+check(!own0.includes("Fa1") && !own0.includes("x1"), "Bot vergisst Weggenommenes (Bot-Merkliste sauber)");
 env.BRING_PASSWORD = "falsch";
 r = await call("/bring/list");
 check(r.status === 502 && /Bot-Kontos/.test((await r.json()).error), "verständlicher Fehler bei falschem Bot-Passwort");

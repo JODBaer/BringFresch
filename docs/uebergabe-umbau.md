@@ -30,7 +30,7 @@ Befehle einzeln ausführen (PowerShell kennt kein `&&`). Der Cloud-Chat kann kei
 | 3 Speicher / Zustand | Speicher erledigt, **Zustand offen** | `static/store.js` (`BF_STORE`): alle localStorage-Schlüssel |
 | 4 Abgleich mit Versionen | erledigt (+ Korrektur, siehe 1) | `app_sync.js`: `syncCase`, `merge3`, `push…Now`; `worker/src/speicher.js`: `putDoc` |
 | 5 Ansichten / CSS | erledigt (12.11., klassische Skripte mit Namensraum `BF_APP`); **Variante 4 + ein Zustand offen** | `static/app.css`; `static/app.js` (Grundlage) + `app_plan`, `app_einkauf`, `app_vorrat`, `app_rezepte`, `app_wahl`, `app_sync`, `app_einstellungen`, `app_theme`, `app_start` (Einzelheiten: `docs/refactoring-plan.md`, Schritt 5) |
-| 6 Worker | Anmeldung gemerkt, Datei aufgeteilt; **Batch offen** | `worker/src/`: `index`, `auth`, `speicher`, `bring`, `kalender`, `rezept`, `http` |
+| 6 Worker | Anmeldung gemerkt, Datei aufgeteilt; Batch gebaut (Live-Beweis in `stage_live.mjs` ausstehend) | `worker/src/`: `index`, `auth`, `speicher`, `bring`, `kalender`, `rezept`, `http` |
 | 7 Start | erledigt, **Schrift offen** | `sw.js`: höchstens 2.5 s aufs Netz warten; Cache-Name im Release = Version |
 | 8 D1 | bewusst nicht | nur für geteilte Rezepte zwischen WGs nötig |
 

@@ -31,6 +31,13 @@ const realFetch = globalThis.fetch;
 const bringList = [];
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
+  if (url.endsWith("/bringlists/L/items") && init.method === "PUT") { // Batch
+    for (const c of JSON.parse(init.body).changes) {
+      const i = bringList.findIndex(x => x.name === c.itemId);
+      if (c.operation === "REMOVE") { if (i >= 0) bringList.splice(i, 1); } else if (i < 0) bringList.push({ name: c.itemId, specification: c.spec });
+    }
+    return new Response(null, { status: 204 });
+  }
   if (url.endsWith("/bringlists/L") && init.method === "PUT") {
     const p = new URLSearchParams(init.body);
     if (p.get("remove")) { const i = bringList.findIndex(x => x.name === p.get("remove")); if (i >= 0) bringList.splice(i, 1); }

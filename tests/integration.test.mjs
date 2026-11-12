@@ -33,6 +33,13 @@ globalThis.fetch = async (url, init = {}) => {
   url = String(url);
   if (url.endsWith("/bringauth")) return Response.json({ uuid: "u", access_token: "t", bringListUUID: "L" });
   if (url.endsWith("/bringusers/u/lists")) return Response.json({ lists: [{ listUuid: "L", name: "WG" }] });
+  if (url.endsWith("/bringlists/L/items") && init.method === "PUT") { // Batch (ein Aufruf für viele Änderungen)
+    for (const c of JSON.parse(init.body).changes) {
+      const i = bringList.findIndex(x => x.name === c.itemId);
+      if (c.operation === "REMOVE") { if (i >= 0) bringList.splice(i, 1); } else if (i >= 0) bringList[i].specification = c.spec; else bringList.push({ name: c.itemId, specification: c.spec });
+    }
+    return new Response(null, { status: 204 });
+  }
   if (url.endsWith("/bringlists/L") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
   if (url.endsWith("/bringlists/L") && init.method === "PUT") {
     const p = new URLSearchParams(init.body);

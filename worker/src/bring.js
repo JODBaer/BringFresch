@@ -10,7 +10,7 @@ export const BRING_HEADERS = {
   "X-BRING-CLIENT-SOURCE": "webApp",
   "X-BRING-COUNTRY": "CH",
 };
-export const MAX_ITEMS = 45; // Free-Plan: 50 Unteranfragen pro Aufruf (1 Login + 1 Liste + Artikel)
+export const MAX_ITEMS = 45; // nur noch für den Einzelversand (Rückfall): Free-Plan erlaubt 50 Unteranfragen pro Aufruf (1 Login + 1 Liste + Artikel)
 
 // ---------------------------------------------------------------------------------------------
 // Bring!
@@ -173,46 +173,74 @@ export function bringPut(s, params) {
   });
 }
 
+// Viele Änderungen in EINEM Aufruf (inoffizielle Batch-Schnittstelle der Bring!-Web-App):
+// changes = [{ itemId, spec, operation: "TO_PURCHASE" | "TO_RECENTLY" | "REMOVE" }]. true = Bring! hat alles angenommen (2xx).
+// Nicht angenommen oder Netzfehler -> false, der Aufrufer fällt auf den Einzelversand zurück.
+export async function bringBatch(s, changes) {
+  try {
+    const res = await bringFetch(s, `${BRING}bringlists/${s.listUuid}/items`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ changes: changes.map(c => ({ ...c, uuid: crypto.randomUUID() })), sender: "" }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
 export async function bringSync(env, { items }) {
   if (!Array.isArray(items) || items.length === 0) throw httpError(400, "Keine Artikel");
-  if (items.length > MAX_ITEMS) throw httpError(400, `Maximal ${MAX_ITEMS} Artikel pro Aufruf`);
   const s = await bringLogin(env);
   const before = new Set((await bringPurchase(s)).map(n => n.toLowerCase()));
   const own = await loadOwn(env, s);
   const spec = it => String(it.spec || "").slice(0, 80);
-  let pushed = 0;
+  const list = items.map(it => ({ name: String(it.name || "").trim().slice(0, 80), spec: spec(it) })).filter(it => it.name);
+  const take = it => { // der Bot gibt an, was er gesetzt hat
+    const k = it.name.toLowerCase();
+    if (!before.has(k) || own[k]) own[k] = { name: it.name, spec: it.spec }; // neu oder schon vom Bot -> gehört ihm, Menge merken
+  };
+  let pushed = 0, mode = "batch";
   const errors = [];
-  for (const it of items) {
-    const name = String(it.name || "").trim().slice(0, 80);
-    if (!name) continue;
-    const res = await bringPut(s, { purchase: name, specification: spec(it) });
-    if (res.ok) {
-      pushed++;
-      const k = name.toLowerCase();
-      if (!before.has(k) || own[k]) own[k] = { name, spec: spec(it) }; // neu oder schon vom Bot -> gehört ihm, Menge merken
-    } else errors.push(`${name}: ${res.status}`);
+  if (list.length && (await bringBatch(s, list.map(it => ({ itemId: it.name, spec: it.spec, operation: "TO_PURCHASE" }))))) {
+    list.forEach(take);
+    pushed = list.length;
+  } else {
+    mode = "single"; // Rückfall: ein Artikel pro Aufruf (Free-Plan: höchstens MAX_ITEMS)
+    for (const [i, it] of list.entries()) {
+      if (i >= MAX_ITEMS) { errors.push(`${it.name}: zu viele Artikel für den Einzelversand`); continue; }
+      const res = await bringPut(s, { purchase: it.name, specification: it.spec });
+      if (res.ok) { pushed++; take(it); } else errors.push(`${it.name}: ${res.status}`);
+    }
   }
   await env.WG.put(ownKey(s), JSON.stringify(own));
-  return { ok: errors.length === 0, pushed, errors };
+  return { ok: errors.length === 0, pushed, errors, mode };
 }
 
 // Artikel wieder wegnehmen – aber nur, was der Bot selbst gesetzt hat und noch drauf ist.
 // Von anderen Gesetztes bleibt; schon Weggenommenes (gekauft/gelöscht) wird nur vergessen.
 export async function bringRemove(env, { names }) {
-  if (!Array.isArray(names) || names.length === 0 || names.length > MAX_ITEMS) throw httpError(400, "Keine Artikel");
+  if (!Array.isArray(names) || names.length === 0) throw httpError(400, "Keine Artikel");
   const s = await bringLogin(env);
   const onList = new Set((await bringPurchase(s)).map(n => n.toLowerCase()));
   const own = await loadOwn(env, s);
-  let removed = 0;
-  const notMine = [], gone = [];
+  const notMine = [], gone = [], todo = [];
   for (const n of names) {
     const name = String(n || "").trim().slice(0, 80);
     const k = name.toLowerCase();
     if (!name) continue;
     if (!onList.has(k)) { gone.push(name); delete own[k]; continue; }
     if (!own[k]) { notMine.push(name); continue; }
-    const res = await bringPut(s, { remove: name });
-    if (res.ok) { removed++; delete own[k]; }
+    todo.push(name);
+  }
+  let removed = 0;
+  if (todo.length && (await bringBatch(s, todo.map(name => ({ itemId: name, spec: "", operation: "REMOVE" }))))) {
+    removed = todo.length;
+    todo.forEach(name => delete own[name.toLowerCase()]);
+  } else {
+    for (const [i, name] of todo.entries()) {
+      if (i >= MAX_ITEMS) break; // Rückfall: Free-Plan-Limit; der Rest bleibt gemerkt und kann nochmals weg
+      const res = await bringPut(s, { remove: name });
+      if (res.ok) { removed++; delete own[name.toLowerCase()]; }
+    }
   }
   await env.WG.put(ownKey(s), JSON.stringify(own));
   return { ok: true, removed, notMine, gone };

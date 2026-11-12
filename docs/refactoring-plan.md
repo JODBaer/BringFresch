@@ -122,11 +122,11 @@ Danach, nicht vorher: **Grundvorrat neu gestalten zusammen mit Joshua** (siehe `
 
 Gebaut: `bringAuth` merkt die Anmeldung (Instanz + KV `bringtoken`, nicht in der Sicherung), `bringFetch` meldet bei 401 einmal frisch an.
 Datei aufgeteilt (11.11.2026): `index.js` (Endpunkte), `auth.js`, `speicher.js`, `bring.js`, `kalender.js`, `rezept.js`, `http.js`; Wrangler-Bündel geprüft.
-Offen: Batch-Schnittstelle (braucht einen Live-Test gegen «Home-test», geht nicht ohne Zugangsdaten).
+Batch (12.11.2026): `bringBatch` in `bring.js` – `PUT bringlists/{uuid}/items` mit `{changes:[{itemId,spec,uuid,operation}],sender:""}`, ein Aufruf für Setzen und für Wegnehmen (`TO_PURCHASE`/`REMOVE`); das 45er-Limit gilt nur noch im Rückfall. Lehnt Bring! den Batch ab (nicht 2xx, Netzfehler), geht der Worker wie früher einzeln (`mode: "single"` in der Antwort). «Bot löscht nur Eigenes» (`bot:<liste>`) und «Rückgängig» unverändert. Getestet in `worker/test.mjs` (Bring!-Attrappe: ein Aufruf für 60 Artikel, Rückfall). **Nur der Live-Test kann beweisen**, dass Bring! die inoffizielle Schnittstelle wirklich annimmt (`tests/stage_live.mjs`, prüft `mode`; fällt sonst still zurück).
 
 - Aufteilen: `router`, `auth`, `bring`, `speicher`, `kalender`, `rezept-import`, `sicherung`.
 - `bringLogin`: Access-Token im Speicher des Workers und in KV halten (Ablaufzeit aus der Bring!-Antwort), bei 401 neu anmelden. Spart einen Aufruf pro Anfrage.
-- Batch-Schnittstelle `PUT bringlists/{uuid}/items` (plan.md «Später») → ein Aufruf statt einer pro Artikel, 45er-Limit fällt weg. Zuerst gegen «Home-test» live prüfen (`tests/stage_live.mjs`).
+- ~~Batch-Schnittstelle `PUT bringlists/{uuid}/items`~~ – gebaut, siehe oben.
 
 ## Schritt 7 – Start und Cache – erledigt (ohne Schrift)
 

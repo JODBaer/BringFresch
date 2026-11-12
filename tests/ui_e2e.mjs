@@ -81,6 +81,15 @@ globalThis.fetch = async (url, init = {}) => {
   const method = init.method || "GET";
   if (url.endsWith("/bringauth")) return Response.json({ uuid: "u", access_token: "t", bringListUUID: "L" });
   if (url.endsWith("/bringusers/u/lists")) return Response.json({ lists: Object.entries(bring).map(([listUuid, l]) => ({ listUuid, name: l.name })) });
+  const bm = url.match(/\/bringlists\/(\w+)\/items$/); // Batch: ein Aufruf für viele Änderungen
+  if (bm && bring[bm[1]] && method === "PUT") {
+    const items = bring[bm[1]].items;
+    for (const c of JSON.parse(init.body).changes) {
+      const i = items.findIndex(x => x.name === c.itemId);
+      if (c.operation === "REMOVE") { if (i >= 0) items.splice(i, 1); } else if (i >= 0) items[i].specification = c.spec; else items.push({ name: c.itemId, specification: c.spec });
+    }
+    return new Response(null, { status: 204 });
+  }
   const lm = url.match(/\/bringlists\/(\w+)$/);
   if (lm && bring[lm[1]]) {
     const items = bring[lm[1]].items;

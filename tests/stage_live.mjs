@@ -62,6 +62,7 @@ try {
   const A = `BringFrisch Test A ${RUN}`, B = `BringFrisch Test B ${RUN}`;
   const s1 = await api("/bring/sync", { method: "POST", body: { items: [{ name: A, spec: "1 Stk" }, { name: B, spec: "200 g" }] } });
   check(s1.ok && s1.pushed === 2, "2 Test-Artikel an Bring! gesendet");
+  check(s1.mode === "batch", `Bring! nimmt die Batch-Schnittstelle an (Modus «${s1.mode}»; «single» = Rückfall, Batch abgelehnt)`);
   let l = await api("/bring/list");
   check(l.items.includes(A) && l.items.includes(B) && l.mine.includes(A), `beide stehen auf «${LIST}» und gehören dem Bot`);
   await api("/bring/sync", { method: "POST", body: { items: [{ name: A, spec: "3 Stk" }] } });
