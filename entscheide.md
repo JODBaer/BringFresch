@@ -17,7 +17,7 @@
 | 13 | Bot löscht nur, was er selbst gesetzt hat (Merkliste im Worker) | Einträge von Mitbewohnern bleiben unangetastet |
 | 14 | Schon Vorhandenes: pro Artikel nachfragen statt doppelt senden; danach «Rückgängig» | Zweites Rezept mit Rahm soll Menge erhöhen dürfen, aber nie unbemerkt |
 | 15 | Zutaten auf Bring!-Katalognamen abbilden, genaue Sorte in die Mengenangabe | Bring!-Bilder und -Abteilungen; eigene Bilder hochladen kann die API nicht |
-| 16 | Grundvorrat-Pillen klein, durchgestrichen, ohne Bild | Von Joshua so gewählt («durchgestrichen ist gutes Design und die Grösse auch») |
+| 16 | ~~Grundvorrat-Pillen klein, durchgestrichen, ohne Bild~~ (abgelöst durch #26, 12.11.2026) | Von Joshua so gewählt («durchgestrichen ist gutes Design und die Grösse auch») |
 | 17 | Neue Rezepte von Hand schreiben statt scrapen | Siehe #10; Fakten + kurze eigene Anleitung |
 | 18 | Plan-Ansicht nach eigener Spezifikation: iPhone = Glas, Android = Material 3 Expressive, gleiche Bedienung | Fühlt sich auf beiden Handys «zuhause» an; Vorgabe in `docs/design/` |
 | 19 | Schrift Roboto Flex lokal statt von Google Fonts | App bleibt offline und ohne fremde Server (#11) |
@@ -27,4 +27,4 @@
 | 23 | PWA in Vanilla JavaScript bleibt, kein Flutter | Link + «Zum Homescreen» statt App Store/TestFlight (iPhone bräuchte Mac, Xcode, Apple-Konto); Flutter-Web ist schwer und zeichnet auf Leinwand; kompletter Neubau inkl. Tests. Neu prüfen nur bei App Store, Homescreen-Widgets oder wenn JS unübersichtlich wird |
 | 24 | WG-Server kommt mit dem Release-Tag (nach grünen Tests), vor der App | Kein ungetesteter Server mehr von Hand; Server zuerst, damit die neue App ihn schon findet. Rückweg: `wrangler rollback` |
 | 25 | Tägliche Sicherung der WG-Daten im Worker selbst (KV `backup:<Tag>`, 30 Tage) | Schützt vor kaputtem Überschreiben durch einen App-Fehler; bleibt in Cloudflare, nichts landet im öffentlichen Repo |
-| 26 | Grundvorrat neu nach **Variante C** des Entwurfs (`docs/design/grundvorrat-varianten.html`): Mengen pro Artikel, Knappes und Abbuchen vorne beim Einkauf, ein Grundvorrat statt Vorrat + Verwalten, nichts geht ungefragt auf Bring! | Von Joshua am 11.11.2026 im Entwurf gewählt («wir nehmen C»). Einzelheiten sind noch offen – Joshua will noch darüber nachdenken; vor dem Bauen nachfragen. Ersetzt für den Grundvorrat #16 (Pillen) und die Regel «Antippen = direkt auf Bring!» erst mit dem Bau |
+| 26 | Grundvorrat neu nach **Variante C** des Entwurfs (`docs/design/grundvorrat-varianten.html`): Mengen pro Artikel, Knappes und Abbuchen vorne beim Einkauf, ein Grundvorrat statt Vorrat + Verwalten, nichts geht ungefragt auf Bring! | Von Joshua am 11.11.2026 im Entwurf gewählt («wir nehmen C»). 12.11.: «man kann es mal umsetzen, dann teste ich» → erste Fassung gebaut (Test-Version), Annahmen in `docs/uebergabe-umbau.md` Abschnitt 4. Ersetzt #16 (Pillen) und die Regel «Antippen = direkt auf Bring!» |

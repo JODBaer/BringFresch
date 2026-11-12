@@ -52,13 +52,15 @@
 
     <!-- 2. Einkauf -->
     <section class="tab" id="tab-shop" hidden>
-      <p class="label">Einkaufsliste <small id="shopSummary"></small></p>
+      <div class="label shophead"><span>Einkaufsliste <small id="shopSummary"></small></span>
+        <button type="button" class="cmpchip" id="compareBtn" aria-label="Auf Bring! setzen: Gegenüberstellung Kaufen und Vorrat"><span aria-hidden="true">🛒</span> <span id="cmpCount">0</span></button></div>
       <div class="card seg" role="group" aria-label="Filter">
         <button type="button" data-filter="toBuy" aria-pressed="true">Kaufen <span id="cntToBuy">0</span></button>
         <button type="button" data-filter="onBring" aria-pressed="false">Auf Bring! <span id="cntOnBring">0</span></button>
         <button type="button" data-filter="staples" aria-pressed="false">Vorrat <span id="cntStaples">0</span></button>
       </div>
       <div class="card" id="shopList"></div>
+      <div class="card vtray" id="vorratTray" hidden></div>
       <div class="row">
         <button class="btn" id="openStaplesBtn" type="button">Grundvorrat verwalten</button>
         <button class="btn" id="copyListBtn" type="button">Liste kopieren</button>
@@ -339,21 +341,61 @@
     </form>
   </dialog>
 
-  <!-- Grundvorrat -->
-  <dialog id="staplesDialog">
+  <!-- Grundvorrat (Variante C): hinzufügen, Kacheln, Blatt pro Artikel, Inventur -->
+  <dialog id="staplesDialog" class="full">
     <div class="sheet">
       <div class="sheet-head">
-        <div><h2>Grundvorrat</h2><p id="staplesHint">Antippen = auf eure Bring!-Liste. Nochmals antippen = wieder weg.</p></div>
+        <div><h2>Grundvorrat</h2><p id="staplesHint">Antippen = alles zum Artikel · lange drücken = − + und ✕</p></div>
         <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
       <div class="sheet-body">
-        <div id="staplesList" style="display:flex;flex-direction:column;gap:14px"></div>
-        <form class="row" id="addStapleForm">
-          <input type="text" id="newStaple" list="bringNames" placeholder="Weiterer Artikel (wie in Bring!)" aria-label="Weiterer Artikel" required>
-          <datalist id="bringNames"></datalist>
-          <button class="btn dark" type="submit" style="flex:0 0 auto">+</button>
+        <form class="addrow" id="addStapleForm" autocomplete="off">
+          <input type="text" id="newStaple" placeholder="Artikel hinzufügen (wie in Bring!)" aria-label="Artikel hinzufügen" enterkeyhint="done">
+          <button class="btn dark" type="submit" aria-label="Hinzufügen">+</button>
         </form>
+        <div id="stapleSugg" aria-live="polite"></div>
+        <p class="vsum" id="stapleSum"></p>
+        <div class="vbar"><span class="hint">Aufteilung</span>
+          <span class="mseg" role="group" aria-label="Aufteilung"><button type="button" data-grp="abteilung" aria-pressed="true">Abteilung</button><button type="button" data-grp="dringend" aria-pressed="false">Dringend</button></span></div>
+        <div id="staplesList"></div>
+        <div class="card vinv" id="invCard"></div>
       </div>
+    </div>
+  </dialog>
+
+  <!-- Ein Artikel im Grundvorrat: Menge, Packung, Infos, Name, wegnehmen -->
+  <dialog id="stapleItemDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div class="vhead"><span class="vimg" id="vImg" aria-hidden="true"></span><div><h2 id="vTitle"></h2><p id="vSub"></p></div></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body" id="vBody"></div>
+    </div>
+  </dialog>
+
+  <!-- Gegenüberstellung vor dem Senden: links Kaufen (Plan), rechts Vorrat -->
+  <dialog id="compareDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>Auf Bring! setzen</h2><p>Antippen = kommt auf die Liste. Gesendet wird erst mit dem Knopf.</p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="diff" id="compareCols"></div>
+        <div class="row"><button class="btn" type="button" data-close>Abbrechen</button><button class="btn primary" type="button" id="compareSendBtn">Senden</button></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Inventur: einmal im Jahr alles durchgehen -->
+  <dialog id="invDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2 id="invTitle">Inventur</h2><p>Wie viel ist wirklich noch da?</p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Aufhören">✕</button>
+      </div>
+      <div class="sheet-body" id="invBody"></div>
     </div>
   </dialog>
 

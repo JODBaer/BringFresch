@@ -52,5 +52,34 @@ check(C.assignDays(["y", "x"], week, ms, votes).y === 2, "Wunschtag Mittwoch wir
 week[2].eaters = ["c"]; week[0].eaters = ["a", "b"];
 check(C.assignDays(["x"], week, ms, votes).x === 0, "ohne Wunschtag: Tag, an dem die Fans da sind");
 
+// Grundvorrat mit Mengen (Variante C)
+const leerSt = C.shoppingList({ plan: [day], members, staples: [{ name: "Weissmehl", keywords: ["mehl"], in_stock: false }], bringItems: [] });
+check(!leerSt.some(i => i.from.includes("Grundvorrat")) && !leerSt.find(i => i.name === "Weissmehl").isStaple, "leerer Grundvorrat: Zutat steht unter «Kaufen», aber der Artikel kommt nicht von selbst auf die Liste");
+check(C.vQty({ name: "Öl" }) === 10 && C.vUnit({ name: "Öl" }) === "Znacht", "altes Format ohne Menge = eine volle Packung (10 Znacht)");
+check(C.vQty({ name: "Öl", in_stock: false, qty: 5 }) === 0, "altes Handy meldet leer (in_stock false) = 0, auch wenn noch eine Menge gespeichert ist");
+check(C.vQty({ name: "Öl", in_stock: true, qty: 0, pack: 15 }) === 15, "altes Handy meldet wieder da (in_stock true, qty 0) = eine Packung");
+const stk = n => ({ name: "Rahm", unit: "Stk", pack: 2, qty: n, size: "2.5 dl" });
+check(C.knappAb(stk(2)) === 1 && !C.isKnapp(stk(2)) && C.isKnapp(stk(1)), "Packung mit 2 Stück: knapp erst unter einer vollen Packung (1)");
+check(C.knappAb({ pack: 10 }) === 2 && C.isKnapp({ qty: 2, pack: 10 }) && !C.isKnapp({ qty: 3, pack: 10 }), "sonst knapp ab 2 oder weniger");
+check(C.isKnapp({ unit: "Stk", pack: 1, qty: 1 }) === false && C.isKnapp({ unit: "Stk", pack: 1, in_stock: false }), "Packung mit 1 Stück: knapp erst, wenn leer");
+check(C.qtyText(stk(2)) === "2 × 2.5 dl" && C.qtyText({ qty: 6 }) === "~6 Znacht" && C.qtyText({ in_stock: false }) === "leer", "Mengen: «2 × 2.5 dl», «~6 Znacht», «leer»");
+const st1 = { name: "Olivenöl", keywords: ["olivenöl"], qty: 3, pack: 15 };
+C.setQty(st1, 0, "2026-W46");
+check(st1.qty === 0 && st1.in_stock === false && st1.prev === 3 && st1.empties.join() === "2026-W46", "leer melden: in_stock false, alte Menge gemerkt, Woche notiert");
+C.boughtStaple(st1, "2026-11");
+check(st1.qty === 15 && st1.in_stock === true && st1.since === "2026-11", "in Bring! gekauft = eine Packung dazu, «seit» neu");
+const oft = { empties: ["2026-W40", "2026-W44", "2026-W45", "2026-W46"] };
+check(C.emptyWeeks(oft, "2026-W46") === 3 && C.oftLeer(oft, "2026-W46") && !C.oftLeer({ empties: ["2026-W44"] }, "2026-W46") && C.oftLeer({ weekly: true }, "2026-W46"), "geht oft aus: 3 von 4 Wochen leer erkannt, oder Vermerk am Artikel");
+const pday = (title, ings, extra) => ({ title, servings: 4, eaters: ["a"], leftover_buffer: 0, ingredients: ings.map(n => ({ name: n, amount: "1", unit: "EL" })), ...extra });
+const wplan = [pday("A", ["Olivenöl", "Salz"]), pday("B", ["Olivenöl"]), pday("C", ["Olivenöl"], { empty: true }), pday("D", ["Olivenöl"], { is_leftovers: true }), pday("E", ["Olivenöl"], { eaters: [] }), pday("F", ["Butter"])];
+const oel = { name: "Olivenöl", keywords: ["olivenöl"], qty: 5, pack: 15 }, salz = { name: "Salz", keywords: ["salz"], qty: 1, pack: 10 }, mehl = { name: "Mehl", keywords: ["mehl"] };
+check(C.stapleUse(oel, wplan) === 2 && C.stapleUse(mehl, wplan) === 0, "diese Woche gebraucht: 2 gekochte Tage mit Olivenöl (offen, Reste, niemand zuhause zählen nicht)");
+const vor = [oel, salz, mehl];
+check(C.bookWeek(vor, wplan, "2026-W46") === 2 && oel.qty === 3 && salz.qty === 0 && salz.in_stock === false && C.isBooked(vor, "2026-W46"), "Woche gekocht: Olivenöl 5 → 3, Salz 1 → 0 (nie unter 0)");
+check(C.bookWeek(vor, wplan, "2026-W46") === 0 && oel.qty === 3, "nochmals abbuchen in derselben Woche bucht nichts doppelt");
+check(C.unbookWeek(vor, "2026-W46") === 2 && oel.qty === 5 && salz.qty === 1 && salz.in_stock && !C.isBooked(vor, "2026-W46"), "Schalter zurück = rückgängig");
+check(C.isOld({ since: "2025-10" }, "2026-11") && !C.isOld({ since: "2025-11" }, "2026-11"), "über ein Jahr im Vorrat markiert");
+check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fast leer / Halb / Voll");
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

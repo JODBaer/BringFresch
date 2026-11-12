@@ -190,59 +190,47 @@ A2.document.getElementById("syncBtn").click();
 await wait(300);
 A2.document.getElementById("dupDialog").open && A2.document.getElementById("dupCancelBtn").click();
 
-// Grundvorrat wie Bring!: antippen = drauf, nochmals = wieder weg
+// Grundvorrat (Variante C): Kacheln mit Menge; «leer» beim Einkauf merkt nur – auf Bring! erst nach «Prüfen»
 bringList.push({ name: "Salz", specification: "von Leonie" }); // jemand anderes
 A2.document.getElementById("openStaplesBtn").click();
 await wait(300);
-const tile = name => [...A2.document.querySelectorAll("#staplesList .btile")].find(t => t.querySelector(".bname").textContent === name);
-check(!!tile("Pfeffer") && !!tile("Olivenöl"), "Vorrat zeigt Bring!-Artikel (Pfeffer, Olivenöl)");
+const tile = name => [...A2.document.querySelectorAll("#staplesList .qt[data-staple]")].find(t => t.querySelector(".n").textContent.trim() === name);
+check(!!tile("Pfeffer") && !!tile("Olivenöl"), "Vorrat zeigt Bring!-Artikel als Kacheln (Pfeffer, Olivenöl)");
 check(A2.document.querySelectorAll("#staplesList .bsec h3")[0].textContent.length > 0, "Vorrat in Bring!-Abteilungen");
-tile("Pfeffer").click();
-await wait(300);
-check(bringList.some(x => x.name === "Pfeffer") && tile("Pfeffer").classList.contains("on"), "Pfeffer antippen -> auf Bring!, Kachel rot");
-tile("Pfeffer").click();
-await wait(300);
-check(!bringList.some(x => x.name === "Pfeffer") && !tile("Pfeffer").classList.contains("on"), "nochmals antippen -> wieder weg");
-check(tile("Salz").classList.contains("on"), "Salz (von Leonie) ist rot");
-tile("Salz").click();
-await wait(300);
-check(bringList.some(x => x.name === "Salz"), "Bot nimmt Salz von Leonie NICHT weg");
-tile("Olivenöl").click();
-await wait(300);
-bringList.splice(bringList.findIndex(x => x.name === "Olivenöl"), 1); // in Bring! gekauft/abgehakt
-A2.document.getElementById("staplesDialog").close();
-A2.document.getElementById("openStaplesBtn").click();
-await wait(300);
-check(!tile("Olivenöl").classList.contains("on"), "gekauftes Olivenöl ist wieder «da»");
-
-// Nach «Bring! füllen»: Grundvorrat in der Einkaufsliste antippen -> doch auf Bring! (z.B. Öl ist leer)
+check(/~10 Znacht/.test(tile("Olivenöl").textContent), "alter Vorrat ohne Menge = eine volle Packung (~10 Znacht)");
 A2.document.getElementById("staplesDialog").close();
 A2.document.querySelector('#tab-shop .seg [data-filter="staples"]').click();
 await wait(100);
-const row = A2.document.querySelector('#shopList [data-shop][aria-pressed="false"]');
-if (row) {
-  const nm = row.dataset.shop;
-  const before3 = bringList.length;
-  row.click();
-  await wait(400);
-  check(bringList.length === before3 + 1, `Grundvorrat «${nm}» nach dem Füllen noch auf Bring! gesetzt`);
-  A2.document.querySelector('#tab-shop .seg [data-filter="onBring"]').click();
-  const back = [...A2.document.querySelectorAll("#shopList [data-shop]")].find(r => r.dataset.shop === nm);
-  check(!!back && back.classList.contains("on"), `«${nm}» steht jetzt unter «Schon auf Bring!» (durchgestrichen)`);
-  back.click();
-  await wait(400);
-  check(bringList.length === before3, `nochmals antippen nimmt «${nm}» wieder weg`);
-} else check(false, "kein Grundvorrat im Wochenplan zum Testen");
-
-// Grundvorrat gilt für die ganze WG: Handy B sieht, was Handy A als «auf Bring!»/leer markiert hat
+const vrowOf = name => [...A2.document.querySelectorAll("#shopList [data-vleer]")].find(r => r.querySelector(".l").textContent.trim() === name);
+A2.document.getElementById("vAll").open = true;
+const nBring = bringList.length;
+vrowOf("Olivenöl").click();
+await wait(300);
+check(vrowOf("Olivenöl").getAttribute("aria-pressed") === "true" && bringList.length === nBring, "Vorrat: Olivenöl antippen = leer (durchgestrichen), Bring! bleibt unberührt");
+check(!A2.document.getElementById("vorratTray").hidden && /Olivenöl/.test(A2.document.getElementById("vorratTray").textContent), "Leiste «Für Bring!» zeigt Olivenöl");
+A2.document.getElementById("trayCheckBtn").click();
+await wait(100);
+const chip = name => [...A2.document.querySelectorAll("#compareCols [data-cmp]")].find(c => c.firstChild.textContent.trim() === name);
+check(A2.document.getElementById("compareDialog").open && chip("Olivenöl") && chip("Olivenöl").getAttribute("aria-pressed") === "true", "Gegenüberstellung: Olivenöl rechts unter «Vorrat», vorausgewählt");
+A2.document.querySelectorAll('#compareCols [data-cmp^="p:"][aria-pressed="true"]:not(:disabled)').forEach(c => c.click());
+A2.document.getElementById("compareSendBtn").click();
+await wait(400);
+const oil = bringList.find(x => x.name === "Olivenöl");
+check(!!oil && /^Vorrat · /.test(oil.specification) && bringList.length === nBring + 1, `nach dem Senden steht Olivenöl auf Bring! mit Vermerk «Vorrat · …» (${oil && oil.specification})`);
+check(bringList.some(x => x.name === "Salz" && x.specification === "von Leonie"), "Salz von Leonie bleibt unangetastet");
+bringList.splice(bringList.findIndex(x => x.name === "Olivenöl"), 1); // in Bring! gekauft/abgehakt
 A2.document.getElementById("openStaplesBtn").click();
 await wait(300);
-tile("Olivenöl").click();
+check(/~10 Znacht/.test(tile("Olivenöl").textContent) && !tile("Olivenöl").classList.contains("zero"), "in Bring! gekauft = Olivenöl wieder da (eine Packung)");
+A2.document.getElementById("staplesDialog").close();
+
+// Grundvorrat gilt für die ganze WG: Handy B sieht, was Handy A als leer gemeldet hat
+vrowOf("Olivenöl").click();
 await wait(1500); // Vorrat wird nach 0.8 s an den Server geschickt
 const B2 = phone("jo");
 await wait(500);
 const stB = JSON.parse(B2.localStorage.getItem("bringfrisch_user_staples"));
-check(stB.find(x => /Olivenöl/.test(x.name)).in_stock === false, "Handy B übernimmt den WG-Vorrat (Olivenöl leer)");
+check(stB.find(x => /Olivenöl/.test(x.name)).in_stock === false && stB.find(x => /Olivenöl/.test(x.name)).qty === 0, "Handy B übernimmt den WG-Vorrat (Olivenöl leer)");
 
 // Herunterziehen: A ändert etwas und zieht -> sofort beim Server; B zieht -> hat es
 function pull(win) {

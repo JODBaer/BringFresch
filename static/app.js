@@ -5,7 +5,7 @@
 //   app.js               Grundlage: Konstanten, Zustand (state, Woche), Speichern, Hilfsfunktionen, refresh()
 //   app_plan.js          Plan-Ansicht (Tage, Menü-Blatt, Dichte, Bring!-Chip, Woche wechseln, Plan teilen)
 //   app_einkauf.js       Einkauf (Liste, Bring! füllen per Teilen/Kopieren)
-//   app_vorrat.js        Grundvorrat (Pillen wie Bring!, auf/von Bring!)
+//   app_vorrat.js        Grundvorrat (Variante C: Mengen, Vorrat-Liste, Gegenüberstellung, Kacheln, Blatt, Inventur)
 //   app_rezepte.js       Rezepte & Saison (Saisonliste, Katalog, eigenes Rezept, Webseiten, Link-Import)
 //   app_wahl.js          Wochenwahl (Memory, Stimmen, Bilder, Pop-up)
 //   app_sync.js          Abgleich mit dem WG-Server (Plan, nächste Woche, Vorrat, Einstellungen, Bring!)
@@ -201,6 +201,8 @@
   }
 
   let toastTimer = null;
+  // Fenster geht zu: Hinweis darin wieder auf die Seite, damit er sichtbar bleibt
+  document.addEventListener("close", e => { if (e.target && e.target.querySelectorAll) e.target.querySelectorAll(".toast").forEach(t => document.body.appendChild(t)); }, true);
   function toast(message, action) {
     document.querySelectorAll(".toast").forEach(t => t.remove());
     clearTimeout(toastTimer);
@@ -215,7 +217,9 @@
       btn.onclick = () => { action.run(); el.remove(); };
       el.appendChild(btn);
     }
-    document.body.appendChild(el);
+    // Offenes Fenster (Grundvorrat, Blatt …) liegt über der Seite: Hinweis dort hinein, sonst ist «Rückgängig» verdeckt
+    const open = [...document.querySelectorAll("dialog[open]")].pop();
+    (open || document.body).appendChild(el);
     toastTimer = setTimeout(() => el.remove(), action ? 6000 : 3200);
   }
 

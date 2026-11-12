@@ -45,6 +45,8 @@ function boot(ingredients, bringItems) {
   });
 }
 const group = (d, filter) => {
+  // «Vorrat» zeigt seit Variante C die Vorrat-Artikel; die Grundvorrat-Zutaten stehen im Zustand der App
+  if (filter === "staples") return d.defaultView.BF_APP.state.shopping.filter(it => it.isStaple).map(it => it.name);
   d.querySelector(`#tab-shop .seg button[data-filter="${filter}"]`).click();
   return [...d.querySelectorAll("#shopList [data-shop]")].map(b => b.dataset.shop);
 };

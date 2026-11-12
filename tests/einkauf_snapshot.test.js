@@ -35,10 +35,10 @@ function week(list) {
     }
   });
   const d = dom.window.document, out = {};
-  for (const g of ["toBuy", "staples"]) {
-    d.querySelector(`#tab-shop .seg button[data-filter="${g}"]`).click();
-    out[g] = [...d.querySelectorAll("#shopList [data-shop]")].map(b => `${b.dataset.shop} | ${b.querySelector(".amt").textContent.trim()}`).sort((a, b) => a.localeCompare(b, "de"));
-  }
+  d.querySelector(`#tab-shop .seg button[data-filter="toBuy"]`).click();
+  out.toBuy = [...d.querySelectorAll("#shopList [data-shop]")].map(b => `${b.dataset.shop} | ${b.querySelector(".amt").textContent.trim()}`).sort((a, b) => a.localeCompare(b, "de"));
+  // Grundvorrat-Zutaten der Woche: der Bereich «Vorrat» zeigt seit Variante C die Vorrat-Artikel, nicht die Zutaten
+  out.staples = dom.window.BF_APP.state.shopping.filter(it => it.isStaple).map(it => `${it.name} | ${it.spec}`).sort((a, b) => a.localeCompare(b, "de"));
   dom.window.close();
   return out;
 }

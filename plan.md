@@ -17,7 +17,7 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 - [x] Bring!-Katalog: Artikel bekommen ihr Bring!-Bild (Butternuss-Kürbis → Kürbis, Sorte in der Mengenangabe), ~95 % der Zutaten
 - [x] Einkaufsnamen aufgeräumt: «Schweizer», Klammern, «à ca. 400 g» in der Mengenangabe; Leitungswasser nie auf der Liste
 - [x] Schnelles & Reste: Fertigpizza, Nuggets, Maultaschen, Gnocchi, Dumplings, Resteessen (2 pro Woche im Memory)
-- [x] Grundvorrat wie Bring!: gleiche Abteilungen/Artikel, antippen = auf Bring!, nochmals = weg; gemeinsam für die WG
+- [x] Grundvorrat wie Bring!: gleiche Abteilungen/Artikel, antippen = auf Bring!, nochmals = weg; gemeinsam für die WG (abgelöst durch Variante C, 12.11.2026)
 - [x] Jede Zeile der Einkaufsliste antippbar (auf/von Bring!), auch nach dem Füllen
 - [x] Bot nimmt nur weg, was er selbst gesetzt hat; Gekauftes gilt wieder als «da»
 - [x] «Bring! füllen»: Fehlendes einfach senden, bei schon Vorhandenem pro Artikel nachfragen (z.B. 2. Rezept mit Rahm), danach «Rückgängig»
@@ -105,6 +105,7 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - Tests: Worker mit nachgebauter Modell-Antwort (kein Netz), UI-Schritt «Foto wählen → Formular gefüllt»; Live-Test nur von Hand
   - Offen: welcher Dienst/Modell, Kosten pro Bild, Handschrift unterstützen?
 - [ ] **Grundvorrat neu gestalten – zusammen mit Joshua, nach dem Umbau** (Rückmeldung Joshua 11.11.2026, v1.7.0)
+  - **Erste Fassung von Variante C gebaut (12.11.2026)**, auf der Test-Version: Mengen pro Artikel, Einkauf mit «Aus dem Vorrat – wird knapp», Bereich «Vorrat» als Liste (antippen = leer, «Woche gekocht», «Alles da» aufklappbar), «Prüfen» = Gegenüberstellung Kaufen | Vorrat, Grundvorrat als Seite mit Kacheln, Blatt, lange drücken (− + ✕), Inventur. Joshua testet und merkt an; Annahmen und Offenes (automatisch abbuchen ab Montag, Standard-Vorrat, echte Bring!-Bilder) in `docs/uebergabe-umbau.md` Abschnitt 4
   - **Wer**: Joshua baut den Grundvorrat mit einem **lokalen Chat** (Entscheid 11.11.2026). Laut Joshua war das Ändern im Grundvorrat schon vor v1.7.0 defekt – zuerst den heutigen Fehler nachstellen, dann neu gestalten
   - **Entwurf als Startpunkt**: `docs/design/grundvorrat-varianten.html` – drei klickbare Varianten (A «Merken» = erst mit «Bring! füllen» senden, B «Knopf» pro Artikel, C «Sammeln» und einmal bestätigen), iPhone/Android, hell/dunkel. Von einem Agenten entworfen und vorzeitig gestoppt; einmal im Browser geöffnet (keine Fehler, Variante A sichtbar), Varianten B und C nicht durchgeklickt. Nur Vorschlag, nichts entschieden
   - **Rückmeldung Joshua zum Entwurf** (Kommentare auf der Entwurfsseite, 11.11.2026) – Anforderungen für den Neubau:
@@ -142,7 +143,7 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
     - Wie viel soll man auf einen Blick sehen: alle ~45 Pillen oder nur «bald leer / leer» und der Rest eingeklappt?
   - **Im Bild aufgefallen** (heutiger Stand, als Aufgabe für den Neubau): mehrere Vorrat-Einträge zeigen denselben Bring!-Namen und stehen darum doppelt da – Kartoffeln ×2, Zwiebeln ×2, Butter ×2, Pfeffer ×2, Reis ×2; dazu «Sojasauce» und «Soja Sauce» (eigener Artikel). Zusammenführen bzw. beim Hinzufügen verhindern
   - **Berührt**: Fachregel «Grundvorrat wie Bring!: Antippen = direkt auf Bring!» in `CLAUDE.md`, Entscheid 16 (Pillen klein, durchgestrichen) und die Punkte «Leer melden» / «Wegnehmen» im nächsten Eintrag – alle erst nach Joshuas Entscheid anpassen
-- [ ] **Grundvorrat verwalten** (besser als heute)
+- [ ] **Grundvorrat verwalten** (besser als heute) – grösstenteils mit Variante C gebaut (Hinzufügen mit Bring!-Vorschlag, «ist schon da», lange drücken = ✕ mit Rückgängig, Mengen); offen: Standard-Vorrat für neue WGs
   - **Hinzufügen**: Eingabe schlägt Bring!-Artikel vor (Autokorrektur auf den Bring!-Namen, z.B. «Olivenoel» → «Olivenöl», mit Bild); nicht doppelt (gleicher Bring!-Artikel schon im Vorrat → «Ist schon da»)
   - **Nicht gefunden**: Hinweis «Gibt es in Bring! nicht – bitte zuerst in Bring! als eigenen Artikel anlegen», dann erneut suchen
   - **Wegnehmen**: kein ✕ dauernd sichtbar (verklickt man sich). **Lange drücken** auf die Pille → ✕ erscheint (Pille wackelt) → ✕ antippen = weg, mit «Rückgängig»

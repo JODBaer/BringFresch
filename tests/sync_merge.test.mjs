@@ -123,11 +123,13 @@ check([3, 6].includes(sp[4].leftover_buffer) && !sp[0].eaters.includes("lukas") 
 const stA = JSON.parse(A.localStorage.getItem("bringfrisch_user_staples"));
 const mark = (w, re) => { const list = JSON.parse(w.localStorage.getItem("bringfrisch_user_staples")); return list.find(s => re.test(s.name)); };
 check(stA.length > 10, "Grundvorrat vorhanden");
-for (const [w, name] of [[A, "Olivenöl"], [B, "Zucker"]]) {
-  w.document.getElementById("openStaplesBtn").click();
-  await wait(300);
-  [...w.document.querySelectorAll("#staplesList .btile")].find(t => t.querySelector(".bname").textContent === name).click();
-}
+// «leer» melden wie beim Einkauf: Bereich «Vorrat», Zeile antippen (Variante C)
+const leer = (w, name) => {
+  w.document.querySelector('#tab-shop .seg [data-filter="staples"]').click();
+  w.document.getElementById("vAll").open = true;
+  [...w.document.querySelectorAll("#shopList [data-vleer]")].find(r => r.querySelector(".l").textContent.trim() === name).click();
+};
+for (const [w, name] of [[A, "Olivenöl"], [B, "Zucker"]]) leer(w, name);
 await wait(2600);
 pull(A); pull(B);
 await wait(1200);
@@ -164,14 +166,11 @@ await wait(2300);
 check(localPlan(A)[3].leftover_buffer === 1 && localPlan(A)[0].leftover_buffer === 3, "zweite Änderung kurz danach: die erste bleibt");
 {
   const w = A;
-  w.document.getElementById("openStaplesBtn").click();
-  await wait(300);
-  const tileOf = n => [...w.document.querySelectorAll("#staplesList .btile")].find(t => t.querySelector(".bname").textContent === n);
-  tileOf("Senf").click();
+  leer(w, "Senf");
   await wait(1500);
   pull(w);
   await wait(900);
-  tileOf("Honig").click();
+  leer(w, "Honig");
   await wait(1500);
   pull(w);
   await wait(900);

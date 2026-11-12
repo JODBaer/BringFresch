@@ -586,10 +586,12 @@ await step(A, "Bring! ohne WG-Server: Chip zählt, Übergabe mit Teilen (→ Kop
 await step(A, "Einkauf: Abschnitte Kaufen/Auf Bring!/Vorrat, Liste kopieren", async () => {
   await goTab(A, "shop");
   await noHScroll(A, "Einkauf");
+  // Kaufen = Zeilen aus dem Plan + knapper Vorrat; Vorrat = Zeilen der drei Listen (ohne «Alles da»)
+  const rowsOf = { toBuy: "#shopList [data-shop], #shopList [data-vitem]", onBring: "#shopList [data-shop]", staples: "#shopList .vsec [data-vleer]" };
   for (const f of ["onBring", "staples", "toBuy"]) {
     await tap(A, `#tab-shop .seg [data-filter="${f}"]`);
     await until(A, f => document.querySelector(`#tab-shop .seg [data-filter="${f}"]`).getAttribute("aria-pressed") === "true", `Abschnitt ${f} nicht aktiv`, f);
-    const rows = await count(A, "#shopList [data-shop]");
+    const rows = await count(A, rowsOf[f]);
     const n = +(await text(A, `#cnt${f[0].toUpperCase()}${f.slice(1)}`));
     expect(rows === n, `${f}: ${rows} Zeilen, Zähler ${n}`);
   }
@@ -599,36 +601,137 @@ await step(A, "Einkauf: Abschnitte Kaufen/Auf Bring!/Vorrat, Liste kopieren", as
   expect((await clip(A)).split("\n").length === parseInt(t, 10), "kopierte Zeilen ≠ Anzahl");
 });
 
-await step(A, "Einkauf ohne WG-Server: Zeile antippen = Hinweis; Vorrat antippen = «leer», nochmals = wieder da", async () => {
+await step(A, "Einkauf ohne WG-Server: Zeile antippen = Hinweis", async () => {
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await clearToasts(A);
   const rowName = await A.page.$eval("#shopList [data-shop]", b => b.dataset.shop);
   await tap(A, `#shopList [data-shop="${rowName}"]`);
   await toastIs(A, /Ohne WG-Server/);
-  await tap(A, '#tab-shop .seg [data-filter="staples"]');
-  const st0 = +(await text(A, "#cntStaples"));
-  expect(st0 > 0, "kein Grundvorrat im Plan");
-  const name = await A.page.$eval("#shopList [data-shop]", b => b.dataset.shop);
-  await tap(A, `#shopList [data-shop="${name}"]`);
-  await until(A, n => +document.getElementById("cntStaples").textContent === n - 1, "Vorrat-Zähler sinkt nicht", st0);
-  await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
-  await tap(A, `#shopList [data-shop="${name}"]`);
-  await until(A, n => +document.getElementById("cntStaples").textContent === n, "zurück im Vorrat", st0);
 });
 
-await step(A, "Grundvorrat verwalten (ohne Server): Pille an/aus, eigenen Artikel hinzufügen", async () => {
+let leerIdx = "", leerName = "";
+await step(A, "Einkauf «Vorrat»: Zeile antippen = leer (nichts geht auf Bring!), steht unter «Kaufen» als knapp, Leiste «Für Bring!»", async () => {
+  await tap(A, '#tab-shop .seg [data-filter="staples"]');
+  await until(A, () => document.getElementById("cookSw") && document.getElementById("vorratTray").hidden, "Vorrat-Liste fehlt / Leiste schon da");
+  await tap(A, "#vAll summary");
+  await until(A, () => document.getElementById("vAll").open, "«Alles da» geht nicht auf");
+  leerIdx = await A.page.$eval("#vAll [data-vleer]", b => b.dataset.vleer);
+  leerName = await A.page.$eval(`#vAll [data-vleer="${leerIdx}"] .l`, e => e.textContent.trim());
+  await clearToasts(A);
+  await tap(A, `#vAll [data-vleer="${leerIdx}"]`);
+  await toastIs(A, /leer – kommt mit «Prüfen» auf Bring!/);
+  await until(A, i => { const r = document.querySelector(`#shopList .vsec [data-vleer="${i}"]`); return r && r.getAttribute("aria-pressed") === "true" && r.classList.contains("zero"); }, "Zeile nicht leer / nicht unter «Sonst knapp»", leerIdx);
+  await until(A, n => !document.getElementById("vorratTray").hidden && document.getElementById("vorratTray").textContent.includes(n), "Leiste «Für Bring!» fehlt", leerName);
+  expect((await ls(A, "bringfrisch_user_staples"))[+leerIdx].in_stock === false, "leer nicht gespeichert");
+  await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
+  await until(A, i => document.querySelector(`#shopList [data-vitem="${i}"]`), "knapper Vorrat nicht unter «Kaufen»", leerIdx);
+  // Antippen = Blatt zum Artikel
+  await tap(A, `#shopList [data-vitem="${leerIdx}"]`);
+  await until(A, n => document.getElementById("stapleItemDialog").open && document.getElementById("vTitle").textContent === n, "Blatt zum Artikel geht nicht auf", leerName);
+  await closeDialog(A, "stapleItemDialog");
+  await shot(A, "08b-einkauf-knapp");
+});
+
+await step(A, "Schalter «Woche gekocht»: bucht ab, was der Plan braucht; zurück = rückgängig", async () => {
+  await tap(A, '#tab-shop .seg [data-filter="staples"]');
+  const used = await count(A, "#shopList .vsec.woche [data-vleer]");
+  expect(used > 0, "der Plan braucht nichts aus dem Vorrat");
+  const qtys = () => A.page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem("bringfrisch_user_staples")).map(window.BF_CORE.vQty)));
+  const before = await qtys();
+  await clearToasts(A);
+  await tap(A, "#cookSw");
+  await toastIs(A, /Woche gekocht: \d+ Artikel abgebucht/);
+  await until(A, () => document.getElementById("cookSw").getAttribute("aria-checked") === "true" && /abgebucht/.test(document.querySelector(".vsec.woche h3").textContent), "Schalter nicht an");
+  expect((await ls(A, "bringfrisch_user_staples")).some(s => s.booked), "nichts abgebucht");
+  await clearToasts(A);
+  await tap(A, "#cookSw");
+  await toastIs(A, /Abbuchen rückgängig gemacht/);
+  await until(A, () => document.getElementById("cookSw").getAttribute("aria-checked") === "false", "Schalter nicht aus");
+  const after = await ls(A, "bringfrisch_user_staples");
+  expect((await qtys()) === before && !after.some(s => s.booked), "Rückgängig stellt die Mengen nicht her");
+});
+
+await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wählen, ohne WG-Server = kopieren; Zeile nochmals = wieder da", async () => {
+  await tap(A, "#trayCheckBtn");
+  await until(A, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
+  const key = `v:${leerIdx}`;
+  expect(await A.page.$eval(`[data-cmp="${key}"]`, b => b.getAttribute("aria-pressed") === "true"), "knapper Vorrat nicht vorausgewählt");
+  expect((await count(A, '#compareCols [data-cmp^="p:"]')) > 3, "links fehlt «Kaufen» aus dem Plan");
+  await shot(A, "08c-gegenueberstellung");
+  await dialogNoHScroll(A, "compareDialog");
+  const n0 = parseInt(await text(A, "#compareSendBtn"), 10);
+  await tap(A, `[data-cmp="${key}"]`);
+  await until(A, n => parseInt(document.getElementById("compareSendBtn").textContent, 10) === n - 1, "Abwählen zählt nicht", n0);
+  await tap(A, `[data-cmp="${key}"]`);
+  await clearToasts(A);
+  await tap(A, "#compareSendBtn");
+  await toastIs(A, /Artikel kopiert – in Bring! einfügen/);
+  expect((await clip(A)).includes(leerName) && (await clip(A)).split("\n").length === n0, "kopierte Liste falsch");
+  await until(A, () => !document.getElementById("compareDialog").open, "Gegenüberstellung bleibt offen");
+  await tap(A, '#tab-shop .seg [data-filter="staples"]');
+  await tap(A, `#shopList .vsec [data-vleer="${leerIdx}"]`);
+  await until(A, () => document.getElementById("vorratTray").hidden, "nach «wieder da» noch knapp");
+});
+
+await step(A, "Grundvorrat (ohne Server): Kacheln, Blatt (Menge, Leer…Voll, Einheit), lange drücken = − + und ✕ mit Rückgängig, Dringend, hinzufügen mit Vorschlag, Inventur", async () => {
   await tap(A, "#openStaplesBtn");
-  await until(A, () => document.getElementById("staplesDialog").open && document.querySelectorAll("#staplesList .btile").length > 5, "Grundvorrat geht nicht auf");
-  expect((await text(A, "#staplesHint")).startsWith("Antippen = «leer»"), "Hinweis ohne Server falsch");
-  const idx = await A.page.$eval('#staplesList .btile[aria-pressed="false"]', b => b.dataset.staple);
-  await tap(A, `#staplesList [data-staple="${idx}"]`);
-  await until(A, i => document.querySelector(`#staplesList [data-staple="${i}"]`).getAttribute("aria-pressed") === "true", "Pille wird nicht rot", idx);
-  await tap(A, `#staplesList [data-staple="${idx}"]`);
-  await until(A, i => document.querySelector(`#staplesList [data-staple="${i}"]`).getAttribute("aria-pressed") === "false", "Pille geht nicht zurück", idx);
+  await until(A, () => document.getElementById("staplesDialog").open && document.querySelectorAll("#staplesList .qt[data-staple]").length > 5, "Grundvorrat geht nicht auf");
+  expect((await text(A, "#staplesHint")).startsWith("Antippen = alles zum Artikel"), "Hinweis falsch");
+  expect(/Artikel · \d+ knapp/.test(await text(A, "#stapleSum")), "Übersicht in einer Zeile fehlt");
+  const idx = await A.page.$eval("#staplesList .qt[data-staple]:not(.zero):not(.low)", b => b.dataset.staple);
+  const sel = `#staplesList [data-staple="${idx}"]`;
+  // Blatt
+  await tap(A, sel);
+  await until(A, () => document.getElementById("stapleItemDialog").open, "Blatt geht nicht auf");
+  await tap(A, '#vBody [data-v="set"][data-n="1"]');
+  await until(A, i => JSON.parse(localStorage.getItem("bringfrisch_user_staples"))[i].qty === 1, "«Fast leer» setzt nicht 1", +idx);
+  await tap(A, '#vBody [data-v="q+"]');
+  await until(A, i => JSON.parse(localStorage.getItem("bringfrisch_user_staples"))[i].qty === 2, "+ zählt nicht", +idx);
+  await tap(A, '#vBody [data-v="unit"][data-u="Stk"]');
+  await until(A, () => document.getElementById("vSize"), "«1 Stück =» fehlt bei Stück");
+  await tap(A, '#vBody [data-v="unit"][data-u="Znacht"]');
+  await tap(A, '#vBody [data-v="set"]:last-child');
+  await until(A, i => JSON.parse(localStorage.getItem("bringfrisch_user_staples"))[i].in_stock === true, "«Voll» nicht gespeichert", +idx);
+  await shot(A, "09a-grundvorrat-blatt");
+  await dialogNoHScroll(A, "stapleItemDialog");
+  await closeDialog(A, "stapleItemDialog");
+  // Lange drücken: Karte dreht sich (− + und ✕)
+  const n0 = await count(A, "#staplesList .qt[data-staple]");
+  const box = await (await A.page.$(sel)).boundingBox();
+  await A.page.touchscreen.touchStart(box.x + box.width / 2, box.y + box.height / 2);
+  await sleep(750);
+  await A.page.touchscreen.touchEnd();
+  await until(A, i => document.querySelector(`#staplesList .qt.back[data-back="${i}"]`), "Karte dreht sich nicht", idx);
+  const q0 = +(await text(A, "#staplesList .qt.back output"));
+  await tap(A, '#staplesList .qt.back [data-step="1"]');
+  await until(A, q => +document.querySelector("#staplesList .qt.back output").textContent === q + 1, "+ auf der Karte zählt nicht", q0);
+  await shot(A, "09b-grundvorrat-karte");
+  await clearToasts(A);
+  await tap(A, "#staplesList .qt.back .xs");
+  await toastIs(A, /weggenommen/);
+  await until(A, n => document.querySelectorAll("#staplesList .qt[data-staple]").length === n - 1, "✕ nimmt nicht weg", n0);
+  await tap(A, ".toast button");
+  await until(A, n => document.querySelectorAll("#staplesList .qt[data-staple]").length === n, "Rückgängig bringt den Artikel nicht zurück", n0);
+  // Aufteilung Dringend
+  await tap(A, '#staplesDialog [data-grp="dringend"]');
+  await until(A, () => /Knapp/.test(document.querySelector("#staplesList .bsec h3").textContent), "Aufteilung «Dringend» fehlt");
+  await tap(A, '#staplesDialog [data-grp="abteilung"]');
+  // Hinzufügen: Vorschlag aus Bring!, schon da wird erkannt; Unbekanntes als eigener Artikel
+  await typeInto(A, "#newStaple", "Olivenoel");
+  await until(A, () => /Olivenöl/.test(document.getElementById("stapleSugg").textContent) && /ist schon da/.test(document.getElementById("stapleSugg").textContent), "Vorschlag «Olivenöl – ist schon da» fehlt");
   await typeInto(A, "#newStaple", "Testsenf");
+  await until(A, () => /Eigener Artikel/.test(document.getElementById("stapleSugg").textContent), "eigener Artikel wird nicht angeboten");
   await tap(A, '#addStapleForm button[type="submit"]');
-  // Name wird auf den Bring!-Katalog abgebildet (Testsenf -> Senf), der eigene Name steht im Titel der Pille
-  await until(A, () => document.querySelector('#staplesList .btile[title="Testsenf"]'), "eigener Artikel fehlt");
+  await until(A, () => document.querySelector('#staplesList .qt[title="Testsenf"]'), "eigener Artikel fehlt");
+  // Inventur
+  await tap(A, "#invBtn");
+  await until(A, () => document.getElementById("invDialog").open && /Inventur · 1 von/.test(document.getElementById("invTitle").textContent), "Inventur geht nicht auf");
+  await tap(A, "#invSkip");
+  await until(A, () => /Inventur · 2 von/.test(document.getElementById("invTitle").textContent), "«Stimmt so» geht nicht weiter");
+  await tap(A, '#invBody [data-inv]:last-child');
+  await until(A, () => /Inventur · 3 von/.test(document.getElementById("invTitle").textContent), "Inventur-Knopf geht nicht weiter");
+  await closeDialog(A, "invDialog");
+  await until(A, () => /Letzte:/.test(document.getElementById("invCard").textContent), "Inventur nicht vermerkt");
   await shot(A, "09-grundvorrat");
   await dialogNoHScroll(A, "staplesDialog");
   await closeDialog(A, "staplesDialog");
@@ -1144,36 +1247,41 @@ await step(B, "Einkauf verbunden: Zeile «Auf Bring!» antippen = weg, in «Kauf
   await noHScroll(B, "Einkauf");
 });
 
-await step(B, "Grundvorrat verbunden: Pille = auf Bring!, nochmals = weg; in Bring! gekauft = wieder «da» (Herunterziehen)", async () => {
-  await tap(B, "#openStaplesBtn");
-  await until(B, () => document.getElementById("staplesDialog").open && document.querySelectorAll("#staplesList .btile").length > 5, "Grundvorrat geht nicht auf");
-  expect((await text(B, "#staplesHint")).startsWith("Antippen = auf eure Bring!-Liste"), "Hinweis");
-  // eine freie Pille, die im Blatt ganz sichtbar ist (in GitHub Actions lag die erste manchmal unter dem Blattrand)
+await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegenüberstellung → auf Bring! mit Vermerk «Vorrat», Rückgängig; in Bring! gekauft = eine Packung dazu (Herunterziehen)", async () => {
+  await tap(B, '#tab-shop .seg [data-filter="staples"]');
+  await until(B, () => document.getElementById("vAll"), "Vorrat-Liste fehlt");
+  if (!(await B.page.$eval("#vAll", d => d.open))) await tap(B, "#vAll summary");
+  // ein Artikel, der noch nicht auf Bring! steht und im Bild ist
   const idx = await B.page.evaluate(() => {
-    const body = document.querySelector("#staplesDialog .sheet-body").getBoundingClientRect();
-    const free = [...document.querySelectorAll('#staplesList .btile[aria-pressed="false"]')];
-    const inView = free.find(b => { const r = b.getBoundingClientRect(); return r.top >= body.top && r.bottom <= Math.min(body.bottom, innerHeight); });
-    const pick = inView || free[0];
-    pick.scrollIntoView({ block: "center" });
-    return pick.dataset.staple;
+    const free = [...document.querySelectorAll("#vAll [data-vleer]")].filter(b => !b.querySelector(".vcart"));
+    free[0].scrollIntoView({ block: "center" });
+    return free[0].dataset.vleer;
   });
   const before = wgNames();
-  await clearToasts(B);
-  await tap(B, `#staplesList [data-staple="${idx}"]`);
-  await toastIs(B, /auf Bring! ✓/);
-  await until(B, i => document.querySelector(`#staplesList [data-staple="${i}"]`).getAttribute("aria-pressed") === "true", "Pille nicht rot", idx);
+  await tap(B, `#vAll [data-vleer="${idx}"]`);
+  await until(B, i => { const r = document.querySelector(`#shopList .vsec [data-vleer="${i}"]`); return r && r.getAttribute("aria-pressed") === "true"; }, "nicht leer gemeldet", idx);
+  await sleep(300);
+  expect(wgNames().join() === before.join(), "«leer» hat schon etwas auf Bring! gesetzt");
+  const send = async () => {
+    await tap(B, "#trayCheckBtn");
+    await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
+    // nur den Vorrat senden: Plan-Artikel abwählen
+    for (const k of await B.page.$$eval('#compareCols [data-cmp^="p:"][aria-pressed="true"]:not([disabled])', l => l.map(b => b.dataset.cmp))) await tap(B, `#compareCols [data-cmp="${k}"]`);
+    expect(await B.page.$eval(`[data-cmp="v:${idx}"]`, b => b.getAttribute("aria-pressed") === "true"), "leerer Artikel nicht vorausgewählt");
+    await clearToasts(B);
+    await tap(B, "#compareSendBtn");
+    await toastIs(B, /auf Bring! ✓/);
+  };
+  await send();
   const added = wgNames().filter(n => !before.includes(n));
-  expect(added.length === 1, `nicht genau 1 Artikel dazu: ${added}`);
-  await clearToasts(B);
-  await tap(B, `#staplesList [data-staple="${idx}"]`);
-  await toastIs(B, /von Bring! genommen/);
-  await until(B, i => document.querySelector(`#staplesList [data-staple="${i}"]`).getAttribute("aria-pressed") === "false", "Pille nicht zurück", idx);
-  expect(!wgNames().includes(added[0]), "nicht von Bring! genommen");
-  await clearToasts(B);
-  await tap(B, `#staplesList [data-staple="${idx}"]`);
-  await toastIs(B, /auf Bring! ✓/);
+  expect(added.length === 1 && /^Vorrat · /.test(wg().find(x => x.name === added[0]).specification), `nicht genau 1 Vorrat-Artikel mit Vermerk: ${added}`);
+  await tap(B, ".toast button");
+  await toastIs(B, /Rückgängig gemacht/);
+  expect(!wgNames().includes(added[0]), "Rückgängig nimmt ihn nicht weg");
+  await send();
+  expect(wgNames().includes(added[0]), "nicht wieder auf Bring!");
+  await until(B, i => document.querySelector(`#shopList .vsec [data-vleer="${i}"] .vcart`), "Einkaufswagen am Artikel fehlt", idx);
   await shot(B, "07-grundvorrat");
-  await closeDialog(B, "staplesDialog");
   // In Bring! abgehakt (gekauft)
   wg().splice(wg().findIndex(x => x.name === added[0]), 1);
   await goTab(B, "plan");
@@ -1181,9 +1289,10 @@ await step(B, "Grundvorrat verbunden: Pille = auf Bring!, nochmals = weg; in Bri
   await pullDown(B);
   await toastIs(B, /Synchronisiert ✓/);
   await goTab(B, "shop");
-  await tap(B, "#openStaplesBtn");
-  await until(B, i => document.querySelector(`#staplesList [data-staple="${i}"]`).getAttribute("aria-pressed") === "false", "gekaufter Vorrat nicht wieder «da»", idx);
-  await closeDialog(B, "staplesDialog");
+  const st = (await ls(B, "bringfrisch_user_staples"))[+idx];
+  expect(st.in_stock === true && st.qty > 0 && !st.sent && st.since === "2026-11", `gekaufter Vorrat nicht wieder da: ${JSON.stringify(st)}`);
+  await waitPushed(B);
+  expect(kvJson("vorrat").staples[+idx].qty === st.qty, "WG-Server kennt die neue Menge nicht");
 });
 
 await step(B, "Herunterziehen holt den neueren Plan eines anderen Handys", async () => {

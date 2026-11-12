@@ -406,7 +406,7 @@
     }
   }
 
-  // Bring!-Stand übernehmen. Vorrat, den der Bot gesetzt hat und der jetzt weg ist, wurde gekauft -> wieder «da».
+  // Bring!-Stand übernehmen. Vorrat, den der Bot gesetzt hat und der jetzt weg ist, wurde gekauft -> eine Packung dazu.
   function setBringList(data) {
     state.bringItems = (data && data.items) || [];
     state.bringMine = (data && data.mine) || [];
@@ -416,8 +416,7 @@
     let changed = false;
     state.staples.forEach(st => {
       if (st.sent && !on.has(app.stapleTarget(st).toLowerCase())) {
-        st.sent = false;
-        st.in_stock = true;
+        app.CORE.boughtStaple(st, app.nowYm());
         changed = true;
       }
     });
@@ -529,5 +528,5 @@
 
   Object.assign(app, { connected, api, setSyncStatus, setBase, pushPlanNow, pushNextNow, pushVorratNow,
     scheduleNextPush, schedulePlanPush, syncNow, runPullSync, wgSettings, settingsChanged, pushSettingsNow,
-    applySettings, pullShared, setBringList, bringDiff, syncToBring, forgetWgStand });
+    applySettings, pullShared, setBringList, bringDiff, syncToBring, undoBring, forgetWgStand });
 })();

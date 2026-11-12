@@ -4,40 +4,42 @@
   "use strict";
   const app = window.BF_APP;
   if (!app) return;
-  const { isoWeek, plusWeek, bringPayload, state, saveStaples, $, esc, toast, copyText, toBuyItems, listLine, refresh } = app;
+  const { isoWeek, plusWeek, bringPayload, state, $, esc, toast, copyText, toBuyItems, listLine, refresh } = app;
 
   // ---------------------------------------------------------------------------
   // Rendering: Einkauf
   // ---------------------------------------------------------------------------
+  // Drei Bereiche wie bisher: «Kaufen» (aus dem Plan + knapper Vorrat), «Auf Bring!», «Vorrat» (Liste aus app_vorrat.js)
   function renderShop() {
-    const groups = {
-      toBuy: toBuyItems(),
-      onBring: state.shopping.filter(it => it.isOnBring && !it.isStaple),
-      staples: state.shopping.filter(it => it.isStaple)
-    };
-    $("cntToBuy").textContent = groups.toBuy.length;
-    $("cntOnBring").textContent = groups.onBring.length;
-    $("cntStaples").textContent = groups.staples.length;
-    $("shopSummary").textContent = `${state.viewNext ? `Nächste Woche (KW ${isoWeek(plusWeek())}) · ` : ""}${state.shopping.length} Zutaten · antippen = auf/von Bring!`;
+    const toBuy = toBuyItems();
+    const onBring = state.shopping.filter(it => it.isOnBring && !it.isStaple);
+    const knapp = app.knappShopHtml();
+    const vorrat = app.vorratShopHtml();
+    $("cntToBuy").textContent = toBuy.length + knapp.count;
+    $("cntOnBring").textContent = onBring.length;
+    $("cntStaples").textContent = vorrat.count;
+    $("shopSummary").textContent = `${state.viewNext ? `Nächste Woche (KW ${isoWeek(plusWeek())}) · ` : ""}${state.shopping.length} Zutaten`;
     document.querySelectorAll("#tab-shop .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === state.shopFilter)));
+    app.renderTray();
 
-    const items = groups[state.shopFilter];
+    if (state.shopFilter === "staples") {
+      $("shopList").innerHTML = vorrat.html;
+      return;
+    }
+    const items = state.shopFilter === "toBuy" ? toBuy : onBring;
+    const extra = state.shopFilter === "toBuy" ? knapp.html : "";
     if (items.length === 0) {
-      const msg = {
-        toBuy: "Nichts mehr zu kaufen. 🎉",
-        onBring: "Noch nichts davon steht auf Bring!.",
-        staples: "Keine Grundzutaten in diesem Wochenplan."
-      }[state.shopFilter];
-      $("shopList").innerHTML = `<div class="empty">${msg}</div>`;
+      const msg = state.shopFilter === "toBuy" ? "Nichts mehr zu kaufen. 🎉" : "Noch nichts davon steht auf Bring!.";
+      $("shopList").innerHTML = (extra && state.shopFilter === "toBuy" ? "" : `<div class="empty">${msg}</div>`) + extra;
       return;
     }
     const byAisle = {};
     items.forEach(it => (byAisle[it.cat] = byAisle[it.cat] || []).push(it));
-    $("shopList").innerHTML = Object.keys(byAisle).sort().map(cat => `
+    $("shopList").innerHTML = (extra ? `<h3 class="vplan">Aus dem Plan</h3>` : "") + Object.keys(byAisle).sort().map(cat => `
       <div class="aisle">
         <h3>${esc(cat)}</h3>
         ${byAisle[cat].map(it => `<button type="button" class="item tap-item${it.isOnBring ? " on" : ""}" data-shop="${esc(it.name)}" aria-pressed="${it.isOnBring}"><span>${esc(it.name)}</span><span class="amt">${esc(it.spec)}</span></button>`).join("")}
-      </div>`).join("");
+      </div>`).join("") + extra;
   }
 
   // ---------------------------------------------------------------------------
@@ -61,18 +63,10 @@
     if (!b || b.disabled) return;
     const it = state.shopping.find(x => x.name === b.dataset.shop);
     if (!it) return;
-    const st = it.isStaple || app.stapleFor(it.name) ? app.stapleFor(it.name) : null;
-    if (!app.connected()) {
-      // ohne Server: Grundvorrat als «leer» markieren, kommt beim nächsten Teilen/Kopieren mit
-      if (st) { st.in_stock = st.in_stock === false; saveStaples(); refresh(); }
-      else toast("Ohne WG-Server: «Bring! füllen» → Teilen/Kopieren");
-      return;
-    }
+    if (!app.connected()) return toast("Ohne WG-Server: «Bring! füllen» → Teilen/Kopieren");
     b.disabled = true;
     const [payload] = bringPayload([it]);
-    const r = await app.toggleOnBring(payload.name, payload.spec);
-    if (st && r === "on") { st.in_stock = false; st.sent = true; saveStaples(); }
-    if (st && r === "off") { st.in_stock = true; st.sent = false; saveStaples(); }
+    await app.toggleOnBring(payload.name, payload.spec);
     refresh();
   });
 

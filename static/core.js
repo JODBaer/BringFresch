@@ -283,12 +283,9 @@
       add("Nüsslisalat / Saisonsalat", "g", 50 * portions, "Obst & Gemüse", day.title);
     });
 
-    // Leerer Grundvorrat kommt auf die Liste, auch wenn ihn diese Woche kein Rezept braucht
-    state.staples.forEach(st => {
-      if (st.in_stock !== false) return;
-      const { name } = cleanIngredient(st.name);
-      if (!Object.values(agg).some(it => it.name.toLowerCase() === name.toLowerCase())) add(st.name, "", 1, "Grundvorrat", "Grundvorrat");
-    });
+    // Leerer oder knapper Grundvorrat kommt NICHT von selbst auf die Liste (Variante C): er steht beim Einkauf unter
+    // «Aus dem Vorrat – wird knapp» und geht erst nach «Prüfen» (Gegenüberstellung) auf Bring!. Braucht ein Rezept
+    // einen leeren Artikel, steht die Zutat ganz normal unter «Kaufen» (sie gilt dann nicht als Grundvorrat).
 
     return Object.values(agg).map(({ notes, from, ...it }) => {
       const info = [...new Set([...notes].join(", ").split(", "))].filter(Boolean).join(", ");
@@ -377,7 +374,129 @@
     return result;
   }
 
+  // ---------------------------------------------------------------------------
+  // Grundvorrat mit Mengen (Variante C, docs/design/grundvorrat-varianten.html)
+  // Ein Artikel im Vorrat-Dokument /vorrat: { id, name, keywords, in_stock, sent,           <- altes Format (weiter gültig)
+  //   qty, unit: "Znacht"|"Stk", pack, size, since: "2026-11", weekly, empties: ["2026-W46"], booked: { w, n }, prev, checked }
+  // Alte Handys kennen nur in_stock (false = leer). Darum gilt: in_stock === false -> leer (0), egal was qty sagt;
+  // in_stock true, aber qty 0 (altes Handy hat «wieder da» gemeldet) -> eine volle Packung. Neue Handys halten
+  // in_stock immer passend zu qty (in_stock = qty > 0), so verliert keiner etwas.
+  // ---------------------------------------------------------------------------
+  const KNAPP_MAX = 2;
+  const vUnit = st => (st && st.unit === "Stk" ? "Stk" : "Znacht");
+  const vPack = st => (st && st.pack > 0 ? Math.round(st.pack) : vUnit(st) === "Stk" ? 2 : 10);
+  function vQty(st) {
+    if (!st || st.in_stock === false) return 0;
+    const q = Number(st.qty);
+    return Number.isFinite(q) && q > 0 ? Math.round(q) : vPack(st);
+  }
+  // Knapp: 2 oder weniger – bei Artikeln mit nur 1–2 Stück pro Packung erst unter einer vollen Packung
+  const knappAb = st => Math.min(KNAPP_MAX, Math.max(0, vPack(st) - 1));
+  const isKnapp = st => vQty(st) <= knappAb(st);
+  // Menge setzen: in_stock passt immer dazu; «leer» merkt sich die Woche (für «geht oft aus»)
+  function setQty(st, n, week) {
+    const q = Math.max(0, Math.round(Number(n) || 0));
+    if (q === 0 && vQty(st) > 0) {
+      st.prev = vQty(st);
+      if (week) st.empties = [...new Set([...(st.empties || []), week])].sort().slice(-8);
+    }
+    st.qty = q;
+    st.in_stock = q > 0;
+    return st;
+  }
+  // In Bring! gekauft (abgehakt): eine Packung dazu, «im Vorrat seit» neu
+  function boughtStaple(st, month) {
+    setQty(st, vQty(st) + vPack(st));
+    st.since = month;
+    st.sent = false;
+    return st;
+  }
+  // Wie viele gekochte Tage der Woche brauchen den Artikel? (offene Tage, Resteessen, niemand zuhause zählen nicht)
+  function stapleUse(st, plan) {
+    const keys = (st.keywords && st.keywords.length ? st.keywords : [String(st.name).toLowerCase()]).map(k => String(k).toLowerCase());
+    return (plan || []).filter(day => day && !day.empty && !day.is_leftovers && portionsFor(day) > 0 &&
+      (day.ingredients || []).some(ing => { const n = cleanIngredient(ing.name).name.toLowerCase(); return keys.some(k => hasWord(n, k)); })).length;
+  }
+  // «Woche gekocht»: abbuchen, was der Plan braucht (pro Woche nur einmal) – und wieder rückgängig
+  const isBooked = (staples, week) => staples.some(st => st.booked && st.booked.w === week);
+  function bookWeek(staples, plan, week) {
+    let count = 0;
+    staples.forEach(st => {
+      if (st.booked && st.booked.w === week) return;
+      const use = stapleUse(st, plan);
+      if (!use) return;
+      const n = Math.min(use, vQty(st));
+      setQty(st, vQty(st) - n, week);
+      st.booked = { w: week, n };
+      count++;
+    });
+    return count;
+  }
+  function unbookWeek(staples, week) {
+    let count = 0;
+    staples.forEach(st => {
+      if (!st.booked || st.booked.w !== week) return;
+      const back = vQty(st) + st.booked.n;
+      if (vQty(st) === 0 && st.empties) st.empties = st.empties.filter(w => w !== week);
+      setQty(st, back);
+      delete st.booked;
+      count++;
+    });
+    return count;
+  }
+  // Wochen zwischen zwei KW-Schlüsseln («2026-W42» -> «2026-W46» = 4)
+  function weeksBetween(a, b) {
+    const ma = mondayOf(a), mb = mondayOf(b);
+    return ma && mb ? Math.round((mb - ma) / (7 * 86400000)) : Infinity;
+  }
+  // Von der App erkannt: in wie vielen der letzten 4 Wochen leer gemeldet? (ab 3 = Vorschlag «geht oft aus»)
+  function emptyWeeks(st, week) {
+    return (st.empties || []).filter(w => { const d = weeksBetween(w, week); return d >= 0 && d < 4; }).length;
+  }
+  const oftLeer = (st, week) => !!st.weekly || emptyWeeks(st, week) >= 3;
+  // Monate seit «2025-10» bis «2026-11»
+  function monthsSince(ym, nowYm) {
+    const a = /^(\d{4})-(\d{2})/.exec(ym || ""), b = /^(\d{4})-(\d{2})/.exec(nowYm || "");
+    return a && b ? (+b[1] - +a[1]) * 12 + (+b[2] - +a[2]) : 0;
+  }
+  const isOld = (st, nowYm) => !!st.since && monthsSince(st.since, nowYm) > 12;
+  // Anzeige: «2 × 1 l», «3 Stk», «~6 Znacht», «leer»
+  function qtyText(st, n = vQty(st), long = false) {
+    if (n === 0) return "leer";
+    if (vUnit(st) === "Stk") return st.size ? (long ? `${n} Stück à ${st.size}` : `${n} × ${st.size}`) : `${n} Stk`;
+    return long ? `reicht für ~${n} Znacht` : `~${n} Znacht`;
+  }
+  const packText = st => (vUnit(st) === "Stk" ? qtyText(st, vPack(st)) : `${vPack(st)} Znacht`);
+  const qtyLevels = st => [["Leer", 0], ["Fast leer", 1], ["Halb", Math.max(2, Math.ceil(vPack(st) / 2))], ["Voll", vPack(st)]];
+
+  // Hinzufügen: Vorschläge aus dem Bring!-Katalog («Olivenoel» -> Olivenöl, «Rüebli» -> Karotten), höchstens 5
+  const normName = s => String(s || "").toLowerCase().replace(/\(.*?\)/g, "").replace(/ae/g, "ä").replace(/oe/g, "ö").replace(/ue/g, "ü").replace(/ß/g, "ss").replace(/[^a-z0-9äöüéèàç]/g, "");
+  function lev(a, b) {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  }
+  function bringSuggest(query, limit = 5) {
+    const n = normName(query);
+    if (!n) return [];
+    const out = new Map();
+    const syn = bringLookup(String(query).trim());
+    if (syn) out.set((root.BRING_CATALOG || {})[syn] || syn, -1);
+    for (const name of Object.values(root.BRING_CATALOG || {})) {
+      const nn = normName(name);
+      let sc = 9;
+      if (nn === n) sc = 0; else if (nn.startsWith(n)) sc = 1; else if (nn.includes(n)) sc = 2;
+      else if (n.length >= 4 && Math.abs(nn.length - n.length) <= 2 && lev(n, nn) <= (n.length > 7 ? 2 : 1)) sc = 3;
+      if (sc < 9 && !(out.has(name) && out.get(name) <= sc)) out.set(name, sc);
+    }
+    return [...out.entries()].sort((a, b) => a[1] - b[1] || a[0].length - b[0].length).slice(0, limit).map(e => e[0]);
+  }
+
   root.BF_CORE = {
+    normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
+    emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
     effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, votersOf, ranking, assignDays,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList

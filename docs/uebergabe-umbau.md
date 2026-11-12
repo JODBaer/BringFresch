@@ -40,12 +40,41 @@ Befehle einzeln ausführen (PowerShell kennt kein `&&`). Der Cloud-Chat kann kei
    **Ein Zustand erledigt (12.11.)**: `viewNext`, `curPlan`, `nextDoc`, `vote`, `sync`, `mySites`, Push-Timer liegen in `state`, `subscribe`/`notify`. Offen: ggf. echte Module – dafür müssten die jsdom-Tests die App anders laden (z.B. im echten Browser wie `ui_e2e.mjs`). Beim Laden dürfen die Dateien nur Eigenes und `app.js` aufrufen; was aus anderen `app_*.js` kommt, erst später (`app.name`).
 2. **Bring! in einem Aufruf** (`PUT bringlists/{uuid}/items`): hebt das 45-Artikel-Limit auf. Braucht einen Live-Test gegen «Home-test» (`tests/stage_live.mjs`), darum nicht blind gebaut.
 3. **Schrift kürzen**: Roboto Flex 196 KB, grösste Datei. Braucht `fonttools` und einen optischen Vergleich (`layout_check.mjs --shots`).
-4. **Grundvorrat neu** (siehe 4).
+4. **Grundvorrat neu** (siehe 4) – erste Fassung gebaut 12.11.2026, Joshua testet auf der Test-Version und merkt an.
 
 ## 4. Grundvorrat – Stand mit Joshua
 
 **Entschieden (11.11.2026): Variante C.** Joshua: «Wir nehmen C, aber ich brauche noch ein paar Gedanken.» → Die Richtung steht, die Einzelheiten nicht. Vor dem Bauen mit ihm durchgehen; Änderungen zuerst im Entwurf zeigen (er kommentiert direkt auf der Seite).
-Entwurf zum Antippen: `docs/design/grundvorrat-varianten.html` (Varianten A und B sind der alte Vergleich; massgebend ist C). In der App ist davon **nichts** gebaut.
+Entwurf zum Antippen: `docs/design/grundvorrat-varianten.html` (Varianten A und B sind der alte Vergleich; massgebend ist C).
+
+**Erste Fassung gebaut (12.11.2026, auf `main` → Test-Version).** Joshua: «Beim Einkauf-Design bin ich noch nicht ganz zufrieden, aber man kann es mal umsetzen, dann teste ich und merke die Sachen an.»
+Code: Regeln in `static/core.js` (`vQty`, `isKnapp`, `setQty`, `stapleUse`, `bookWeek`/`unbookWeek`, `boughtStaple`, `oftLeer`, `bringSuggest` …, Tests in `tests/core.test.mjs`), Ansicht in `static/app_vorrat.js` (Vorrat-Liste beim Einkauf, Leiste «Für Bring!», Gegenüberstellung, Grundvorrat-Seite, Blatt, Inventur) und `static/app_einkauf.js`; Dialoge `staplesDialog` (ganze Seite), `stapleItemDialog`, `compareDialog`, `invDialog` in `index.html`; CSS am Ende von `app.css`. Neue Felder pro Artikel im bestehenden Vorrat-Dokument (`/vorrat`, Abgleich `merge3` pro Artikel, Worker unverändert): `qty`, `unit`, `pack`, `size`, `since`, `weekly`, `empties`, `booked`, `prev`, `checked`. Altes Format wird weiter gelesen (`in_stock === false` = leer; ohne Menge = volle Packung); neue Handys schreiben `in_stock` immer passend mit, alte Handys (v1.7.x) machen nichts kaputt.
+
+**Annahmen, wo Abschnitt 4 offen war (zum Anmerken für Joshua):**
+1. «Alles da» ist beim Einkauf (Bereich «Vorrat») aufklappbar, zu Beginn zu; im Grundvorrat steht es unter «Dringend».
+2. Einkauf bleibt bei drei Reitern (Kaufen · Auf Bring! · Vorrat), keine drei Spalten nebeneinander.
+3. Einheiten nur «Znacht» und «Stück» (keine g/ml). Neuer/alter Artikel: Znacht, eine Packung = 10; bei Stück = 2. Umschaltbar im Blatt.
+4. Knappes geht nie von selbst auf Bring!: erst über «Prüfen» / 🛒-Knopf → Gegenüberstellung. Dort sind vorausgewählt: alle Plan-Artikel, die noch nicht auf Bring! sind, und knapper Vorrat; «geht oft aus» (nicht knapp) steht drin, ist aber nicht gewählt.
+5. Nach ✕ auf der Karte kommt «Rückgängig» (bleibt so, bis Joshua anders entscheidet).
+6. − + nur auf der Rückseite der Karte (lange drücken) und im Blatt, nicht auf der Vorderseite der Kachel.
+7. «Diese Woche gebraucht»: jeder gekochte Tag der angezeigten Woche, dessen Rezept den Artikel braucht (Stichworte wie bisher), zählt 1 – auch bei Stück-Artikeln (z.B. Rahm 1 Stück pro Tag). Offene Tage, Resteessen, niemand zuhause zählen nicht.
+8. «Woche gekocht» bucht nur von Hand ab (pro Woche einmal, zurück = rückgängig). **Das automatische Abbuchen ab Montag ist noch nicht gebaut.**
+9. «Geht oft aus – erkannt»: ab 3 von 4 Wochen leer gemeldet. Die App zählt erst ab jetzt mit; bis dahin nur über den Vermerk «Geht jede Woche aus» im Blatt.
+10. «Im Vorrat seit»: für bestehende Artikel unbekannt (keine «über ein Jahr»-Markierung), gesetzt beim Hinzufügen und beim nächsten Kauf (Bring! abgehakt).
+11. Bild im Blatt/Vorschlag: Platzhalter mit Anfangsbuchstabe und «Bring!» bzw. «kein Bild». Echte Bring!-Bilder müsste die App von Bring! laden (fremder Server, offline nicht da) – nicht gebaut.
+12. Der Standard-Vorrat (50 Bring!-Artikel aus `plan.md`) ist **noch nicht** eingesetzt: der bestehende Grundvorrat bleibt. Grund: Milch, Eier, Butter, Rahm, Kartoffeln, Zwiebeln würden sonst aus «Kaufen» verschwinden – zuerst mit Joshua klären. Doppelte (z.B. zwei «Pfeffer») lassen sich im Blatt zusammenführen.
+13. Hinzufügen: Vorschläge aus dem Bring!-Katalog (auch «Olivenoel», «Rüebli»), «ist schon da» wird erkannt; Unbekanntes darf trotzdem als «eigener Artikel» dazu (Entwurf: nur Hinweis «zuerst in Bring! anlegen»).
+14. Grundvorrat-Verwalten ist eine ganze Seite (nicht mehr ein Blatt von unten), Aufteilung Abteilung/Dringend wird nicht gespeichert (öffnet mit Abteilung).
+15. Inventur: Knopf am Ende des Grundvorrats; «Letzte» = jüngster geprüfter Artikel; hervorgehoben, wenn noch nie oder vor über 12 Monaten. Jederzeit aufhören, Geprüftes bleibt vermerkt.
+16. Doppelte zusammenführen nur im Grundvorrat (Blatt, Menge = die kleinere), nicht in Bring!.
+17. 🛒-Knopf oben rechts beim Einkauf zeigt die Anzahl auf Bring! und öffnet die Gegenüberstellung (antippen; lange drücken macht dasselbe, keine eigene Geste).
+18. Ohne WG-Server: «leer» wird lokal gemerkt, die Gegenüberstellung kopiert die Auswahl (zum Einfügen in Bring!) statt zu senden.
+19. Ist ein Artikel leer und braucht ihn ein Rezept, steht die Zutat ganz normal unter «Kaufen» (geht mit «Bring! füllen» mit). Leere Artikel, die kein Rezept braucht, kommen nicht mehr von selbst in «Bring! füllen» (früher ja).
+20. «Auf Bring!» beim Einkauf zeigt wie bisher die Plan-Zutaten, die auf Bring! stehen (nicht die ganze Bring!-Liste).
+21. Zeile im Bereich «Vorrat» antippen = leer (Menge 0, alte Menge gemerkt); nochmals = alte Menge zurück. Mengen genauer im Blatt.
+22. Hinweise mit «Rückgängig» erscheinen jetzt auch über offenen Fenstern (vorher verdeckt).
+
+Bisheriger Stand des Entwurfs:
 Laut Joshua war das Ändern im heutigen Grundvorrat schon vor `v1.7.0` defekt → zuerst im echten Betrieb nachstellen (nicht reproduziert).
 
 So sieht C heute aus:
