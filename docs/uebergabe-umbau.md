@@ -51,6 +51,9 @@ So sieht C heute aus:
   - «Kaufen»: aus dem Plan + «Aus dem Vorrat – wird knapp»; unten «Für Bring! (n) · Prüfen» (Liste mit Häkchen, dann senden; Bring!-Eintrag mit Vermerk «Vorrat · Menge»)
   - «Auf Bring!»: was auf der Liste steht
   - «Vorrat»: Schalter «Woche gekocht» (bucht ab, zurück = rückgängig; ab Montag wird die letzte Woche von selbst abgebucht), «Knapp», «Diese Woche aus dem Vorrat» (vorher → nachher), «Alles da» aufklappbar, Knopf «Grundvorrat verwalten»
+  - Stand 12.11.: der Bereich «Vorrat» ist eine **Liste** wie «Kaufen» («Diese Woche gebraucht» mit noch da → danach, «Geht oft aus – noch da?» als Vorschläge, «Sonst knapp»); Zeile antippen = im Vorrat leer (durchgestrichen). «Geht jede Woche aus» ist ein Vermerk am Artikel, später Muster erkennen
+  - Bring!-Knopf oben rechts / «Prüfen» öffnet eine **Gegenüberstellung** in zwei Spalten (links Kaufen aus dem Plan, rechts Vorrat); antippen = kommt auf Bring!, gesendet wird erst mit dem Knopf
+  - Karte lange drücken = Rückseite mit − Menge + und kleinem ✕ (kein Zurück-Knopf; daneben tippen dreht zurück)
 - **Grundvorrat (dahinter)**: eine Ansicht – hinzufügen (Vorschlag aus Bring!-Namen), Übersicht in einer Zeile, drei Kacheln pro Zeile, Aufteilung umstellbar Abteilung / Dringend, Inventur-Knopf am Ende
 - **Kachel**: antippen = ein Blatt mit allem (Bring!-Bild – im Entwurf Platzhalter –, Menge − + und Leer / Fast leer / Halb / Voll, «1 Stück =», Infos, Name ändern, Doppelte zusammenführen, wegnehmen); lange drücken = Karte dreht sich, hinten «Wegnehmen» (mit Rückgängig)
 - **Mengen**: Stück mit Grösse («2 × 1 l») oder «reicht für ~N Znacht»; in Bring! abgehakt = Vorrat + eine Packung
