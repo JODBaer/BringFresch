@@ -23,6 +23,8 @@ let uuidNo = 0;
 const bringList = [{ name: "Milch", specification: "", uuid: "u-milch" }];
 const wgPuts = [];
 let batchIgnore = false, batchFail = false, tokenNo = 0, expireToken = false;
+// Veraltetes Lesen wie bei Bring!: solange staleReads > 0, liefert GET die Liste von vorher (staleList)
+let staleReads = 0, staleList = [];
 let imgFetches = 0;
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
@@ -49,7 +51,10 @@ globalThis.fetch = async (url, init = {}) => {
   if (url.endsWith("/bringlists/list-wg/items") && init.method === "PUT") { for (const c of JSON.parse(init.body).changes) if (c.operation !== "REMOVE") wgPuts.push(c.itemId); return new Response(null, { status: 204 }); }
   if (url.includes("/bringlists/list-wg") && (init.method || "GET") === "GET") return Response.json({ items: { purchase: wgPuts.map(n => ({ itemId: n })) } });
   if (url.includes("/bringlists/list-wg") && init.method === "PUT") { wgPuts.push(new URLSearchParams(init.body).get("purchase")); return new Response(null, { status: 204 }); }
-  if (url.includes("/bringlists/list-1") && (init.method || "GET") === "GET") return Response.json({ purchase: bringList });
+  if (url.includes("/bringlists/list-1") && (init.method || "GET") === "GET") {
+    if (staleReads > 0) { staleReads--; return Response.json({ purchase: staleList }); }
+    return Response.json({ purchase: bringList });
+  }
   if (url.includes("/bringlists/list-1") && init.method === "PUT") {
     const p = new URLSearchParams(init.body);
     if (p.get("remove")) { const i = bringList.findIndex(x => x.name === p.get("remove")); if (i >= 0) bringList.splice(i, 1); return new Response(null, { status: 204 }); }
@@ -435,6 +440,27 @@ r = await call("/recipe?url=" + encodeURIComponent("https://fooby.ch/de/intern")
 check(r.status === 400 && internFetches === 0, `Weiterleitung auf eine interne Adresse wird nicht abgerufen (${r.status})`);
 r = await call("/img?url=" + encodeURIComponent("https://fooby.ch/de/weiter"));
 check(r.status === 204, `normale Weiterleitung wird gefolgt, Seite ohne Bild = 204 (${r.status})`);
+// Bring! liest kurz nach dem Schreiben noch alt: eben Gesetztes bleibt dem Bot und lässt sich wegnehmen
+{
+  const has = n => bringList.some(x => x.name === n);
+  staleList = JSON.parse(JSON.stringify(bringList)); staleReads = 3; // Sync liest 2× (vorher, nachher), dann /bring/list
+  r = await call("/bring/sync", { method: "POST", body: { items: [{ name: "Stale1", spec: "1 Stk" }] } });
+  check(r.status === 200 && has("Stale1"), "Stale1 steht auf Bring! (Nachher-Lesen war veraltet)");
+  const l = await (await call("/bring/list")).json();
+  check(!l.items.includes("Stale1") && l.mine.includes("Stale1"), "veraltetes Lesen: Stale1 fehlt in der Liste, gehört aber weiter dem Bot");
+  staleReads = 1;
+  r = await (await call("/bring/remove", { method: "POST", body: { names: ["Stale1"] } })).json();
+  check(r.removed === 1 && !has("Stale1"), `Rückgängig trotz veraltetem Lesen: Stale1 wirklich weg (${JSON.stringify(r)})`);
+  // Schon gesehen, dann gekauft und von jemand anderem neu eingetragen: gehört nicht mehr dem Bot
+  staleReads = 0;
+  await call("/bring/sync", { method: "POST", body: { items: [{ name: "Seen1", spec: "1 Stk" }] } });
+  bringList.splice(bringList.findIndex(x => x.name === "Seen1"), 1); // gekauft
+  await call("/bring/list");
+  bringList.push({ name: "Seen1", specification: "von Lukas", uuid: "u-lukas" });
+  r = await (await call("/bring/remove", { method: "POST", body: { names: ["Seen1"] } })).json();
+  check(r.notMine.includes("Seen1") && has("Seen1"), "gekauft und neu eingetragen: gehört Lukas, Bot lässt es stehen");
+  bringList.splice(bringList.findIndex(x => x.name === "Seen1"), 1);
+}
 const b3 = await backup(env, new Date("2026-11-12T03:00:00Z"));
 const snap3 = JSON.parse(store.get("backup:2026-11-12")).keys;
 check(snap3["w:sonnenhof:plan"] && !snap3["lock:sonnenhof"], `Sicherung enthält die zweite WG, keine Sperren (${b3.count})`);

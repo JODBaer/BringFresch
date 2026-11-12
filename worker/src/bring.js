@@ -147,6 +147,12 @@ export async function bringPurchase(s) {
 // Was hat der Bot selbst auf die Liste gesetzt? Nur das darf er wieder wegnehmen.
 export const ownKey = s => `bot:${s.listUuid}`;
 // own: { "rahm": { name: "Rahm", spec: "4 dl" } } – Menge, die der Bot zuletzt gesendet hat
+// Bring! liefert kurz nach dem Schreiben manchmal noch den alten Stand. Darum merkt sich der Bot pro Artikel, ob er ihn
+// nach dem Setzen schon einmal auf der Liste gesehen hat (seen). Fehlt ein Artikel, der schon gesehen wurde, ist er
+// gekauft/abgehakt -> vergessen (trägt ihn jemand neu ein, gehört er dieser Person). Fehlt einer, der noch NIE gesehen
+// wurde und erst vor kurzem gesetzt ist, war das Lesen veraltet -> er bleibt seiner (sonst könnte er ihn nie mehr wegnehmen).
+const OWN_GRACE_MS = 5 * 60 * 1000;
+const unseenFresh = o => !!(o && o.seen === false && o.t && Date.now() - o.t < OWN_GRACE_MS);
 export async function loadOwn(env, s) {
   const raw = (await env.WG.get(ownKey(s), "json")) || {};
   for (const k of Object.keys(raw)) if (typeof raw[k] === "string") raw[k] = { name: raw[k], spec: "" }; // altes Format
@@ -159,9 +165,12 @@ export async function bringList(env) {
   const own = await loadOwn(env, s);
   const onList = new Set(details.map(d => d.name.toLowerCase()));
   // Gekauft/abgehakt = nicht mehr drauf -> vergessen; trägt es später jemand neu ein, gehört es ihm
-  const gone = Object.keys(own).filter(k => !onList.has(k));
-  if (gone.length) { gone.forEach(k => delete own[k]); await env.WG.put(ownKey(s), JSON.stringify(own)); }
-  const mineDetails = Object.values(own);
+  const gone = Object.keys(own).filter(k => !onList.has(k) && !unseenFresh(own[k]));
+  const nowSeen = Object.keys(own).filter(k => onList.has(k) && own[k].seen === false);
+  gone.forEach(k => delete own[k]);
+  nowSeen.forEach(k => { own[k].seen = true; });
+  if (gone.length || nowSeen.length) await env.WG.put(ownKey(s), JSON.stringify(own)); // nur bei Änderung schreiben (KV-Kontingent)
+  const mineDetails = Object.values(own).map(({ name, spec }) => ({ name, spec }));
   return { items: details.map(d => d.name), details, mine: mineDetails.map(o => o.name), mineDetails };
 }
 
@@ -198,9 +207,10 @@ export async function bringSync(env, { items }) {
   const own = await loadOwn(env, s);
   const spec = it => String(it.spec || "").slice(0, 80);
   const list = items.map(it => ({ name: String(it.name || "").trim().slice(0, 80), spec: spec(it) })).filter(it => it.name);
-  const take = it => { // der Bot gibt an, was er gesetzt hat
+  // der Bot gibt an, was er gesetzt hat; seen = schon mit dieser Menge auf der Liste gesehen
+  const take = (it, seen) => {
     const k = it.name.toLowerCase();
-    if (!before.has(k) || own[k]) own[k] = { name: it.name, spec: it.spec }; // neu oder schon vom Bot -> gehört ihm, Menge merken
+    if (!before.has(k) || own[k]) own[k] = { name: it.name, spec: it.spec, t: Date.now(), seen }; // neu oder schon vom Bot -> gehört ihm, Menge merken
   };
   let pushed = 0, mode = "batch";
   const errors = [];
@@ -209,7 +219,7 @@ export async function bringSync(env, { items }) {
     // Nachsehen statt glauben: was nicht mit der gesendeten Menge auf der Liste steht, geht einzeln hinterher
     const after = new Map((await bringDetails(s)).map(d => [d.name.toLowerCase(), d.spec]));
     rest = list.filter(it => after.get(it.name.toLowerCase()) !== it.spec);
-    list.filter(it => !rest.includes(it)).forEach(take);
+    list.filter(it => !rest.includes(it)).forEach(it => take(it, true));
     pushed = list.length - rest.length;
     if (rest.length) mode = "mixed";
   } else mode = "single";
@@ -217,7 +227,7 @@ export async function bringSync(env, { items }) {
     for (const [i, it] of rest.entries()) {
       if (i >= MAX_ITEMS) { errors.push(`${it.name}: zu viele Artikel für den Einzelversand`); continue; }
       const res = await bringPut(s, { purchase: it.name, specification: it.spec });
-      if (res.ok) { pushed++; take(it); } else errors.push(`${it.name}: ${res.status}`);
+      if (res.ok) { pushed++; take(it, false); } else errors.push(`${it.name}: ${res.status}`);
     }
   }
   await env.WG.put(ownKey(s), JSON.stringify(own));
@@ -232,11 +242,12 @@ export async function bringRemove(env, { names }) {
   const uuids = new Map((await bringDetails(s)).map(d => [d.name.toLowerCase(), d.uuid]));
   const onList = new Set(uuids.keys());
   const own = await loadOwn(env, s);
-  const notMine = [], gone = [], todo = [];
+  const notMine = [], gone = [], todo = [], byName = [];
   for (const n of names) {
     const name = String(n || "").trim().slice(0, 80);
     const k = name.toLowerCase();
     if (!name) continue;
+    if (!onList.has(k) && unseenFresh(own[k])) { byName.push(name); continue; } // eben gesetzt, Lesen noch veraltet -> trotzdem wegnehmen (ohne uuid: per Name)
     if (!onList.has(k)) { gone.push(name); delete own[k]; continue; }
     if (!own[k]) { notMine.push(name); continue; }
     todo.push(name);
@@ -247,6 +258,7 @@ export async function bringRemove(env, { names }) {
     rest = todo.filter(name => still.has(name.toLowerCase()));
     todo.filter(name => !rest.includes(name)).forEach(name => { removed++; delete own[name.toLowerCase()]; });
   }
+  rest = [...rest, ...byName];
   if (rest.length) {
     for (const [i, name] of rest.entries()) {
       if (i >= MAX_ITEMS) break; // Rückfall: Free-Plan-Limit; der Rest bleibt gemerkt und kann nochmals weg
