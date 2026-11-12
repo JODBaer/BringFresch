@@ -18,6 +18,7 @@
 //   GET  /recipe?url=…                -> { title, servings, ingredients[], minutes }  (Rezept-Link importieren)
 //   GET/PUT /vorrat                   -> gemeinsamer Grundvorrat der WG
 //   GET/PUT /settings                 -> WG-Einstellungen (Mitbewohner, Znacht-Zeit, Rezept-Webseiten, eigene Rezepte)
+//   GET  /popular                     -> { weeks: { "2026-W46": { rezeptId: Stimmen } } } Beliebtheit pro WG
 //   GET  /recipes/shared              -> { recipes } eigene Rezepte der anderen WGs (standardmässig geteilt)
 //   GET  /cal-link                    -> { url } Abo-Link für den Kalender
 //   GET  /cal/:token.ics              -> Kalender-Abo (iCal) mit allen Znacht der Woche
@@ -37,7 +38,7 @@
 
 import { body, corsHeaders, httpError, json } from "./http.js";
 import { requireWg, scoped } from "./auth.js";
-import { backup, getWeek, putDoc } from "./speicher.js";
+import { backup, countWeek, getPopular, getWeek, putDoc } from "./speicher.js";
 import { bringList, bringLists, bringRemove, bringSetTarget, bringSync } from "./bring.js";
 import { calendar } from "./kalender.js";
 import { importRecipe, recipeImage } from "./rezept.js";
@@ -97,6 +98,7 @@ async function route(request, env, url) {
     if (part === "vote" && member && method === "PUT") {
       const { likes = [], days = {} } = await body(request);
       await env.WG.put(`week:${key}:vote:${member}`, JSON.stringify({ likes: likes.map(String), days }), { expirationTtl: 60 * 60 * 24 * 21 });
+      await countWeek(env, key); // Beliebtheit pro WG (bleibt länger als die Stimmen)
       return json({ ok: true });
     }
   }
@@ -139,6 +141,8 @@ async function route(request, env, url) {
     return res;
   }
   // Geteilte Rezepte der anderen WGs (gleicher Bestand für alle; Stimmen und Rangliste bleiben pro WG)
+  // Beliebtheit pro WG: Stimmen der Wochenwahl pro Woche (andere WGs sehen sie nie)
+  if (path === "/popular" && method === "GET") return json(await getPopular(env));
   if (path === "/recipes/shared" && method === "GET") return json(await getShared(env));
 
   if (path === "/recipe" && method === "GET") return json(await importRecipe(url.searchParams.get("url")));

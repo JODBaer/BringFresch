@@ -339,7 +339,7 @@
       $("mlist").innerHTML = `<button type="button" class="opt" role="option" data-link="${esc(pasted)}"><span><span class="n">🔗 Rezept von diesem Link holen</span><small>${esc(pasted.replace(/^https?:\/\/(www\.)?/, "").slice(0, 60))}</small></span></button>`;
       return;
     }
-    const counts = dishCounts();
+    const pc = app.popularCounts(), counts = Object.keys(pc).length ? pc : dishCounts(); // WG-Stimmen, sonst dieses Handy
     const current = state.plan[sheetDay] ? String(state.plan[sheetDay].id) : null;
     const all = allRecipes().filter(r => String(r.id) !== current && (!f || norm(`${r.title} ${dayMeta(r)}`).includes(f)));
     const optHTML = r => `<button type="button" class="opt" role="option" data-id="${esc(r.id)}"><span><span class="n">${esc(r.title)}</span><small>${esc(dayMeta(r))}${inSeason(r) ? "" : " · nicht Saison"}</small></span>${counts[r.id] ? `<span class="pop">♥ ${counts[r.id]}×</span>` : ""}</button>`;
@@ -374,6 +374,9 @@
     sheetReturn = from || null;
     const day = state.plan[idx];
     $("msheetTitle").innerHTML = `${esc(DAYS[idx].slice(0, 2))}: Menü wechseln<small>jetzt: ${esc(day.title)}</small>`;
+    // Gericht auf einen anderen Tag verschieben (tauschen): Esser, Gäste und Zeit bleiben am Tag
+    $("mswap").innerHTML = `<span class="mswap-l">Tauschen mit</span>` + DAYS.map((d, j) => j === idx ? "" :
+      `<button type="button" class="mswap-d" data-swap="${j}" title="${esc(state.plan[j] ? state.plan[j].title : "")}">${esc(d.slice(0, 2))}</button>`).join("");
     $("msearch").value = "";
     sheetOptions();
     $("mlist").scrollTop = 0;
@@ -421,6 +424,20 @@
       run: () => { state.plan[idx] = previous; savePlan(); refresh(); toast("Rückgängig gemacht"); }
     });
   }
+  $("mswap").addEventListener("click", e => {
+    const b = e.target.closest("[data-swap]");
+    if (!b) return;
+    const a = sheetDay, j = +b.dataset.swap;
+    const before = state.plan.slice();
+    state.plan.splice(0, 7, ...app.CORE.swapDishes(state.plan, a, j));
+    savePlan();
+    refresh();
+    closeMenuSheet();
+    toast(`${DAYS[a].slice(0, 2)} ↔ ${DAYS[j].slice(0, 2)} getauscht`, {
+      label: "Rückgängig",
+      run: () => { state.plan.splice(0, 7, ...before); savePlan(); refresh(); toast("Rückgängig gemacht"); }
+    });
+  });
   $("msearch").addEventListener("input", sheetOptions);
   trackTaps($("mlist"), () => $("mlist").scrollTop);
   $("mlist").addEventListener("click", e => {

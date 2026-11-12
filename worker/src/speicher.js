@@ -48,3 +48,22 @@ export async function getWeek(env, key) {
   }));
   return { week: key, candidates: candidates || null, votes };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Beliebtheit pro WG: Stimmen der Wochenwahl bleiben nur 21 Tage. Nach jeder Stimme wird die Zählung dieser Woche
+// in «pop» festgehalten ({ weeks: { "2026-W46": { rezeptId: Anzahl } } }, die letzten 52 Wochen).
+export async function countWeek(env, key) {
+  const { votes } = await getWeek(env, key);
+  const counts = {};
+  Object.values(votes || {}).forEach(v => [...new Set((v && v.likes) || [])].forEach(id => { counts[id] = (counts[id] || 0) + 1; }));
+  const pop = (await env.WG.get("pop", "json")) || { weeks: {} };
+  pop.weeks[key] = counts;
+  const keep = Object.keys(pop.weeks).sort().slice(-52);
+  pop.weeks = Object.fromEntries(keep.map(k => [k, pop.weeks[k]]));
+  await env.WG.put("pop", JSON.stringify(pop));
+  return pop;
+}
+export async function getPopular(env) {
+  const pop = (await env.WG.get("pop", "json")) || { weeks: {} };
+  return { weeks: pop.weeks || {} };
+}

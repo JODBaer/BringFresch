@@ -239,6 +239,11 @@
     // gleicher Bestand für alle WGs: Katalog + eigene + geteilte der anderen WGs (Stimmen bleiben pro WG)
     return [...(DATA.recipes || []), ...(window.BRINGFRISCH_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
   }
+  // Beliebtheit: Stimmen der Wochenwahl dieser WG (vom WG-Server); ohne Server: wie oft auf diesem Handy gewählt
+  function popularCounts() {
+    const wg = CORE.popularity((load(STORE.KEYS.POPULAR_KEY, null) || {}).weeks);
+    return Object.keys(wg).length ? wg : (load(COUNTS_KEY, null) || {});
+  }
   function sharedRecipes() {
     const list = load(STORE.KEYS.SHARED_RECIPES_KEY, []);
     return Array.isArray(list) ? list : [];
@@ -353,7 +358,7 @@
     VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, PLAN_WEEK_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY, VOTE_KEY, ME_KEY,
     WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY, KEYS, state, currentPlan, otherPlan, savePlan,
     saveMembers, saveStaples, $, recipeLinkLabel, recipeHref, guessMeat, esc, currentMonth, todayIndex, initialsMap,
-    toast, copyText, allRecipes, effectiveDiet, fitsDiet, inSeason, pickRecipe, makeDay, generateWeek, normalizePlan,
+    toast, copyText, allRecipes, popularCounts, effectiveDiet, fitsDiet, inSeason, pickRecipe, makeDay, generateWeek, normalizePlan,
     normalizeWeek, subscribe, notify, toBuyItems, listLine, DIET_LABEL, refresh, recipeById, dietGroup, nextWeekKey, canPlanNext,
     shownWeek, isOpenWeek, nextPlan, setCurrentPlan });
 })();

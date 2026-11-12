@@ -216,6 +216,12 @@ await call("/week/2026-W46/vote/joshua", { method: "PUT", body: { likes: ["a"], 
 await call("/week/2026-W46/vote/jo", { method: "PUT", body: { likes: ["a", "b"] } });
 const wk = await (await call("/week/2026-W46")).json();
 check(wk.candidates.join() === "a,b,c" && wk.votes.joshua.days.a === 4 && wk.votes.jo.likes.length === 2, "Stimmen pro Person getrennt gespeichert");
+let pop = await (await call("/popular")).json();
+check(pop.weeks["2026-W46"].a === 2 && pop.weeks["2026-W46"].b === 1 && !pop.weeks["2026-W46"].c, "Beliebtheit: Stimmen der Woche gezählt (a 2×, b 1×)");
+await call("/week/2026-W46/vote/jo", { method: "PUT", body: { likes: ["c"] } }); // Jo ändert die Wahl
+pop = await (await call("/popular")).json();
+check(pop.weeks["2026-W46"].a === 1 && !pop.weeks["2026-W46"].b && pop.weeks["2026-W46"].c === 1, "geänderte Wahl zählt neu (nicht doppelt)");
+await call("/week/2026-W46/vote/jo", { method: "PUT", body: { likes: ["a", "b"] } });
 
 // 4. Plan + Kalender
 const plan = Array.from({ length: 7 }, (_, i) => ({ title: i === 2 ? "Lauchwähe, mit Käseguss" : `Gericht ${i}`, eaters: i === 6 ? [] : ["joshua", "jo"], leftover_buffer: 2, source_url: i === 2 ? "https://www.bettybossi.ch/x" : "" }));
@@ -338,6 +344,7 @@ r = await sh("/plan", { method: "PUT", body: { week: "2026-W46", plan: Array.fro
 check(r.status === 200 && store.get("plan") === mainPlanBefore && JSON.parse(store.get("w:sonnenhof:plan")).plan[0].title === "Sonnenhof-Risotto", "Plan der zweiten WG liegt getrennt");
 await sh("/week/2026-W46/vote/mia", { method: "PUT", body: { likes: ["x"] } });
 check(!(await (await call("/week/2026-W46")).json()).votes.mia && (await (await sh("/week/2026-W46")).json()).votes.mia, "Stimmen getrennt pro WG");
+check(!(await (await call("/popular")).json()).weeks["2026-W46"].x && (await (await sh("/popular")).json()).weeks["2026-W46"].x === 1, "Beliebtheit bleibt in der eigenen WG");
 r = await sh("/bring/list");
 check(r.status === 409, "zweite WG ohne gewählte Liste schreibt nirgends hin (409)");
 r = await sh("/bring/lists");

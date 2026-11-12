@@ -4,7 +4,7 @@
   "use strict";
   const app = window.BF_APP;
   if (!app) return;
-  const { isoWeek, plusWeek, bringPayload, state, $, esc, toast, copyText, toBuyItems, listLine, refresh } = app;
+  const { isoWeek, plusWeek, bringPayload, state, $, esc, toast, copyText, toBuyItems, listLine, refresh, CORE, DAYS } = app;
 
   // ---------------------------------------------------------------------------
   // Rendering: Einkauf
@@ -33,12 +33,12 @@
       $("shopList").innerHTML = (extra && state.shopFilter === "toBuy" ? "" : `<div class="empty">${msg}</div>`) + extra;
       return;
     }
-    const byAisle = {};
-    items.forEach(it => (byAisle[it.cat] = byAisle[it.cat] || []).push(it));
-    $("shopList").innerHTML = (extra ? `<h3 class="vplan">Aus dem Plan</h3>` : "") + Object.keys(byAisle).sort().map(cat => `
-      <div class="aisle">
-        <h3>${esc(cat)}</h3>
-        ${byAisle[cat].map(it => `<button type="button" class="item tap-item${it.isOnBring ? " on" : ""}" data-shop="${esc(it.name)}" aria-pressed="${it.isOnBring}"><span>${esc(it.name)}</span><span class="amt">${esc(it.spec)}</span></button>`).join("")}
+    // nach Gericht (Reihenfolge des Plans) statt nach Abteilung; Gemeinsames unter «Für mehrere Gerichte»
+    const daysOf = title => state.plan.map((d, i) => (d && d.title === title && !d.empty ? DAYS[i].slice(0, 2) : "")).filter(Boolean).join(", ");
+    $("shopList").innerHTML = (extra ? `<h3 class="vplan">Aus dem Plan</h3>` : "") + CORE.groupByDish(items, state.plan).map(g => `
+      <div class="aisle dish">
+        <h3>${g.several || g.title === "Sonstiges" ? esc(g.title) : `<span class="dd-day">${esc(daysOf(g.title))}</span> ${esc(g.title)}`}</h3>
+        ${g.items.map(it => `<button type="button" class="item tap-item${it.isOnBring ? " on" : ""}" data-shop="${esc(it.name)}" aria-pressed="${it.isOnBring}"><span>${esc(it.name)}${g.several ? `<small class="from">${esc((it.from || []).length)} Gerichte</small>` : ""}</span><span class="amt">${esc(it.spec)}</span></button>`).join("")}
       </div>`).join("") + extra;
   }
 

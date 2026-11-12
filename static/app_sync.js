@@ -315,12 +315,14 @@
   async function pullShared() {
     if (!connected()) return;
     try {
-      const [remote, bring, vorrat, remoteNext, remoteSettings, shared] = await Promise.all([
+      const [remote, bring, vorrat, remoteNext, remoteSettings, shared, popular] = await Promise.all([
         api("/plan"), api("/bring/list"), api("/vorrat"),
         canPlanNext() ? api(`/plan/${nextWeekKey()}`).catch(() => null) : null,
         api("/settings").catch(e => { if (/Endpunkt/.test(e.message)) settingsServer = false; return null; }),
-        api("/recipes/shared").catch(() => null) // älterer Server: keine geteilten Rezepte
+        api("/recipes/shared").catch(() => null), // älterer Server: keine geteilten Rezepte
+        api("/popular").catch(() => null)         // Beliebtheit dieser WG (Stimmen pro Woche)
       ]);
+      if (popular && popular.weeks) save(STORE.KEYS.POPULAR_KEY, { weeks: popular.weeks });
       // Rezepte der anderen WGs: gleicher Bestand für alle, offline zwischengespeichert
       if (shared && Array.isArray(shared.recipes)) {
         const before = JSON.stringify(load(STORE.KEYS.SHARED_RECIPES_KEY, []));
@@ -531,6 +533,7 @@
     state.nextDoc = null;
     remove(NEXT_KEY);
     remove(STORE.KEYS.SHARED_RECIPES_KEY); // Rezepte der anderen WGs gehören zum WG-Server
+    remove(STORE.KEYS.POPULAR_KEY);
   }
 
   Object.assign(app, { connected, api, setSyncStatus, setBase, pushPlanNow, pushNextNow, pushVorratNow,

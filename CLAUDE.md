@@ -29,6 +29,8 @@ Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 
 ## Fachregeln
 
+- **Einkauf nach Gericht** (nicht nach Abteilung): `groupByDish` in `core.js`, Gemeinsames unter «Für mehrere Gerichte». **Beliebtheit** = Stimmen der Wochenwahl dieser WG (Worker zählt nach jeder Stimme in `pop`, `GET /popular`), sortiert den Katalog. **Tauschen**: Menü-Blatt «Tauschen mit», `swapDishes` (Esser/Gäste/Puffer/Zeit bleiben am Tag).
+
 - **Nächste Woche** (ab Donnerstag): Chip «KW 47 →» in der Abschnittszeile bzw. Wischen; eigener Plan pro KW (`bringfrisch_next_plan`, Worker `/plan/:week`), `state.plan` ist immer die angezeigte Woche. Offene Tage (`empty: true`) kaufen nichts und stehen nicht im Kalender. Wochenwahl pro Woche gespeichert. Montag: geplante Woche wird zur laufenden.
 - **Ablauf**: Wochenwahl (14 Saison-Gerichte, ½ vegi / ½ Fleisch, Top 7 → Tage mit anwesenden Fans, Wunschtag zählt) → Plan (Esser pro Tag, Puffer) → Bring! füllen.
 - **Portionen** = Esser + Gäste + Reste-Puffer (Standard +2, wählbar +0…+6). Niemand zuhause → kein Kochen.

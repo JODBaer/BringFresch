@@ -1498,6 +1498,29 @@ await step(B, "Geteilte Rezepte: eigene gehen standardmässig an alle WGs, Rezep
   await closeDialog(B, "recipeDialog");
 });
 
+await step(B, "Menü tauschen (Blatt «Tauschen mit»), Einkauf nach Gericht, Katalog nach Beliebtheit", async () => {
+  await goTab(B, "plan");
+  const t0 = await text(B, '.prow[data-i="0"] .t'), t1 = await text(B, '.prow[data-i="1"] .t');
+  await tap(B, '.prow[data-i="0"] .t');
+  await until(B, () => document.getElementById("msheet").classList.contains("show") && document.querySelectorAll("#mswap [data-swap]").length === 6, "«Tauschen mit» fehlt im Blatt");
+  await tap(B, '#mswap [data-swap="1"]');
+  await until(B, ([a, b]) => document.querySelector('.prow[data-i="0"] .t').textContent.trim() === b && document.querySelector('.prow[data-i="1"] .t').textContent.trim() === a, "Mo ↔ Di nicht getauscht", [t0, t1]);
+  await toastIs(B, /getauscht/);
+  await goTab(B, "shop");
+  await until(B, t => [...document.querySelectorAll("#shopList .aisle.dish h3")].some(h => h.textContent.includes(t)), "Einkauf nicht nach Gericht", t1);
+  await shot(B, "09c-einkauf-nach-gericht");
+  await goTab(B, "plan");
+  // Beliebtheit: Stimmen der Wochenwahl dieser WG (vom WG-Server) sortieren den Katalog
+  const pop = await B.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_popular") || "null"));
+  expect(pop && Object.keys(pop.weeks || {}).length > 0, `Beliebtheit nicht vom WG-Server geholt: ${JSON.stringify(pop)}`);
+  await tap(B, '.prow[data-i="2"] .t');
+  await tap(B, "#mlist [data-catalog]");
+  await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
+  await tap(B, '#catalogFilters [data-filter="all"]');
+  await until(B, () => /♥ \d/.test((document.querySelector("#catalogList .recipe .likes") || {}).textContent || "") && document.querySelector("#catalogList .recipe").querySelector(".likes"), "gewähltes Gericht steht nicht oben mit ♥");
+  await closeDialog(B, "catalogDialog");
+});
+
 await step(B, "Navigation: jeder Tab, kein seitliches Scrollen; keine JS-Fehler, nichts ins Internet", async () => {
   for (const t of ["shop", "season", "wg", "plan"]) { await goTab(B, t); await noHScroll(B, t); await shot(B, `10-${t}`); }
   expect(B.errors.length === 0, B.errors.join(" | "));

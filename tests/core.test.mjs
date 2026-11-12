@@ -81,5 +81,37 @@ check(C.unbookWeek(vor, "2026-W46") === 2 && oel.qty === 5 && salz.qty === 1 && 
 check(C.isOld({ since: "2025-10" }, "2026-11") && !C.isOld({ since: "2025-11" }, "2026-11"), "über ein Jahr im Vorrat markiert");
 check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fast leer / Halb / Voll");
 
+// Wochenplan: Gerichte tauschen – Esser, Gäste, Puffer, Zeit bleiben am Tag
+{
+  const plan = [
+    { day: "Montag", id: "a", title: "Dal", ingredients: [{ name: "Linsen" }], eaters: ["jo"], extra_guests: 1, leftover_buffer: 0, time: "19:00", time_by: "jo" },
+    { day: "Dienstag", id: "b", title: "Rösti", diet: "fleisch", eaters: ["jo", "le"], leftover_buffer: 2 },
+    { day: "Mittwoch", empty: true, title: "noch offen", eaters: [] },
+  ];
+  const sw = C.swapDishes(plan, 0, 1);
+  check(sw[0].title === "Rösti" && sw[0].diet === "fleisch" && sw[0].day === "Montag" && sw[0].eaters.join() === "jo" && sw[0].extra_guests === 1 && sw[0].time === "19:00", "Tauschen: Gericht wandert, Esser/Gäste/Zeit bleiben am Montag");
+  check(sw[1].title === "Dal" && sw[1].ingredients[0].name === "Linsen" && sw[1].day === "Dienstag" && sw[1].eaters.join() === "jo,le" && sw[1].time === undefined && !("diet" in sw[1]), "… und am Dienstag (keine Reste vom alten Gericht)");
+  const sw2 = C.swapDishes(plan, 0, 2);
+  check(sw2[0].empty === true && sw2[0].title === "noch offen" && sw2[2].title === "Dal" && !sw2[2].empty, "Tauschen mit offenem Tag: Gericht zieht um, alter Tag wird offen");
+  check(plan[0].title === "Dal" && C.swapDishes(plan, 1, 1)[1] === plan[1], "Original unverändert; gleicher Tag = nichts");
+}
+// Einkauf nach Gericht
+{
+  const plan = [{ title: "Dal" }, { title: "Rösti" }, { title: "noch offen", empty: true }];
+  const g = C.groupByDish([
+    { name: "Linsen", from: ["Dal"] }, { name: "Kartoffeln", from: ["Rösti"] }, { name: "Butter", from: ["Rösti"] },
+    { name: "Salat", from: ["Dal", "Rösti"] }, { name: "Vorrat-Ding", from: [] },
+  ], plan);
+  check(g.map(x => x.title).join("|") === "Dal|Rösti|Für mehrere Gerichte|Sonstiges", `Gruppen in Plan-Reihenfolge (${g.map(x => x.title).join("|")})`);
+  check(g[1].items.map(i => i.name).join() === "Butter,Kartoffeln" && g[2].items[0].name === "Salat" && g[2].several, "pro Gericht alphabetisch; Gemeinsames unter «Für mehrere Gerichte»");
+}
+// Beliebtheit pro WG
+{
+  const c = C.popularity({ "2026-W45": { a: 2, b: 1 }, "2026-W46": { a: 1, c: 3 } });
+  check(c.a === 3 && c.b === 1 && c.c === 3, "Beliebtheit: Stimmen über die Wochen zusammengezählt");
+  const list = [{ id: "b", title: "B" }, { id: "x", title: "A" }, { id: "a", title: "Z" }, { id: "c", title: "C" }].sort(C.byPopularity(c, 11));
+  check(list.map(r => r.id).join() === "c,a,b,x", `Sortierung: meiste Stimmen zuerst, dann Titel (${list.map(r => r.id)})`);
+}
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

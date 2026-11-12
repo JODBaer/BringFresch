@@ -26,6 +26,21 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 - [x] Redesign Plan-Ansicht + Navigation live (iPhone Glas / Android Material 3 Expressive)
 - [x] Tests: App (jsdom), 2-Handy-Integration, Worker offline, `tools/check_live` (Kette), `tests/e2e_live` (echtes Bring!)
 
+## Rückmeldungen Joshua 12.11.2026 (Test v1.8/v1.9)
+
+- [x] **Rezepte für alle WGs** (v1.9.0/1): ein Bestand für alle WGs; eigene Rezepte standardmässig geteilt (abwählbar «Mit allen WGs teilen»); Stimmen/Rangliste bleiben WG-intern. Herkunft wird nicht gezeigt, nur «geteilt»
+- [x] **Bild kaputt in der Wochenwahl** (v1.9.1): Kartenbild nur als kleines Quadrat – Grundvorrat hatte die Klasse `.vimg` mitbenutzt; Test sichert ab
+- [x] **iPhone: Zoom geht nicht zurück** (v1.8.0): Eingabefelder 16 px, Zusammenziehen erlaubt
+- [ ] **iPhone ruckelt** – noch nicht gefunden; Joshua sagt, wo (Plan scrollen, Tag aufklappen, Tabs?)
+- [x] **Einkauf nach Gericht** statt nach Abteilung (Obst, Milch …): pro Gericht in Plan-Reihenfolge, Tag davor; Gemeinsames (Salat, Extra-Fleisch) unter «Für mehrere Gerichte» (`groupByDish` in `core.js`)
+- [x] **Rezepte nach Beliebtheit**: Katalog sortiert nach Stimmen eurer Wochenwahlen (WG-intern, Worker `/popular`, Zählung pro Woche bleibt 52 Wochen), ♥ n am Rezept; «Beliebt bei euch» im Menü-Blatt nutzt dieselben Stimmen
+- [x] **Menüs verschieben** (einfache Fassung): im Menü-Blatt «Tauschen mit Mo/Di/…» – Gericht wandert, Esser/Gäste/Zeit bleiben am Tag, «Rückgängig»
+- [ ] **Wochenplan-Übersicht mit Verschieben** (ausbauen): ganze Woche auf einen Blick, Gerichte per Ziehen verschieben – erst als HTML-Entwurf zeigen, wenn «Tauschen mit» nicht reicht
+- [ ] **Einkauf: Bring! nur noch an einer Stelle** – heute kann man an 3 Stellen auf Bring! laden plus einzeln (Zeile antippen). Vereinfachen: ein Bring!-Knopf (Vorschlag Joshua: schwebender Knopf, z.B. unten links)
+- [ ] **«Prüfen» ohne eigenen Reiter/Fenster**: die drei Bereiche (Kaufen aus dem Plan, Vorrat knapp, schon auf Bring!) übersichtlich auf **einer** Seite zusammen, als Vergleich wie bei einem Merge (Git, Sublime Merge): links/rechts bzw. oben/unten, was dazukommt und was schon da ist – farbig markiert, **ohne +/−-Zeichen**. Zuerst als HTML-Entwurf zeigen
+- [ ] **Bot vergisst eben gesetzte Artikel**, wenn Bring! kurz noch den alten Stand liefert → kann sie nicht mehr wegnehmen (Rückgängig, Live-Test-Reste). Lösung muss «gekauft» (Bring! «recently») von «noch alt gelesen» unterscheiden (erster Versuch zurückgenommen, brach «gekauft und von jemand anderem neu eingetragen»)
+- [ ] Bring!-Batch: ob Mengen ändern im Batch allein wirkt, ist offen (Live-Test zeigt «mixed», Ergebnis stimmt dank Nachschicken)
+
 ## Als Nächstes
 
 - [ ] **Redesign Plan-Ansicht – prüfen**: `node tests/layout_check.mjs --shots` (390×844, 375×667, 390×600; iPhone/Android, hell/dunkel) und auf dem echten iPhone/Android ansehen

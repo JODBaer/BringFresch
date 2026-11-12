@@ -7,7 +7,7 @@
   if (!app) return;
   const { DATA, importer, DAYS, MONTHS, DEFAULT_SERVINGS, load, save, SITES_KEY, state, otherPlan, savePlan, $,
     recipeHref, guessMeat, esc, currentMonth, toast, copyText, allRecipes, effectiveDiet, fitsDiet, inSeason,
-    pickRecipe, makeDay, DIET_LABEL, refresh } = app;
+    pickRecipe, makeDay, DIET_LABEL, refresh, CORE, popularCounts } = app;
 
   // ---------------------------------------------------------------------------
   // Rendering: Saison
@@ -125,6 +125,9 @@
       }
       return true;
     });
+    // nach Beliebtheit (Stimmen eurer Wochenwahlen), dann Saison, dann Titel
+    const pop = popularCounts();
+    list.sort(CORE.byPopularity(pop, currentMonth()));
     const actionLabel = state.catalogMode === "vote" ? "Zur Wochenwahl" : `Für ${DAYS[state.catalogDay].slice(0, 2)} einplanen`;
     $("catalogList").innerHTML = list.length === 0
       ? `<div class="empty">Keine Rezepte gefunden.</div>`
@@ -134,7 +137,7 @@
         <div class="card recipe">
           <div class="recipe-head">
             <div>
-              <b>${esc(r.title)}</b>
+              <b>${esc(r.title)}</b>${pop[r.id] ? ` <span class="likes" title="Stimmen eurer Wochenwahlen">♥ ${pop[r.id]}</span>` : ""}
               <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}${r.shared_from ? " · geteilt" : custom && r.shared === false ? " · nur unsere WG" : ""}</small>
             </div>
             ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : "🔎 Rezept suchen"}</a>` : ""}

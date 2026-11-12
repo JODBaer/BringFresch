@@ -494,7 +494,60 @@
     return [...out.entries()].sort((a, b) => a[1] - b[1] || a[0].length - b[0].length).slice(0, limit).map(e => e[0]);
   }
 
+  // ---------------------------------------------------------------------------
+  // Wochenplan: Gerichte zwischen zwei Tagen tauschen. Was zum Tag gehört (wer isst, Gäste, Reste-Puffer, Zeit)
+  // bleibt am Tag, nur das Gericht wandert.
+  // ---------------------------------------------------------------------------
+  const DAY_KEYS = ["day", "eaters", "leftover_buffer", "extra_guests", "time", "time_by"];
+  function dishOf(day) {
+    const out = {};
+    Object.keys(day || {}).forEach(k => { if (!DAY_KEYS.includes(k)) out[k] = day[k]; });
+    return out;
+  }
+  function slotOf(day) {
+    const out = {};
+    DAY_KEYS.forEach(k => { if (day && day[k] !== undefined) out[k] = day[k]; });
+    return out;
+  }
+  function swapDishes(plan, a, b) {
+    if (a === b || !plan[a] || !plan[b]) return plan.slice();
+    const out = plan.slice();
+    out[a] = { ...dishOf(plan[b]), ...slotOf(plan[a]) };
+    out[b] = { ...dishOf(plan[a]), ...slotOf(plan[b]) };
+    return out;
+  }
+
+  // Einkauf nach Gericht: pro Gericht in der Reihenfolge des Plans, was nur dieses Gericht braucht; was mehrere
+  // Gerichte brauchen (z.B. Salat, Extra-Fleisch), steht zusammen unter «Für mehrere Gerichte».
+  function groupByDish(items, plan) {
+    const titles = [];
+    (plan || []).forEach(d => { if (d && d.title && !d.empty && !titles.includes(d.title)) titles.push(d.title); });
+    const groups = new Map(titles.map(t => [t, []]));
+    const several = [], other = [];
+    items.forEach(it => {
+      const from = [...new Set(it.from || [])];
+      if (from.length > 1) several.push(it);
+      else if (from.length === 1 && groups.has(from[0])) groups.get(from[0]).push(it);
+      else other.push(it);
+    });
+    const byName = list => list.slice().sort((x, y) => x.name.localeCompare(y.name, "de"));
+    const out = [...groups.entries()].filter(([, list]) => list.length).map(([title, list]) => ({ title, items: byName(list) }));
+    if (several.length) out.push({ title: "Für mehrere Gerichte", several: true, items: byName(several) });
+    if (other.length) out.push({ title: "Sonstiges", items: byName(other) });
+    return out;
+  }
+
+  // Beliebtheit (pro WG): Stimmen der Wochenwahl, gesammelt pro Woche { "2026-W46": { rezeptId: Anzahl } }
+  function popularity(weeks) {
+    const out = {};
+    Object.values(weeks || {}).forEach(w => Object.entries(w || {}).forEach(([id, n]) => { out[id] = (out[id] || 0) + (+n || 0); }));
+    return out;
+  }
+  const byPopularity = (counts, month) => (a, b) =>
+    ((counts[b.id] || 0) - (counts[a.id] || 0)) || (inSeason(b, month) - inSeason(a, month)) || a.title.localeCompare(b.title, "de");
+
   root.BF_CORE = {
+    swapDishes, groupByDish, popularity, byPopularity,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
     effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, votersOf, ranking, assignDays,

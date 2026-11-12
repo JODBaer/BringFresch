@@ -109,6 +109,23 @@ d.getElementById("msearch").value = "Pizza bestellen";
 d.getElementById("msearch").dispatchEvent(new w.Event("input"));
 d.querySelector("#mlist .opt[data-new]").click();
 check(plan0()[4].title === "Pizza bestellen", "eigenes Menü eintippen");
+// Menü verschieben: im Blatt «Tauschen mit» – Gericht wandert, Esser bleiben am Tag
+{
+  const p0 = plan0(), t1 = p0[1].title, t4 = p0[4].title, e1 = JSON.stringify(p0[1].eaters), e4 = JSON.stringify(p0[4].eaters);
+  d.querySelector("#days [data-pick='1']").click();
+  check(d.querySelectorAll("#mswap [data-swap]").length === 6, "Blatt: «Tauschen mit» für die 6 anderen Tage");
+  d.querySelector("#mswap [data-swap='4']").click();
+  const p1 = plan0();
+  check(p1[1].title === t4 && p1[4].title === t1 && JSON.stringify(p1[1].eaters) === e1 && JSON.stringify(p1[4].eaters) === e4 && !d.getElementById("msheet").classList.contains("show"), "Di ↔ Fr getauscht, Esser bleiben am Tag");
+  d.querySelector(".toast button").click();
+  check(plan0()[1].title === t1 && plan0()[4].title === t4, "Tauschen: «Rückgängig»");
+}
+// Einkauf nach Gericht statt nach Abteilung
+{
+  const heads = [...d.querySelectorAll("#shopList .aisle.dish h3")].map(h => h.textContent.trim());
+  check(heads.length > 1 && !heads.some(h => /Obst & Gemüse|Milch & Käse/.test(h)) && heads.some(h => h.includes(plan0()[0].title)), `Einkauf nach Gericht (${heads.slice(0, 3).join(" | ")} …)`);
+}
+
 
 d.querySelector("#days [data-pick='2']").click();
 d.querySelector("#mlist [data-catalog]").click();
