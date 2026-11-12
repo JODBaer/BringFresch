@@ -25,8 +25,12 @@ try {
   const changed = built.filter((l, i) => l !== src[i]);
   check(changed.length === 1, `nur diese eine Zeile verändert (${changed.length})`);
   check(readFileSync(path.join(out, "static", "sw.js"), "utf8").includes("'bringfrisch-cache-9.8.7'"), "Cache des Service Workers heisst wie die Version");
-  const pattern = src.find(l => /\.match\(\/const APP_VERSION/.test(l));
-  check(!pattern || built.includes(pattern), "Suchmuster in «Aktualisieren» unverändert");
+  // «Aktualisieren» (app_einstellungen.js) liest die Version per Suchmuster aus app.js – die Datei bleibt beim Bauen gleich
+  const UPDATE_FILE = "app_einstellungen.js";
+  const updSrc = readFileSync(path.join(root, "static", UPDATE_FILE), "utf8");
+  const pattern = updSrc.split(/\r?\n/).find(l => /\.match\(\/const APP_VERSION/.test(l));
+  check(!!pattern, `Suchmuster in «Aktualisieren» gefunden (${UPDATE_FILE})`);
+  check(readFileSync(path.join(out, "static", UPDATE_FILE), "utf8") === updSrc, `${UPDATE_FILE} beim Bauen unverändert (Suchmuster bleibt)`);
   check(existsSync(path.join(out, "index.html")) && existsSync(path.join(out, "static", "index.html")), "index.html + static/ vorhanden");
 
   // Ohne Version (Push auf main / von Hand): nichts verändert
@@ -41,19 +45,20 @@ try {
   const r4 = spawnSync(process.execPath, [path.join(root, "tools", "build_stage.mjs"), "1.6.8-test.3", stageOut], { encoding: "utf8" });
   process.stdout.write((r4.stdout || "") + (r4.stderr || ""));
   const stageApp = r4.status === 0 ? readFileSync(path.join(stageOut, "app.js"), "utf8") : "";
+  const stageUpd = r4.status === 0 ? readFileSync(path.join(stageOut, UPDATE_FILE), "utf8") : "";
   check(/^[ \t]*const APP_VERSION = "1\.6\.8-test\.3";/m.test(stageApp), "Test-Version: Versionszeile 1.6.8-test.3");
-  check(!!pattern && stageApp.includes(pattern.trim()), "Test-Version: Suchmuster in «Aktualisieren» unverändert");
+  check(!!pattern && stageUpd.includes(pattern.trim()), "Test-Version: Suchmuster in «Aktualisieren» unverändert");
   const r5 = spawnSync(process.execPath, ["--check", path.join(stageOut, "app.js")], { encoding: "utf8" });
   check(r5.status === 0, "Test-Version: app.js gültiges JavaScript");
 } finally {
   rmSync(out, { recursive: true, force: true });
 }
 
-// Versionsnummern: Test-Version = letzter Tag + 1 Patch + Commits; Vergleich wie in app.js («Aktualisieren»)
+// Versionsnummern: Test-Version = letzter Tag + 1 Patch + Commits; Vergleich wie in app_einstellungen.js («Aktualisieren»)
 {
   const m = /^v?(\d+)\.(\d+)\.(\d+)$/;
   const stageVersion = (tag, n) => { const x = m.exec(tag || ""); return x ? `${x[1]}.${x[2]}.${+x[3] + 1}-test.${+n || 0}` : ""; };
-  const appSrc = readFileSync(path.join(root, "static", "app.js"), "utf8");
+  const appSrc = readFileSync(path.join(root, "static", "app_einstellungen.js"), "utf8"); // «Aktualisieren»
   const verNumSrc = appSrc.match(/const verNum = (v => .*);/)[1], isNewerSrc = appSrc.match(/const isNewer = (\(a, b\) => .*);/)[1];
   const isNewer = new Function(`const verNum = ${verNumSrc}; return ${isNewerSrc};`)();
   const tool = readFileSync(path.join(root, "tools", "build_stage.mjs"), "utf8");

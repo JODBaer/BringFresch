@@ -6,7 +6,7 @@
 // Setzt kurz einen Test-Artikel «BringFrisch Test» auf Bring! und entfernt ihn wieder.
 // PIN und Kalender-Token werden nie ausgegeben.
 import readline from "node:readline";
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync, readFileSync, readdirSync } from "node:fs";
 
 const APP = "https://jodbaer.github.io/BringFresch/";
 const ORIGIN = "https://jodbaer.github.io";
@@ -73,10 +73,15 @@ await step("App-Seite erreichbar, neue Version (Wochenwahl)", async () => {
   const html = await (await fetch(APP + "static/index.html", { cache: "no-store" })).text();
   if (!html.includes("Wochenwahl")) throw new Error("alte Version online – Pages-Deploy abwarten");
 });
-await step("Live-app.js = lokale app.js", async () => {
-  const live = await (await fetch(APP + "static/app.js", { cache: "no-store" })).text();
+await step("Live-app*.js = lokale app*.js", async () => {
+  // app.js = Grundlage, app_*.js = Ansichten, Abgleich, Theme, Start (alle in index.html geladen)
+  const files = readdirSync(new URL("../static/", import.meta.url)).filter(f => /^app(_[a-z]+)?\.js$/.test(f));
   const norm = s => s.replace(/\r\n/g, "\n");
-  if (norm(live) !== norm(appJsLocal)) throw new Error("unterscheidet sich – noch nicht gepusht/deployt?");
+  for (const f of files) {
+    const live = await (await fetch(APP + "static/" + f, { cache: "no-store" })).text();
+    const local = readFileSync(new URL("../static/" + f, import.meta.url), "utf8");
+    if (norm(live) !== norm(local)) throw new Error(`${f} unterscheidet sich – noch nicht gepusht/deployt?`);
+  }
 });
 await step("Live-App kennt die Server-Adresse", async () => {
   const live = await (await fetch(APP + "static/app.js", { cache: "no-store" })).text();
