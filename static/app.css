@@ -337,7 +337,7 @@ html.dark.glass {
 body { font-family: var(--font); background: var(--bg); color: var(--fg); }
 html.glass body { background: var(--mesh) fixed, var(--bg); }
 main {
-  position: fixed; inset: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  position: fixed; inset: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y pinch-zoom;
   padding: calc(var(--top-pad) + var(--sat)) max(10px, env(safe-area-inset-right, 0px)) calc(var(--bottom-pad) + var(--sab) + 8px) max(10px, env(safe-area-inset-left, 0px));
   scrollbar-width: none;
 }
@@ -649,3 +649,11 @@ html.dark.glass .opt, html.dark.glass .msearch { background: rgba(255,255,255,.1
   .anim .icon, .anim .icon * { animation: none !important; }
   .appbar *, .bnav *, .prow *, .msheet, .wpop, .toast, .ptr i { transition-duration: .01s !important; animation-duration: .01s !important; }
 }
+
+/* ---------- Kein Zoom-Falle auf dem Handy ----------
+   iPhone zoomt beim Antippen in Eingabefelder unter 16 px hinein und nicht mehr zurück;
+   Doppeltippen auf Knöpfe zoomt ebenfalls. Zusammenziehen mit zwei Fingern bleibt erlaubt (main: pinch-zoom). */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: 16px !important; }
+}
+button, a, label, summary, [role="button"], .item, .btile { touch-action: manipulation; }

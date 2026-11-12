@@ -47,5 +47,12 @@ try { html = appHtml(root); } catch (e) { check(false, String(e.message)); }
 check(html && !/<script[^>]*\bsrc=/.test(html), "app_html.js bettet alle Skripte ein");
 check((html.match(/<script>/g) || []).length >= scripts.length, "alle Skripte eingebettet (Anzahl)");
 
+// Zoom-Falle (iPhone): Eingabefelder unter 16 px zoomen beim Antippen hinein und nicht zurück;
+// touch-action ohne pinch-zoom verhindert das Herauszoomen mit zwei Fingern.
+const css = readFileSync(path.join(root, "app.css"), "utf8");
+check(/@media \(pointer: coarse\)\s*\{\s*input, select, textarea \{ font-size: 16px !important; \}/.test(css), "app.css: Eingabefelder auf dem Handy 16 px (kein Auto-Zoom)");
+const blockers = [...css.matchAll(/touch-action:\s*([^;}]+)/g)].map(m => m[1].trim()).filter(v => /pan-[xy]/.test(v) && !/pinch-zoom/.test(v));
+check(blockers.length === 0, `app.css: touch-action lässt Zusammenziehen zu${blockers.length ? " – blockiert: " + blockers.join(", ") : ""}`);
+
 console.log(fails ? `\nFAIL: ${fails}` : "\nPASS: Offline-Liste vollständig");
 process.exit(fails ? 1 : 0);
