@@ -484,7 +484,7 @@ const INFO = {
     title: "C · Mengen im Blick – vorne beim Einkauf, dahinter ein Grundvorrat",
     idea: "Vorne beim Einkauf steht, was zählt: was knapp ist, was die Woche aus dem Vorrat braucht, der Schalter zum Abbuchen und «Für Bring!». Dahinter liegt der ganze Grundvorrat als eine Ansicht – Verwalten ist kein eigener Reiter mehr.",
     how: ["Einkauf (vorne) hat dieselben drei Bereiche wie heute: «Kaufen» (aus dem Plan, plus was im Vorrat knapp wird), «Auf Bring!», «Vorrat».",
-      "Bereich «Vorrat» ist eine Liste wie «Kaufen»: «Diese Woche gebraucht» (noch da → danach), «Geht oft aus – noch da?» (Vorschläge wie Joghurt), «Sonst knapp» und «Alles da» zum Aufklappen. Zeile antippen = im Vorrat leer (durchgestrichen), nochmals = zurück. Oben der Schalter «Woche gekocht».",
+      "Bereich «Vorrat» ist eine Liste wie «Kaufen»: «Diese Woche gebraucht» (noch da → danach), «Geht oft aus – noch da?» (Vorschläge wie Joghurt), und «Sonst knapp». Zeile antippen = im Vorrat leer (durchgestrichen), nochmals = zurück. Oben der Schalter «Woche gekocht».",
       "Vorschläge «Geht oft aus»: entweder vermerkt am Artikel (im Blatt) oder von der App erkannt («erkannt: 3 von 4 Wochen leer», z.B. Butter).",
       "Bring!-Knopf oben rechts (antippen oder lange drücken) oder «Prüfen»: Gegenüberstellung in zwei Spalten – links «Kaufen» (Plan), rechts «Vorrat». Antippen = kommt auf Bring!; gesendet wird erst mit dem Knopf unten.",
       "Der Vorrat im Entwurf ist ein Standard für einen gängigen Haushalt: 50 Standardartikel aus dem Bring!-Katalog, jeder einmal (plus 3 Beispiele für Doppelte und eigene Artikel).",
@@ -945,12 +945,10 @@ function viewC() {
       const week = S.items.filter(it => it.use > 0), wk = new Set(week.map(it => it.id));
       const oft = S.items.filter(it => (it.weekly || it.seen) && !wk.has(it.id));
       const low = kn.filter(it => !wk.has(it.id) && !it.weekly && !it.seen);
-      const rest = S.items.filter(it => !wk.has(it.id) && !oft.includes(it) && !low.includes(it));
       h += `<div class="cbar">${sw}<span class="note">Bucht ab, was der Plan aus dem Vorrat braucht. Ab Montag geschieht das für die letzte Woche von selbst.</span></div>`;
       h += vlist("woche", "Diese Woche gebraucht", week, "Der Plan braucht nichts aus dem Vorrat.", S.cooked ? "abgebucht" : "noch da → danach");
       h += vlist("knapp", "Geht oft aus – noch da?", oft, "Keine Vorschläge.", "jede Woche");
       h += vlist("knapp", "Sonst knapp", low, "Nichts knapp.", "");
-      h += `<section class="sec col da"><button type="button" class="shead" data-act="openAll" aria-expanded="${UI.openAll}">${ICON.down}<span>Alles da · ${rest.length}</span><span class="c">${UI.openAll ? "" : "aufklappen"}</span></button>${UI.openAll ? `<div class="list card">${rest.map(vrow).join("")}</div>` : ""}</section>`;
       h += `<p class="none">Zeile antippen = im Vorrat leer. Vorschläge: Vermerk «geht jede Woche aus» am Artikel, oder die App hat es nach ein paar Wochen erkannt.</p>`;
       h += `<button type="button" class="golink" data-act="goVorrat"><span>Grundvorrat · alle ${S.items.length} Artikel</span>${ICON.chev}</button>`;
     }
