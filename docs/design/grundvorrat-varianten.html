@@ -314,12 +314,13 @@ svg.i.s { width: 14px; height: 14px; }
 .planrow { display: flex; justify-content: space-between; gap: 10px; padding: 9px 14px; font-size: 14px; }
 .planrow + .planrow { border-top: 1px solid var(--rim); }
 .planrow span:last-child { color: var(--p-fg2); font-size: 13px; text-align: right; }
-.qt.back { position: relative; padding-right: 30px; }
-.qt.back .xs { position: absolute; top: 2px; right: 2px; width: 30px; height: 30px; border: 0; border-radius: 999px; background: none; color: var(--danger); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
-.qt.back .xs:hover { background: var(--ton); }
-.qt.back .st { display: flex; align-items: center; justify-content: space-between; gap: 2px; }
-.qt.back .st button { width: 32px; height: 32px; border: 0; border-radius: 999px; background: var(--ton); color: var(--on-ton); font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
-.qt.back .st output { font-size: 11.5px; font-weight: 600; text-align: center; flex: 1; min-width: 0; }
+.qt.back { position: relative; align-items: center; padding: 6px 4px; gap: 4px; }
+.qt.back .n { width: 100%; text-align: center; font-size: 11px; }
+.qt.back .xs { width: 44px; height: 44px; flex: 0 0 auto; border: 0; border-radius: 999px; background: var(--danger); color: #fff; font: inherit; font-size: 20px; font-weight: 700; cursor: pointer; display: grid; place-items: center; }
+.phone.dark .qt.back .xs { color: #2a0b08; }
+.qt.back .st { display: flex; align-items: center; justify-content: center; gap: 2px; width: 100%; }
+.qt.back .st button { width: 26px; height: 26px; border: 0; border-radius: 999px; background: var(--ton); color: var(--on-ton); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0; }
+.qt.back .st output { font-size: 10.5px; font-weight: 600; text-align: center; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vrow { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; font: inherit; font-size: 14px; border: 0; background: none; color: var(--p-fg); cursor: pointer; text-align: left; min-height: 44px; }
 .vrow + .vrow { border-top: 1px solid var(--rim); }
 .vrow .r { color: var(--p-fg2); font-size: 13px; text-align: right; }
@@ -922,7 +923,7 @@ function viewC() {
   // Vorderseite: antippen = alles zum Artikel. Lange drücken = Karte dreht sich, hinten «Wegnehmen».
   const tile = it => UI.flip === it.id
     ? `<div class="qt card back"><span class="n">${esc(it.bring)}</span><button type="button" class="xs" data-act="del" data-id="${it.id}" aria-label="${esc(it.bring)} wegnehmen">✕</button>
-        <div class="st"><button type="button" data-act="q-" data-id="${it.id}" aria-label="weniger">−</button><output aria-live="polite">${esc(fmtShort(it))}</output><button type="button" data-act="q+" data-id="${it.id}" aria-label="mehr">+</button></div></div>`
+        <div class="st"><button type="button" data-act="q-" data-id="${it.id}" aria-label="weniger">−</button><output aria-live="polite" aria-label="${esc(fmtShort(it))}">${it.qty}</output><button type="button" data-act="q+" data-id="${it.id}" aria-label="mehr">+</button></div></div>`
     : `<button type="button" class="${cls(it)}" data-act="qty" data-id="${it.id}" data-hold="1" aria-label="${esc(it.bring)}, ${esc(fmt(it))}${onBring(it.bring) ? ", steht auf Bring!" : ""}. Lange drücken zum Ändern">${inner(it)}</button>`;
   const sec = (k, t, list, none, hint) => `<section class="sec col ${k}" aria-label="${esc(t)}"><h3><span>${esc(t)}</span><small>${list.length}${hint ? " · " + hint : ""}</small></h3>${list.length ? `<div class="grid3">${list.map(tile).join("")}</div>` : `<p class="none">${none}</p>`}</section>`;
   const sw = `<button type="button" class="sw" role="switch" data-act="cookSw" aria-checked="${!!S.cooked}"><i></i><span>Woche gekocht</span></button>`;
