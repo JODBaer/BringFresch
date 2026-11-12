@@ -146,6 +146,10 @@ export async function bringPurchase(s) {
 
 // Was hat der Bot selbst auf die Liste gesetzt? Nur das darf er wieder wegnehmen.
 export const ownKey = s => `bot:${s.listUuid}`;
+// Bring! liefert kurz nach dem Schreiben manchmal noch den alten Stand. Was der Bot eben erst gesetzt hat (t = wann),
+// gilt darum noch einige Minuten als seins, auch wenn es beim Lesen fehlt – sonst vergisst er es und kann es nie mehr wegnehmen.
+const OWN_GRACE_MS = 5 * 60 * 1000;
+const fresh = o => !!(o && o.t && Date.now() - o.t < OWN_GRACE_MS);
 // own: { "rahm": { name: "Rahm", spec: "4 dl" } } – Menge, die der Bot zuletzt gesendet hat
 export async function loadOwn(env, s) {
   const raw = (await env.WG.get(ownKey(s), "json")) || {};
@@ -159,9 +163,9 @@ export async function bringList(env) {
   const own = await loadOwn(env, s);
   const onList = new Set(details.map(d => d.name.toLowerCase()));
   // Gekauft/abgehakt = nicht mehr drauf -> vergessen; trägt es später jemand neu ein, gehört es ihm
-  const gone = Object.keys(own).filter(k => !onList.has(k));
+  const gone = Object.keys(own).filter(k => !onList.has(k) && !fresh(own[k]));
   if (gone.length) { gone.forEach(k => delete own[k]); await env.WG.put(ownKey(s), JSON.stringify(own)); }
-  const mineDetails = Object.values(own);
+  const mineDetails = Object.values(own).map(({ name, spec }) => ({ name, spec }));
   return { items: details.map(d => d.name), details, mine: mineDetails.map(o => o.name), mineDetails };
 }
 
@@ -200,7 +204,7 @@ export async function bringSync(env, { items }) {
   const list = items.map(it => ({ name: String(it.name || "").trim().slice(0, 80), spec: spec(it) })).filter(it => it.name);
   const take = it => { // der Bot gibt an, was er gesetzt hat
     const k = it.name.toLowerCase();
-    if (!before.has(k) || own[k]) own[k] = { name: it.name, spec: it.spec }; // neu oder schon vom Bot -> gehört ihm, Menge merken
+    if (!before.has(k) || own[k]) own[k] = { name: it.name, spec: it.spec, t: Date.now() }; // neu oder schon vom Bot -> gehört ihm, Menge merken
   };
   let pushed = 0, mode = "batch";
   const errors = [];
@@ -237,7 +241,7 @@ export async function bringRemove(env, { names }) {
     const name = String(n || "").trim().slice(0, 80);
     const k = name.toLowerCase();
     if (!name) continue;
-    if (!onList.has(k)) { gone.push(name); delete own[k]; continue; }
+    if (!onList.has(k) && !fresh(own[k])) { gone.push(name); delete own[k]; continue; } // eben gesetzt, aber noch nicht sichtbar -> trotzdem wegnehmen
     if (!own[k]) { notMine.push(name); continue; }
     todo.push(name);
   }

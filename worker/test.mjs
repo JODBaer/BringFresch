@@ -157,8 +157,17 @@ env.BRING_PASSWORD = "pw";
 r = await call("/bring/list");
 let lst = await r.json();
 check(lst.mine.includes("Rüebli") && !lst.mine.includes("Milch"), "Bot kennt seine eigenen Artikel (Rüebli ja, Milch nein)");
-bringList.splice(bringList.findIndex(x => x.name === "Lauch"), 1); // jemand hat Lauch in Bring! abgehakt
+// Bring! liest kurz nach dem Schreiben noch alt: Lauch fehlt beim Lesen -> der Bot vergisst ihn trotzdem nicht
+const lauch = bringList.splice(bringList.findIndex(x => x.name === "Lauch"), 1)[0];
+lst = await (await call("/bring/list")).json();
+check(lst.mine.includes("Lauch"), "eben gesetzt, beim Lesen noch nicht sichtbar -> bleibt dem Bot (kein Vergessen nach altem Lesestand)");
+bringList.push(lauch);
+lst = await (await call("/bring/list")).json();
+check(lst.mine.includes("Lauch"), "… und kann später wieder weggenommen werden");
+bringList.splice(bringList.findIndex(x => x.name === "Lauch"), 1); // jemand hat Lauch in Bring! abgehakt (Minuten später)
+const realNow = Date.now; Date.now = () => realNow() + 10 * 60 * 1000;
 r = await call("/bring/remove", { method: "POST", body: { names: ["Rüebli", "Milch", "Lauch"] } });
+Date.now = realNow;
 const rm = await r.json();
 check(rm.removed === 1 && rm.notMine.join() === "Milch" && rm.gone.join() === "Lauch", "entfernt nur Eigenes, lässt Milch (von jemand anderem), Lauch schon weg");
 check(!bringList.some(x => x.name === "Rüebli") && bringList.some(x => x.name === "Milch"), "Rüebli weg, Milch bleibt");
