@@ -314,6 +314,30 @@ svg.i.s { width: 14px; height: 14px; }
 .planrow { display: flex; justify-content: space-between; gap: 10px; padding: 9px 14px; font-size: 14px; }
 .planrow + .planrow { border-top: 1px solid var(--rim); }
 .planrow span:last-child { color: var(--p-fg2); font-size: 13px; text-align: right; }
+.qt.back { position: relative; padding-right: 30px; }
+.qt.back .xs { position: absolute; top: 2px; right: 2px; width: 30px; height: 30px; border: 0; border-radius: 999px; background: none; color: var(--danger); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.qt.back .xs:hover { background: var(--ton); }
+.qt.back .st { display: flex; align-items: center; justify-content: space-between; gap: 2px; }
+.qt.back .st button { width: 32px; height: 32px; border: 0; border-radius: 999px; background: var(--ton); color: var(--on-ton); font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
+.qt.back .st output { font-size: 11.5px; font-weight: 600; text-align: center; flex: 1; min-width: 0; }
+.vrow { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; font: inherit; font-size: 14px; border: 0; background: none; color: var(--p-fg); cursor: pointer; text-align: left; min-height: 44px; }
+.vrow + .vrow { border-top: 1px solid var(--rim); }
+.vrow .r { color: var(--p-fg2); font-size: 13px; text-align: right; }
+.vrow.low .r { color: var(--warn); font-weight: 600; }
+.vrow.zero .l { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.vrow.zero .r { color: var(--leer); font-weight: 600; }
+.vrow .r small { display: block; font-size: 11px; font-weight: 400; color: var(--p-fg2); }
+.diff { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 4px; }
+.diff h3 { margin: 0 0 6px; font-size: 13px; }
+.diff .dc { display: grid; gap: 6px; align-content: start; }
+.dchip { display: flex; flex-direction: column; text-align: left; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--rim); background: none; color: var(--p-fg); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 44px; }
+.dchip small { font-weight: 400; font-size: 11.5px; color: var(--p-fg2); }
+.dchip[aria-pressed="true"] { background: var(--leer-bg); color: var(--on-leer); border-color: var(--leer); }
+.dchip[aria-pressed="true"] small { color: inherit; }
+.dchip[disabled] { opacity: .55; cursor: default; }
+button.bchip { border: 0; font: inherit; cursor: pointer; }
+.chk { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; font-size: 13px; cursor: pointer; }
+.chk input { width: 20px; height: 20px; accent-color: var(--pri); }
 .cleanN { font-size: 26px; font-weight: 700; margin: 6px 0 2px; }
 .facts { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--p-fg2); display: grid; gap: 4px; }
 .facts .w { color: var(--warn); }
@@ -422,6 +446,8 @@ const QTY = {
 // Was ist «1 Stück»? (frei änderbar im Blatt zum Artikel)
 const SIZE = { "Milch": "1 l", "Rahm": "2.5 dl", "Butter": "250 g", "Joghurt": "500 g", "Tomatenmark": "200 g", "Kokosmilch": "400 ml", "Pelati": "400 g", "Reibkäse": "200 g", "Parmesan": "200 g",
   "Hefe": "42 g", "Konfitüre": "1 Glas", "Schokolade": "100 g", "Kaffee": "500 g", "Tee": "20 Beutel", "Honig": "500 g", "Kichererbsen": "1 Dose", "Vanillezucker": "1 Beutel" };
+// Von der App erkannt (ohne Vermerk): so oft leer in den letzten Wochen [leer, Wochen]
+const SEEN = { "Butter": [3, 4], "Zwiebeln": [3, 5] };
 const MIN = 2, NOW_YM = "2026-11";
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 const WEEK = [
@@ -458,18 +484,20 @@ const INFO = {
     title: "C · Mengen im Blick – vorne beim Einkauf, dahinter ein Grundvorrat",
     idea: "Vorne beim Einkauf steht, was zählt: was knapp ist, was die Woche aus dem Vorrat braucht, der Schalter zum Abbuchen und «Für Bring!». Dahinter liegt der ganze Grundvorrat als eine Ansicht – Verwalten ist kein eigener Reiter mehr.",
     how: ["Einkauf (vorne) hat dieselben drei Bereiche wie heute: «Kaufen» (aus dem Plan, plus was im Vorrat knapp wird), «Auf Bring!», «Vorrat».",
-      "Bereich «Vorrat»: Schalter «Woche gekocht», darunter «Knapp» (hier tauchen neue Kacheln auf, sobald etwas ausgeht), «Diese Woche aus dem Vorrat» (Menge vorher → nachher) und «Alles da» zum Aufklappen. Ganz unten: «Grundvorrat verwalten».",
+      "Bereich «Vorrat» ist eine Liste wie «Kaufen»: «Diese Woche gebraucht» (noch da → danach), «Geht oft aus – noch da?» (Vorschläge wie Joghurt), «Sonst knapp» und «Alles da» zum Aufklappen. Zeile antippen = im Vorrat leer (durchgestrichen), nochmals = zurück. Oben der Schalter «Woche gekocht».",
+      "Vorschläge «Geht oft aus»: entweder vermerkt am Artikel (im Blatt) oder von der App erkannt («erkannt: 3 von 4 Wochen leer», z.B. Butter).",
+      "Bring!-Knopf oben rechts (antippen oder lange drücken) oder «Prüfen»: Gegenüberstellung in zwei Spalten – links «Kaufen» (Plan), rechts «Vorrat». Antippen = kommt auf Bring!; gesendet wird erst mit dem Knopf unten.",
       "Der Vorrat im Entwurf ist ein Standard für einen gängigen Haushalt: 50 Standardartikel aus dem Bring!-Katalog, jeder einmal (plus 3 Beispiele für Doppelte und eigene Artikel).",
       "Schalter «Woche gekocht» bucht ab, zurückschieben = rückgängig. Ab Montag wird die letzte Woche von selbst abgebucht.",
       "Knappes steht unten bei «Für Bring!». «Prüfen» zeigt die Liste mit Häkchen; der Bring!-Eintrag trägt den Vermerk «Vorrat · Menge». In Bring! abhaken = gekauft → Vorrat um eine Packung grösser.",
       "«Grundvorrat verwalten»: alle Artikel, umstellbar «Abteilung» (wie in Bring!) oder «Dringend». Oben Artikel hinzufügen und die Übersicht in einer Zeile.",
       "Kachel antippen = ein Blatt mit allem: Bring!-Bild (im Entwurf Platzhalter), Menge, «1 Stück =», Infos, Name ändern, Doppelte zusammenführen, wegnehmen.",
-      "Kachel lange drücken (am Computer: Rechtsklick) = Karte dreht sich, hinten «Wegnehmen» – mit «Rückgängig».",
+      "Kachel lange drücken (am Computer: Rechtsklick) = Karte dreht sich: Menge direkt mit − + ändern, kleines ✕ = wegnehmen (mit «Rückgängig»). Daneben tippen dreht sie zurück.",
       "Inventur wie im Betrieb, einmal im Jahr: Knopf unauffällig ganz am Ende des Grundvorrats. Was über ein Jahr im Vorrat ist, ist markiert."],
     qa: [["Wann auf Bring!?", "Knappes wird gesammelt und nach einmal Prüfen gesendet – nie von selbst."], ["Alltag / Verwalten", "Alltag vorne beim Einkauf, alles andere im Grundvorrat (eine Ansicht)."], ["Auf einen Blick", "Vorne nur Knappes und was die Woche braucht; dahinter alles, drei Kacheln pro Zeile."]],
     pro: "Im Alltag sieht man vorne nur, was zu tun ist. Ein Grundvorrat statt zwei fast gleicher Reiter. Nichts landet unbemerkt auf Bring!.",
     con: "Mengen stimmen nur mit der Inventur und wenn Gekauftes in Bring! abgehakt wird. Lange drücken muss man kennen (das Blatt hat «Wegnehmen» auch). Lange Namen werden abgeschnitten.",
-    tryit: "Probier: Bereich «Vorrat» → Schalter «Woche gekocht» an: bei «Knapp» kommen Kacheln dazu → Bereich «Kaufen» → unten «Prüfen» → senden → «Auf Bring!». «Alles da» aufklappen. Dann «Grundvorrat verwalten» → Kachel antippen → Kachel lange drücken → «Wegnehmen»."
+    tryit: "Probier: Bereich «Vorrat» → «Joghurt» antippen (leer) → Schalter «Woche gekocht» → oben rechts den Bring!-Knopf: links Plan, rechts Vorrat, antippen, senden. Dann «Grundvorrat» → Kachel antippen (Blatt) → Kachel lange drücken → − + ✕."
   }
 };
 
@@ -496,11 +524,11 @@ function fresh() {
     items: START.map(([name, bring, left], i) => {
       const q = QTY[bring] || [[6, 9, 4, 8, 5, 10, 7][i % 7], "Znacht", 10, 0];
       return { id: "i" + i, name, bring, sec: SEC_OF[bring] || OWN, status: bring === "Eier" ? "leer" : "da", left: left == null ? null : left,
-        qty: q[0], unit: q[1], full: q[2], use: q[3], since: q[4] || `2026-0${1 + i % 9}`, size: SIZE[bring] || "" };
+        qty: q[0], unit: q[1], full: q[2], use: q[3], since: q[4] || `2026-0${1 + i % 9}`, size: SIZE[bring] || "", weekly: ["Joghurt", "Milch", "Eier"].includes(bring) && name === bring, seen: SEEN[bring] && name === bring ? SEEN[bring] : null };
     }),
     bring: [{ name: "Milch", spec: "", by: "Lukas" }, { name: "WC-Papier", spec: "", by: "Leonie" }, { name: "Eier", spec: "", by: "BringFrisch" }]
   };
-  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "abteilung", page: "einkauf", seg: "kaufen", flip: null, openAll: false, opener: null, flash: null, focusK: null };
+  UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "abteilung", page: "einkauf", seg: "kaufen", flip: null, openAll: false, diffSel: null, opener: null, flash: null, focusK: null };
   prevBring = new Set(S.bring.map(b => b.name));
 }
 let prevBring = new Set();
@@ -595,7 +623,7 @@ function act(msg, fn, undoable = true) {
 function addItem(name) {
   const id = "n" + (S.seq++);
   act(`${name} hinzugefügt`, () => {
-    S.items.push({ id, name, bring: name, sec: SEC_OF[name] || OWN, status: "da", left: null, qty: 10, unit: "Znacht", full: 10, use: 0, since: NOW_YM, size: "" });
+    S.items.push({ id, name, bring: name, sec: SEC_OF[name] || OWN, status: "da", left: null, qty: 10, unit: "Znacht", full: 10, use: 0, since: NOW_YM, size: "", weekly: false, seen: null });
     UI.addA = UI.addC = UI.qB = ""; UI.flash = id;
   });
 }
@@ -723,6 +751,7 @@ function qtySheet(id) {
         <li${knapp(it) ? ' class="w"' : ""}>${ob ? "Steht schon auf Bring!." : knapp(it) ? "Knapp: steht unten bei «Für Bring!»." : thr(it) ? `Ab ${thr(it)} oder weniger kommt es zu «Für Bring!».` : "Kommt zu «Für Bring!», sobald es leer ist."}</li>
         <li${isOld(it) ? ' class="w"' : ""}>Im Vorrat seit ${esc(sinceText(it))}${isOld(it) ? " – über ein Jahr. Noch gut?" : ""}</li>
       </ul>
+      <label class="chk"><input type="checkbox" data-wk="${id}"${it.weekly ? " checked" : ""}> Geht jede Woche aus (beim Einkauf vorschlagen)</label>
       <label class="lbl" for="shName">Name</label>
       <div class="renrow"><div class="field"><input id="shName" data-k="sheetName" value="${esc(val)}" autocomplete="off"></div><button type="button" class="tbtn sm" data-act="rename" data-id="${id}">Umbenennen</button></div>
       <p class="hint" id="rhint">${renameHint(val)}</p>
@@ -772,14 +801,32 @@ function openFillA(opener) {
     : { key: "w:" + w.n, label: w.n, sub: w.spec, checked: !S.weekSent });
   openSheet(confirmSheet("Bring! füllen", "KW 46 · Häkchen weg = kommt nicht auf die Liste.", [{ title: "Aus dem Plan", items: plan }, { title: "Grundvorrat", items: vorratRows() }]), opener);
 }
-function openSendC(opener) {
-  openSheet(confirmSheet("Auf Bring! setzen", "Häkchen weg = kommt nicht auf die Liste.", [{ title: "Grundvorrat", items: vorratRows() }]), opener);
+// Gegenüberstellung wie ein Abgleich: links «Kaufen» (aus dem Plan), rechts «Vorrat» (leer, knapp, geht oft aus).
+// Antippen = kommt auf Bring!. Nichts wird gesendet, bevor unten der Knopf gedrückt ist.
+function diffRows() {
+  const plan = WEEK.map(w => ({ n: w.n, sub: w.spec, on: onBring(w.n), pre: !S.weekSent }));
+  const seen = new Set();
+  const vor = S.items.filter(it => knapp(it) || it.weekly || it.seen).filter(it => !seen.has(it.bring) && seen.add(it.bring))
+    .map(it => ({ n: it.bring, sub: `${it.qty ? "noch " + fmtShort(it) : "leer"} · +${pack(it)}`, on: onBring(it.bring), pre: knapp(it) }));
+  return { plan, vor };
 }
+function diffSheet() {
+  const { plan, vor } = diffRows();
+  if (!UI.diffSel) UI.diffSel = new Set([...plan, ...vor].filter(x => x.pre && !x.on).map(x => x.n));
+  const chip = x => `<button type="button" class="dchip" data-act="dsel" data-n="${esc(x.n)}" aria-pressed="${x.on || UI.diffSel.has(x.n)}"${x.on ? " disabled" : ""}>${esc(x.n)}<small>${x.on ? "schon auf Bring!" : esc(x.sub)}</small></button>`;
+  const n = [...plan, ...vor].filter(x => !x.on && UI.diffSel.has(x.n)).length;
+  return `<div class="grab"></div><h2 id="shT" tabindex="-1">Auf Bring! setzen</h2><p class="sub">Antippen = kommt auf die Liste. Grün = gewählt.</p>
+    <div class="diff"><div class="dc"><h3>Kaufen · aus dem Plan</h3>${plan.map(chip).join("")}</div><div class="dc"><h3>Vorrat · leer, knapp, geht oft aus</h3>${vor.length ? vor.map(chip).join("") : `<p class="none">Nichts.</p>`}</div></div>
+    <div class="acts"><button type="button" class="ghost" data-act="close">Abbrechen</button><button type="button" class="fbtn" data-act="dsend"${n ? "" : " disabled"}>${n ? n + " auf Bring!" : "Nichts gewählt"}</button></div>`;
+}
+function openSendC(opener) { UI.diffSel = null; openSheet(diffSheet, opener); }
 
 // ---------- Ansichten ----------
 function appbarHTML() {
   const n = S.bring.length;
-  let right = `<span class="bchip" id="bchip" aria-label="${n} Artikel auf Bring!">${ICON.cartV}${n}</span>`;
+  let right = V === "C"
+    ? `<button type="button" class="bchip" id="bchip" data-act="sendC" data-hold="diff" aria-label="${n} Artikel auf Bring! – Gegenüberstellung öffnen (antippen oder lange drücken)">${ICON.cartV}${n}</button>`
+    : `<span class="bchip" id="bchip" aria-label="${n} Artikel auf Bring!">${ICON.cartV}${n}</span>`;
   if (V === "A") right += `<button type="button" class="${UI.edit ? "fbtn" : "tbtn"} sm" data-act="edit" aria-pressed="${UI.edit}">${UI.edit ? "Fertig" : "Bearbeiten"}</button>`;
   if (V === "C" && UI.page === "einkauf") return `<div class="r1"><span class="sp"></span>${right}</div><h1>Einkauf</h1>`;
   return `<div class="r1"><button type="button" class="back" data-act="nav">${ICON.back}Einkauf</button><span class="sp"></span>${right}</div><h1>Grundvorrat</h1>`;
@@ -874,8 +921,9 @@ function viewC() {
   const inner = it => `<span class="n">${esc(it.bring)}${onBring(it.bring) ? " " + ICON.cartV : ""}</span><span class="q">${esc(fmtShort(it))}${esc(useText(it))}</span>${isOld(it) ? `<span class="old">seit ${esc(sinceText(it))}</span>` : ""}`;
   // Vorderseite: antippen = alles zum Artikel. Lange drücken = Karte dreht sich, hinten «Wegnehmen».
   const tile = it => UI.flip === it.id
-    ? `<div class="qt card back"><span class="n">${esc(it.bring)}</span><div class="bk"><button type="button" class="rm" data-act="del" data-id="${it.id}">Wegnehmen</button><button type="button" class="no" data-act="unflip" data-id="${it.id}" aria-label="Zurückdrehen">↩</button></div></div>`
-    : `<button type="button" class="${cls(it)}" data-act="qty" data-id="${it.id}" data-hold="1" aria-label="${esc(it.bring)}, ${esc(fmt(it))}${onBring(it.bring) ? ", steht auf Bring!" : ""}. Lange drücken zum Wegnehmen">${inner(it)}</button>`;
+    ? `<div class="qt card back"><span class="n">${esc(it.bring)}</span><button type="button" class="xs" data-act="del" data-id="${it.id}" aria-label="${esc(it.bring)} wegnehmen">✕</button>
+        <div class="st"><button type="button" data-act="q-" data-id="${it.id}" aria-label="weniger">−</button><output aria-live="polite">${esc(fmtShort(it))}</output><button type="button" data-act="q+" data-id="${it.id}" aria-label="mehr">+</button></div></div>`
+    : `<button type="button" class="${cls(it)}" data-act="qty" data-id="${it.id}" data-hold="1" aria-label="${esc(it.bring)}, ${esc(fmt(it))}${onBring(it.bring) ? ", steht auf Bring!" : ""}. Lange drücken zum Ändern">${inner(it)}</button>`;
   const sec = (k, t, list, none, hint) => `<section class="sec col ${k}" aria-label="${esc(t)}"><h3><span>${esc(t)}</span><small>${list.length}${hint ? " · " + hint : ""}</small></h3>${list.length ? `<div class="grid3">${list.map(tile).join("")}</div>` : `<p class="none">${none}</p>`}</section>`;
   const sw = `<button type="button" class="sw" role="switch" data-act="cookSw" aria-checked="${!!S.cooked}"><i></i><span>Woche gekocht</span></button>`;
 
@@ -891,12 +939,20 @@ function viewC() {
     } else if (UI.seg === "bring") {
       h += `<section class="sec"><h3>Steht auf Bring!</h3>${S.bring.length ? rows(S.bring.map(x => [esc(x.name), esc(x.spec || x.by)])) : `<p class="none">Die Liste ist leer.</p>`}</section>`;
     } else {
+      // Liste wie bei «Kaufen»: Zeile antippen = im Vorrat leer (durchgestrichen), nochmals = wieder wie vorher
+      const vrow = it => `<button type="button" class="vrow${it.qty === 0 ? " zero" : knapp(it) ? " low" : ""}" data-act="vleer" data-id="${it.id}" aria-pressed="${it.qty === 0}" aria-label="${esc(it.bring)}, ${esc(fmt(it))}. Antippen = leer"><span class="l">${esc(it.bring)}${onBring(it.bring) ? " " + ICON.cartV : ""}</span><span class="r">${it.qty === 0 ? "leer" : esc(fmtShort(it)) + esc(useText(it))}${it.seen && !it.weekly && !it.use ? `<small>erkannt: ${it.seen[0]} von ${it.seen[1]} Wochen leer</small>` : ""}</span></button>`;
+      const vlist = (k, t, list, none, hint) => `<section class="sec col ${k}"><h3><span>${esc(t)}</span><small>${list.length}${hint ? " · " + hint : ""}</small></h3>${list.length ? `<div class="list card">${list.map(vrow).join("")}</div>` : `<p class="none">${none}</p>`}</section>`;
+      const week = S.items.filter(it => it.use > 0), wk = new Set(week.map(it => it.id));
+      const oft = S.items.filter(it => (it.weekly || it.seen) && !wk.has(it.id));
+      const low = kn.filter(it => !wk.has(it.id) && !it.weekly && !it.seen);
+      const rest = S.items.filter(it => !wk.has(it.id) && !oft.includes(it) && !low.includes(it));
       h += `<div class="cbar">${sw}<span class="note">Bucht ab, was der Plan aus dem Vorrat braucht. Ab Montag geschieht das für die letzte Woche von selbst.</span></div>`;
-      h += sec("knapp", "Knapp", kn, "Nichts knapp.", "geht bald aus");
-      h += sec("woche", "Diese Woche aus dem Vorrat", S.items.filter(it => it.use > 0 && !knapp(it)), "Der Plan braucht nichts aus dem Vorrat.", S.cooked ? "abgebucht" : "wird abgebucht");
-      const rest = S.items.filter(it => !knapp(it) && !it.use);
-      h += `<section class="sec col da"><button type="button" class="shead" data-act="openAll" aria-expanded="${UI.openAll}">${ICON.down}<span>Alles da · ${rest.length}</span><span class="c">${UI.openAll ? "" : "aufklappen"}</span></button>${UI.openAll ? `<div class="grid3">${rest.map(tile).join("")}</div>` : ""}</section>`;
-      h += `<button type="button" class="golink" data-act="goVorrat"><span>Grundvorrat verwalten · hinzufügen, Inventur</span>${ICON.chev}</button>`;
+      h += vlist("woche", "Diese Woche gebraucht", week, "Der Plan braucht nichts aus dem Vorrat.", S.cooked ? "abgebucht" : "noch da → danach");
+      h += vlist("knapp", "Geht oft aus – noch da?", oft, "Keine Vorschläge.", "jede Woche");
+      h += vlist("knapp", "Sonst knapp", low, "Nichts knapp.", "");
+      h += `<section class="sec col da"><button type="button" class="shead" data-act="openAll" aria-expanded="${UI.openAll}">${ICON.down}<span>Alles da · ${rest.length}</span><span class="c">${UI.openAll ? "" : "aufklappen"}</span></button>${UI.openAll ? `<div class="list card">${rest.map(vrow).join("")}</div>` : ""}</section>`;
+      h += `<p class="none">Zeile antippen = im Vorrat leer. Vorschläge: Vermerk «geht jede Woche aus» am Artikel, oder die App hat es nach ein paar Wochen erkannt.</p>`;
+      h += `<button type="button" class="golink" data-act="goVorrat"><span>Grundvorrat · alle ${S.items.length} Artikel</span>${ICON.chev}</button>`;
     }
     return h;
   }
@@ -972,6 +1028,9 @@ function onAct(b) {
   const a = b.dataset.act, id = b.dataset.id, it = id ? byId(id) : null;
   switch (a) {
     case "nav": if (V === "C") { UI.page = "einkauf"; UI.flip = null; render(); content.scrollTop = 0; } else snack("Nur Vorschau: hier geht es nur um den Grundvorrat."); break;
+    case "vleer": if (it) { if (it.qty === 0) setQty(it, it.prev || it.full); else { it.prev = it.qty; setQty(it, 0); } render(); } break;
+    case "dsel": { const n = b.dataset.n; if (UI.diffSel.has(n)) UI.diffSel.delete(n); else UI.diffSel.add(n); UI.focusK = null; render(); const el = [...sheet.querySelectorAll("[data-act=dsel]")].find(x => x.dataset.n === n); if (el) el.focus(); break; }
+    case "dsend": { const { plan, vor } = diffRows(); const names = [...plan, ...vor].filter(x => !x.on && UI.diffSel.has(x.n)).map(x => x.n); sendToBring(names, `${names.length} auf Bring! ✓`, plan.some(x => UI.diffSel.has(x.n))); break; }
     case "seg": UI.seg = b.dataset.seg; UI.flip = null; render(); content.scrollTop = 0; break;
     case "openAll": UI.openAll = !UI.openAll; render(); break;
     case "goVorrat": UI.page = "vorrat"; UI.flip = null; render(); content.scrollTop = 0; break;
@@ -1035,7 +1094,7 @@ function onAct(b) {
 }
 // Lange drücken (oder Rechtsklick) auf eine Kachel: Karte dreht sich, hinten steht «Wegnehmen»
 let holdT = null, held = false;
-function flipCard(el) { held = true; UI.flip = el.dataset.id; UI.focusK = "a:del:" + el.dataset.id; render(); }
+function flipCard(el) { held = true; if (el.dataset.hold === "diff") { openSendC(el); return; } UI.flip = el.dataset.id; UI.focusK = "a:del:" + el.dataset.id; render(); }
 phone.addEventListener("pointerdown", e => {
   const b = e.target.closest("[data-hold]"); held = false; clearTimeout(holdT);
   if (b) holdT = setTimeout(() => flipCard(b), 500);
@@ -1045,12 +1104,14 @@ phone.addEventListener("contextmenu", e => { const b = e.target.closest("[data-h
 phone.addEventListener("click", e => {
   if (held) { held = false; e.preventDefault(); return; }
   const b = e.target.closest("[data-act]");
-  if (b && phone.contains(b) && !b.disabled) {
-    if (UI.flip && b.dataset.act !== "del" && b.dataset.act !== "unflip") UI.flip = null;
-    onAct(b);
-  }
+  // Gedrehte Karte: −, + und ✕ bleiben auf der Rückseite; alles andere dreht sie zurück
+  if (UI.flip && !(b && b.closest(".qt.back"))) { UI.flip = null; if (!b) { render(); return; } }
+  if (b && phone.contains(b) && !b.disabled) onAct(b);
 });
-phone.addEventListener("change", e => { if (e.target.dataset.ck) updateSend(); });
+phone.addEventListener("change", e => {
+  if (e.target.dataset.ck) updateSend();
+  if (e.target.dataset.wk) { const x = byId(e.target.dataset.wk); if (x) { x.weekly = e.target.checked; render(); } }
+});
 phone.addEventListener("input", e => {
   const k = e.target.dataset.k; if (!k) return;
   if (k === "qB") { UI.qB = e.target.value; render(); }
@@ -1066,6 +1127,7 @@ phone.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     if (UI.editing) { onAct({ dataset: { act: "renCancel" } }); e.preventDefault(); }
     else if (UI.sheetFn) { closeSheet(); e.preventDefault(); }
+    else if (UI.flip) { const f = UI.flip; UI.flip = null; UI.focusK = "a:qty:" + f; render(); e.preventDefault(); }
     return;
   }
   if (e.key !== "Enter" || !k) return;
