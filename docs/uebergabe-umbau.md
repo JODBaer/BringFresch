@@ -1,9 +1,12 @@
 # Übergabe: Umbau (Review-Chat) → nächster Chat
 
-Stand 11.11.2026 spät. `main` enthält alles unten Genannte. Für den Einstieg: Abschnitt 0 (Startprompt) am Ende von Abschnitt 4. **Live für die WG ist `v1.7.2`** (`eab7427`).
+Stand 12.11.2026. `main` enthält alles unten Genannte. Für den Einstieg: Abschnitt 0 (Startprompt) am Ende von Abschnitt 4. **Live für die WG ist `v1.7.3`** (`a9192ab`, mit der Abgleich-Korrektur).
+**Weiter im lokalen Chat** (Cloud-Chat kann keine Tags pushen). Mehrere Chats haben am 12.11. gleichzeitig am Grundvorrat-Entwurf gearbeitet → ab jetzt nur noch einer.
 Arbeitsregeln stehen in `CLAUDE.md`; Einzelheiten zum Umbau in `docs/refactoring-plan.md`, Überblick mit Diagramm in `docs/architektur-review.html`.
 
-## 1. Zuerst: `v1.7.3` veröffentlichen
+## 1. `v1.7.3` – erledigt (12.11.2026)
+
+Der Tag ist auf GitHub. Abschnitt bleibt als Anleitung für das nächste Release.
 
 Auf `main` liegt eine **Korrektur am Abgleich, die noch nicht live ist** (Commit `f8d0519`):
 In `v1.7.0`–`v1.7.2` können eigene Änderungen an Plan oder Grundvorrat zurückspringen, wenn der Speicher des WG-Servers (Cloudflare KV)
@@ -53,7 +56,9 @@ So sieht C heute aus:
   - «Vorrat»: Schalter «Woche gekocht» (bucht ab, zurück = rückgängig; ab Montag wird die letzte Woche von selbst abgebucht), «Knapp», «Diese Woche aus dem Vorrat» (vorher → nachher), «Alles da» aufklappbar, Knopf «Grundvorrat verwalten»
   - Stand 12.11.: der Bereich «Vorrat» ist eine **Liste** wie «Kaufen» («Diese Woche gebraucht» mit noch da → danach, «Geht oft aus – noch da?» als Vorschläge, «Sonst knapp»); Zeile antippen = im Vorrat leer (durchgestrichen). «Geht jede Woche aus» ist ein Vermerk am Artikel, später Muster erkennen
   - Bring!-Knopf oben rechts / «Prüfen» öffnet eine **Gegenüberstellung** in zwei Spalten (links Kaufen aus dem Plan, rechts Vorrat); antippen = kommt auf Bring!, gesendet wird erst mit dem Knopf
-  - Karte lange drücken = Rückseite mit − Menge + und kleinem ✕ (kein Zurück-Knopf; daneben tippen dreht zurück)
+  - Karte lange drücken = Rückseite: oben klein der Name, in der Mitte grosses rotes ✕, unten klein − Zahl + (Joshua 12.11.: «X gross, ± und Anzahl klein, in der Mitte»); kein Zurück-Knopf, daneben tippen oder Esc dreht zurück
+  - Vorschläge «Geht oft aus»: vermerkt im Blatt oder von der App erkannt («erkannt: 3 von 4 Wochen leer», im Entwurf Butter). Für den Bau: dafür muss die App pro Artikel mitschreiben, wann er leer gemeldet wurde – gibt es heute nicht
+  - Bring!-Knopf: antippen **oder** lange drücken öffnet die Gegenüberstellung
 - **Grundvorrat (dahinter)**: eine Ansicht – hinzufügen (Vorschlag aus Bring!-Namen), Übersicht in einer Zeile, drei Kacheln pro Zeile, Aufteilung umstellbar Abteilung / Dringend, Inventur-Knopf am Ende
 - **Kachel**: antippen = ein Blatt mit allem (Bring!-Bild – im Entwurf Platzhalter –, Menge − + und Leer / Fast leer / Halb / Voll, «1 Stück =», Infos, Name ändern, Doppelte zusammenführen, wegnehmen); lange drücken = Karte dreht sich, hinten «Wegnehmen» (mit Rückgängig)
 - **Mengen**: Stück mit Grösse («2 × 1 l») oder «reicht für ~N Znacht»; in Bring! abgehakt = Vorrat + eine Packung
@@ -62,6 +67,8 @@ So sieht C heute aus:
 - **Standard-Vorrat**: 50 Bring!-Standardartikel, Liste in `plan.md`
 
 Von Joshua noch offen / nicht bestätigt:
+- Nach dem ✕ auf der Karte kommt kurz «Rückgängig» – soll das auch weg? (gefragt 12.11.)
+- «Alles da» beim Einkauf: ein Chat hat es entfernt (nur im Grundvorrat), Joshua hatte es am 11.11. beim Einkauf gewünscht – nachfragen
 - Kommentar «Übersicht über allem geht so, jedes Element ist für sich geschlossen» – ob die Übersichtszeile und die neue Einkauf-Seite das lösen
 - − + direkt auf der Kachel (war im Reiter «Verwalten», der weggefallen ist) – ja oder nein
 - drei Bereiche als Reiter (so im Entwurf) oder wirklich als drei Spalten nebeneinander (auf dem Handy zu schmal für Name + Menge – meine Einschätzung)
@@ -75,10 +82,11 @@ Betroffene Regeln beim Bau: `CLAUDE.md` «Grundvorrat wie Bring!: Antippen = dir
 
 ```
 Lies zuerst CLAUDE.md, dann docs/uebergabe-umbau.md, plan.md (Eintrag «Grundvorrat neu gestalten») und entscheide.md.
-Stand: main enthält den Umbau; live ist v1.7.2. Zuerst v1.7.3 veröffentlichen (Abschnitt 1 der Übergabe).
-Danach: Grundvorrat nach Variante C (docs/design/grundvorrat-varianten.html). Joshua hat C gewählt, will die
+Stand: main enthält den Umbau; live ist v1.7.3.
+Weiter: Grundvorrat nach Variante C (docs/design/grundvorrat-varianten.html). Joshua hat C gewählt, will die
 Einzelheiten aber noch besprechen – nichts in der App bauen, bevor er die offenen Punkte (Abschnitt 4) geklärt hat.
-Änderungen am Entwurf zuerst zeigen. Vor jedem Abschluss: cd tests && npm run ci.
+Änderungen am Entwurf zuerst zeigen (Entwurf-Seite: https://claude.ai/artifact/AcdnCScLyJd1kkfy1J6b8i,
+Joshua kommentiert dort; Datei im Repo und Seite immer gleich halten). Vor jedem Abschluss: cd tests && npm run ci.
 ```
 
 ## 5. Stolpersteine
