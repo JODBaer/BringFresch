@@ -274,7 +274,7 @@
     const list = bringSuggest(q);
     const row = (name, own) => {
       const ex = findExisting(name);
-      return `<li class="srow"><span class="vimg sm${own ? " own" : ""}" aria-hidden="true">${esc(name.charAt(0))}</span>
+      return `<li class="srow"><span class="simg sm${own ? " own" : ""}" aria-hidden="true">${esc(name.charAt(0))}</span>
         <span class="st"><b>${esc(name)}</b><small>${own ? "Eigener Artikel (ohne Bring!-Bild)" : esc((window.BRING_SECTIONS || {})[bringItemId(name)] || "Bring!")}</small></span>
         ${ex ? `<span class="badge">ist schon da${normName(ex.name) !== normName(name) ? ` (${esc(ex.name)})` : ""}</span>` : `<button type="button" class="btn dark sm" data-add="${esc(name)}">Hinzufügen</button>`}</li>`;
     };
@@ -358,7 +358,7 @@
     if (!st) { if ($("stapleItemDialog").open) $("stapleItemDialog").close(); return; }
     const q = vQty(st), use = useOf(st), on = onBringSt(st), own = !known(st), thr = knappAb(st);
     const dupes = state.staples.filter(x => x !== st && stapleTarget(x).toLowerCase() === stapleTarget(st).toLowerCase());
-    $("vImg").className = `vimg${own ? " own" : ""}`;
+    $("vImg").className = `simg${own ? " own" : ""}`;
     $("vImg").innerHTML = `${esc(label(st).charAt(0))}<small>${own ? "kein Bild" : "Bring!"}</small>`;
     $("vTitle").textContent = label(st);
     $("vSub").textContent = `${own ? "Eigener Artikel (ohne Bild)" : "Bring!-Artikel · " + sectionOf(st)}${on ? " · steht auf Bring!" : ""}`;

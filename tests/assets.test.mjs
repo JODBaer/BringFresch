@@ -54,5 +54,11 @@ check(/@media \(pointer: coarse\)\s*\{\s*input, select, textarea \{ font-size: 1
 const blockers = [...css.matchAll(/touch-action:\s*([^;}]+)/g)].map(m => m[1].trim()).filter(v => /pan-[xy]/.test(v) && !/pinch-zoom/.test(v));
 check(blockers.length === 0, `app.css: touch-action lässt Zusammenziehen zu${blockers.length ? " – blockiert: " + blockers.join(", ") : ""}`);
 
+// Klassen der Wochenwahl-Karten nicht für andere Bereiche verwenden: eine Regel «.vimg { width: 52px … }» für den
+// Grundvorrat hat die Kartenbilder auf ein kleines Quadrat geschrumpft (v1.8.0)
+const cardOnly = ["vimg", "vshade", "vband", "vgo", "vtop", "vwish", "vbt", "vbm", "vpick"];
+const loose = cardOnly.filter(c => new RegExp(`^\\.${c}\\b`, "m").test(css));
+check(loose.length === 0, `app.css: Wochenwahl-Klassen nur unter .vcard${loose.length ? " – auch allein: " + loose.join(", ") : ""}`);
+
 console.log(fails ? `\nFAIL: ${fails}` : "\nPASS: Offline-Liste vollständig");
 process.exit(fails ? 1 : 0);
