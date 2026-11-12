@@ -1475,6 +1475,7 @@ await step(B, "Geteilte Rezepte: eigene gehen standardmässig an alle WGs, Rezep
   kv.set("shared:index", JSON.stringify([...(kvJson("shared:index") || []), "sonnenhof"]));
   kv.set("shared:sonnenhof", JSON.stringify({ name: "Sonnenhof", updated: 1, recipes: [{ id: "custom-9", title: "Sonnenhof-Curry", diet: "vegi", servings: 4, prep_time_min: 30, ingredients: [{ name: "Kichererbsen", amount: "400", unit: "g" }], season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }] }));
   await goTab(B, "wg");
+  await B.page.evaluate(() => { document.getElementById("setMore").open = true; }); // «Abgleichen» liegt unter «Mehr»
   await tap(B, "#syncNowBtn");
   await until(B, () => (JSON.parse(localStorage.getItem("bringfrisch_shared_recipes") || "[]")).some(r => r.title === "Sonnenhof-Curry"), "geteiltes Rezept nicht abgeholt");
   await goTab(B, "plan");
