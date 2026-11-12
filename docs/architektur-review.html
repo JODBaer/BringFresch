@@ -64,16 +64,17 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 <section>
   <h2>Stand des Umbaus</h2>
   <div class="verdict">
-    <div><b>Fertig?</b><span>Nein, gut zur Hälfte</span><small>Was der WG direkt nützt, ist live: Fehler behoben, Abgleich ohne Uhrenvergleich, schneller Start. Offen ist vor allem das Aufteilen von <code>app.js</code>.</small></div>
+    <div><b>Fertig?</b><span>Grösstenteils, nicht ganz</span><small>Die Aufteilung ist durch: Regeln, Speicher, CSS, Worker und seit heute auch <code>app.js</code> in 10 Dateien. Offen sind ein gemeinsamer Zustand, echte Module (Variante 4) und Bring! in einem Aufruf.</small></div>
     <div><b>Erledigt</b><span>0 · 1 · 2 · 4 · 7</span><small>Schritt 2 als «Variante 3»: eine Regel-Datei <code>core.js</code> für App und Worker, ohne Bündler.</small></div>
-    <div><b>Halb</b><span>3 · 5 · 6</span><small>Speicher, CSS und Worker-Dateien aufgeteilt; Zustand, Ansichten und Bring! in einem Aufruf fehlen.</small></div>
+    <div><b>Fast</b><span>3 · 5 · 6</span><small>Speicher, CSS, Ansichten und Worker-Dateien aufgeteilt; ein Zustand mit <code>subscribe</code> und Bring! in einem Aufruf fehlen.</small></div>
     <div><b>Bewusst nicht</b><span>8 (D1)</span><small>Erst nötig, wenn WGs Rezepte teilen.</small></div>
   </div>
   <div class="scroll">
   <table>
     <thead><tr><th>Datei</th><th>Vorher (10.11.)</th><th>Jetzt (12.11.)</th></tr></thead>
     <tbody>
-      <tr><td><code>static/app.js</code></td><td class="num">3025 Zeilen</td><td class="num">2912 Zeilen</td></tr>
+      <tr><td><code>static/app.js</code></td><td class="num">3025 Zeilen</td><td class="num">336 Zeilen (Grundlage, <code>BF_APP</code>)</td></tr>
+      <tr><td><code>static/app_*.js</code> (plan, einkauf, vorrat, rezepte, wahl, sync, einstellungen, theme, start)</td><td class="num">–</td><td class="num">9 Dateien · 96–533 Zeilen</td></tr>
       <tr><td><code>static/core.js</code> (Regeln, auch im Worker)</td><td class="num">–</td><td class="num">385 Zeilen</td></tr>
       <tr><td><code>static/store.js</code> (alle Speicher-Schlüssel)</td><td class="num">–</td><td class="num">76 Zeilen</td></tr>
       <tr><td><code>static/index.html</code></td><td class="num">1049 Zeilen · 77 KB</td><td class="num">439 Zeilen · 27 KB</td></tr>
@@ -82,10 +83,11 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
     </tbody>
   </table>
   </div>
-  <p><strong>Warum <code>app.js</code> kaum kleiner ist:</strong> Herausgelöst wurden die Regeln; die Ansichten sind noch drin. <code>app.js</code> ist eine einzige Funktion, in der sich rund 150 Funktionen über gemeinsame Variablen aufrufen. Das Aufteilen («Variante 4») heisst echte Browser-Module <em>und</em> die jsdom-Tests umbauen, weil diese die App heute durch Einsetzen des Dateiinhalts laden. Das braucht ein ruhiges Zeitfenster, in dem kein anderer Chat an <code>app.js</code> arbeitet.</p>
+  <p><strong>Wie <code>app.js</code> aufgeteilt ist:</strong> klassische Skripte mit gemeinsamem Namensraum <code>BF_APP</code> (wie <code>BF_CORE</code> und <code>BF_STORE</code>), kein Bündler, Verhalten unverändert. Echte Module gingen nicht, weil jsdom (alle App-Tests) keine Module ausführt. Neu prüft ein Test, dass jede Datei aus <code>index.html</code> offline in <code>sw.js</code> steht.</p>
+  <p><strong>Noch nicht live:</strong> v1.7.3 enthält die Aufteilung von <code>app.js</code> noch nicht (Commit <code>2f6f6e6</code> kam danach). Sie geht mit dem nächsten Release-Tag raus.</p>
   <h3>Was als Nächstes offen ist</h3>
   <ol>
-    <li><strong>Variante 4:</strong> zuerst die Test-Lader auf Module umstellen, dann Ansicht für Ansicht herauslösen, mit einem Zustand statt losen Variablen (Schritte 3 und 5).</li>
+    <li><strong>Ein Zustand:</strong> <code>state</code> und die geteilten Werte (<code>app.viewNext</code>, <code>app.curPlan</code>, <code>app.nextDoc</code>, <code>app.sync</code>, <code>app.vote</code>) in einem Objekt mit <code>subscribe</code>. Echte Module (Variante 4) erst, wenn die Tests das können.</li>
     <li><strong>Bring! in einem Aufruf:</strong> hebt das 45-Artikel-Limit auf; braucht zuerst einen Live-Test gegen «Home-test».</li>
     <li><strong>Schrift kürzen:</strong> Roboto Flex 196 KB, mit optischem Vergleich.</li>
     <li><strong>Grundvorrat Variante C:</strong> Richtung entschieden, Einzelheiten mit Joshua offen. Gebaut wird nach dem Umbau, damit die Ansicht nur einmal angefasst wird.</li>
@@ -221,7 +223,7 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
     <li><b>2 ✓</b><div><h3>Regeln herauslösen (erledigt, Variante 3)</h3><small><code>static/core.js</code>: Woche, Portionen, Zutaten, Einkaufsliste, Wochenwahl als reine Funktionen. App und Worker laden dieselbe Datei, Tests laufen direkt in Node. Kein Bündler.</small></div></li>
     <li><b>3 ½</b><div><h3>Ein Zustand, ein Speicher (Speicher erledigt, Zustand offen)</h3><small><code>static/store.js</code> bündelt alle localStorage-Schlüssel. Offen: <code>state</code> plus die losen Variablen (<code>viewNext</code>, <code>curPlan</code>, <code>nextDoc</code>, <code>sync</code>) in einem Objekt – gehört zu Variante 4.</small></div></li>
     <li><b>4 ✓</b><div><h3>Sync mit Versionsnummern (erledigt)</h3><small>Der Server-Stempel dient als Version. Die App schickt mit, worauf sie aufbaut. Bei Konflikt wird pro Tag bzw. pro Artikel zusammengeführt statt überschrieben. In v1.7.3 korrigiert: ein verspätet gelesener alter Stand überschreibt eigene Änderungen nicht mehr.</small></div></li>
-    <li><b>5 ½</b><div><h3>Ansichten und CSS aufteilen (CSS erledigt, Ansichten offen)</h3><small>CSS liegt in <code>static/app.css</code>. Die Ansichten aus <code>app.js</code> herauslösen ist Variante 4 (Module + Tests umbauen).</small></div></li>
+    <li><b>5 ✓</b><div><h3>Ansichten und CSS aufteilen (erledigt, ohne Module)</h3><small>CSS liegt in <code>static/app.css</code>; <code>app.js</code> ist in 10 Dateien aufgeteilt (<code>BF_APP</code>). Echte Module und CSS pro Bereich später, mit dem Redesign der alten Seiten.</small></div></li>
     <li><b>6 ½</b><div><h3>Worker aufteilen, Bring! schneller (aufgeteilt, Anmeldung gemerkt; Batch offen)</h3><small><code>index.js</code> plus <code>auth</code>, <code>speicher</code>, <code>bring</code>, <code>kalender</code>, <code>rezept</code>, <code>http</code>. Offen: Artikel in einem Aufruf senden (hebt das 45er-Limit auf).</small></div></li>
     <li><b>7 ✓</b><div><h3>Schneller Start bei schwachem Empfang (erledigt)</h3><small>Der Service Worker wartet höchstens 2.5 s aufs Netz und liefert dann aus dem Cache: 2.6 s statt über 15 s bei sehr langsamem Netz. Cache-Name kommt im Release aus der Versionsnummer.</small></div></li>
     <li><b>8</b><div><h3>D1 nur bei Bedarf</h3><small>Der Entwurf in <code>docs/plan-d1.md</code> ist gut, lohnt sich aber erst für geteilte Rezepte zwischen WGs. Für eine WG reicht KV nach Schritt 4.</small></div></li>
