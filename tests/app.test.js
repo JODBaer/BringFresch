@@ -272,6 +272,16 @@ gplan[gi].extra_guests = 1;
 const gd = boot({ bringfrisch_current_plan: gp, bringfrisch_plan_week: JSON.parse(md.localStorage.getItem("bringfrisch_plan_week")) }).window.document;
 check(/\+1 Gast$/.test(gd.querySelectorAll("#days .prow")[gi].querySelector(".meta").textContent), `Gast sichtbar in der Zeile (${gd.querySelectorAll("#days .prow")[gi].querySelector(".meta").textContent})`);
 
+{ // Ein Zustand: alles Geteilte liegt in state; Abonnenten werden nach refresh() gerufen
+  const A = gd.defaultView.BF_APP;
+  check(["viewNext", "curPlan", "nextDoc", "vote", "sync", "mySites"].every(k => k in A.state) && !("viewNext" in A), "geteilte Werte liegen im einen Zustand (state), nicht lose unter app");
+  let calls = 0;
+  const off = A.subscribe(() => calls++);
+  A.refresh();
+  check(calls === 1, "subscribe: Abonnent wird nach refresh() gerufen");
+  off(); A.refresh();
+  check(calls === 1, "Abmelden wirkt");
+}
 check(errors.length === 0, `keine JS-Fehler insgesamt ${errors.join(" | ")}`);
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

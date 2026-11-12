@@ -68,10 +68,10 @@ Reine Funktionen, kein `window`, kein `document`, kein `localStorage`, Eingaben 
 Mit esbuild anzupassen: `tools/build_site.mjs`, `tools/build_stage.mjs`, `tests/run_ci.mjs` (Syntaxcheck), `sw.js`-Assetliste, README «lokal ansehen».
 Unit-Tests für `core/` direkt in Node (ohne jsdom) – schnell.
 
-## Schritt 3 – `store` – Speicher erledigt, Zustand offen
+## Schritt 3 – `store` – erledigt (Speicher und Zustand)
 
 Gebaut (11.11.2026): `static/store.js` (`BF_STORE`) mit allen Schlüsseln (gemeinsam / Abgleich / nur dieses Handy), `load`, `save`, `remove`, `loadText`, `saveText`, `allKeys`; `app.js` greift nicht mehr direkt auf `localStorage` zu.
-Offen: der Zustand selbst (`state` plus `viewNext`, `curPlan`, `nextDoc`, `sync`, `vote`) in einem Objekt mit `subscribe`. Das gehört zum Aufteilen der Ansichten (Schritt 5 / Variante 4), weil erst dann klar ist, welche Ansicht was braucht.
+Zustand (12.11.2026): `state` enthält jetzt auch `viewNext`, `curPlan`, `nextDoc`, `vote`, `sync`, `mySites`, Push-Timer; `app.subscribe`/`notify`; `STORE.migrate(woche)` bündelt die Migrationen.
 
 Ein Objekt für den ganzen Zustand inkl. angezeigter Woche; alle localStorage-Schlüssel und ihre Migrationen (`LEGACY_KEYS`, alte Wochenwahl) an einer Stelle; `subscribe` statt verstreuter `refresh()`-Aufrufe. Keine Änderung am gespeicherten Format.
 
@@ -112,7 +112,7 @@ Gebaut (12.11.2026): `app.js` in Dateien aufgeteilt – **klassische Skripte mit
 | `app_theme.js` | ~170 | Formen, Stil iPhone/Android, Farben, Hell/Dunkel |
 | `app_start.js` | ~95 | Navigation, Plan laden, erstes Zeichnen |
 
-Regeln: Was `app.js` anbietet, holt jede Datei oben mit `const { … } = app;`. Was aus einer anderen `app_*.js` kommt, heisst `app.name` (steht erst bereit, wenn alle Dateien geladen sind – beim Laden selbst nur Eigenes und `app.js` aufrufen). Veränderliche Werte, die mehrere Dateien sehen (`app.viewNext`, `app.curPlan`, `app.nextDoc`, `app.vote`, `app.sync`, `app.mySites`, Push-Timer), stehen nur unter `app`. Tests: gemeinsamer Lader `tests/app_html.js`; `tests/assets.test.mjs` prüft, dass alles aus `index.html` in `STATIC_ASSETS` von `sw.js` steht, und die Reihenfolge der Skripte.
+Regeln: Was `app.js` anbietet, holt jede Datei oben mit `const { … } = app;`. Was aus einer anderen `app_*.js` kommt, heisst `app.name` (steht erst bereit, wenn alle Dateien geladen sind – beim Laden selbst nur Eigenes und `app.js` aufrufen). Veränderliche Werte, die mehrere Dateien sehen (`viewNext`, `curPlan`, `nextDoc`, `vote`, `sync`, `mySites`, Push-Timer), stehen seit 12.11. im einen Objekt `state` (kein `app.viewNext` mehr); `app.subscribe(fn)`/`app.notify()`, `refresh()` meldet nach dem Zeichnen. Migrationen: `STORE.migrate(woche)` in `store.js` (Altlasten, alte Wochenwahl, alte Wochen aufräumen). Gespeichertes Format unverändert. Tests: gemeinsamer Lader `tests/app_html.js`; `tests/assets.test.mjs` prüft, dass alles aus `index.html` in `STATIC_ASSETS` von `sw.js` steht, und die Reihenfolge der Skripte.
 
 Offen (Variante 4, später): echte Module und **ein Zustand** (`state` + die `app.*`-Werte oben in einem Objekt mit `subscribe`). CSS aus `app.css` in Dateien pro Bereich – zusammen mit dem Redesign der drei alten Seiten (plan.md), nicht vorher separat.
 

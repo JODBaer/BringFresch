@@ -191,7 +191,7 @@
   function useRecipe(recipe, mode) {
     if (mode === "vote") {
       const id = String(recipe.id);
-      if (!app.vote.candidates.includes(id)) app.vote.candidates.push(id);
+      if (!state.vote.candidates.includes(id)) state.vote.candidates.push(id);
       app.saveVote();
       app.pushCandidates();
       app.renderVote();
@@ -313,24 +313,24 @@
     ["Migusto", "https://migusto.migros.ch/de/rezepte"],
     ["Chefkoch", "https://www.chefkoch.de/"],
   ];
-  app.mySites = load(SITES_KEY, []) || [];
+  state.mySites = load(SITES_KEY, []) || [];
   function renderSites() {
     $("recipeSites").innerHTML = DEFAULT_SITES.map(([n, u]) => `<a class="btile" href="${esc(u)}" target="_blank" rel="noopener">${esc(n)} ↗</a>`).join("")
-      + app.mySites.map((x, i) => `<span class="btile"><a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(x.name)} ↗</a><button type="button" class="x" data-site-del="${i}" aria-label="${esc(x.name)} entfernen">✕</button></span>`).join("")
+      + state.mySites.map((x, i) => `<span class="btile"><a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(x.name)} ↗</a><button type="button" class="x" data-site-del="${i}" aria-label="${esc(x.name)} entfernen">✕</button></span>`).join("")
       + `<button type="button" class="btile" id="siteAddBtn">+ Webseite</button>`;
   }
   $("recipeSites").addEventListener("click", e => {
     if (e.target.closest("#siteAddBtn")) { $("siteForm").hidden = !$("siteForm").hidden; if (!$("siteForm").hidden) $("siteName").focus(); return; }
     const del = e.target.closest("[data-site-del]");
-    if (del) { app.mySites.splice(+del.dataset.siteDel, 1); save(SITES_KEY, app.mySites); renderSites(); app.settingsChanged(); }
+    if (del) { state.mySites.splice(+del.dataset.siteDel, 1); save(SITES_KEY, state.mySites); renderSites(); app.settingsChanged(); }
   });
   $("siteForm").addEventListener("submit", e => {
     e.preventDefault();
     let url = linkIn($("siteUrl").value) || ($("siteUrl").value.trim() ? "https://" + $("siteUrl").value.trim().replace(/^\/+/, "") : "");
     const name = $("siteName").value.trim();
     if (!name || !url) return;
-    app.mySites.push({ name, url });
-    save(SITES_KEY, app.mySites);
+    state.mySites.push({ name, url });
+    save(SITES_KEY, state.mySites);
     app.settingsChanged();
     $("siteForm").reset();
     $("siteForm").hidden = true;

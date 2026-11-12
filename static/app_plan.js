@@ -17,13 +17,13 @@
     const now = new Date();
     const kwNow = isoWeek(now);
     const kwNext = isoWeek(plusWeek());
-    $("weekLabel").textContent = app.viewNext ? `KW ${kwNext} · nächste Woche` : `KW ${kwNow} · ${MONTHS[now.getMonth()]}`;
-    $("appbar").classList.toggle("nextwk", app.viewNext);
-    $("secTitle").textContent = app.viewNext ? `Nächste Woche` : "Wochenplan";
+    $("weekLabel").textContent = state.viewNext ? `KW ${kwNext} · nächste Woche` : `KW ${kwNow} · ${MONTHS[now.getMonth()]}`;
+    $("appbar").classList.toggle("nextwk", state.viewNext);
+    $("secTitle").textContent = state.viewNext ? `Nächste Woche` : "Wochenplan";
     const chip = $("weekChip");
     chip.hidden = !canPlanNext();
-    chip.textContent = app.viewNext ? `← KW ${kwNow}` : `KW ${kwNext} →`;
-    chip.setAttribute("aria-label", app.viewNext ? `Zurück zu dieser Woche (KW ${kwNow})` : `Nächste Woche planen (KW ${kwNext})`);
+    chip.textContent = state.viewNext ? `← KW ${kwNow}` : `KW ${kwNext} →`;
+    chip.setAttribute("aria-label", state.viewNext ? `Zurück zu dieser Woche (KW ${kwNow})` : `Nächste Woche planen (KW ${kwNext})`);
   }
 
   function renderSeasonHint() {
@@ -78,15 +78,15 @@
   // Woche wechseln: nur Inhalt und Beschriftung ändern sich, das Raster bleibt stehen
   function setWeekView(next) {
     next = !!next && canPlanNext();
-    if (next === app.viewNext) return;
+    if (next === state.viewNext) return;
     if (next) {
-      app.curPlan = state.plan;
-      app.viewNext = true;
+      state.curPlan = state.plan;
+      state.viewNext = true;
       state.plan = nextPlan();
     } else {
-      app.viewNext = false;
-      state.plan = app.curPlan || state.plan;
-      app.curPlan = null;
+      state.viewNext = false;
+      state.plan = state.curPlan || state.plan;
+      state.curPlan = null;
     }
     openIdx = -1;
     renderHeader();
@@ -188,7 +188,7 @@
 
   function renderDays() {
     const short = initialsMap();
-    const today = app.viewNext ? -1 : todayIndex();
+    const today = state.viewNext ? -1 : todayIndex();
     $("days").innerHTML = state.plan.map((day, idx) => rowHTML(day, idx, short, today)).join("");
   }
 
@@ -460,7 +460,7 @@
   }
 
   // Woche wechseln: Chip in der Abschnittszeile oder seitlich über die Tage wischen
-  $("weekChip").onclick = () => setWeekView(!app.viewNext);
+  $("weekChip").onclick = () => setWeekView(!state.viewNext);
   (function weekSwipe() {
     let sx = null, sy = 0;
     $("days").addEventListener("touchstart", e => {

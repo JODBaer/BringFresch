@@ -109,8 +109,8 @@
   });
 
   function renderSyncSettings() {
-    $("syncPin").value = app.sync.pin || "";
-    $("syncWg").value = app.sync.wg || "";
+    $("syncPin").value = state.sync.pin || "";
+    $("syncWg").value = state.sync.wg || "";
     $("dinnerTime").value = load(DINNER_KEY, "18:30");
     app.setSyncStatus(app.connected() ? "Verbinde …" : "Nicht verbunden: WG-PIN unter «Mehr» eingeben. Bis dahin Bring! über Teilen/Kopieren.", false);
     if (app.connected()) loadBringLists(); else $("setMore").open = true;
@@ -119,9 +119,9 @@
   $("syncForm").addEventListener("submit", async e => {
     e.preventDefault();
     const wgName = $("syncWg").value.trim();
-    if (wgName !== (app.sync.wg || "")) app.forgetWgStand();
-    app.sync = { url: app.sync.url || DEFAULT_SYNC_URL, pin: $("syncPin").value.trim(), wg: wgName };
-    save(SYNC_KEY, app.sync);
+    if (wgName !== (state.sync.wg || "")) app.forgetWgStand();
+    state.sync = { url: state.sync.url || DEFAULT_SYNC_URL, pin: $("syncPin").value.trim(), wg: wgName };
+    save(SYNC_KEY, state.sync);
     if (!app.connected()) return app.setSyncStatus("WG-PIN eingeben", false);
     app.setSyncStatus("Verbinde …", false);
     await app.pullShared();
@@ -140,7 +140,7 @@
   function openWelcome() {
     $("welcomeJoin").hidden = false;
     $("welcomeWho").hidden = true;
-    $("welcomeWg").value = app.sync.wg || "";
+    $("welcomeWg").value = state.sync.wg || "";
     $("welcomeStatus").textContent = "";
     $("welcomeDialog").showModal();
   }
@@ -156,8 +156,8 @@
     e.preventDefault();
     const wg = $("welcomeWg").value.trim(), pin = $("welcomePin").value.trim(), status = $("welcomeStatus");
     if (!wg || !pin) return (status.textContent = "Bitte WG-Name und PIN eingeben");
-    const before = app.sync;
-    app.sync = { url: app.sync.url || DEFAULT_SYNC_URL, pin, wg };
+    const before = state.sync;
+    state.sync = { url: state.sync.url || DEFAULT_SYNC_URL, pin, wg };
     status.textContent = "Verbinde …";
     const btn = $("welcomeJoin").querySelector('button[type="submit"]');
     btn.disabled = true;
@@ -171,14 +171,14 @@
       status.textContent = `Verbunden mit ${name} ✓`;
       $("welcomeOk").textContent = `✓ Verbunden mit ${name}`;
     } catch (err) {
-      app.sync = before;
+      state.sync = before;
       done();
       status.textContent = /Failed to fetch|NetworkError|Load failed/.test(err.message) ? "Keine Verbindung zum WG-Server – Internet?" : `✗ ${err.message} – nochmals versuchen`;
       return;
     }
     done();
     if ((before.wg || "") !== wg) app.forgetWgStand();
-    save(SYNC_KEY, app.sync);
+    save(SYNC_KEY, state.sync);
     save(TERMS_KEY, { version: TERMS_VERSION, at: Date.now() });
     const fresh = !(remote && remote.settings && Array.isArray(remote.settings.members) && remote.settings.members.length);
     if (!fresh) {
@@ -296,8 +296,8 @@
   $("calendarDlBtn").onclick = async () => {
     if (!app.connected()) return toast("Zuerst mit dem WG-Server verbinden");
     try {
-      if (app.planPushTimer) await app.pushPlanNow();
-      if (app.nextPushTimer) await app.pushNextNow();
+      if (state.planPushTimer) await app.pushPlanNow();
+      if (state.nextPushTimer) await app.pushNextNow();
       const url = await myCalUrl(`&week=${shownWeek()}&dl=1`);
       toast("Termine werden geladen – «Zum Kalender hinzufügen» tippen");
       setTimeout(() => { location.href = url; }, 300);

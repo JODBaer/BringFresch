@@ -15,7 +15,7 @@
 // Gemeinsamer Namensraum: window.BF_APP (hier «app»). Was app.js anbietet, holt jede Datei oben mit
 // «const { … } = app;». Was aus einer anderen app_*.js kommt, heisst app.name (steht erst bereit, wenn alle Dateien
 // geladen sind – beim Laden selbst nur Eigenes und app.js benutzen). Veränderliche Werte, die mehrere Dateien sehen
-// (app.viewNext, app.curPlan, app.nextDoc, app.vote, app.sync …), stehen nur unter app.
+// (state.viewNext, state.curPlan, state.nextDoc, state.vote, state.sync …), stehen nur unter app.
 (() => {
   "use strict";
 
@@ -71,8 +71,7 @@
   } = STORE.KEYS;
   const KEYS = { plan: STORE.KEYS.PLAN_KEY, members: STORE.KEYS.MEMBERS_KEY, staples: STORE.KEYS.STAPLES_KEY };
 
-  // Altlasten früherer Versionen einmalig entfernen
-  STORE.LEGACY_KEYS.forEach(remove);
+  // Migrationen (Altlasten, alte Wochenwahl): STORE.migrate(woche) in store.js, aufgerufen von app_start.js
 
   function loadMembers() {
     const saved = load(KEYS.members, null);
@@ -93,20 +92,35 @@
     shopFilter: "toBuy",
     catalogDay: 0,
     catalogFilter: "all",
-    catalogMode: "day"
+    catalogMode: "day",
+    // Geteilt zwischen den Dateien (früher lose unter app.*): eine Stelle für den ganzen Zustand
+    viewNext: false, // zeigt gerade die nächste Woche
+    curPlan: null, // Plan der laufenden Woche, solange die nächste angezeigt wird
+    nextDoc: load(NEXT_KEY, null), // Plan der nächsten Woche { week, plan, updated }
+    vote: null, // Wochenwahl der angezeigten Woche
+    sync: null, // Verbindung zum WG-Server { url, pin, wg } (app_sync.js)
+    mySites: [], // eigene Rezept-Webseiten (app_rezepte.js)
+    planPushTimer: null, nextPushTimer: null, vorratTimer: null // wartende Uploads
   };
 
+  // Abonnenten: subscribe(fn) meldet an (liefert die Abmeldung), notify() ruft alle; refresh() meldet nach dem Zeichnen
+  const subscribers = [];
+  function subscribe(fn) {
+    subscribers.push(fn);
+    return () => { const i = subscribers.indexOf(fn); if (i >= 0) subscribers.splice(i, 1); };
+  }
+  function notify() {
+    subscribers.slice().forEach(fn => { try { fn(state); } catch (e) { console.error(e); } });
+  }
+
   // Nächste Woche (ab Donnerstag): eigener Plan pro KW. state.plan ist immer die angezeigte Woche.
-  app.viewNext = false; // zeigt gerade die nächste Woche
-  app.curPlan = null; // Plan der laufenden Woche, solange die nächste angezeigt wird
-  app.nextDoc = load(NEXT_KEY, null);
-  const currentPlan = () => (app.viewNext ? app.curPlan : state.plan);
-  const otherPlan = () => (app.viewNext ? app.curPlan : app.nextDoc && app.nextDoc.plan);
+  const currentPlan = () => (state.viewNext ? state.curPlan : state.plan);
+  const otherPlan = () => (state.viewNext ? state.curPlan : state.nextDoc && state.nextDoc.plan);
 
   const savePlan = () => {
-    if (app.viewNext) {
-      app.nextDoc = { week: nextWeekKey(), plan: state.plan, updated: Date.now() };
-      save(NEXT_KEY, app.nextDoc);
+    if (state.viewNext) {
+      state.nextDoc = { week: nextWeekKey(), plan: state.plan, updated: Date.now() };
+      save(NEXT_KEY, state.nextDoc);
       app.scheduleNextPush();
       return;
     }
@@ -120,15 +134,14 @@
     app.schedulePlanPush();
   };
   // Grundvorrat gehört der ganzen WG: lokal speichern und (verbunden) an den Server schicken
-  app.vorratTimer = null;
   const saveStaples = () => {
     save(KEYS.staples, state.staples);
     save(VORRAT_UPDATED_KEY, Date.now());
     let online = false;
     try { online = app.connected(); } catch (e) { /* beim Start noch nicht bereit */ }
     if (!online) return;
-    clearTimeout(app.vorratTimer);
-    app.vorratTimer = setTimeout(() => app.pushVorratNow().catch(e => app.setSyncStatus(e.message, false)), 800);
+    clearTimeout(state.vorratTimer);
+    state.vorratTimer = setTimeout(() => app.pushVorratNow().catch(e => app.setSyncStatus(e.message, false)), 800);
   };
 
   // ---------------------------------------------------------------------------
@@ -300,6 +313,7 @@
     app.renderCta();
     app.renderShop();
     app.renderAttendance();
+    notify();
   }
 
   const recipeById = id => allRecipes().find(r => String(r.id) === String(id));
@@ -307,7 +321,7 @@
 
   const nextWeekKey = () => weekKey(plusWeek());
   const canPlanNext = () => todayIndex() >= 3; // ab Donnerstag
-  const shownWeek = () => (app.viewNext ? nextWeekKey() : weekKey());
+  const shownWeek = () => (state.viewNext ? nextWeekKey() : weekKey());
 
   // Noch nicht geplanter Tag der nächsten Woche: kauft nichts, Gericht antippen = wählen
   function emptyDay(idx) {
@@ -315,11 +329,11 @@
   }
   const isOpenWeek = plan => !Array.isArray(plan) || plan.every(d => d && d.empty);
   function nextPlan() {
-    if (app.nextDoc && app.nextDoc.week === nextWeekKey() && Array.isArray(app.nextDoc.plan) && app.nextDoc.plan.length === 7) return normalizeWeek(app.nextDoc.plan);
+    if (state.nextDoc && state.nextDoc.week === nextWeekKey() && Array.isArray(state.nextDoc.plan) && state.nextDoc.plan.length === 7) return normalizeWeek(state.nextDoc.plan);
     return DAYS.map((_, i) => emptyDay(i));
   }
   function setCurrentPlan(plan) {
-    if (app.viewNext) app.curPlan = plan;
+    if (state.viewNext) state.curPlan = plan;
     else state.plan = plan;
     save(KEYS.plan, plan);
   }
@@ -331,6 +345,6 @@
     WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY, KEYS, state, currentPlan, otherPlan, savePlan,
     saveMembers, saveStaples, $, recipeLinkLabel, recipeHref, guessMeat, esc, currentMonth, todayIndex, initialsMap,
     toast, copyText, allRecipes, effectiveDiet, fitsDiet, inSeason, pickRecipe, makeDay, generateWeek, normalizePlan,
-    normalizeWeek, toBuyItems, listLine, DIET_LABEL, refresh, recipeById, dietGroup, nextWeekKey, canPlanNext,
+    normalizeWeek, subscribe, notify, toBuyItems, listLine, DIET_LABEL, refresh, recipeById, dietGroup, nextWeekKey, canPlanNext,
     shownWeek, isOpenWeek, nextPlan, setCurrentPlan });
 })();

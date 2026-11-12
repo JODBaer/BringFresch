@@ -72,5 +72,21 @@
     try { return Object.keys(box()); } catch (e) { return []; }
   }
 
-  root.BF_STORE = { KEYS: { ...SHARED, ...SYNC, ...PHONE }, LEGACY_KEYS, baseKey, wahlKey, load, save, remove, loadText, saveText, allKeys };
+  // Alle Migrationen an einer Stelle (einmal beim Start, vor dem ersten Lesen): Altlasten entfernen, alte Wochenwahl umziehen,
+  // Wochenwahlen vergangener Wochen aufräumen. thisWeek = «2026-W46». Ohne Speicher passiert nichts.
+  function migrate(thisWeek) {
+    LEGACY_KEYS.forEach(remove);
+    try {
+      allKeys().forEach(k => {
+        const m = /^bringfrisch_(?:week_vote_|wahl_)(\d{4}-W\d{2})$/.exec(k);
+        if (m && m[1] < thisWeek) remove(k);
+      });
+      const old = load(PHONE.VOTE_KEY, null); // alte Wochenwahl (vor «pro Woche»)
+      const perWeek = old && `${PHONE.VOTE_KEY}_${old.week}`;
+      if (old && old.week === thisWeek && !load(perWeek, null)) save(perWeek, old);
+      remove(PHONE.VOTE_KEY);
+    } catch (e) { /* ohne Speicher */ }
+  }
+
+  root.BF_STORE = { KEYS: { ...SHARED, ...SYNC, ...PHONE }, LEGACY_KEYS, migrate, baseKey, wahlKey, load, save, remove, loadText, saveText, allKeys };
 })(typeof globalThis !== "undefined" ? globalThis : self);

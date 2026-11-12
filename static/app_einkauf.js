@@ -18,7 +18,7 @@
     $("cntToBuy").textContent = groups.toBuy.length;
     $("cntOnBring").textContent = groups.onBring.length;
     $("cntStaples").textContent = groups.staples.length;
-    $("shopSummary").textContent = `${app.viewNext ? `Nächste Woche (KW ${isoWeek(plusWeek())}) · ` : ""}${state.shopping.length} Zutaten · antippen = auf/von Bring!`;
+    $("shopSummary").textContent = `${state.viewNext ? `Nächste Woche (KW ${isoWeek(plusWeek())}) · ` : ""}${state.shopping.length} Zutaten · antippen = auf/von Bring!`;
     document.querySelectorAll("#tab-shop .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === state.shopFilter)));
 
     const items = groups[state.shopFilter];

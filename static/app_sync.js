@@ -13,18 +13,18 @@
   // ---------------------------------------------------------------------------
   // Verbindung zum Cloudflare Worker (Bring!-Sync, gemeinsamer Plan, Wochenwahl, Kalender)
   // ---------------------------------------------------------------------------
-  app.sync = { url: DEFAULT_SYNC_URL, pin: "", wg: "", ...(load(SYNC_KEY, {}) || {}) };
+  state.sync = { url: DEFAULT_SYNC_URL, pin: "", wg: "", ...(load(SYNC_KEY, {}) || {}) };
   // alter Test-Server (bringfrisch-stage) ist im Test-Worker aufgegangen
-  if (!app.sync.url || /\/\/bringfrisch-stage\./.test(app.sync.url)) app.sync.url = DEFAULT_SYNC_URL;
+  if (!state.sync.url || /\/\/bringfrisch-stage\./.test(state.sync.url)) state.sync.url = DEFAULT_SYNC_URL;
 
   function connected() {
-    return !!(app.sync.url && app.sync.pin);
+    return !!(state.sync.url && state.sync.pin);
   }
 
   async function api(path, { method = "GET", body } = {}) {
-    const res = await fetch(app.sync.url.replace(/\/+$/, "") + path, {
+    const res = await fetch(state.sync.url.replace(/\/+$/, "") + path, {
       method,
-      headers: { "X-WG-PIN": app.sync.pin, ...(app.sync.wg ? { "X-WG": app.sync.wg } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+      headers: { "X-WG-PIN": state.sync.pin, ...(state.sync.wg ? { "X-WG": state.sync.wg } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
       body: body ? JSON.stringify(body) : undefined
     });
     let data = {};
@@ -79,10 +79,10 @@
   // Zusammenführen nur mit einem wirklich neueren Stand; sonst gilt der gemerkte weiter
   const newer = (name, remote) => { const b = baseOf(name); return !b || remote.updated > b.updated; };
 
-  app.planPushTimer = null;
+  state.planPushTimer = null;
   async function pushPlanNow(again) {
-    clearTimeout(app.planPushTimer);
-    app.planPushTimer = null; // sonst schickt jedes spätere Herunterziehen den alten Plan wieder hoch
+    clearTimeout(state.planPushTimer);
+    state.planPushTimer = null; // sonst schickt jedes spätere Herunterziehen den alten Plan wieder hoch
     const b = baseOf("plan");
     try {
       const r = await api("/plan", {
@@ -106,20 +106,20 @@
     setBase("plan", remote.updated, planViews(theirs));
     save(PLAN_UPDATED_KEY, Date.now());
   }
-  app.nextPushTimer = null;
+  state.nextPushTimer = null;
   async function pushNextNow(again) {
-    clearTimeout(app.nextPushTimer);
-    app.nextPushTimer = null;
-    if (!app.nextDoc) return;
+    clearTimeout(state.nextPushTimer);
+    state.nextPushTimer = null;
+    if (!state.nextDoc) return;
     const b = baseOf("next");
     try {
-      const r = await api(`/plan/${app.nextDoc.week}`, {
+      const r = await api(`/plan/${state.nextDoc.week}`, {
         method: "PUT",
-        body: { plan: app.nextDoc.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), ...(b && b.week === app.nextDoc.week ? { base: b.updated } : {}) }
+        body: { plan: state.nextDoc.plan, members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), ...(b && b.week === state.nextDoc.week ? { base: b.updated } : {}) }
       });
-      app.nextDoc.updated = r.updated;
-      save(NEXT_KEY, app.nextDoc);
-      setBase("next", r.updated, planViews(app.nextDoc.plan), { week: app.nextDoc.week });
+      state.nextDoc.updated = r.updated;
+      save(NEXT_KEY, state.nextDoc);
+      setBase("next", r.updated, planViews(state.nextDoc.plan), { week: state.nextDoc.week });
     } catch (e) {
       const theirs = conflictOf(e);
       if (!theirs || again || !Array.isArray(theirs.plan)) throw e;
@@ -129,17 +129,17 @@
     }
   }
   function mergeNext(remote) {
-    { const b = baseOf("next"); if (b && b.week === app.nextDoc.week && remote.updated <= b.updated) return; }
+    { const b = baseOf("next"); if (b && b.week === state.nextDoc.week && remote.updated <= b.updated) return; }
     const theirs = normalizeWeek(remote.plan), b = baseOf("next");
-    app.nextDoc = { week: app.nextDoc.week, plan: merge3(b && b.week === app.nextDoc.week ? b.data : null, app.nextDoc.plan, theirs, byIndex, dayView), updated: Date.now() };
-    save(NEXT_KEY, app.nextDoc);
-    setBase("next", remote.updated, planViews(theirs), { week: app.nextDoc.week });
-    if (app.viewNext) state.plan = app.nextDoc.plan;
+    state.nextDoc = { week: state.nextDoc.week, plan: merge3(b && b.week === state.nextDoc.week ? b.data : null, state.nextDoc.plan, theirs, byIndex, dayView), updated: Date.now() };
+    save(NEXT_KEY, state.nextDoc);
+    setBase("next", remote.updated, planViews(theirs), { week: state.nextDoc.week });
+    if (state.viewNext) state.plan = state.nextDoc.plan;
   }
   const stapleKey = st => String(st.name).toLowerCase();
   async function pushVorratNow(again) {
-    clearTimeout(app.vorratTimer);
-    app.vorratTimer = null;
+    clearTimeout(state.vorratTimer);
+    state.vorratTimer = null;
     const b = baseOf("vorrat");
     try {
       const r = await api("/vorrat", { method: "PUT", body: { staples: state.staples, ...(b ? { base: b.updated } : {}) } });
@@ -163,13 +163,13 @@
   }
   function scheduleNextPush() {
     if (!connected()) return;
-    clearTimeout(app.nextPushTimer);
-    app.nextPushTimer = setTimeout(() => pushNextNow().catch(e => setSyncStatus(e.message, false)), 1500);
+    clearTimeout(state.nextPushTimer);
+    state.nextPushTimer = setTimeout(() => pushNextNow().catch(e => setSyncStatus(e.message, false)), 1500);
   }
   function schedulePlanPush() {
     if (!connected()) return;
-    clearTimeout(app.planPushTimer);
-    app.planPushTimer = setTimeout(() => pushPlanNow().catch(e => setSyncStatus(e.message, false)), 1500);
+    clearTimeout(state.planPushTimer);
+    state.planPushTimer = setTimeout(() => pushPlanNow().catch(e => setSyncStatus(e.message, false)), 1500);
   }
 
   // Herunterziehen = jetzt synchronisieren: meine Änderungen hoch, dann den Stand der anderen holen
@@ -179,9 +179,9 @@
     if (syncing) return;
     syncing = true;
     try {
-      if (app.planPushTimer) await pushPlanNow();
-      if (app.nextPushTimer) await pushNextNow();
-      if (app.vorratTimer) await pushVorratNow();
+      if (state.planPushTimer) await pushPlanNow();
+      if (state.nextPushTimer) await pushNextNow();
+      if (state.vorratTimer) await pushVorratNow();
       await pullShared();
       if ($("voteDialog").open) await app.pullVote();
       const okSync = $("syncStatus").textContent.startsWith("Verbunden");
@@ -240,7 +240,7 @@
   // ---------------------------------------------------------------------------
   let settingsTimer = null, settingsServer = true;
   function wgSettings() {
-    return { members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), recipeSites: app.mySites, customRecipes: importer.customRecipes };
+    return { members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), recipeSites: state.mySites, customRecipes: importer.customRecipes };
   }
   function settingsChanged() {
     save(SETTINGS_UPDATED_KEY, Date.now());
@@ -295,7 +295,7 @@
       save(KEYS.members, state.members);
     }
     if (st.dinnerTime) { save(DINNER_KEY, st.dinnerTime); $("dinnerTime").value = st.dinnerTime; }
-    if (Array.isArray(st.recipeSites)) { app.mySites = st.recipeSites; save(SITES_KEY, app.mySites); app.renderSites(); }
+    if (Array.isArray(st.recipeSites)) { state.mySites = st.recipeSites; save(SITES_KEY, state.mySites); app.renderSites(); }
     if (Array.isArray(st.customRecipes)) { importer.customRecipes = st.customRecipes; importer.saveCustomRecipes(); app.renderMyRecipes(); }
     app.renderMembers();
   }
@@ -381,15 +381,15 @@
         } else if (todo === "" && !baseOf("plan")) setBase("plan", remote.updated, planViews(currentPlan()));
       }
       // Nächste Woche
-      const localNext = app.nextDoc && app.nextDoc.week === nextWeekKey() ? app.nextDoc.updated || 0 : 0;
+      const localNext = state.nextDoc && state.nextDoc.week === nextWeekKey() ? state.nextDoc.updated || 0 : 0;
       if (remoteNext && Array.isArray(remoteNext.plan)) {
         const b = baseOf("next");
         const todo = localNext ? syncCase(b && b.week === nextWeekKey() ? b : null, localNext, remoteNext.updated) : "take";
         if (todo === "take") {
-          app.nextDoc = { week: nextWeekKey(), plan: normalizeWeek(remoteNext.plan), updated: remoteNext.updated };
-          save(NEXT_KEY, app.nextDoc);
-          setBase("next", remoteNext.updated, planViews(app.nextDoc.plan), { week: app.nextDoc.week });
-          if (app.viewNext) state.plan = app.nextDoc.plan;
+          state.nextDoc = { week: nextWeekKey(), plan: normalizeWeek(remoteNext.plan), updated: remoteNext.updated };
+          save(NEXT_KEY, state.nextDoc);
+          setBase("next", remoteNext.updated, planViews(state.nextDoc.plan), { week: state.nextDoc.week });
+          if (state.viewNext) state.plan = state.nextDoc.plan;
         } else if (todo === "merge") {
           mergeNext(remoteNext);
           await pushNextNow();
@@ -523,7 +523,7 @@
   function forgetWgStand() {
     [PLAN_UPDATED_KEY, VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY].forEach(k => save(k, 0));
     ["plan", "next", "vorrat", "settings"].forEach(n => remove(baseKey(n)));
-    app.nextDoc = null;
+    state.nextDoc = null;
     remove(NEXT_KEY);
   }
 

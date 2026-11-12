@@ -34,22 +34,22 @@
     return { week, candidates: pickCandidates(), votes: {} };
   }
 
-  app.vote = null;
-  const saveVote = () => save(voteKey(app.vote.week), app.vote);
+  state.vote = null;
+  const saveVote = () => save(voteKey(state.vote.week), state.vote);
 
   // Mit dem Worker abgleichen: Kandidaten + Stimmen aller holen, eigene Stimme bleibt lokal führend
   async function pullVote() {
-    if (!app.connected() || !app.vote) return;
+    if (!app.connected() || !state.vote) return;
     try {
-      const remote = await app.api(`/week/${app.vote.week}`);
+      const remote = await app.api(`/week/${state.vote.week}`);
       if (!remote.candidates) {
-        await app.api(`/week/${app.vote.week}/candidates`, { method: "PUT", body: { candidates: app.vote.candidates } });
+        await app.api(`/week/${state.vote.week}/candidates`, { method: "PUT", body: { candidates: state.vote.candidates } });
       } else {
-        app.vote.candidates = remote.candidates.filter(id => recipeById(id));
+        state.vote.candidates = remote.candidates.filter(id => recipeById(id));
       }
       const me = myId();
       Object.entries(remote.votes || {}).forEach(([member, v]) => {
-        if (member !== me || !app.vote.votes[me]) app.vote.votes[member] = v;
+        if (member !== me || !state.vote.votes[me]) state.vote.votes[member] = v;
       });
       saveVote();
       if ($("voteDialog").open) renderVote();
@@ -66,14 +66,14 @@
     clearTimeout(votePushTimers[id]);
     votePushTimers[id] = setTimeout(() => {
       delete votePushTimers[id];
-      const v = app.vote.votes[id] || { likes: [], days: {} };
-      app.api(`/week/${app.vote.week}/vote/${encodeURIComponent(id)}`, { method: "PUT", body: v }).catch(e => app.setSyncStatus(e.message, false));
+      const v = state.vote.votes[id] || { likes: [], days: {} };
+      app.api(`/week/${state.vote.week}/vote/${encodeURIComponent(id)}`, { method: "PUT", body: v }).catch(e => app.setSyncStatus(e.message, false));
     }, 500);
   }
 
   function pushCandidates() {
     if (!app.connected()) return;
-    app.api(`/week/${app.vote.week}/candidates`, { method: "PUT", body: { candidates: app.vote.candidates } }).catch(e => app.setSyncStatus(e.message, false));
+    app.api(`/week/${state.vote.week}/candidates`, { method: "PUT", body: { candidates: state.vote.candidates } }).catch(e => app.setSyncStatus(e.message, false));
   }
 
   function myId() {
@@ -83,13 +83,13 @@
 
   function myVote() {
     const id = myId();
-    app.vote.votes[id] = app.vote.votes[id] || { likes: [], days: {} };
-    return app.vote.votes[id];
+    state.vote.votes[id] = state.vote.votes[id] || { likes: [], days: {} };
+    return state.vote.votes[id];
   }
 
-  const votersOf = recipeId => CORE.votersOf(state.members, app.vote.votes, recipeId);
+  const votersOf = recipeId => CORE.votersOf(state.members, state.vote.votes, recipeId);
 
-  const ranking = () => CORE.ranking(app.vote.candidates, state.members, app.vote.votes);
+  const ranking = () => CORE.ranking(state.vote.candidates, state.members, state.vote.votes);
 
   // Bilder zu den Gerichten: der WG-Server holt sie einmal von der Rezeptseite; das Handy merkt sie sich (Cache «bf-img»)
   const imgCache = new Map(); // source_url -> Objekt-URL, "" = kein Bild
@@ -104,12 +104,12 @@
   }
   const imgLoading = new Set();
   async function loadImg(u) {
-    const req = `${app.sync.url.replace(/\/+$/, "")}/img?url=${encodeURIComponent(u)}`;
+    const req = `${state.sync.url.replace(/\/+$/, "")}/img?url=${encodeURIComponent(u)}`;
     let cache = null;
     try { cache = window.caches ? await caches.open("bf-img") : null; } catch (e) { /* ohne Cache */ }
     let res = cache ? await cache.match(req).catch(() => null) : null;
     if (!res) {
-      const r = await fetch(req, { headers: { "X-WG-PIN": app.sync.pin, ...(app.sync.wg ? { "X-WG": app.sync.wg } : {}) } });
+      const r = await fetch(req, { headers: { "X-WG-PIN": state.sync.pin, ...(state.sync.wg ? { "X-WG": state.sync.wg } : {}) } });
       if (r.status === 204 || r.status === 404) { imgCache.set(u, ""); return; } // kein Bild zu diesem Rezept
       if (!r.ok) return; // später nochmals
       if (cache) await cache.put(req, r.clone()).catch(() => {});
@@ -141,11 +141,11 @@
   function renderVote() {
     const short = initialsMap();
     const mine = myVote();
-    $("voteSubtitle").textContent = `KW ${+app.vote.week.split("W")[1]}${app.viewNext ? " (nächste Woche)" : ""} · ${GRID_SIZE} Saison-Gerichte, die Top ${PLAN_SIZE} kommen in den Plan`;
+    $("voteSubtitle").textContent = `KW ${+state.vote.week.split("W")[1]}${state.viewNext ? " (nächste Woche)" : ""} · ${GRID_SIZE} Saison-Gerichte, die Top ${PLAN_SIZE} kommen in den Plan`;
     $("voteMe").innerHTML = state.members.map(m => `<option value="${esc(m.id)}"${m.id === myId() ? " selected" : ""}>${esc(m.name)}</option>`).join("");
     $("voteMine").textContent = `${mine.likes.length} gewählt`;
 
-    $("voteGrid").innerHTML = app.vote.candidates.map(id => {
+    $("voteGrid").innerHTML = state.vote.candidates.map(id => {
       const r = recipeById(id);
       const on = mine.likes.includes(id);
       const wish = mine.days[id];
@@ -182,7 +182,7 @@
     }).join("");
 
     loadVoteImages();
-    const voted = state.members.filter(m => ((app.vote.votes[m.id] || {}).likes || []).length > 0);
+    const voted = state.members.filter(m => ((state.vote.votes[m.id] || {}).likes || []).length > 0);
     $("voteWho").textContent = `${voted.length} von ${state.members.length} haben gewählt`;
     $("voteRank").innerHTML = ranking().map((x, k) => {
       const r = recipeById(x.id);
@@ -196,7 +196,7 @@
   let votePoll = null;
   function openVote() {
     voteOpen = null;
-    app.vote = loadVote();
+    state.vote = loadVote();
     saveVote();
     renderVote();
     $("voteDialog").showModal();
@@ -209,7 +209,7 @@
 
   // Kalender-Symbol: ab Donnerstag geht es zur nächsten Woche, solange dort noch nichts gewählt ist
   function openVoteFor() {
-    if (canPlanNext() && !app.viewNext && !wahlDone(nextWeekKey())) app.setWeekView(true);
+    if (canPlanNext() && !state.viewNext && !wahlDone(nextWeekKey())) app.setWeekView(true);
     openVote();
   }
   $("openVoteBtn").onclick = openVoteFor;
@@ -289,8 +289,8 @@
   $("voteShuffleBtn").onclick = () => {
     let swapped = 0;
     // alles, was schon im Raster steht oder gerade neu gezogen wurde, nie doppelt (sonst 2× dasselbe Gericht)
-    const taken = [...app.vote.candidates];
-    app.vote.candidates = app.vote.candidates.map(id => {
+    const taken = [...state.vote.candidates];
+    state.vote.candidates = state.vote.candidates.map(id => {
       if (votersOf(id).length > 0) return id;
       const old = recipeById(id);
       const r = backupRecipe(dietGroup(old), taken, !!(old && old.quick));
@@ -312,7 +312,7 @@
   };
 
   // Faire Tagesverteilung: Gericht auf Tag, an dem seine Fans zuhause sind (+2 je Fan), Wunschtag +3
-  const assignDays = recipeIds => CORE.assignDays(recipeIds, state.plan, state.members, app.vote.votes);
+  const assignDays = recipeIds => CORE.assignDays(recipeIds, state.plan, state.members, state.vote.votes);
 
   $("voteApplyBtn").onclick = () => {
     const top = ranking().slice(0, PLAN_SIZE);
@@ -325,7 +325,7 @@
     state.plan = next;
     savePlan();
     refresh();
-    save(STORE.wahlKey(app.vote.week), true);
+    save(STORE.wahlKey(state.vote.week), true);
     markWahl();
     $("voteDialog").close();
     toast(withVotes < PLAN_SIZE ? `Plan übernommen (${PLAN_SIZE - withVotes} ohne Stimme aufgefüllt)` : "Plan übernommen", {
@@ -342,7 +342,7 @@
   // Wochenwahl-Pop-up: beim Start, wenn für diese Woche noch nichts gewählt ist
   function wahlDone(week = shownWeek()) {
     if (load(STORE.wahlKey(week), false)) return true;
-    if (week === nextWeekKey() && app.nextDoc && app.nextDoc.week === week && Array.isArray(app.nextDoc.plan) && app.nextDoc.plan.every(d => !d.empty)) return true;
+    if (week === nextWeekKey() && state.nextDoc && state.nextDoc.week === week && Array.isArray(state.nextDoc.plan) && state.nextDoc.plan.every(d => !d.empty)) return true;
     const v = load(voteKey(week), null);
     const me = load(ME_KEY, null);
     return !!(v && v.week === week && me && v.votes && v.votes[me] && (v.votes[me].likes || []).length);

@@ -50,23 +50,15 @@
   if (!fromLink) state.plan = load(KEYS.plan, []);
   // Neue Woche: die schon geplante nächste Woche wird zur laufenden, sonst bleibt der Plan stehen
   const planWeek = load(PLAN_WEEK_KEY, null);
-  const rolled = !fromLink && planWeek && planWeek < weekKey() && app.nextDoc && app.nextDoc.week === weekKey() && !isOpenWeek(app.nextDoc.plan);
-  if (rolled) state.plan = app.nextDoc.plan;
-  if (app.nextDoc && app.nextDoc.week <= weekKey()) {
-    app.nextDoc = null;
+  const rolled = !fromLink && planWeek && planWeek < weekKey() && state.nextDoc && state.nextDoc.week === weekKey() && !isOpenWeek(state.nextDoc.plan);
+  if (rolled) state.plan = state.nextDoc.plan;
+  if (state.nextDoc && state.nextDoc.week <= weekKey()) {
+    state.nextDoc = null;
     remove(NEXT_KEY);
   }
   save(PLAN_WEEK_KEY, weekKey());
-  // Alte Wochenwahlen aufräumen (je Woche gespeichert)
-  try {
-    STORE.allKeys().forEach(k => {
-      const m = /^bringfrisch_(?:week_vote_|wahl_)(\d{4}-W\d{2})$/.exec(k);
-      if (m && m[1] < weekKey()) remove(k);
-    });
-    const oldVote = load(VOTE_KEY, null);
-    if (oldVote && oldVote.week === weekKey() && !load(app.voteKey(oldVote.week), null)) save(app.voteKey(oldVote.week), oldVote);
-    remove(VOTE_KEY);
-  } catch (e) { /* ohne Speicher */ }
+  // Altlasten und alte Wochenwahlen: STORE.migrate (store.js)
+  STORE.migrate(weekKey());
   normalizePlan();
   if (fromLink || rolled) {
     savePlan(); // per Link empfangener Plan gilt als neueste Version

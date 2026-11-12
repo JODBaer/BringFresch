@@ -27,9 +27,9 @@ Befehle einzeln ausführen (PowerShell kennt kein `&&`). Der Cloud-Chat kann kei
 | 0 Fehler | erledigt | Vorrat- und Bring!-Abgleich auf ganze Wörter (`core.js`: `hasWord`, `inStaples`); PIN-Sperre pro WG und Absender, auch erste WG (`worker/src/auth.js`); Weiterleitungen geprüft (`http.js`: `safeFetch`) |
 | 1 Sicherheitsnetz | erledigt | `tests/einkauf_snapshot.test.js`, `tests/zutaten.test.js`, `tests/snapshots/` |
 | 2 Regeln herauslösen | erledigt (Variante 3, ohne Bündler) | `static/core.js` (`BF_CORE`): Woche, Portionen, Zutaten, Einkaufsliste, Wochenwahl-Regeln. Worker importiert dieselbe Datei. `tests/core.test.mjs` |
-| 3 Speicher / Zustand | Speicher erledigt, **Zustand offen** | `static/store.js` (`BF_STORE`): alle localStorage-Schlüssel |
+| 3 Speicher / Zustand | erledigt (Speicher + ein Zustand `state` mit `subscribe`/`notify`, `STORE.migrate`) | `static/store.js` (`BF_STORE`): alle localStorage-Schlüssel |
 | 4 Abgleich mit Versionen | erledigt (+ Korrektur, siehe 1) | `app_sync.js`: `syncCase`, `merge3`, `push…Now`; `worker/src/speicher.js`: `putDoc` |
-| 5 Ansichten / CSS | erledigt (12.11., klassische Skripte mit Namensraum `BF_APP`); **Variante 4 + ein Zustand offen** | `static/app.css`; `static/app.js` (Grundlage) + `app_plan`, `app_einkauf`, `app_vorrat`, `app_rezepte`, `app_wahl`, `app_sync`, `app_einstellungen`, `app_theme`, `app_start` (Einzelheiten: `docs/refactoring-plan.md`, Schritt 5) |
+| 5 Ansichten / CSS | erledigt (12.11., klassische Skripte mit Namensraum `BF_APP`); **Variante 4 offen** | `static/app.css`; `static/app.js` (Grundlage) + `app_plan`, `app_einkauf`, `app_vorrat`, `app_rezepte`, `app_wahl`, `app_sync`, `app_einstellungen`, `app_theme`, `app_start` (Einzelheiten: `docs/refactoring-plan.md`, Schritt 5) |
 | 6 Worker | Anmeldung gemerkt, Datei aufgeteilt; Batch gebaut (Live-Beweis in `stage_live.mjs` ausstehend) | `worker/src/`: `index`, `auth`, `speicher`, `bring`, `kalender`, `rezept`, `http` |
 | 7 Start | erledigt, **Schrift offen** | `sw.js`: höchstens 2.5 s aufs Netz warten; Cache-Name im Release = Version |
 | 8 D1 | bewusst nicht | nur für geteilte Rezepte zwischen WGs nötig |
@@ -37,7 +37,7 @@ Befehle einzeln ausführen (PowerShell kennt kein `&&`). Der Cloud-Chat kann kei
 ## 3. Was offen ist
 
 1. ~~`app.js` in Ansichten aufteilen~~ – **erledigt 12.11.2026** als klassische Skripte mit gemeinsamem Namensraum `BF_APP` (kein Bündler, kein Bau-Schritt, Verhalten unverändert): `app.js` (Grundlage, ~340 Zeilen) + 9 Dateien `app_*.js`. Echte Module gingen nicht: jsdom (alle App-Tests) führt keine `<script type="module">` aus. Test-Lader: `tests/app_html.js`; `tests/assets.test.mjs` sichert die `sw.js`-Liste und die Reihenfolge ab.
-   **Offen: «Variante 4» = ein Zustand** (`state` + `app.viewNext`, `app.curPlan`, `app.nextDoc`, `app.vote`, `app.sync`, `app.mySites` in einem Objekt mit `subscribe`) und ggf. echte Module – dafür müssten die jsdom-Tests die App anders laden (z.B. im echten Browser wie `ui_e2e.mjs`). Beim Laden dürfen die Dateien nur Eigenes und `app.js` aufrufen; was aus anderen `app_*.js` kommt, erst später (`app.name`).
+   **Ein Zustand erledigt (12.11.)**: `viewNext`, `curPlan`, `nextDoc`, `vote`, `sync`, `mySites`, Push-Timer liegen in `state`, `subscribe`/`notify`. Offen: ggf. echte Module – dafür müssten die jsdom-Tests die App anders laden (z.B. im echten Browser wie `ui_e2e.mjs`). Beim Laden dürfen die Dateien nur Eigenes und `app.js` aufrufen; was aus anderen `app_*.js` kommt, erst später (`app.name`).
 2. **Bring! in einem Aufruf** (`PUT bringlists/{uuid}/items`): hebt das 45-Artikel-Limit auf. Braucht einen Live-Test gegen «Home-test» (`tests/stage_live.mjs`), darum nicht blind gebaut.
 3. **Schrift kürzen**: Roboto Flex 196 KB, grösste Datei. Braucht `fonttools` und einen optischen Vergleich (`layout_check.mjs --shots`).
 4. **Grundvorrat neu** (siehe 4).
