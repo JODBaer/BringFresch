@@ -65,7 +65,8 @@ try {
   check(s1.mode === "batch", `Bring! nimmt die Batch-Schnittstelle an (Modus «${s1.mode}»; «single» = Rückfall, Batch abgelehnt)`);
   let l = await api("/bring/list");
   check(l.items.includes(A) && l.items.includes(B) && l.mine.includes(A), `beide stehen auf «${LIST}» und gehören dem Bot`);
-  await api("/bring/sync", { method: "POST", body: { items: [{ name: A, spec: "3 Stk" }] } });
+  const s2 = await api("/bring/sync", { method: "POST", body: { items: [{ name: A, spec: "3 Stk" }] } });
+  check(s2.mode === "batch", `Menge ändern über die Batch-Schnittstelle (Modus «${s2.mode}»; «mixed» = Batch hat nichts geändert, einzeln nachgeschickt)`);
   l = await api("/bring/list");
   check((l.details.find(d => d.name === A) || {}).spec === "3 Stk", "Menge auf Bring! geändert (1 Stk -> 3 Stk)");
   const rm = await api("/bring/remove", { method: "POST", body: { names: [A, B] } });

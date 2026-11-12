@@ -17,9 +17,12 @@ const env = { WG: KV, WG_PIN: "1234", CAL_TOKEN: "cal-secret", BRING_EMAIL: "bot
 
 // --- Bring!-Attrappe
 const bringCalls = [];
-const bringList = [{ name: "Milch", specification: "" }];
+// Bring!-Attrappe wie die echte Liste: jeder Eintrag hat eine uuid; die Batch-Schnittstelle ändert/entfernt nur Einträge,
+// deren uuid passt – mit fremder uuid antwortet sie 204 und tut nichts (so beobachtet im Live-Test 12.11.2026).
+let uuidNo = 0;
+const bringList = [{ name: "Milch", specification: "", uuid: "u-milch" }];
 const wgPuts = [];
-let batchFail = false, tokenNo = 0, expireToken = false;
+let batchIgnore = false, batchFail = false, tokenNo = 0, expireToken = false;
 let imgFetches = 0;
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
@@ -34,9 +37,12 @@ globalThis.fetch = async (url, init = {}) => {
   if (url.endsWith("/bringusers/u1/lists")) return Response.json({ lists: [{ listUuid: "list-1", name: "Home-test" }, { listUuid: "list-wg", name: "WG" }, { listUuid: "list-sh", name: "Sonnenhof" }] });
   if (url.endsWith("/bringlists/list-1/items") && init.method === "PUT") { // Batch
     if (batchFail) return new Response("kaputt", { status: 500 });
-    for (const c of JSON.parse(init.body).changes) {
-      const i = bringList.findIndex(x => x.name === c.itemId);
-      if (c.operation === "REMOVE") { if (i >= 0) bringList.splice(i, 1); } else if (i >= 0) bringList[i].specification = c.spec; else bringList.push({ name: c.itemId, specification: c.spec });
+    if (!batchIgnore) for (const c of JSON.parse(init.body).changes) {
+      const i = bringList.findIndex(x => x.uuid === c.uuid);
+      const sameName = bringList.some(x => x.name === c.itemId);
+      if (c.operation === "REMOVE") { if (i >= 0) bringList.splice(i, 1); }
+      else if (i >= 0) bringList[i].specification = c.spec;
+      else if (!sameName) bringList.push({ name: c.itemId, specification: c.spec, uuid: c.uuid });
     }
     return new Response(null, { status: 204 });
   }
@@ -48,7 +54,7 @@ globalThis.fetch = async (url, init = {}) => {
     const p = new URLSearchParams(init.body);
     if (p.get("remove")) { const i = bringList.findIndex(x => x.name === p.get("remove")); if (i >= 0) bringList.splice(i, 1); return new Response(null, { status: 204 }); }
     const ex = bringList.find(x => x.name === p.get("purchase"));
-    if (ex) ex.specification = p.get("specification"); else bringList.push({ name: p.get("purchase"), specification: p.get("specification") });
+    if (ex) ex.specification = p.get("specification"); else bringList.push({ name: p.get("purchase"), specification: p.get("specification"), uuid: "u-single-" + ++uuidNo });
     return new Response(null, { status: 204 });
   }
   if (url === "https://fooby.ch/de/weiter") return new Response(null, { status: 302, headers: { Location: "https://fooby.ch/de/rezepte/2/ohne" } });
@@ -106,6 +112,23 @@ const pj = JSON.parse(put.init.body);
 check(sync.mode === "batch" && put.url.endsWith("/bringlists/list-1/items") && put.init.headers.Authorization === "Bearer tok" && /json/.test(put.init.headers["Content-Type"]), "Batch: PUT .../items mit JSON und Token");
 check(pj.changes.length === 2 && pj.changes[0].itemId === "Rüebli" && pj.changes[0].spec === "500 g" && pj.changes[0].operation === "TO_PURCHASE" && pj.changes[0].uuid && pj.changes[0].uuid !== pj.changes[1].uuid, "Batch enthält Name, Menge, Operation und je eine neue uuid");
 check(bringCalls.filter(c => c.init.method === "PUT").length === 1 && bringList.some(x => x.name === "Rüebli" && x.specification === "500 g"), "zwei Artikel = ein einziger PUT");
+// Menge eines bestehenden Eintrags ändern: Batch mit dessen uuid (wie der Live-Test 1 Stk -> 3 Stk)
+const rUuid = bringList.find(x => x.name === "Rüebli").uuid;
+bringCalls.length = 0;
+r = await call("/bring/sync", { method: "POST", body: { items: [{ name: "Rüebli", spec: "800 g" }] } });
+let upd = await r.json();
+const updPut = bringCalls.find(c => c.init.method === "PUT");
+check(upd.mode === "batch" && JSON.parse(updPut.init.body).changes[0].uuid === rUuid, "Menge ändern: Batch mit der uuid des bestehenden Eintrags");
+check(bringList.filter(x => x.name === "Rüebli").length === 1 && bringList.find(x => x.name === "Rüebli").specification === "800 g", "Menge auf Bring! geändert (500 g -> 800 g), kein doppelter Eintrag");
+// Bring! antwortet 2xx, ändert aber nichts -> nachsehen und einzeln hinterher
+batchIgnore = true; bringCalls.length = 0;
+r = await call("/bring/sync", { method: "POST", body: { items: [{ name: "Rüebli", spec: "1 kg" }, { name: "Ign", spec: "1 Stk" }] } });
+let ign = await r.json();
+check(ign.ok && ign.pushed === 2 && ign.mode === "mixed" && bringList.find(x => x.name === "Rüebli").specification === "1 kg" && bringList.some(x => x.name === "Ign"), "Batch still ignoriert -> nachgesehen, einzeln nachgeschickt");
+r = await call("/bring/remove", { method: "POST", body: { names: ["Ign"] } });
+check((await r.json()).removed === 1 && !bringList.some(x => x.name === "Ign"), "Wegnehmen still ignoriert -> einzeln nachgeschickt");
+batchIgnore = false;
+await call("/bring/sync", { method: "POST", body: { items: [{ name: "Rüebli", spec: "500 g" }] } });
 bringCalls.length = 0;
 r = await call("/bring/sync", { method: "POST", body: { items: Array.from({ length: 60 }, (_, i) => ({ name: "x" + i })) } });
 let big = await r.json();
