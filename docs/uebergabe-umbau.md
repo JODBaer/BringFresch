@@ -28,17 +28,16 @@ Befehle einzeln ausführen (PowerShell kennt kein `&&`). Der Cloud-Chat kann kei
 | 1 Sicherheitsnetz | erledigt | `tests/einkauf_snapshot.test.js`, `tests/zutaten.test.js`, `tests/snapshots/` |
 | 2 Regeln herauslösen | erledigt (Variante 3, ohne Bündler) | `static/core.js` (`BF_CORE`): Woche, Portionen, Zutaten, Einkaufsliste, Wochenwahl-Regeln. Worker importiert dieselbe Datei. `tests/core.test.mjs` |
 | 3 Speicher / Zustand | Speicher erledigt, **Zustand offen** | `static/store.js` (`BF_STORE`): alle localStorage-Schlüssel |
-| 4 Abgleich mit Versionen | erledigt (+ Korrektur, siehe 1) | `app.js`: `syncCase`, `merge3`, `push…Now`; `worker/src/speicher.js`: `putDoc` |
-| 5 Ansichten / CSS | CSS erledigt, **Ansichten offen** | `static/app.css` |
+| 4 Abgleich mit Versionen | erledigt (+ Korrektur, siehe 1) | `app_sync.js`: `syncCase`, `merge3`, `push…Now`; `worker/src/speicher.js`: `putDoc` |
+| 5 Ansichten / CSS | erledigt (12.11., klassische Skripte mit Namensraum `BF_APP`); **Variante 4 + ein Zustand offen** | `static/app.css`; `static/app.js` (Grundlage) + `app_plan`, `app_einkauf`, `app_vorrat`, `app_rezepte`, `app_wahl`, `app_sync`, `app_einstellungen`, `app_theme`, `app_start` (Einzelheiten: `docs/refactoring-plan.md`, Schritt 5) |
 | 6 Worker | Anmeldung gemerkt, Datei aufgeteilt; **Batch offen** | `worker/src/`: `index`, `auth`, `speicher`, `bring`, `kalender`, `rezept`, `http` |
 | 7 Start | erledigt, **Schrift offen** | `sw.js`: höchstens 2.5 s aufs Netz warten; Cache-Name im Release = Version |
 | 8 D1 | bewusst nicht | nur für geteilte Rezepte zwischen WGs nötig |
 
 ## 3. Was offen ist
 
-1. **`app.js` in Ansichten aufteilen + ein Zustand = «Variante 4»** (Joshua: «zuerst 3, später 4»). `app.js` (~2900 Zeilen) ist eine einzige Funktion; ~150 Funktionen teilen sich Variablen (`state`, `viewNext`, `curPlan`, `nextDoc`, `sync`, `vote`).
-   Aufteilen heisst echte Module (`<script type="module">`) **und** die Tests umbauen: alle jsdom-Tests laden die App, indem sie `<script src>` in `index.html` durch den Dateiinhalt ersetzen – mit Modulen geht das so nicht.
-   Vorgehen: zuerst die Test-Lader umstellen (z.B. Module per `import` in jsdom oder ein kleiner Bündelschritt nur für Tests), dann Ansicht für Ansicht herauslösen, nach jedem Schritt `npm run ci`. Nur in einem Zeitfenster, in dem kein anderer Chat an `app.js` arbeitet. `sw.js`-Liste per Test gegen die geladenen Dateien absichern.
+1. ~~`app.js` in Ansichten aufteilen~~ – **erledigt 12.11.2026** als klassische Skripte mit gemeinsamem Namensraum `BF_APP` (kein Bündler, kein Bau-Schritt, Verhalten unverändert): `app.js` (Grundlage, ~340 Zeilen) + 9 Dateien `app_*.js`. Echte Module gingen nicht: jsdom (alle App-Tests) führt keine `<script type="module">` aus. Test-Lader: `tests/app_html.js`; `tests/assets.test.mjs` sichert die `sw.js`-Liste und die Reihenfolge ab.
+   **Offen: «Variante 4» = ein Zustand** (`state` + `app.viewNext`, `app.curPlan`, `app.nextDoc`, `app.vote`, `app.sync`, `app.mySites` in einem Objekt mit `subscribe`) und ggf. echte Module – dafür müssten die jsdom-Tests die App anders laden (z.B. im echten Browser wie `ui_e2e.mjs`). Beim Laden dürfen die Dateien nur Eigenes und `app.js` aufrufen; was aus anderen `app_*.js` kommt, erst später (`app.name`).
 2. **Bring! in einem Aufruf** (`PUT bringlists/{uuid}/items`): hebt das 45-Artikel-Limit auf. Braucht einen Live-Test gegen «Home-test» (`tests/stage_live.mjs`), darum nicht blind gebaut.
 3. **Schrift kürzen**: Roboto Flex 196 KB, grösste Datei. Braucht `fonttools` und einen optischen Vergleich (`layout_check.mjs --shots`).
 4. **Grundvorrat neu** (siehe 4).
@@ -92,7 +91,8 @@ Joshua kommentiert dort; Datei im Repo und Seite immer gleich halten). Vor jedem
 ## 5. Stolpersteine
 
 - `sw.js`: bei jedem Merge kollidiert `CACHE_NAME` → höhere Zahl + 1.
-- CSS gehört nach `app.css`, Regeln nach `core.js`, Schlüssel nach `store.js` (nicht mehr `index.html` / `app.js`).
+- CSS gehört nach `app.css`, Regeln nach `core.js`, Schlüssel nach `store.js` (nicht mehr `index.html` / `app.js`). Ansicht-Code in die passende `app_*.js`; neue Datei = in `index.html` (vor `app_start.js`) und in `STATIC_ASSETS` von `sw.js` eintragen, sonst wird `tests/assets.test.mjs` rot.
+- `APP_VERSION` und `DEFAULT_SYNC_URL` bleiben in `app.js`: Build-Skripte ersetzen sie dort, «Aktualisieren» liest die Version aus `app.js`.
 - Neue Dokumente, die mehrere Handys ändern: im Worker über `putDoc` speichern, in der App über `syncCase` / `merge3` abgleichen.
 - Rezepte oder Zutaten geändert → `einkauf_snapshot.test.js` schlägt an; gewollt = `node einkauf_snapshot.test.js --update`.
 - UI-Test «Grundvorrat verbunden» (Android dunkel) wackelt gelegentlich beim ersten Versuch (war schon vor dem Umbau so).

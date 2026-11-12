@@ -2,14 +2,14 @@
 
 Stand 10.11.2026, App 1.5.2, abgeglichen mit `main` bis `c2e3b74`. Überblick mit Diagramm: `docs/architektur-review.html`.
 **Gebaut: Schritte 0, 1, 4, 7 und von Schritt 6 die gemerkte Bring!-Anmeldung.**
-**Offen: 2, 3, 5, Rest von 6, 8.** Die Schritte 2, 3 und 5 schneiden `app.js` gross um. Sie warten, bis der laufende Umbau der Rezeptauswahl (anderer Chat) auf `main` ist – sonst kollidieren beide – und bis Joshua den Bündler entschieden hat (Schritt 2). Reihenfolge einhalten; jeder Schritt ist einzeln releasbar und endet mit `cd tests && npm run ci` grün.
+**Offen: 2, 3, 5, Rest von 6, 8.** (Stand 12.11.: 2 + Speicher aus 3 erledigt, `app.js` in Dateien aufgeteilt – siehe Schritt 5; offen bleiben Zustand, Variante 4, Rest von 6, 8.) Die Schritte 2, 3 und 5 schneiden `app.js` gross um. Sie warten, bis der laufende Umbau der Rezeptauswahl (anderer Chat) auf `main` ist – sonst kollidieren beide – und bis Joshua den Bündler entschieden hat (Schritt 2). Reihenfolge einhalten; jeder Schritt ist einzeln releasbar und endet mit `cd tests && npm run ci` grün.
 Regeln aus `CLAUDE.md` gelten (eigener Worktree, nur eigene Pfade committen, neue Funktion = neuer Schritt in `tests/ui_e2e.mjs`).
 
 ## Ausgangslage (gemessen)
 
 | Datei | Zeilen | Inhalt |
 |---|---|---|
-| `static/app.js` | 3025 (143 KB, 42 KB gzip) | eine IIFE, ~150 Funktionen: Regeln, Ansicht, Sync, Theme |
+| `static/app.js` | 3025 (143 KB, 42 KB gzip) | eine IIFE, ~150 Funktionen: Regeln, Ansicht, Sync, Theme (seit 12.11.: 10 Dateien, siehe Schritt 5) |
 | `static/index.html` | 1049 (77 KB) | ~600 Zeilen CSS, 4 Tabs, 7 Dialoge |
 | `worker/src/index.js` | ~730 | Routen, PIN, Bring!, Kalender, Rezept-Import, Rezeptbilder (`/img`), Sicherung |
 | `tests/ui_e2e.mjs` | 1486 | UI-Test, das wichtigste Sicherheitsnetz |
@@ -97,9 +97,24 @@ Heute viermal von Hand «neuerer gewinnt» (Plan, nächste Woche, Vorrat, Einste
 ## Schritt 5 – Ansichten und CSS – CSS erledigt, Ansichten offen
 
 Gebaut (11.11.2026): `static/app.css` (650 Zeilen, vorher `<style>` in `index.html`); `index.html` hat noch 439 Zeilen (27 KB statt 78 KB).
-Offen: `app.js` in Ansichten aufteilen. Das geht nicht als einfaches Verschieben: `app.js` ist eine einzige Funktion, in der sich ~150 Funktionen gegenseitig über gemeinsame Variablen aufrufen. Aufteilen heisst, diese Bezüge ausdrücklich zu machen – das ist die Arbeit von Variante 4 (echte Module, Tests umbauen) und gehört in ein eigenes, ruhiges Zeitfenster, in dem kein anderer Chat an `app.js` arbeitet.
+Gebaut (12.11.2026): `app.js` in Dateien aufgeteilt – **klassische Skripte mit gemeinsamem Namensraum `BF_APP`** (wie `BF_CORE` / `BF_STORE`), kein Bündler, kein Bau-Schritt, Verhalten unverändert. Echte Module (`<script type="module">`) gingen nicht: jsdom (alle App-Tests) führt keine Module aus, und ein Bündelschritt nur für Tests hätte geprüft, was nicht ausgeliefert wird.
 
-`views/plan`, `einkauf`, `saison`, `einstellungen`, `wochenwahl`, `willkommen`, `theme`. CSS aus `index.html` in Dateien pro Bereich. Zusammen mit dem geplanten Redesign der drei alten Seiten erledigen (plan.md), nicht vorher separat.
+| Datei | Zeilen | Inhalt |
+|---|---|---|
+| `app.js` | ~340 | Grundlage: Konstanten (`APP_VERSION`, `DEFAULT_SYNC_URL` – Build-Skripte ersetzen sie hier), Zustand (`state`, Woche), Speichern, Hilfsfunktionen, `refresh()`; legt `BF_APP` an |
+| `app_plan.js` | ~520 | Plan-Ansicht: Tage, Menü-Blatt, Dichte, Bring!-Chip, Woche wechseln, Plan teilen |
+| `app_einkauf.js` | ~110 | Einkauf, Bring! füllen per Teilen/Kopieren |
+| `app_vorrat.js` | ~125 | Grundvorrat |
+| `app_rezepte.js` | ~395 | Rezepte & Saison, Katalog, eigenes Rezept, Link-Import |
+| `app_wahl.js` | ~390 | Wochenwahl (Memory), Bilder, Pop-up |
+| `app_sync.js` | ~530 | Abgleich mit dem WG-Server (`syncCase`, `merge3`, `push…Now`, `pullShared`), Bring! über den Bot |
+| `app_einstellungen.js` | ~365 | Einstellungen + Willkommen, Bring!-Liste, Kalender, «Aktualisieren» |
+| `app_theme.js` | ~170 | Formen, Stil iPhone/Android, Farben, Hell/Dunkel |
+| `app_start.js` | ~95 | Navigation, Plan laden, erstes Zeichnen |
+
+Regeln: Was `app.js` anbietet, holt jede Datei oben mit `const { … } = app;`. Was aus einer anderen `app_*.js` kommt, heisst `app.name` (steht erst bereit, wenn alle Dateien geladen sind – beim Laden selbst nur Eigenes und `app.js` aufrufen). Veränderliche Werte, die mehrere Dateien sehen (`app.viewNext`, `app.curPlan`, `app.nextDoc`, `app.vote`, `app.sync`, `app.mySites`, Push-Timer), stehen nur unter `app`. Tests: gemeinsamer Lader `tests/app_html.js`; `tests/assets.test.mjs` prüft, dass alles aus `index.html` in `STATIC_ASSETS` von `sw.js` steht, und die Reihenfolge der Skripte.
+
+Offen (Variante 4, später): echte Module und **ein Zustand** (`state` + die `app.*`-Werte oben in einem Objekt mit `subscribe`). CSS aus `app.css` in Dateien pro Bereich – zusammen mit dem Redesign der drei alten Seiten (plan.md), nicht vorher separat.
 
 Danach, nicht vorher: **Grundvorrat neu gestalten zusammen mit Joshua** (siehe `plan.md`, Rückmeldung 11.11.2026: direktes Schreiben auf Bring!, Hinzufügen und Wegnehmen gefallen so nicht). Varianten zuerst als HTML zeigen.
 
