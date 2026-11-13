@@ -284,6 +284,15 @@ button { font: inherit; color: inherit; }
 .fab.undoing { background: var(--fg); color: var(--s0); }
 
 #cookTop .sw { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--fg); }
+
+/* Vorschau auf Bring!: Zutat über die ganze Breite mit Art der Änderung und Menge (Kommentar 13.11.) */
+.cell.full { grid-column: 1 / -1; flex-direction: row; flex-wrap: nowrap; align-items: baseline; gap: 10px; padding: 9px 14px; }
+.cell.full .n { flex: 1; min-width: 0; }
+.cell.full .w { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.cell.full .g { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.cell.full.r-add .w { color: var(--add-bar); } .cell.full.r-chg .w { color: var(--chg-bar); } .cell.full.r-opt .w { color: var(--opt-bar); } .cell.full.r-del .w { color: var(--del-bar); }
+.cell.full.r-del .n { text-decoration: line-through; }
+.cell.c1.have .n, .cell.c3 .n { text-decoration: none; color: var(--fg2); }
 </style>
 
 <div class="wrap">
@@ -463,6 +472,20 @@ function renderCols() {
   groups(ALL).forEach(([title, items, d, t]) => {
     h += `<div class="sec">${d ? `<span class="d">${d}</span>` : ""}${t}</div>`;
     items.forEach(i => {
+      // Jede Zutat nur einmal (Kommentar 13.11.): steht sie nachher auf Bring!, geht sie als Vorschau über die ganze Breite
+      // (Name, Art der Änderung, Menge). Sonst steht sie in ihrer Spalte: links aus dem Plan, rechts aus dem Vorrat.
+      const onB = !!(i.M || i.vpick || (i.pick && !i.ok && i.L));
+      if (onB) {
+        const c = i.del ? "del" : i.M && i.pick && !i.ok ? "chg" : i.M ? "" : i.vpick ? "opt" : "add";
+        const what = { add: "neu", chg: "Menge dazu", opt: "aus dem Vorrat", del: "kommt weg", "": i.by ? `von ${i.by}` : "steht schon drauf" }[c];
+        const amt = c === "chg" ? `${i.M} + ${i.L}` : c === "del" ? `<s>${i.M}</s>` : i.M || (i.vpick ? "1 Pack" : i.L);
+        h += `<div class="cell full${c ? " r-" + c : ""}" data-n="${i.n}" data-c="2" role="button" tabindex="0"><span class="n">${i.n}</span><span class="w">${what}</span><span class="g">${amt}</span></div>`;
+        return;
+      }
+      const left = !!i.L;
+      h += left ? `<div class="cell c1 have" data-n="${i.n}" data-c="1" role="button" tabindex="0"><span class="n">${i.n}</span></div><div class="cell c2 none"></div><div class="cell c3 none"></div>`
+        : `<div class="cell c1 none"></div><div class="cell c2 none"></div><div class="cell c3${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span></div>`;
+      return;
       let L = `<div class="cell c1 none"></div>`;
       if (i.L) L = i.ok ? `<div class="cell c1 ok"><span class="n">${i.n}</span><span class="a">${i.L} ✓</span></div>`
         : `<div class="cell c1${i.pick ? " pick" : " have"}" data-n="${i.n}" data-c="1" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.pick ? i.L : "haben wir"}</span></div>`;
@@ -518,7 +541,18 @@ $("list").addEventListener("click", e => {
   if (z) return openV(find(z.dataset.z));
   const r = e.target.closest("[data-n]"); if (r && filter === "kaufen") { tap(find(r.dataset.n), 1); render(); }
 });
-$("cols").addEventListener("click", e => { const c = e.target.closest("[data-c]"); if (c) { tap(find(c.dataset.n), +c.dataset.c); render(); } });
+// Zeile für Zeile entscheiden wie in Sublime Merge: Spalte antippen = auf Bring!, ganze Zeile antippen = zurück, woher sie kam
+$("cols").addEventListener("click", e => {
+  const c = e.target.closest("[data-c]"); if (!c) return;
+  const i = find(c.dataset.n), col = +c.dataset.c;
+  if (col === 1) { i.pick = true; toast(`${i.n} kommt auf Bring!`); }
+  else if (col === 3) { if (i.L) i.pick = true; else i.vpick = true; toast(`${i.n} aus dem Vorrat auf Bring!`); }
+  else if (i.vpick) { i.vpick = false; toast(`${i.n} zurück in den Vorrat`); }
+  else if (i.L && i.pick && !i.ok) { i.pick = false; toast(`${i.n} zurück zu «Kaufen»`); }
+  else if (i.bot || i.del) { i.del = !i.del; toast(i.del ? `${i.n}: kommt von Bring! weg` : `${i.n}: bleibt auf Bring!`); }
+  else toast(i.by ? `${i.n}: hat ${i.by} eingetragen – bleibt` : `${i.n}: steht schon passend drauf`);
+  render();
+});
 $("cols").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.c) { e.preventDefault(); e.target.click(); } });
 // ein Knopf: in Kaufen/Vorrat = zur Übersicht «Auf Bring!», dort = Senden
 // Nach «Alles auf Bring!» wird der Knopf 10 Sekunden lang zu «Rückgängig · 10 … 1»
