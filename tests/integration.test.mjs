@@ -110,6 +110,17 @@ await wait(300);
 const votersOn1 = [...B.document.querySelectorAll("#voteGrid .vcard")][1].querySelectorAll(".mini").length;
 check(votersOn1 === 2, "Handy B sieht Joshuas Stimme (2 Stimmen auf Gericht 2)");
 
+// Alte App-Version hat beim Mischen dasselbe Gericht zweimal auf den WG-Server geschrieben: beim Öffnen bereinigt
+const candKey = [...store.keys()].find(k => /^week:2026-W\d+:candidates$/.test(k));
+const orig = JSON.parse(store.get(candKey));
+store.set(candKey, JSON.stringify([...orig.slice(0, 13), orig[0]]));
+B.document.getElementById("voteDialog").close();
+B.document.getElementById("openVoteBtn").click();
+await wait(300);
+const idsB = [...B.document.querySelectorAll("#voteGrid .vcard")].map(c => c.dataset.id);
+check(idsB.length === 14 && new Set(idsB).size === 14 && idsB[0] === orig[0], "doppelte Karte vom Server weg, wieder 14 verschiedene Gerichte");
+check(new Set(JSON.parse(store.get(candKey))).size === 14, "bereinigte Wochenwahl für alle auf den WG-Server zurückgeschrieben");
+
 // B übernimmt den Plan
 B.document.getElementById("voteApplyBtn").click();
 const planB = JSON.parse(B.localStorage.getItem("bringfrisch_current_plan"));

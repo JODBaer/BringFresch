@@ -449,7 +449,605 @@ window.BRINGFRISCH_DATA = {
       instructions: "Dumplings in der Pfanne anbraten und mit etwas Wasser zugedeckt garen. Pak Choi kurz mitdünsten, mit Sojasauce und Frühlingszwiebeln servieren.",
       vegi_swap: { name: "Vegi-Dumplings (Tiefkühl)", amount: 250, unit: "g", bring_cat: "Tiefkühl" },
       season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    // Mehr Klassiker (Mengen von Hand; Link = Swissmilk-Original, ohne Link -> «Rezept suchen»): Schnelles ohne Nachdenken + Schweizer Klassiker
+    {
+      id: "abendbrot",
+      title: "Abendbrot mit Käse, Aufschnitt und Rohkost",
+      category: "schnell",
+      quick: true,
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 10,
+      ingredients: [
+        { name: "Brot (Ruchbrot)", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" },
+        { name: "Käse (Appenzeller, Tilsiter)", amount: "300", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Aufschnitt (Salami, Schinken)", amount: "250", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Butter", amount: "100", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Cornichons", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Tomaten", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Gurke", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Rüebli", amount: "3", unit: "Stk", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Brot aufschneiden, Käse, Aufschnitt, Butter und Cornichons auf ein Brett, Rohkost in Stängel schneiden. Jo bekommt mehr Käse statt Aufschnitt.",
+      vegi_swap: { name: "Käse (Vegi statt Aufschnitt)", amount: 80, unit: "g", bring_cat: "Milch & Käse" },
+      no_salad: true,
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "cafe_complet",
+      title: "Café complet mit Zopf, Käse und Konfi",
+      category: "schnell",
+      quick: true,
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 10,
+      ingredients: [
+        { name: "Zopf", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" },
+        { name: "Brot (Ruchbrot)", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" },
+        { name: "Butter", amount: "150", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Konfitüre", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Honig", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Käse (Greyerzer, Emmentaler)", amount: "300", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Milch", amount: "1", unit: "l", bring_cat: "Milch & Käse" },
+        { name: "Kaffee", amount: "1", unit: "Pck", bring_cat: "Vorrat & Konserven" },
+        { name: "Äpfel", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Milchkaffee machen, Zopf und Brot aufschneiden, mit Butter, Konfi, Honig, Käse und Äpfeln auf den Tisch. Wer will, brät dazu ein Spiegelei.",
+      no_addons: true,
+      no_salad: true,
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "birchermueesli",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200806_89/birchermueesli/",
+      title: "Birchermüesli zum Znacht",
+      category: "schnell",
+      quick: true,
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 15,
+      ingredients: [
+        { name: "Haferflocken", amount: "250", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Joghurt (nature)", amount: "500", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Milch", amount: "3", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Äpfel", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Zitrone", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Haselnüsse", amount: "80", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Beeren (Tiefkühl)", amount: "300", unit: "g", bring_cat: "Tiefkühl" },
+        { name: "Bananen", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Honig", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" }
+      ],
+      instructions: "Haferflocken mit Milch und Joghurt einweichen, Äpfel mit der Schale dazureiben, Zitronensaft, Bananen, Beeren und gehackte Nüsse untermischen, mit Honig süssen.",
+      no_addons: true,
+      no_salad: true,
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "spaghetti_pesto",
+      title: "Spaghetti mit Pesto und Parmesan",
+      category: "schnell",
+      quick: true,
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 15,
+      ingredients: [
+        { name: "Spaghetti", amount: "500", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Pesto alla genovese", amount: "2", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Parmesan (oder Sbrinz)", amount: "100", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Cherrytomaten", amount: "250", unit: "g", bring_cat: "Obst & Gemüse" },
+        { name: "Rucola", amount: "100", unit: "g", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Spaghetti al dente kochen, etwas Kochwasser aufheben. Mit Pesto und einem Schluck Kochwasser mischen, halbierte Cherrytomaten und Rucola darüber, Käse dazu.",
+      no_addons: true,
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "fischstaebli",
+      title: "Fischstäbli mit Kartoffelstock und Erbsli",
+      category: "schnell",
+      quick: true,
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 25,
+      ingredients: [
+        { name: "Fischstäbli (Tiefkühl)", amount: "600", unit: "g", bring_cat: "Tiefkühl" },
+        { name: "Kartoffelstock (Flocken)", amount: "1", unit: "Pck", bring_cat: "Vorrat & Konserven" },
+        { name: "Milch", amount: "5", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Erbsli (Tiefkühl)", amount: "400", unit: "g", bring_cat: "Tiefkühl" },
+        { name: "Zitrone", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Fischstäbli im Ofen backen, Kartoffelstock nach Packung mit Milch anrühren, Erbsli mit etwas Butter erwärmen, Zitronenschnitze dazu.",
+      vegi_swap: { name: "Vegi-Fischstäbli (Tiefkühl)", amount: 150, unit: "g", bring_cat: "Tiefkühl" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "toast_hawaii",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/CHDO201612_42/toast-hawaii/",
+      title: "Toast Hawaii",
+      category: "schnell",
+      quick: true,
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 20,
+      ingredients: [
+        { name: "Brot (Toastbrot)", amount: "1", unit: "Pck", bring_cat: "Brot & Gebäck" },
+        { name: "Schinken", amount: "250", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Ananas (Dose, Scheiben)", amount: "1", unit: "Dose", bring_cat: "Vorrat & Konserven" },
+        { name: "Raclette (Käse in Scheiben)", amount: "300", unit: "g", bring_cat: "Milch & Käse" }
+      ],
+      instructions: "Toast mit Butter bestreichen, Schinken, Ananas und Käse darauf, im Ofen bei 220 °C überbacken. Jo: Toasts ohne Schinken, dafür mit Tomate.",
+      vegi_swap: { name: "Tomaten (Vegi-Toast)", amount: 1, unit: "Stk", bring_cat: "Obst & Gemüse" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "raviolis_salbeibutter",
+      title: "Ravioli mit Salbeibutter",
+      category: "schnell",
+      quick: true,
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 15,
+      ingredients: [
+        { name: "Ravioli (Kühlregal)", amount: "1", unit: "kg", bring_cat: "Kühlregal" },
+        { name: "Butter", amount: "80", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Salbei", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" },
+        { name: "Parmesan (oder Sbrinz)", amount: "80", unit: "g", bring_cat: "Milch & Käse" }
+      ],
+      instructions: "Ravioli nach Packung kochen. Butter mit Salbeiblättern aufschäumen, Ravioli darin schwenken, Käse darüber.",
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "kaeseschnitte",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/KB_KB1996_182/walliser-kaeseschnitten/",
+      title: "Walliser Käseschnitten mit Weisswein",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 30,
+      ingredients: [
+        { name: "Brot (Ruchbrot vom Vortag)", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" },
+        { name: "Raclette (oder Greyerzer)", amount: "400", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Weisswein", amount: "1", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Knoblauch", amount: "2", unit: "Zehe", bring_cat: "Obst & Gemüse" },
+        { name: "Cornichons", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Silberzwiebeln", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" }
+      ],
+      instructions: "Brotscheiben mit Knoblauch einreiben, mit Weisswein beträufeln, mit Käse belegen und im Ofen bei 220 °C goldbraun überbacken. Mit Cornichons und Salat.",
+      season_months: [10, 11, 12, 1, 2, 3]
+    },
+    {
+      id: "kaesefondue",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200411_08/fondue-moitie-moitie/",
+      title: "Käsefondue moitié-moitié",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 30,
+      ingredients: [
+        { name: "Fondue (moitié-moitié)", amount: "800", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Weisswein", amount: "3", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Knoblauch", amount: "1", unit: "Zehe", bring_cat: "Obst & Gemüse" },
+        { name: "Maizena", amount: "2", unit: "EL", bring_cat: "Vorrat & Konserven" },
+        { name: "Kirsch", amount: "1", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Brot (Halbweissbrot)", amount: "800", unit: "g", bring_cat: "Brot & Gebäck" },
+        { name: "Kartoffeln (für Gschwellti)", amount: "600", unit: "g", bring_cat: "Obst & Gemüse" },
+        { name: "Cornichons", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" }
+      ],
+      instructions: "Caquelon mit Knoblauch ausreiben, Käse mit Wein unter Rühren schmelzen, Maizena mit Kirsch anrühren und einrühren. Mit Brotwürfeln und Kartoffeln.",
+      no_salad: true,
+      season_months: [11, 12, 1, 2]
+    },
+    {
+      id: "raclette_gschwellti",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/KB_KB1996_172/raclette/",
+      title: "Raclette mit Gschwellti, Cornichons und Silberzwiebeln",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 30,
+      ingredients: [
+        { name: "Raclette (Käse in Scheiben)", amount: "900", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Festkochende Kartoffeln", amount: "1.2", unit: "kg", bring_cat: "Obst & Gemüse" },
+        { name: "Cornichons", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Silberzwiebeln", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Ananas (Dose, Scheiben)", amount: "1", unit: "Dose", bring_cat: "Vorrat & Konserven" }
+      ],
+      instructions: "Kartoffeln in der Schale kochen, Käse im Raclette-Ofen schmelzen, mit Pfeffer und Paprika würzen. Fleisch-Fans essen Bündnerfleisch dazu.",
+      season_months: [11, 12, 1, 2, 3]
+    },
+    {
+      id: "kartoffelgratin",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/KO2021_SBLV_08/schneller-kartoffelgratin/",
+      title: "Kartoffelgratin mit Rahm und Greyerzer",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 70,
+      ingredients: [
+        { name: "Festkochende Kartoffeln", amount: "1.2", unit: "kg", bring_cat: "Obst & Gemüse" },
+        { name: "Rahm (Vollrahm)", amount: "2", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Milch", amount: "3", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Greyerzer", amount: "150", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Knoblauch", amount: "1", unit: "Zehe", bring_cat: "Obst & Gemüse" },
+        { name: "Muskatnuss", amount: "1", unit: "Prise", bring_cat: "Gewürze & Saucen" }
+      ],
+      instructions: "Kartoffeln in dünne Scheiben hobeln, mit Milch, Rahm, Knoblauch, Salz und Muskat kurz aufkochen, in die Form geben, Käse darüber und 45 Min. bei 180 °C backen.",
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "chaeswaehe",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200003_24_MEN003B024A/zwiebel-kaesewaehe/",
+      title: "Zwiebel-Käsewähe",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 50,
+      ingredients: [
+        { name: "Kuchenteig (ausgewallt)", amount: "1", unit: "Stk", bring_cat: "Kühlregal" },
+        { name: "Greyerzer / Emmentaler", amount: "250", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Zwiebeln", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Eier", amount: "3", unit: "Stk", bring_cat: "Milch & Käse" },
+        { name: "Milch", amount: "2", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Rahm (Halbrahm)", amount: "1", unit: "dl", bring_cat: "Milch & Käse" }
+      ],
+      instructions: "Teig in das Blech legen, mit der Gabel einstechen. Zwiebeln andünsten, mit dem geriebenen Käse auf den Teig. Eier, Milch und Rahm verquirlen, darübergiessen, 30 Min. bei 220 °C backen.",
+      season_months: [9, 10, 11, 12, 1, 2, 3, 4]
+    },
+    {
+      id: "pilzrisotto",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2021_OUTD_08/pilzrisotto-risotto-ai-funghi/",
+      title: "Steinpilz-Champignon-Risotto",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 35,
+      ingredients: [
+        { name: "Reis (Risotto)", amount: "350", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Champignons", amount: "400", unit: "g", bring_cat: "Obst & Gemüse" },
+        { name: "Getrocknete Steinpilze", amount: "20", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Weisswein", amount: "1.5", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Gemüsebouillon", amount: "1.2", unit: "l", bring_cat: "Vorrat & Konserven" },
+        { name: "Parmesan (oder Sbrinz)", amount: "80", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Butter", amount: "40", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Petersilie", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Steinpilze einweichen. Zwiebel und Reis andünsten, mit Wein ablöschen, nach und nach Bouillon und Pilzwasser zugeben. Champignons separat anbraten, mit Butter und Käse unterziehen.",
+      season_months: [9, 10, 11, 12]
+    },
+    {
+      id: "polenta_pilzragout",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM201409_27/polenta-mit-pilzragout/",
+      title: "Polenta mit Pilzragout",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 35,
+      ingredients: [
+        { name: "Bramata-Polenta", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Gemüsebouillon", amount: "1.2", unit: "l", bring_cat: "Vorrat & Konserven" },
+        { name: "Champignons / Kräuterseitlinge", amount: "600", unit: "g", bring_cat: "Obst & Gemüse" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Rahm (Halbrahm)", amount: "2", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Parmesan (oder Sbrinz)", amount: "60", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Petersilie", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Polenta in Bouillon unter Rühren weich kochen, Käse unterziehen. Pilze mit Zwiebeln kräftig anbraten, mit Rahm ablöschen, abschmecken, Petersilie darüber.",
+      season_months: [9, 10, 11, 12, 1, 2]
+    },
+    {
+      id: "spaghetti_pomodoro",
+      title: "Spaghetti al pomodoro",
+      category: "italienisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 25,
+      ingredients: [
+        { name: "Spaghetti", amount: "500", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Pelati / gehackte Tomaten", amount: "2", unit: "Dose", bring_cat: "Vorrat & Konserven" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Knoblauch", amount: "2", unit: "Zehe", bring_cat: "Obst & Gemüse" },
+        { name: "Basilikum", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" },
+        { name: "Parmesan (oder Sbrinz)", amount: "80", unit: "g", bring_cat: "Milch & Käse" }
+      ],
+      instructions: "Zwiebel und Knoblauch in Olivenöl andünsten, Tomaten dazu und 15 Min. köcheln, mit Salz und einer Prise Zucker abschmecken. Mit Spaghetti, Basilikum und Käse.",
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "gemueselasagne",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/KO2021_SBLV_15/gemueselasagne/",
+      title: "Gemüselasagne mit Spinat und Ricotta",
+      category: "italienisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 70,
+      ingredients: [
+        { name: "Lasagneblätter", amount: "250", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Blattspinat (Tiefkühl)", amount: "600", unit: "g", bring_cat: "Tiefkühl" },
+        { name: "Ricotta", amount: "250", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Passata", amount: "700", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Zucchetti", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Mozzarella", amount: "250", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Parmesan (oder Sbrinz)", amount: "60", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Tomatensauce mit Zwiebeln und Zucchettiwürfeln kochen. Spinat mit Ricotta mischen. Lagenweise Sauce, Blätter, Spinat in die Form schichten, Mozzarella und Käse obendrauf, 40 Min. bei 200 °C.",
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "fotzelschnitten",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM201501_61_B/fotzelschnitten/",
+      title: "Fotzelschnitten mit Zwetschgenkompott",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 25,
+      ingredients: [
+        { name: "Zopf (vom Vortag)", amount: "600", unit: "g", bring_cat: "Brot & Gebäck" },
+        { name: "Eier", amount: "4", unit: "Stk", bring_cat: "Milch & Käse" },
+        { name: "Milch", amount: "4", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Zimt und Zucker", amount: "1", unit: "Pck", bring_cat: "Vorrat & Konserven" },
+        { name: "Zwetschgen / Apfelmus", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Butter", amount: "50", unit: "g", bring_cat: "Milch & Käse" }
+      ],
+      instructions: "Brotscheiben in Milch und verquirlten Eiern wenden, in Butter goldbraun braten, in Zimtzucker wenden. Mit Kompott oder Apfelmus.",
+      no_addons: true,
+      no_salad: true,
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "ofenkartoffeln_quark",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2020_GEOF_15/ofenkartoffeln-mit-kraeuter-quarksauce/",
+      title: "Ofenkartoffeln mit Kräuterquark und Gemüse vom Blech",
+      category: "schweizerisch",
+      diet: "vegi",
+      servings: 4,
+      prep_time_min: 50,
+      ingredients: [
+        { name: "Kartoffeln (gross)", amount: "1.2", unit: "kg", bring_cat: "Obst & Gemüse" },
+        { name: "Rüebli", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Peperoni", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Zwiebeln", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Kräuterquark", amount: "500", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Schnittlauch", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Kartoffeln halbieren, mit Rüebli, Peperoni und Zwiebeln in Stücken auf ein Blech, mit Öl und Salz 40 Min. bei 200 °C backen. Mit Kräuterquark und Schnittlauch.",
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "zuercher_geschnetzeltes",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM201401_83/zuercher-geschnetzeltes/",
+      title: "Zürcher Geschnetzeltes mit Rösti",
+      category: "schweizerisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 40,
+      ingredients: [
+        { name: "Kalbs- oder Schweinsgeschnetzeltes", amount: "600", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Champignons", amount: "250", unit: "g", bring_cat: "Obst & Gemüse" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Weisswein", amount: "1", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Rahm (Halbrahm)", amount: "2.5", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Rösti (Beutel)", amount: "2", unit: "Pck", bring_cat: "Kühlregal" },
+        { name: "Petersilie", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Fleisch portionenweise scharf anbraten, herausnehmen. Zwiebeln und Champignons dünsten, mit Wein ablöschen, Rahm dazu, einkochen lassen, Fleisch nur noch erwärmen. Mit knuspriger Rösti.",
+      vegi_swap: { name: "Vegi-Geschnetzeltes (z.B. planted)", amount: 130, unit: "g", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "hackbraten",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM201205_73/hackbraten-klassisch/",
+      title: "Hackbraten mit Kartoffelstock und Rüebli",
+      category: "schweizerisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 80,
+      ingredients: [
+        { name: "Hackfleisch (Rind/Schwein)", amount: "700", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Eier", amount: "1", unit: "Stk", bring_cat: "Milch & Käse" },
+        { name: "Paniermehl", amount: "50", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Mehligkochende Kartoffeln", amount: "1.2", unit: "kg", bring_cat: "Obst & Gemüse" },
+        { name: "Milch", amount: "3", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Butter", amount: "50", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Rüebli", amount: "600", unit: "g", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Hackfleisch mit Ei, Paniermehl, gehackter Zwiebel und Gewürzen kneten, zu einem Laib formen, 50 Min. bei 180 °C braten. Kartoffeln weichkochen und mit Milch und Butter stampfen, Rüebli glasieren.",
+      vegi_swap: { name: "Vegi-Hack", amount: 150, unit: "g", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "spaghetti_bolognese",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200105_44_MEN10526/spaghetti-bolognese/",
+      title: "Spaghetti Bolognese",
+      category: "italienisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 50,
+      ingredients: [
+        { name: "Spaghetti", amount: "500", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Hackfleisch (Rind)", amount: "500", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Pelati / gehackte Tomaten", amount: "2", unit: "Dose", bring_cat: "Vorrat & Konserven" },
+        { name: "Tomatenpüree", amount: "1", unit: "Tube", bring_cat: "Vorrat & Konserven" },
+        { name: "Rüebli", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Stangensellerie", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Rotwein", amount: "1", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Parmesan (oder Sbrinz)", amount: "80", unit: "g", bring_cat: "Milch & Käse" }
+      ],
+      instructions: "Zwiebel, Rüebli und Sellerie fein hacken und andünsten, Hackfleisch krümelig braten, Tomatenpüree mitrösten, mit Wein ablöschen, Tomaten dazu und 30 Min. köcheln. Jo: kleiner Topf mit Vegi-Hack.",
+      vegi_swap: { name: "Vegi-Hack", amount: 130, unit: "g", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "lasagne_klassisch",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2017_DIVE_15/lasagne/",
+      title: "Lasagne al forno",
+      category: "italienisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 90,
+      ingredients: [
+        { name: "Lasagneblätter", amount: "250", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Hackfleisch (Rind)", amount: "500", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Passata", amount: "700", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Rüebli", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Milch", amount: "6", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Butter", amount: "50", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Mehl", amount: "50", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Parmesan (oder Sbrinz)", amount: "80", unit: "g", bring_cat: "Milch & Käse" }
+      ],
+      instructions: "Bolognese kochen, aus Butter, Mehl und Milch eine Béchamel rühren. Abwechselnd Sauce, Béchamel und Blätter schichten, Käse darüber, 40 Min. bei 200 °C backen.",
+      vegi_swap: { name: "Vegi-Hack", amount: 130, unit: "g", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "riz_casimir",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200609_53/riz-casimir/",
+      title: "Riz Casimir",
+      category: "schweizerisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 35,
+      ingredients: [
+        { name: "Pouletbrüstli", amount: "600", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Reis (Langkorn)", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Ananas (Dose, Stücke)", amount: "1", unit: "Dose", bring_cat: "Vorrat & Konserven" },
+        { name: "Bananen", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Rahm (Halbrahm)", amount: "2", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Currypulver", amount: "2", unit: "EL", bring_cat: "Gewürze & Saucen" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Rosinen", amount: "50", unit: "g", bring_cat: "Vorrat & Konserven" }
+      ],
+      instructions: "Reis kochen. Poulet in Streifen anbraten, Zwiebel und Curry mitdünsten, mit Rahm und etwas Ananassaft ablöschen. Ananas, Bananenscheiben und Rosinen darin erwärmen.",
+      vegi_swap: { name: "Vegi-Chicken (z.B. planted)", amount: 130, unit: "g", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "bratwurst_zwiebelsauce",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM201403_65/bratwurst-an-zwiebelsauce/",
+      title: "St. Galler Bratwurst mit Zwiebelsauce und Rösti",
+      category: "schweizerisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 35,
+      ingredients: [
+        { name: "Bratwurst (St. Galler Kalb)", amount: "4", unit: "Stk", bring_cat: "Fleisch & Fisch" },
+        { name: "Zwiebeln", amount: "3", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Bratensauce (Pulver)", amount: "1", unit: "Pck", bring_cat: "Vorrat & Konserven" },
+        { name: "Rösti (Beutel)", amount: "2", unit: "Pck", bring_cat: "Kühlregal" }
+      ],
+      instructions: "Zwiebeln in Ringe schneiden und langsam goldbraun dünsten, Bratensauce dazu. Bratwürste bei mittlerer Hitze braten, Rösti knusprig backen.",
+      vegi_swap: { name: "Vegi-Bratwurst", amount: 1, unit: "Stk", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "gerstensuppe",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM201401_54/buendner-gerstensuppe/",
+      title: "Bündner Gerstensuppe",
+      category: "schweizerisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 60,
+      ingredients: [
+        { name: "Rollgerste", amount: "150", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Speckwürfeli", amount: "150", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Lauch", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Rüebli", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Knollensellerie", amount: "200", unit: "g", bring_cat: "Obst & Gemüse" },
+        { name: "Kartoffeln", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" },
+        { name: "Gemüsebouillon", amount: "1.5", unit: "l", bring_cat: "Vorrat & Konserven" },
+        { name: "Rahm (Halbrahm)", amount: "1", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Bündner Rohschinken / Salsiz", amount: "100", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Brot (Ruchbrot)", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" }
+      ],
+      instructions: "Speck und Gemüsewürfel andünsten, Gerste dazu, mit Bouillon auffüllen und 45 Min. köcheln. Mit Rahm verfeinern, Rohschinkenstreifen darüber, Brot dazu. Jo: Teil vor dem Speck abschöpfen.",
+      season_months: [10, 11, 12, 1, 2, 3]
+    },
+    {
+      id: "chili_con_carne",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM201511_23/chili-con-carne/",
+      title: "Chili con Carne mit Reis",
+      category: "exotisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 45,
+      ingredients: [
+        { name: "Hackfleisch (Rind)", amount: "500", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Kidneybohnen", amount: "2", unit: "Dose", bring_cat: "Vorrat & Konserven" },
+        { name: "Mais", amount: "1", unit: "Dose", bring_cat: "Vorrat & Konserven" },
+        { name: "Pelati / gehackte Tomaten", amount: "2", unit: "Dose", bring_cat: "Vorrat & Konserven" },
+        { name: "Peperoni", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Zwiebeln", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Chilipulver / Paprika", amount: "2", unit: "TL", bring_cat: "Gewürze & Saucen" },
+        { name: "Reis", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Sauerrahm", amount: "180", unit: "g", bring_cat: "Milch & Käse" }
+      ],
+      instructions: "Zwiebeln und Peperoni andünsten, Hackfleisch braten, würzen, Tomaten, Bohnen und Mais dazu und 25 Min. köcheln. Mit Reis und Sauerrahm. Jo: Topf mit doppelt Bohnen statt Fleisch.",
+      vegi_swap: { name: "Kidneybohnen (Vegi-Topf)", amount: 0.5, unit: "Dose", bring_cat: "Vorrat & Konserven" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "cordon_bleu",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/LM200703_10/cordon-bleu/",
+      title: "Cordon bleu mit Pommes und Rüebli",
+      category: "schweizerisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 40,
+      ingredients: [
+        { name: "Cordon bleu (Schwein)", amount: "4", unit: "Stk", bring_cat: "Fleisch & Fisch" },
+        { name: "Pommes frites (Tiefkühl)", amount: "800", unit: "g", bring_cat: "Tiefkühl" },
+        { name: "Rüebli", amount: "600", unit: "g", bring_cat: "Obst & Gemüse" },
+        { name: "Zitrone", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Cordon bleus in Bratbutter beidseitig goldbraun braten und im Ofen fertig garen. Pommes im Ofen, Rüebli dämpfen. Mit Zitronenschnitzen.",
+      vegi_swap: { name: "Vegi-Cordon-bleu", amount: 1, unit: "Stk", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "poulet_curry",
+      title: "Poulet-Curry mit Kokosmilch und Reis",
+      category: "exotisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 35,
+      ingredients: [
+        { name: "Pouletbrüstli", amount: "600", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Kokosmilch", amount: "1", unit: "Dose", bring_cat: "Vorrat & Konserven" },
+        { name: "Rote Currypaste", amount: "2", unit: "EL", bring_cat: "Gewürze & Saucen" },
+        { name: "Peperoni", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Zucchetti", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Reis (Basmati)", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Koriander", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" },
+        { name: "Limette", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }
+      ],
+      instructions: "Currypaste anrösten, Poulet anbraten, Gemüse dazu, mit Kokosmilch ablöschen und 10 Min. köcheln. Mit Limette abschmecken, mit Reis und Koriander servieren.",
+      vegi_swap: { name: "Tofu", amount: 120, unit: "g", bring_cat: "Kühlregal" },
+      season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {
+      id: "schweinsbraten_kartoffelstock",
+      title: "Schweinsbraten mit Kartoffelstock und Rotkraut",
+      category: "schweizerisch",
+      diet: "fleisch",
+      servings: 4,
+      prep_time_min: 120,
+      ingredients: [
+        { name: "Schweinsbraten (Hals)", amount: "1", unit: "kg", bring_cat: "Fleisch & Fisch" },
+        { name: "Mehligkochende Kartoffeln", amount: "1.2", unit: "kg", bring_cat: "Obst & Gemüse" },
+        { name: "Milch", amount: "3", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Butter", amount: "50", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Rotkraut", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Zwiebeln", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Rotwein", amount: "2", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Kastanien / Marroni (glasiert)", amount: "200", unit: "g", bring_cat: "Tiefkühl" }
+      ],
+      instructions: "Braten rundum anbraten, mit Zwiebeln und Rotwein im Ofen bei 160 °C 90 Min. schmoren. Kartoffelstock machen, Rotkraut mit Marroni erwärmen. Jo: Grillkäse in der Pfanne.",
+      season_months: [10, 11, 12, 1, 2]
     }
   ]
 };
-

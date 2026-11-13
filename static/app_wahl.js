@@ -22,13 +22,20 @@
   // 14 Kandidaten: halb vegi (inkl. vegan), halb Fleisch, saisonal zuerst
   const QUICK_SLOTS = 2; // pro Woche 2 schnelle Sachen / Resteessen im Memory
   const pickCandidates = () => CORE.pickCandidates(allRecipes(), currentMonth(), GRID_SIZE, QUICK_SLOTS);
+  // ohne Unbekanntes und ohne doppelte Gerichte, wieder auf 14 aufgefüllt
+  const cleanCandidates = ids => CORE.cleanCandidates(allRecipes(), ids, currentMonth(), GRID_SIZE, QUICK_SLOTS);
+  // Liste vom WG-Server mit demselben Gericht zweimal (alte Version hat beim Mischen doppelt gezogen)?
+  function hasDuplicateDish(ids) {
+    const known = ids.map(recipeById).filter(Boolean);
+    return known.some((r, i) => known.findIndex(o => CORE.sameDish(o, r)) !== i);
+  }
 
   const voteKey = week => `${VOTE_KEY}_${week}`;
   function loadVote() {
     const week = shownWeek();
     const saved = load(voteKey(week), null);
     if (saved && saved.week === week && Array.isArray(saved.candidates)) {
-      saved.candidates = saved.candidates.filter(id => recipeById(id));
+      saved.candidates = cleanCandidates(saved.candidates);
       return saved;
     }
     return { week, candidates: pickCandidates(), votes: {} };
@@ -40,16 +47,23 @@
   // Mit dem Worker abgleichen: Kandidaten + Stimmen aller holen, eigene Stimme bleibt lokal führend
   async function pullVote() {
     if (!app.connected() || !state.vote) return;
+    const v = state.vote; // Woche kann während des Wartens wechseln: nur in die Wahl schreiben, die angefragt wurde
     try {
-      const remote = await app.api(`/week/${state.vote.week}`);
+      const remote = await app.api(`/week/${v.week}`);
+      if (v !== state.vote) return;
       if (!remote.candidates) {
-        await app.api(`/week/${state.vote.week}/candidates`, { method: "PUT", body: { candidates: state.vote.candidates } });
+        await app.api(`/week/${v.week}/candidates`, { method: "PUT", body: { candidates: v.candidates } });
+      } else if (hasDuplicateDish(remote.candidates)) {
+        // doppelte Karten auf dem Server: bereinigen und für alle zurückschreiben
+        v.candidates = cleanCandidates(remote.candidates);
+        app.api(`/week/${v.week}/candidates`, { method: "PUT", body: { candidates: v.candidates } }).catch(e => app.setSyncStatus(e.message, false));
       } else {
-        state.vote.candidates = remote.candidates.filter(id => recipeById(id));
+        // Unbekanntes (z.B. eigenes Rezept, das hier noch fehlt) nur ausblenden, nicht vom Server löschen
+        v.candidates = remote.candidates.filter(id => recipeById(id));
       }
       const me = myId();
-      Object.entries(remote.votes || {}).forEach(([member, v]) => {
-        if (member !== me || !state.vote.votes[me]) state.vote.votes[member] = v;
+      Object.entries(remote.votes || {}).forEach(([member, mv]) => {
+        if (member !== me || !v.votes[me]) v.votes[member] = mv;
       });
       saveVote();
       if ($("voteDialog").open) renderVote();
@@ -98,7 +112,7 @@
   function dishEmoji(r) {
     const t = `${r.title || ""} ${(r.ingredients || []).map(i => i.name).join(" ")}`.toLowerCase();
     if (r.is_leftovers) return "♻️";
-    const rules = [[/pizza|flammkuchen/, "🍕"], [/dumpling|maultasch|gyoza/, "🥟"], [/nugget|schnitzel|cordon/, "🍗"], [/spaghetti|penne|pasta|nudel|magronen|hörnli|lasagne|orecchiette|pappardelle|gnocchi/, "🍝"], [/suppe|eintopf|voressen/, "🍲"], [/curry|dal\b|massaman/, "🍛"], [/risotto|reis\b/, "🍚"], [/salat/, "🥗"], [/rösti|gschwellti|kartoffel/, "🥔"], [/lachs|fisch|forelle|thun|kabeljau|saibling|seeteufel/, "🐟"], [/poulet|huhn|chicken/, "🍗"], [/burger|wrap|quesadilla|tortilla/, "🌯"], [/wähe|quiche|tarte|gratin/, "🥧"]];
+    const rules = [[/müesli|muesli/, "🥣"], [/café complet|kaffee/, "☕"], [/fondue|raclette|käseschnitt/, "🧀"], [/abendbrot|toast|fotzel/, "🥪"], [/pizza|flammkuchen/, "🍕"], [/dumpling|maultasch|gyoza/, "🥟"], [/nugget|schnitzel|cordon/, "🍗"], [/spaghetti|penne|pasta|nudel|magronen|hörnli|lasagne|orecchiette|pappardelle|gnocchi/, "🍝"], [/suppe|eintopf|voressen/, "🍲"], [/curry|dal\b|massaman/, "🍛"], [/risotto|reis\b/, "🍚"], [/salat/, "🥗"], [/rösti|gschwellti|kartoffel/, "🥔"], [/lachs|fisch|forelle|thun|kabeljau|saibling|seeteufel/, "🐟"], [/poulet|huhn|chicken/, "🍗"], [/burger|wrap|quesadilla|tortilla/, "🌯"], [/wähe|quiche|tarte|gratin/, "🥧"]];
     const hit = rules.find(([re]) => re.test(t));
     return hit ? hit[1] : r.diet === "fleisch" ? "🥩" : "🥕";
   }

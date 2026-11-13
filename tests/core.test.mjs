@@ -45,6 +45,14 @@ const all = [...Array.from({ length: 8 }, (_, i) => rec("v" + i, "vegi")), ...Ar
 const cand = C.pickCandidates(all, 11, 14, 2);
 check(cand.length === 14 && new Set(cand).size === 14, "14 Gerichte, keines doppelt");
 check(cand.slice(0, 12).every((id, i) => id[0] === (i % 2 ? "f" : "v")) && cand.slice(12).every(id => id[0] === "q"), "abwechselnd vegi / Fleisch, die letzten 2 sind Schnelles");
+// alte Liste vom WG-Server mit doppelten Karten (Mischen vor dem Fix): bereinigt und wieder auf 14 aufgefüllt
+const dup = C.cleanCandidates(all, ["v0", "v0", "f0", "zzz", ...cand.slice(2, 13), "f0"], 11, 14, 2);
+check(dup.length === 14 && new Set(dup).size === 14 && dup[0] === "v0" && dup[1] === "f0" && !dup.includes("zzz"), "doppelte und unbekannte Karten weg, wieder 14");
+const twin = [...all, { id: "custom-1", title: "Gericht V0", diet: "vegi", season_months: [11] }];
+twin.find(r => r.id === "v0").title = "Gericht v0";
+check(!C.cleanCandidates(twin, ["v0", "custom-1"], 11, 2, 0).includes("custom-1"), "eigenes Rezept mit gleichem Titel wie ein Katalog-Gericht = dasselbe Gericht");
+check(Array.from({ length: 30 }, () => C.pickCandidates(twin, 11, 14, 2)).every(c => !(c.includes("v0") && c.includes("custom-1"))), "Wochenwahl zieht nie zweimal dasselbe Gericht (gleicher Titel)");
+check(C.searchHref(undefined, "Spinat Rezept") === "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=Spinat" && /google\.com\/search\?q=Riz%20Casimir%20Rezept$/.test(C.searchHref("google", "Riz Casimir")) && /fooby/.test(C.searchHref("fooby", "x")), "Rezept suchen: Standard Swissmilk, umschaltbar auf Fooby / Google");
 const votes = { a: { likes: ["x", "y"], days: { y: 2 } }, b: { likes: ["y"], days: {} }, c: { likes: [], days: {} } };
 check(C.ranking(["x", "y", "z"], ms, votes).map(r => r.id).join() === "y,x,z", "Rangliste: 2 Stimmen vor 1 vor 0");
 const week = Array.from({ length: 7 }, () => ({ eaters: ["a", "b", "c"] }));

@@ -7,7 +7,7 @@
   if (!app) return;
   const { DATA, importer, DAYS, MONTHS, DEFAULT_SERVINGS, load, save, SITES_KEY, state, otherPlan, savePlan, $,
     recipeHref, guessMeat, esc, currentMonth, toast, copyText, allRecipes, effectiveDiet, fitsDiet, inSeason,
-    pickRecipe, makeDay, DIET_LABEL, refresh, CORE, popularCounts } = app;
+    pickRecipe, makeDay, DIET_LABEL, refresh, CORE, popularCounts, SEARCH_SITE_KEY, searchKey, searchName } = app;
 
   // ---------------------------------------------------------------------------
   // Rendering: Saison
@@ -56,11 +56,23 @@
   }
 
   // Gemüse antippen: «Spinat Rezept» kopieren und ins Suchfeld oben -> ergänzen (z.B. «Risotto») und suchen
-  const searchUrl = q => `https://www.google.com/search?q=${encodeURIComponent(q.trim())}`;
   function setRecipeSearch(q) {
     $("recipeSearchQ").value = q;
-    $("recipeSearchGo").href = searchUrl(q || "Rezept");
+    $("recipeSearchGo").href = CORE.searchHref(searchKey(), q || "Rezept");
   }
+  // «Suchen auf»: Vermerk zum Umschalten, gilt für das Suchfeld und alle «Rezept suchen»-Links (pro Handy)
+  function renderSearchSite() {
+    $("searchSite").innerHTML = Object.entries(CORE.SEARCH_SITES).map(([k, s]) => `<option value="${k}"${k === searchKey() ? " selected" : ""}>${esc(s.name)}</option>`).join("");
+  }
+  renderSearchSite();
+  setRecipeSearch("");
+  $("searchSite").onchange = () => {
+    save(SEARCH_SITE_KEY, CORE.searchSite($("searchSite").value));
+    setRecipeSearch($("recipeSearchQ").value);
+    app.renderDays();
+    if ($("voteDialog").open) app.renderVote();
+    toast(`Rezepte suchen auf ${searchName()} ✓`);
+  };
   $("recipeSearchQ").addEventListener("input", () => setRecipeSearch($("recipeSearchQ").value));
   $("recipeSearchQ").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("recipeSearchGo").click(); } });
   for (const id of ["fieldGrid", "storageGrid"]) {
@@ -140,7 +152,7 @@
               <b>${esc(r.title)}</b>${pop[r.id] ? ` <span class="likes" title="Stimmen eurer Wochenwahlen">♥ ${pop[r.id]}</span>` : ""}
               <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}${r.shared_from ? " · geteilt" : custom && r.shared === false ? " · nur unsere WG" : ""}</small>
             </div>
-            ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : "🔎 Rezept suchen"}</a>` : ""}
+            ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : `🔎 Auf ${esc(searchName())} suchen`}</a>` : ""}
           </div>
           <div class="row">
             <button class="btn dark" type="button" data-assign="${esc(r.id)}">${actionLabel}</button>

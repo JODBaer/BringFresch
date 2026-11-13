@@ -762,8 +762,14 @@ await step(A, "Saison: Bilder, Hochdeutsch; Gemüse antippen = «… Rezept» ko
   expect((await clip(A)) === "Spinat Rezept", `kopiert: «${await clip(A)}»`);
   expect((await A.page.$eval("#recipeSearchQ", e => e.value)) === "Spinat Rezept ", "Suchfeld nicht gefüllt");
   await A.page.keyboard.type("Risotto");
-  await until(A, () => document.getElementById("recipeSearchGo").href.endsWith("q=Spinat%20Rezept%20Risotto"), "Suchen-Link nicht ergänzt");
+  // Standard: Suche auf Swissmilk (ohne das Wort «Rezept»), umschaltbar wie die Suchmaschine im Browser
+  await until(A, () => document.getElementById("recipeSearchGo").href === "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=Spinat%20Risotto", "Suchen-Link nicht ergänzt (Swissmilk)");
   expect(await A.page.$eval("#recipeSearchGo", a => a.target === "_blank"), "Suche öffnet nicht in neuem Tab");
+  expect((await A.page.$eval("#searchSite", s => s.value)) === "swissmilk", "Standard ist nicht Swissmilk");
+  await A.page.evaluate(v => { const s = document.getElementById("searchSite"); s.value = v; s.dispatchEvent(new Event("change")); }, "google");
+  await until(A, () => document.getElementById("recipeSearchGo").href.endsWith("google.com/search?q=Spinat%20Risotto%20Rezept"), "Umschalten auf Google wirkt nicht");
+  expect(await A.page.evaluate(() => localStorage.getItem("bringfrisch_search_site")) === '"google"', "Wahl nicht gespeichert");
+  await A.page.evaluate(v => { const s = document.getElementById("searchSite"); s.value = v; s.dispatchEvent(new Event("change")); }, "swissmilk");
   await noHScroll(A, "Saison mit Suche");
   await shot(A, "10-saison-suche");
 });
@@ -1075,7 +1081,7 @@ await step(B, "Wochenwahl als Leonie (Memory: Umdrehen = wählen): 3 Gerichte, W
   await tap(B, `${card(0)} [data-wish][data-day="2"]`);
   await until(B, s => document.querySelector(`${s} [data-wish][data-day="2"]`).getAttribute("aria-pressed") === "true", "Wunschtag nicht wieder gesetzt", card(0));
   const links = await B.page.$$eval(`${card(0)} .vgo`, l => l.map(a => ({ href: a.href, label: a.getAttribute("aria-label"), target: a.target, w: a.getBoundingClientRect().width })));
-  expect(links.length === 2 && links.every(a => a.href.startsWith("https://") && a.target === "_blank" && a.w >= 32 && /^(Rezept auf .+|Auf Fooby suchen) ↗$/.test(a.label)), `🌐-Link zum Rezept vorne und hinten (${JSON.stringify(links)})`);
+  expect(links.length === 2 && links.every(a => a.href.startsWith("https://") && a.target === "_blank" && a.w >= 32 && /^(Rezept auf .+|Auf .+ suchen) ↗$/.test(a.label)), `🌐-Link zum Rezept vorne und hinten (${JSON.stringify(links)})`);
   const bands = await B.page.$$eval(`${card(0)} .vband`, l => l.map(b => b.textContent));
   expect(bands.length === 2 && bands[0] === bands[1] && /Min\./.test(bands[0]), `Titel und Beschreibung vorne und hinten gleich (${JSON.stringify(bands)})`);
   await shot(B, "02a-wochenwahl-rueckseite");

@@ -32,7 +32,8 @@
     THEME_KEY: "bf-theme",                         // Farben
     MODE_KEY: "bf-mode",                           // Hell / Dunkel (auch in index.html gelesen)
     SHARED_RECIPES_KEY: "bringfrisch_shared_recipes", // Rezepte der anderen WGs (Zwischenspeicher von /recipes/shared, offline da)
-    POPULAR_KEY: "bringfrisch_popular"             // Beliebtheit dieser WG (Zwischenspeicher von /popular: Stimmen pro Woche)
+    POPULAR_KEY: "bringfrisch_popular",            // Beliebtheit dieser WG (Zwischenspeicher von /popular: Stimmen pro Woche)
+    SEARCH_SITE_KEY: "bringfrisch_search_site"     // «Rezept suchen auf»: swissmilk | fooby | google
   };
   // Schlüssel mit Zusatz
   const baseKey = name => `bringfrisch_base_${name}`;   // gemerkter Server-Stand: plan | next | vorrat | settings

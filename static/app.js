@@ -67,7 +67,7 @@
   const { load, save, remove, baseKey } = STORE;
   const {
     SYNC_KEY, PLAN_UPDATED_KEY, VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, PLAN_WEEK_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY,
-    VOTE_KEY, ME_KEY, WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY
+    VOTE_KEY, ME_KEY, WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY, SEARCH_SITE_KEY
   } = STORE.KEYS;
   const KEYS = { plan: STORE.KEYS.PLAN_KEY, members: STORE.KEYS.MEMBERS_KEY, staples: STORE.KEYS.STAPLES_KEY };
 
@@ -149,12 +149,14 @@
   // ---------------------------------------------------------------------------
   const $ = id => document.getElementById(id);
 
-  // Link zum Rezept: Original-Seite, sonst die Suche auf Fooby mit dem Menü (lieber suchen als falsch verlinken;
-  // Fooby und Swissmilk nehmen den Suchbegriff im Link an, Betty Bossi und Migusto nicht).
+  // Link zum Rezept: Original-Seite, sonst die Suche mit dem Menü auf der Seite, die dieses Handy gewählt hat
+  // («Rezept suchen auf»: Swissmilk / Fooby / Google, wie die Suchmaschine im Browser; lieber suchen als falsch verlinken).
   // Schnelles/Reste (Fertigpizza, Resteessen …) brauchen keinen. Links prüfen: tests/links_live.mjs
-  // «Rezept auf Fooby ↗» bzw. «Auf Fooby suchen ↗»
+  // «Rezept auf Swissmilk ↗» bzw. «Auf Swissmilk suchen ↗»
+  const searchKey = () => CORE.searchSite(load(SEARCH_SITE_KEY, "swissmilk"));
+  const searchName = () => CORE.SEARCH_SITES[searchKey()].name;
   function recipeLinkLabel(r) {
-    if (!r.source_url) return "Auf Fooby suchen ↗";
+    if (!r.source_url) return `Auf ${searchName()} suchen ↗`;
     let h = "";
     try { h = new URL(r.source_url).hostname.replace(/^www\./, ""); } catch (e) { /* kein Link */ }
     const site = { "fooby.ch": "Fooby", "bettybossi.ch": "Betty Bossi", "migusto.migros.ch": "Migusto", "swissmilk.ch": "Swissmilk" }[h] || h;
@@ -163,7 +165,7 @@
   function recipeHref(r) {
     if (r.source_url) return r.source_url;
     if (!r.title || r.empty || r.quick || r.is_leftovers) return "";
-    return `https://fooby.ch/de/suche.html?query=${encodeURIComponent(r.title)}`;
+    return CORE.searchHref(searchKey(), r.title);
   }
 
   // Fleisch/Fisch in Titel oder Zutaten? (Zeilen mit Vegi-Ersatz wie «Vegi-Hack», «planted» zählen nicht)
@@ -356,8 +358,8 @@
     bringItemId, bringPayload, importer, DAYS, MONTHS, DEFAULT_SERVINGS, DEFAULT_MEMBERS, APP_VERSION, DONATE_URL,
     REPO_URL, TEST_URL, LIVE_URL, DEFAULT_SYNC_URL, STORE, load, save, remove, baseKey, SYNC_KEY, PLAN_UPDATED_KEY,
     VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, PLAN_WEEK_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY, VOTE_KEY, ME_KEY,
-    WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY, KEYS, state, currentPlan, otherPlan, savePlan,
-    saveMembers, saveStaples, $, recipeLinkLabel, recipeHref, guessMeat, esc, currentMonth, todayIndex, initialsMap,
+    WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY, SEARCH_SITE_KEY, KEYS, state, currentPlan, otherPlan, savePlan,
+    saveMembers, saveStaples, $, searchKey, searchName, recipeLinkLabel, recipeHref, guessMeat, esc, currentMonth, todayIndex, initialsMap,
     toast, copyText, allRecipes, popularCounts, effectiveDiet, fitsDiet, inSeason, pickRecipe, makeDay, generateWeek, normalizePlan,
     normalizeWeek, subscribe, notify, toBuyItems, listLine, DIET_LABEL, refresh, recipeById, dietGroup, nextWeekKey, canPlanNext,
     shownWeek, isOpenWeek, nextPlan, setCurrentPlan });

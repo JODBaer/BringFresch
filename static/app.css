@@ -806,3 +806,7 @@ button, a, label, summary, [role="button"], .item, .btile, .qt, .vrow, .dchip { 
 .mswap-l { font-size: 12px; font-weight: 700; color: var(--muted); margin-right: 2px; }
 .mswap-d { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; min-width: 40px; min-height: 34px; padding: 4px 10px; font: 700 13px var(--font); cursor: pointer; }
 .mswap-d:active { background: color-mix(in srgb, var(--accent) 25%, var(--surface)); }
+
+/* «Suchen auf Swissmilk ▾» – Vermerk zum Umschalten wie die Suchmaschine im Browser */
+.search-site { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted, inherit); margin: 6px 0; }
+.search-site select { width: auto; padding: 4px 8px; font-size: 13px; border-radius: 999px; }

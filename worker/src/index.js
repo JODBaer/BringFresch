@@ -92,7 +92,8 @@ async function route(request, env, url) {
     if (part === "candidates" && method === "PUT") {
       const { candidates } = await body(request);
       if (!Array.isArray(candidates) || candidates.length > 40) throw httpError(400, "candidates ungültig");
-      await env.WG.put(`week:${key}:candidates`, JSON.stringify(candidates.map(String)), { expirationTtl: 60 * 60 * 24 * 21 });
+      // nie dasselbe Gericht zweimal (ältere App-Versionen haben beim Mischen doppelt gezogen)
+      await env.WG.put(`week:${key}:candidates`, JSON.stringify([...new Set(candidates.map(String))]), { expirationTtl: 60 * 60 * 24 * 21 });
       return json({ ok: true });
     }
     if (part === "vote" && member && method === "PUT") {

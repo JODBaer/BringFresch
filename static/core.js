@@ -279,8 +279,8 @@
       else if (vegi > 0 && !day.no_addons) add("Schweizer Grillkäse / Halloumi", "g", 100 * vegi, "Milch & Käse", day.title);
       if (vegan > 0) add("Tofu / veganer Reibkäse", "Portion", vegan, "Milch & Käse", day.title);
 
-      // 3. Frische Beilage
-      add("Nüsslisalat / Saisonsalat", "g", 50 * portions, "Obst & Gemüse", day.title);
+      // 3. Frische Beilage (nicht zu Müesli, Café complet, Fondue …: no_salad)
+      if (!day.no_salad) add("Nüsslisalat / Saisonsalat", "g", 50 * portions, "Obst & Gemüse", day.title);
     });
 
     // Leerer oder knapper Grundvorrat kommt NICHT von selbst auf die Liste (Variante C): er steht beim Einkauf unter
@@ -323,8 +323,25 @@
     return tier[Math.floor(Math.random() * tier.length)];
   }
   // Ein Gericht für die Wochenwahl: Saison + Gruppe (vegi/fleisch), sonst Saison, sonst Gruppe, sonst irgendeines
+  // «Rezept suchen auf …» – wie die Suchmaschine im Browser, pro Handy umschaltbar (Standard Swissmilk).
+  // Auf den Rezeptseiten ohne das Wort «Rezept» suchen (dort ist alles ein Rezept), bei Google mit.
+  const SEARCH_SITES = {
+    swissmilk: { name: "Swissmilk", url: q => `https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=${encodeURIComponent(q)}` },
+    fooby: { name: "Fooby", url: q => `https://fooby.ch/de/suche.html?query=${encodeURIComponent(q)}` },
+    google: { name: "Google", url: q => `https://www.google.com/search?q=${encodeURIComponent(q + " Rezept")}` }
+  };
+  const searchSite = key => SEARCH_SITES[key] ? key : "swissmilk";
+  function searchHref(key, query) {
+    const q = String(query || "").replace(/\brezepte?\b/gi, " ").replace(/\s+/g, " ").trim();
+    return SEARCH_SITES[searchSite(key)].url(q);
+  }
+  // Gleiches Gericht = gleicher Titel (ohne Gross/Klein, Satzzeichen) oder gleicher Rezept-Link,
+  // z.B. ein eigenes Rezept, das es im Katalog schon gibt
+  const dishKey = r => String((r && r.title) || "").toLowerCase().replace(/[^a-z0-9äöüéèàç]+/g, " ").trim();
+  const sameDish = (a, b) => String(a.id) === String(b.id) || (!!dishKey(a) && dishKey(a) === dishKey(b)) || (!!a.source_url && a.source_url === b.source_url);
   function backupRecipe(all, group, excludeIds, quick, month) {
-    const free = all.filter(r => !excludeIds.includes(String(r.id)) && !!r.quick === !!quick);
+    const taken = all.filter(r => excludeIds.includes(String(r.id)));
+    const free = all.filter(r => !excludeIds.includes(String(r.id)) && !taken.some(t => sameDish(t, r)) && !!r.quick === !!quick);
     const tiers = [
       free.filter(r => inSeason(r, month) && dietGroup(r) === group),
       free.filter(r => inSeason(r, month)),
@@ -345,6 +362,25 @@
       ids.push(String(r.id));
     }
     return ids;
+  }
+  // Gespeicherte Wochenwahl reparieren: unbekannte und doppelte Gerichte weg (auch alte Listen vom WG-Server,
+  // die noch aus der Zeit vor dem Mischen-Fix stammen), dann wieder auf gridSize auffüllen
+  function cleanCandidates(all, ids, month, gridSize, quickSlots) {
+    const out = [];
+    (ids || []).forEach(id => {
+      const r = all.find(x => String(x.id) === String(id));
+      if (r && !out.some(o => sameDish(all.find(x => String(x.id) === o), r))) out.push(String(r.id));
+    });
+    const quickCount = () => out.filter(id => all.find(x => String(x.id) === id).quick).length;
+    while (out.length < gridSize) {
+      const quick = quickCount() < quickSlots;
+      const vegi = out.filter(id => dietGroup(all.find(x => String(x.id) === id)) === "vegi").length;
+      const group = vegi * 2 < out.length ? "vegi" : "fleisch";
+      const r = backupRecipe(all, group, out, quick, month) || backupRecipe(all, group, out, !quick, month);
+      if (!r) break;
+      out.push(String(r.id));
+    }
+    return out;
   }
   // votes = { mitbewohnerId: { likes: [rezeptId], days: { rezeptId: tagIdx } } }
   const votersOf = (members, votes, recipeId) => members.filter(m => ((votes[m.id] || {}).likes || []).includes(recipeId));
@@ -550,7 +586,7 @@
     swapDishes, groupByDish, popularity, byPopularity,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
-    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, votersOf, ranking, assignDays,
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, SEARCH_SITES, searchSite, searchHref, votersOf, ranking, assignDays,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList
   };

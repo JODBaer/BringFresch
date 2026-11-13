@@ -6,7 +6,7 @@
   const app = window.BF_APP;
   if (!app) return;
   const { DATA, isoWeek, plusWeek, portionsFor, formatAmount, cleanIngredient, importer, DAYS, MONTHS,
-    DEFAULT_SERVINGS, load, save, DINNER_KEY, ME_KEY, COUNTS_KEY, state, savePlan, $, recipeHref, esc, currentMonth,
+    DEFAULT_SERVINGS, load, save, DINNER_KEY, ME_KEY, COUNTS_KEY, state, savePlan, $, recipeHref, recipeLinkLabel, esc, currentMonth,
     todayIndex, initialsMap, toast, copyText, allRecipes, inSeason, makeDay, generateWeek, refresh, canPlanNext,
     nextPlan } = app;
 
@@ -181,7 +181,7 @@
       </div>
       <div class="more"><div><div class="inner">
         <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
-        <div class="links">${recipeHref(day) ? `<a href="${esc(recipeHref(day))}" target="_blank" rel="noopener">${day.source_url ? "Zum Rezept ↗" : "Rezept suchen ↗"}</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button>${day.empty ? "" : `<input class="tm" type="time" data-time="${idx}" value="${esc(day.time || load(DINNER_KEY, "18:30"))}" aria-label="Znacht-Zeit am ${DAYS[idx]} (gilt für alle)">`}</div>
+        <div class="links">${recipeHref(day) ? `<a href="${esc(recipeHref(day))}" target="_blank" rel="noopener">${day.source_url ? "Zum Rezept ↗" : esc(recipeLinkLabel(day))}</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button>${day.empty ? "" : `<input class="tm" type="time" data-time="${idx}" value="${esc(day.time || load(DINNER_KEY, "18:30"))}" aria-label="Znacht-Zeit am ${DAYS[idx]} (gilt für alle)">`}</div>
       </div></div></div>
     </div>`;
   }
