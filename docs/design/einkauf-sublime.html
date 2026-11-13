@@ -457,6 +457,8 @@ function renderList() {
 function vorratC() {
   const v = ALL.filter(i => i.q != null);
   const row = i => `<button type="button" class="item vrow${i.zero ? " zero" : ""}${i.low && !i.zero ? " low" : ""}" data-z="${i.n}"><span class="nm">${i.n}${i.why ? `<small>${i.why}</small>` : ""}</span><span class="amt">${i.zero ? "leer" : i.use && !cooked ? `noch ${i.q} → <b>${Math.max(0, i.q - i.use)}</b>` : `noch ${nowQ(i)}`} ${i.u}</span></button>`;
+  // gleiche Abschnitte wie in den anderen Reitern (Rezept oder Kategorie), damit sich beim Wechseln wenig verschiebt
+  return groups(v).map(([, l, d, t]) => `<h3>${d ? `<span class="d">${d}</span>` : ""}${t}</h3>` + l.map(row).join("")).join("");
   const used = v.filter(i => i.use), oft = v.filter(i => i.oft && !i.use), knapp = v.filter(i => !i.use && !i.oft);
   return (used.length ? `<h3>Diese Woche gebraucht</h3>` + used.map(row).join("") : "")
     + (oft.length ? `<h3>Geht oft aus – noch da?</h3>` + oft.map(row).join("") : "")
