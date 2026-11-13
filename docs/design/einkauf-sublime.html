@@ -77,12 +77,18 @@ button { font: inherit; color: inherit; }
 .mbar button { flex: 1; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 11px; font-weight: 700; cursor: pointer; }
 .mbar .go { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 .mbar .go:disabled { opacity: .5; }
-.phone.pruefen .appbar, .phone.pruefen .sechead, .phone.pruefen .btnrow, .phone.pruefen .fab, .phone.pruefen #list { display: none; }
-.phone.pruefen .mbar { display: flex; }
-.phone.pruefen .main { padding: 0 0 100px; gap: 0; }
+.phone.pruefen #list, .phone.pruefen .btnrow { display: none; }
+.phone.pruefen .main { gap: 0; }
+.phone.pruefen .sechead { padding-bottom: 8px; }
+.sortsw { margin-left: auto; display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--s2); border: 1px solid var(--line); text-transform: none; letter-spacing: 0; }
+.sortsw button { border: 0; background: none; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--fg2); cursor: pointer; }
+.sortsw button[aria-pressed="true"] { background: var(--fg); color: var(--s0); }
+.fab:disabled { opacity: .55; }
+.phone.pruefen .cols { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 18px 18px; overflow: hidden; }
 /* Reiter -> Spaltenköpfe: gleiche Reihenfolge, «Auf Bring!» in der Mitte */
-.phone.pruefen .seg { border-radius: 0; padding: 0; gap: 0; border-left: 0; border-right: 0; position: sticky; top: 0; z-index: 2; }
-.phone.pruefen .seg button { border-radius: 0; background: none; color: var(--fg); padding: 9px 4px 3px; pointer-events: none; font-size: 13px; }
+.phone.pruefen .seg { border-radius: 18px 18px 0 0; padding: 0; gap: 0; position: sticky; top: 0; z-index: 2; }
+.phone.pruefen .seg button { border-radius: 0; background: none; color: var(--fg2); padding: 10px 4px 4px; font-size: 13px; }
+.phone.pruefen .seg button[data-f="bring"] { color: var(--fg); font-weight: 800; }
 .phone.pruefen .seg button + button { border-left: 1px solid var(--line); }
 .phone.pruefen .seg button b { display: none; }
 .midsw { display: none; grid-column: 2; justify-self: center; margin: 0 0 6px; padding: 2px; border-radius: 999px; background: var(--s4); gap: 2px; pointer-events: auto; }
@@ -92,7 +98,7 @@ button { font: inherit; color: inherit; }
 .cols { display: none; }
 .phone.pruefen .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .cols .sec { grid-column: 1 / -1; padding: 12px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); background: var(--s0); border-top: 1px solid var(--line); }
-.cell { min-width: 0; min-height: 46px; padding: 6px 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; position: relative; background: var(--surface); }
+.cell { min-width: 0; min-height: 38px; padding: 6px 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; position: relative; background: var(--surface); }
 .cell.c2 { border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
 .cell .n { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cell .a { font-family: var(--mono); font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -136,13 +142,12 @@ button { font: inherit; color: inherit; }
 
 <div class="wrap">
   <div class="phone" id="phone">
-    <div class="mbar"><button type="button" id="cancel">Abbrechen</button><button type="button" class="go" id="send">Senden</button></div>
     <header class="appbar">
       <div class="t"><div class="sub">KW 46 · November</div><h1>Bring<span>Frisch</span></h1></div>
       <button class="ibtn" type="button" aria-label="Wochenwahl"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V9h14zm-7-8 1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z"/></svg></button>
     </header>
     <div class="main" id="main">
-      <div class="sechead">Einkaufsliste <small id="nZut"></small></div>
+      <div class="sechead">Einkaufsliste <small id="nZut"></small><span class="sortsw" id="sortsw"><button type="button" data-s="rezept" aria-pressed="true">Rezept</button><button type="button" data-s="kat" aria-pressed="false">Kategorie</button></span></div>
       <div class="seg" id="seg">
         <button type="button" data-f="kaufen" aria-pressed="true">Kaufen <b id="c1"></b></button>
         <button type="button" data-f="bring" aria-pressed="false">Auf Bring! <b id="c2"></b></button>
@@ -153,7 +158,7 @@ button { font: inherit; color: inherit; }
       <div class="cols" id="cols"></div>
       <div class="btnrow"><button type="button">Grundvorrat verwalten</button><button type="button">Liste kopieren</button></div>
     </div>
-    <button type="button" class="fab" id="fab"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42a.25.25 0 0 1-.22-.37L8.1 13h7.45a2 2 0 0 0 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2zm16 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Prüfen <b id="fabN"></b></button>
+    <button type="button" class="fab" id="fab"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42a.25.25 0 0 1-.22-.37L8.1 13h7.45a2 2 0 0 0 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2zm16 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg><span id="fabL">Auf Bring!</span> <b id="fabN"></b></button>
     <nav class="nav" aria-hidden="true">
       <span><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14zM7 12h5v5H7z"/></svg></span>
       <span class="on"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42a.25.25 0 0 1-.22-.37L8.1 13h7.45a2 2 0 0 0 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2zm16 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Einkauf</span>
@@ -165,16 +170,17 @@ button { font: inherit; color: inherit; }
 
   <aside class="side">
     <h1>Einkauf: drei Spalten wie Sublime Merge</h1>
-    <p>Neu gestartet von der Einkauf-Seite in v1.10. Die drei Reiter bleiben, wie sie sind. «Prüfen» (Knopf unten rechts) macht aus ihnen drei echte Spalten nebeneinander: Kaufen | Auf Bring! | Vorrat. Jede Zeile ist eine Zutat über alle drei Spalten.</p>
+    <p>Neu gestartet von der Einkauf-Seite in v1.10. «Kaufen» und «Vorrat» bleiben, wie sie sind. Der Reiter <b>«Auf Bring!»</b> zeigt alle Zutaten in drei Spalten nebeneinander – Kaufen | Auf Bring! | Vorrat –, nur die Namen, jede Zeile antippbar. Sortiert je nach Umschalter: nach Rezept oder nach Kategorie wie in Bring!.</p>
     <div class="box">
-      <h2>So geht «Prüfen»</h2>
+      <h2>So geht «Auf Bring!»</h2>
       <ul>
-        <li>Die Reiter werden zu Spaltenköpfen, in derselben Reihenfolge: links <b>Kaufen</b> (was der Plan braucht), in der Mitte <b>Auf Bring!</b>, rechts <b>Vorrat</b>.</li>
+        <li>Die Reiter sind gleichzeitig die Spaltenköpfe: links <b>Kaufen</b> (was der Plan braucht), in der Mitte <b>Auf Bring!</b>, rechts <b>Vorrat</b>. Nur Namen; Mengen stehen in «Kaufen» und «Vorrat».</li>
         <li>Links antippen: ▶ kommt in die Mitte (auf Bring!), nochmals = haben wir schon.</li>
         <li>Rechts antippen: ◀ Vorrat-Artikel kommt auf Bring!.</li>
         <li>In der Mitte einen Eintrag des Bots antippen: kommt weg.</li>
         <li>Mitte umschalten wie Base / Merged in Sublime Merge: <b>jetzt</b> = Bring! heute, <b>nachher</b> = nach dem Senden.</li>
-        <li>Oben «Abbrechen» · «Senden» – erst dann geht etwas an Bring!.</li>
+        <li>In der Mitte selbst lässt sich jede Zeile an- und abwählen.</li>
+        <li>Ein Knopf unten rechts: in «Kaufen»/«Vorrat» führt er zu «Auf Bring!», dort heisst er «Senden» – erst dann geht etwas an Bring!.</li>
       </ul>
     </div>
     <div class="box">
@@ -197,126 +203,129 @@ button { font: inherit; color: inherit; }
 </div>
 
 <script>
-// Beispiel KW 46 (wie im Screenshot von v1.10). L = Plan braucht, M = Bring! jetzt, V = Vorrat
+// Beispiel KW 46 (wie im Screenshot von v1.10). L = Plan braucht, M = Bring! jetzt, V = Vorrat, k = Kategorie wie in Bring!
 // pick: kommt aus dem Plan auf Bring! · vpick: kommt aus dem Vorrat · del: Bot-Eintrag kommt weg
 const SECS = [
   ["MO", "Klassische Älplermagronen mit Apfelmus", [
-    { n: "Halbrahm", L: "1,5 dl", M: "2 dl", by: "Leonie", pick: true },
-    { n: "Magronen / Teigwaren", L: "400 g", pick: true },
-    { n: "Reibkäse", L: "180 g", pick: true },
-    { n: "Äpfel", L: "4 Stk", M: "6 Stk", ok: true },
-    { n: "Zwiebeln", L: "2 Stk", V: "noch 3 · reicht", haveV: true } ]],
+    { n: "Halbrahm", k: "Milch & Käse", L: "1,5 dl", M: "2 dl", by: "Leonie", pick: true },
+    { n: "Magronen / Teigwaren", k: "Getreide & Teigwaren", L: "400 g", pick: true },
+    { n: "Reibkäse", k: "Milch & Käse", L: "180 g", pick: true },
+    { n: "Äpfel", k: "Früchte & Gemüse", L: "4 Stk", M: "6 Stk", ok: true },
+    { n: "Zwiebeln", k: "Früchte & Gemüse", L: "2 Stk", V: "noch 3 · reicht", haveV: true } ]],
   ["DI", "Gnocchi mit Tomatensauce und Mozzarella", [
-    { n: "Basilikum", L: "2 Bund", pick: true },
-    { n: "Gnocchi", L: "2 kg", pick: true },
-    { n: "Mozzarella", L: "500 g", pick: true },
-    { n: "Passata", L: "7 dl", V: "noch 1 → danach 0", low: true } ]],
+    { n: "Basilikum", k: "Früchte & Gemüse", L: "2 Bund", pick: true },
+    { n: "Gnocchi", k: "Getreide & Teigwaren", L: "2 kg", pick: true },
+    { n: "Mozzarella", k: "Milch & Käse", L: "500 g", pick: true },
+    { n: "Passata", k: "Fertig & Konserven", L: "7 dl", V: "noch 1 → danach 0", low: true } ]],
   ["DO", "Karotten mit Rindshuft", [
-    { n: "Chilischote", L: "1 Stk", pick: true },
-    { n: "Frühlingszwiebeln", L: "1 Bund", pick: true },
-    { n: "Kokosfett", L: "1 EL", V: "da", haveV: true },
-    { n: "Maisstärke", L: "1 TL", V: "da", haveV: true },
-    { n: "Rindshuft", L: "80 g", pick: true },
-    { n: "Karotten", L: "600 g", M: "1 kg", ok: true } ]],
+    { n: "Chilischote", k: "Früchte & Gemüse", L: "1 Stk", pick: true },
+    { n: "Frühlingszwiebeln", k: "Früchte & Gemüse", L: "1 Bund", pick: true },
+    { n: "Kokosfett", k: "Zutaten & Gewürze", L: "1 EL", V: "da", haveV: true },
+    { n: "Maisstärke", k: "Zutaten & Gewürze", L: "1 TL", V: "da", haveV: true },
+    { n: "Rindshuft", k: "Fleisch & Fisch", L: "80 g", pick: true },
+    { n: "Karotten", k: "Früchte & Gemüse", L: "600 g", M: "1 kg", ok: true } ]],
   ["", "Für mehrere Gerichte", [
-    { n: "Nüsslisalat", L: "300 g · Mo Di Do", pick: true } ]],
+    { n: "Nüsslisalat", k: "Früchte & Gemüse", L: "300 g · Mo Di Do", pick: true } ]],
   ["", "Nur Vorrat", [
-    { n: "Olivenöl", V: "noch 1 · knapp", low: true },
-    { n: "Reis", V: "geht oft aus", low: true } ]],
+    { n: "Olivenöl", k: "Zutaten & Gewürze", V: "noch 1 · knapp", low: true },
+    { n: "Reis", k: "Getreide & Teigwaren", V: "geht oft aus", low: true } ]],
   ["", "Nur auf Bring!", [
-    { n: "Brot", M: "1 Stk", bot: true, why: "vom Bot, kein Rezept mehr" },
-    { n: "WC-Papier", M: "1 Pack", by: "Jo" } ]]
+    { n: "Brot", k: "Brot & Gebäck", M: "1 Stk", bot: true, why: "vom Bot, kein Rezept mehr" },
+    { n: "WC-Papier", k: "Haushalt", M: "1 Pack", by: "Jo" } ]]
 ];
 const ALL = SECS.flatMap(s => s[2]);
 ALL.forEach(i => { if (i.haveV) i.pick = false; });
 const $ = id => document.getElementById(id);
-let filter = "kaufen", mid = "nachher";
+let filter = "kaufen", mid = "nachher", sort = "rezept";
 const toBuy = i => i.L && !i.ok && !i.haveV;
 const onBring = i => !!i.M;
 const changes = () => ALL.filter(i => (i.L && i.pick && !i.ok) || i.vpick || i.del);
+// Gruppen je nach Umschalter: nach Rezept (wie im Plan) oder nach Kategorie (wie in Bring!)
+function groups(items) {
+  if (sort === "rezept") return SECS.map(([d, t, l]) => [d ? `${d} · ${t}` : t, l.filter(i => items.includes(i)), d, t]).filter(g => g[1].length);
+  const cats = [...new Set(items.map(i => i.k))].sort((a, b) => a.localeCompare(b, "de"));
+  return cats.map(k => [k, items.filter(i => i.k === k).sort((a, b) => a.n.localeCompare(b.n, "de")), "", k]);
+}
 
 function counts() {
   $("c1").textContent = ALL.filter(toBuy).length;
   $("c2").textContent = ALL.filter(onBring).length;
   $("c3").textContent = ALL.filter(i => i.V).length;
   $("nZut").textContent = `${ALL.filter(i => i.L).length} Zutaten`;
-  $("fabN").textContent = changes().length;
+  const n = changes().length;
+  $("fabL").textContent = filter === "bring" ? "Senden" : "Auf Bring!";
+  $("fabN").textContent = n;
+  $("fab").disabled = filter === "bring" && !n;
 }
-// Normale Ansicht: wie v1.10 – eine Karte, nach Gericht, Zeilen einzeln antippbar (nur vormerken)
+// Kaufen / Vorrat: wie v1.10 – eine Karte, Zeilen einzeln antippbar (nur vormerken)
 function renderList() {
-  const show = { kaufen: toBuy, bring: onBring, vorrat: i => !!i.V }[filter];
+  const show = filter === "kaufen" ? toBuy : i => !!i.V;
   let h = "";
-  SECS.forEach(([d, t, items]) => {
-    const l = items.filter(show);
-    if (!l.length) return;
+  groups(ALL.filter(show)).forEach(([, l, d, t]) => {
     h += `<h3>${d ? `<span class="d">${d}</span>` : ""}${t}</h3>` + l.map(i => {
-      const amt = filter === "kaufen" ? i.L : filter === "bring" ? i.M : i.V;
-      const cls = filter === "kaufen" && !i.pick ? " have" : filter === "bring" && i.del ? " del" : filter === "vorrat" && i.vpick ? " mark" : "";
-      const sub = filter === "bring" && (i.by || i.why) ? `<small>${i.by ? "von " + i.by : i.why}</small>` : "";
-      return `<button type="button" class="item${cls}" data-n="${i.n}"><span class="nm">${i.n}${sub}</span><span class="amt">${amt}</span></button>`;
+      const amt = filter === "kaufen" ? i.L : i.V;
+      const cls = filter === "kaufen" && !i.pick ? " have" : filter === "vorrat" && i.vpick ? " mark" : "";
+      return `<button type="button" class="item${cls}" data-n="${i.n}"><span class="nm">${i.n}</span><span class="amt">${amt}</span></button>`;
     }).join("");
   });
   $("list").innerHTML = h || `<h3>Nichts</h3>`;
 }
-// Prüfen: drei echte Spalten, jede Zeile eine Zutat
+// Auf Bring!: alle Zutaten in drei Spalten (Kaufen | Auf Bring! | Vorrat), nur Namen, jede Zeile antippbar
 function renderCols() {
   let h = "";
-  SECS.forEach(([d, t, items]) => {
-    h += `<div class="sec">${d ? d + " · " : ""}${t}</div>`;
+  groups(ALL).forEach(([title, items]) => {
+    h += `<div class="sec">${title}</div>`;
     items.forEach(i => {
-      // links: Kaufen
       let L = `<div class="cell c1 none"></div>`;
-      if (i.L) {
-        if (i.ok) L = `<div class="cell c1 ok"><span class="n">${i.n}</span><span class="a">${i.L} ✓</span></div>`;
-        else L = `<div class="cell c1${i.pick ? " pick" : " have"}" data-n="${i.n}" data-c="1" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.haveV && !i.pick ? "haben wir" : i.L}</span></div>`;
-      }
-      // Mitte: Auf Bring!
-      let M = `<div class="cell c2 none"></div>`, cls = "", amt = "";
-      if (mid === "jetzt") { if (i.M) { amt = i.M; } }
-      else if (i.del) { cls = "del"; amt = i.M; }
-      else if (i.M && i.pick && !i.ok) { cls = "chg"; amt = `${i.M} → ${i.M} + ${i.L}`; }
-      else if (i.M) { amt = i.M; }
-      else if (i.vpick) { cls = "opt"; amt = "1 Pack · Vorrat"; }
-      else if (i.pick) { cls = "add"; amt = i.L; }
-      if (amt) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}${i.by && mid === "jetzt" ? " · " + i.by : ""}</span></div>`;
-      // rechts: Vorrat
-      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.V}</span></div>` : `<div class="cell c3 none"></div>`;
+      if (i.L) L = i.ok ? `<div class="cell c1 ok" title="${i.L}"><span class="n">${i.n} ✓</span></div>`
+        : `<div class="cell c1${i.pick ? " pick" : " have"}" data-n="${i.n}" data-c="1" role="button" tabindex="0" title="${i.L}"><span class="n">${i.n}</span></div>`;
+      let M = `<div class="cell c2 none" data-n="${i.n}" data-c="2"></div>`, cls = "";
+      const has = mid === "jetzt" ? !!i.M : !!(i.M || i.vpick || (i.pick && !i.ok));
+      if (mid === "nachher") cls = i.del ? "del" : i.M && i.pick && !i.ok ? "chg" : i.M ? "" : i.vpick ? "opt" : i.pick ? "add" : "";
+      if (has) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0" title="${i.M || ""}${i.by ? " · " + i.by : ""}"><span class="n">${i.n}</span></div>`;
+      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0" title="${i.V}"><span class="n">${i.n}</span></div>` : `<div class="cell c3 none"></div>`;
       h += L + M + R;
     });
   });
   $("cols").innerHTML = h;
-  const ch = changes(), add = ch.filter(i => !i.del).length, del = ch.filter(i => i.del).length;
-  $("send").textContent = ch.length ? `Senden · ${add} dazu${del ? ` · ${del} weg` : ""}` : "Nichts zu senden";
-  $("send").disabled = !ch.length;
   document.querySelectorAll("#midsw button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === mid)));
 }
-function render() { counts(); renderList(); renderCols(); }
+function render() {
+  counts();
+  const p = $("phone"), was = p.classList.contains("pruefen");
+  p.classList.toggle("pruefen", filter === "bring");
+  if (filter === "bring") { renderCols(); if (!was) { p.classList.add("anim"); setTimeout(() => p.classList.remove("anim"), 600); } }
+  else renderList();
+  document.querySelectorAll("#seg [data-f]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.f === filter)));
+  document.querySelectorAll("#sortsw button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.s === sort)));
+}
 function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("on"), 2000); }
 const find = n => ALL.find(i => i.n === n);
 function tap(i, col) {
   if (!i) return;
-  if (col === 1) { i.pick = !i.pick; return toast(i.pick ? `▶ ${i.n} kommt auf Bring!` : `${i.n}: haben wir schon`); }
+  if (col === 1) { if (i.ok) return toast(`${i.n}: steht schon passend drauf`); i.pick = !i.pick; return toast(i.pick ? `▶ ${i.n} kommt auf Bring!` : `${i.n}: haben wir schon`); }
   if (col === 3) { if (!i.low) return toast(`${i.n}: genug da`); i.vpick = !i.vpick; return toast(i.vpick ? `◀ ${i.n} aus dem Vorrat auf Bring!` : `${i.n}: nicht auf Bring!`); }
+  // Mitte: an- und abwählen, was auf Bring! landet
   if (i.bot || i.del) { i.del = !i.del; return toast(i.del ? `${i.n}: kommt von Bring! weg` : `${i.n}: bleibt`); }
   if (i.vpick) { i.vpick = false; return toast(`${i.n}: nicht auf Bring!`); }
-  if (i.pick && !i.ok) { i.pick = false; return toast(`${i.n}: haben wir schon`); }
+  if (i.L && !i.ok && !i.M) { i.pick = !i.pick; return toast(i.pick ? `${i.n} kommt auf Bring!` : `${i.n}: nicht auf Bring!`); }
+  if (i.M && i.L && !i.ok) { i.pick = !i.pick; return toast(i.pick ? `${i.n}: Menge kommt dazu` : `${i.n}: Menge bleibt wie sie ist`); }
+  if (!i.M && i.low) { i.vpick = true; return toast(`${i.n} aus dem Vorrat auf Bring!`); }
   toast(i.by ? `${i.n}: hat ${i.by} eingetragen – bleibt` : `${i.n}: steht schon passend drauf`);
 }
 $("seg").addEventListener("click", e => {
-  const m = e.target.closest("[data-m]"); if (m) { mid = m.dataset.m; return renderCols(); }
-  const b = e.target.closest("[data-f]"); if (!b || $("phone").classList.contains("pruefen")) return;
-  filter = b.dataset.f; document.querySelectorAll("#seg [data-f]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderList();
+  const m = e.target.closest("[data-m]"); if (m) { mid = m.dataset.m; return render(); }
+  const b = e.target.closest("[data-f]"); if (!b) return;
+  filter = b.dataset.f; $("main").scrollTop = 0; render();
 });
-$("list").addEventListener("click", e => {
-  const r = e.target.closest("[data-n]"); if (!r) return;
-  tap(find(r.dataset.n), filter === "kaufen" ? 1 : filter === "bring" ? 2 : 3); render();
-});
+$("sortsw").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (b) { sort = b.dataset.s; render(); } });
+$("list").addEventListener("click", e => { const r = e.target.closest("[data-n]"); if (r) { tap(find(r.dataset.n), filter === "kaufen" ? 1 : 3); render(); } });
 $("cols").addEventListener("click", e => { const c = e.target.closest("[data-c]"); if (c) { tap(find(c.dataset.n), +c.dataset.c); render(); } });
 $("cols").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.c) { e.preventDefault(); e.target.click(); } });
-function open() { renderCols(); const p = $("phone"); p.classList.add("pruefen", "anim"); $("main").scrollTop = 0; setTimeout(() => p.classList.remove("anim"), 600); }
-function close() { $("phone").classList.remove("pruefen"); }
-$("fab").onclick = open;
-$("cancel").onclick = close;
-$("send").onclick = () => { const n = changes().length; close(); toast(`${n} Änderungen an Bring! gesendet · Rückgängig`); };
+// ein Knopf: in Kaufen/Vorrat = zur Übersicht «Auf Bring!», dort = Senden
+$("fab").onclick = () => {
+  if (filter !== "bring") { filter = "bring"; $("main").scrollTop = 0; return render(); }
+  const n = changes().length; toast(`${n} Änderungen an Bring! gesendet · Rückgängig`);
+};
 render();
 </script>
