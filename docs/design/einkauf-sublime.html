@@ -336,6 +336,11 @@ button { font: inherit; color: inherit; }
 .ve .cols .cell.c2 .a { border-radius: 999px; padding: 2px 8px; font-family: var(--font); font-weight: 700; font-size: 11px; background: var(--s2); color: var(--fg2) !important; }
 .ve .cols .cell.c2.add .a { background: var(--add-bar); color: #fff !important; } .ve .cols .cell.c2.chg .a { background: var(--chg-bar); color: #1d1600 !important; }
 .ve .cols .cell.c2.opt .a { background: var(--opt-bar); color: #fff !important; } .ve .cols .cell.c2.del .a { background: var(--del-bar); color: #fff !important; }
+
+/* «Auf Bring!»: eine grosse dunkle Pille, zentriert, ca. 5/6 der Breite (Joshua 13.11.) */
+.phone.pruefen .seg { position: relative; gap: 0; }
+.phone.pruefen .seg::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 8.33%; right: 8.33%; border-radius: 999px; background: var(--fg); z-index: 0; }
+.phone.pruefen .seg button[data-f], .phone.pruefen .seg button[data-f] + button[data-f] { position: relative; z-index: 1; background: none !important; color: var(--s0) !important; border-radius: 0; border-left: 0; }
 </style>
 
 <div class="wrap">
