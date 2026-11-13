@@ -138,6 +138,23 @@ button { font: inherit; color: inherit; }
 .legend { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px 10px; align-items: center; font-size: 14px; }
 .sw { height: 20px; border-radius: 5px; box-shadow: inset 3px 0 var(--b); background: var(--c); }
 .q { border-top: 1px solid var(--line); padding-top: 8px; }
+
+/* Auf Bring!: Zeilen wie in Kaufen und Vorrat (Kommentar 13.11.: keine Kacheln) – eine Karte, Trennlinien über die ganze Zeile */
+.phone.pruefen .cols { background: var(--surface); }
+.cols .sec { background: none; border-top: 0; padding: 14px 14px 4px; font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--fg); }
+.cell { min-height: 0; padding: 9px 10px; background: none; border-top: 1px solid var(--line); }
+.cell.c2 { border-left: 0; border-right: 0; }
+.cell.c1 { padding-left: 14px; } .cell.c3 { padding-right: 14px; }
+.cols .sec + .cell, .cols .sec + .cell + .cell, .cols .sec + .cell + .cell + .cell { border-top: 0; }
+.cell .n { font-size: 14px; font-weight: 400; }
+.cell.none { background: none; }
+.cell.pick, .cell.c3.vpick { background: none; }
+.cell.pick .n { color: var(--add-bar); font-weight: 600; }
+.cell.c3.vpick .n { color: var(--opt-bar); font-weight: 600; }
+.cell.add, .cell.chg, .cell.opt, .cell.del { box-shadow: none; }
+.cell.add .n { color: var(--add-bar); font-weight: 600; } .cell.chg .n { color: var(--chg-bar); font-weight: 600; }
+.cell.opt .n { color: var(--opt-bar); font-weight: 600; } .cell.del .n { color: var(--del-bar); }
+.cell.add, .cell.chg, .cell.opt, .cell.del { background: none; }
 </style>
 
 <div class="wrap">
