@@ -150,6 +150,20 @@ button { font: inherit; color: inherit; }
 .share { font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
 .share[aria-pressed="false"] { opacity: .5; text-decoration: line-through; }
 .dl { cursor: pointer; }
+
+/* Liste wie in der App (v1.10, Joshua: «Abstände kleiner, mag ich»): eine Karte, Überschriften drin, nur Trennlinien */
+#list { margin-top: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; align-self: start; }
+.scroll { padding: 0 12px 110px; }
+#list .grp { margin: 0; }
+#list .grp h4 { margin: 0; padding: 14px 14px 4px; font-size: 14px; }
+#list .grp h4 .d { font-size: 11px; }
+#list .row, #list .grp h4 + .row, #list .row:last-child, #list .grp h4 + .row:last-child { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; padding: 9px 14px; }
+#list .grp h4 + .row { border-top: 0; }
+#list .row.mark { background: var(--opt-bg); }
+.row .amt, .dl .a { font-family: ui-monospace, 'Roboto Mono', Menlo, monospace; font-size: 12.5px; }
+/* Prüfen genauso dicht */
+.diff { padding: 0 8px 96px; }
+.dl { border-radius: 0; margin: 0; border-bottom: 1px solid var(--line); padding: 8px 10px 8px 10px; }
 </style>
 
 <div class="page">
