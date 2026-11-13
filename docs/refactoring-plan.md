@@ -1,8 +1,10 @@
 # Refactoring-Plan (Arbeitsfassung für Claude)
 
-Stand 10.11.2026, App 1.5.2, abgeglichen mit `main` bis `c2e3b74`. Überblick mit Diagramm: `docs/architektur-review.html`.
-**Gebaut: Schritte 0, 1, 4, 7 und von Schritt 6 die gemerkte Bring!-Anmeldung.**
-**Offen: 2, 3, 5, Rest von 6, 8.** (Stand 12.11.: 2 + Speicher aus 3 erledigt, `app.js` in Dateien aufgeteilt – siehe Schritt 5; offen bleiben Zustand, Variante 4, Rest von 6, 8.) Die Schritte 2, 3 und 5 schneiden `app.js` gross um. Sie warten, bis der laufende Umbau der Rezeptauswahl (anderer Chat) auf `main` ist – sonst kollidieren beide – und bis Joshua den Bündler entschieden hat (Schritt 2). Reihenfolge einhalten; jeder Schritt ist einzeln releasbar und endet mit `cd tests && npm run ci` grün.
+Stand 13.11.2026 (v1.9.x). Überblick mit Diagramm: `docs/architektur-review.html`.
+**Abgeschlossen: Schritte 0–7.** Schritt 8 (D1) bewusst nicht: geteilte Rezepte laufen über KV (`shared:<wg>`).
+**Einzig offen: echte Browser-Module («Variante 4»)** statt klassischer Skripte mit `BF_APP`. Gewinn für die WG klein (saubere Abhängigkeiten), Kosten: alle jsdom-Test-Lader umbauen (jsdom führt keine Module aus, siehe Schritt 5). Ein geplanter Auftrag («BringFresch: Modul-Umbau nach Grundvorrat-Release», täglich 21:13) startet ihn, sobald «Grundvorrat neu gestalten» in `plan.md` abgehakt und veröffentlicht ist; er darf ihn begründet als «bewusst nicht gemacht» abschliessen.
+Die Abschnitte unten sind die Arbeitsgeschichte (was gebaut wurde und warum); «offen» darin ist durch diese Zeilen überholt.
+
 Regeln aus `CLAUDE.md` gelten (eigener Worktree, nur eigene Pfade committen, neue Funktion = neuer Schritt in `tests/ui_e2e.mjs`).
 
 ## Ausgangslage (gemessen)
@@ -94,7 +96,7 @@ Heute viermal von Hand «neuerer gewinnt» (Plan, nächste Woche, Vorrat, Einste
 - Zeitstempel nur noch vom Server.
 - Tests: `tests/integration.test.mjs` (2 Handys) um «beide ändern verschiedene Tage» und «Handy-Uhr geht falsch» erweitern.
 
-## Schritt 5 – Ansichten und CSS – CSS erledigt, Ansichten offen
+## Schritt 5 – Ansichten und CSS – erledigt (ohne echte Module)
 
 Gebaut (11.11.2026): `static/app.css` (650 Zeilen, vorher `<style>` in `index.html`); `index.html` hat noch 439 Zeilen (27 KB statt 78 KB).
 Gebaut (12.11.2026): `app.js` in Dateien aufgeteilt – **klassische Skripte mit gemeinsamem Namensraum `BF_APP`** (wie `BF_CORE` / `BF_STORE`), kein Bündler, kein Bau-Schritt, Verhalten unverändert. Echte Module (`<script type="module">`) gingen nicht: jsdom (alle App-Tests) führt keine Module aus, und ein Bündelschritt nur für Tests hätte geprüft, was nicht ausgeliefert wird.
@@ -118,7 +120,7 @@ Offen (Variante 4, später): echte Module und **ein Zustand** (`state` + die `ap
 
 Danach, nicht vorher: **Grundvorrat neu gestalten zusammen mit Joshua** (siehe `plan.md`, Rückmeldung 11.11.2026: direktes Schreiben auf Bring!, Hinzufügen und Wegnehmen gefallen so nicht). Varianten zuerst als HTML zeigen.
 
-## Schritt 6 – Worker – teilweise erledigt
+## Schritt 6 – Worker – erledigt
 
 Gebaut: `bringAuth` merkt die Anmeldung (Instanz + KV `bringtoken`, nicht in der Sicherung), `bringFetch` meldet bei 401 einmal frisch an.
 Datei aufgeteilt (11.11.2026): `index.js` (Endpunkte), `auth.js`, `speicher.js`, `bring.js`, `kalender.js`, `rezept.js`, `http.js`; Wrangler-Bündel geprüft.
@@ -128,11 +130,11 @@ Batch (12.11.2026): `bringBatch` in `bring.js` – `PUT bringlists/{uuid}/items`
 - `bringLogin`: Access-Token im Speicher des Workers und in KV halten (Ablaufzeit aus der Bring!-Antwort), bei 401 neu anmelden. Spart einen Aufruf pro Anfrage.
 - ~~Batch-Schnittstelle `PUT bringlists/{uuid}/items`~~ – gebaut, siehe oben.
 
-## Schritt 7 – Start und Cache – erledigt (ohne Schrift)
+## Schritt 7 – Start und Cache – erledigt
 
 Gebaut: `sw.js` bleibt Network-First, wartet aber höchstens 2.5 s und liefert dann aus dem Cache (danach 30 s direkt aus dem Cache). Gemessen mit 15 s langsamem Netz: 2.6 s statt über 15 s. `build_site.mjs` setzt im Release die Version als Cache-Namen ein.
 Bewusst nicht «zuerst Cache»: das hätte geändert, wann eine neue Version ankommt.
-Offen: Schrift kürzen (braucht `fonttools`, optischer Vergleich nötig).
+Schrift gekürzt (13.11.2026): Roboto Flex 196 KB → 125 KB, nur noch die benutzten Bereiche (Breite 90–125 %, Stärke 400–900, `fontTools.varLib.instancer`); `opsz` und alle Zeichen unverändert. Layout-Fotos vorher/nachher verglichen: nur Kantenglättung anders.
 
 - `sw.js`: App-Dateien zuerst aus dem Cache, im Hintergrund aktualisieren; die bestehende Versionsprüfung (`checkUpdate`) meldet Neues.
 - `CACHE_NAME` und Assetliste beim Bauen aus der Version erzeugen (heute von Hand hochzählen).
