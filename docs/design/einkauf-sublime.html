@@ -245,6 +245,17 @@ button { font: inherit; color: inherit; }
 .vacts button { border-radius: 999px; padding: 10px 16px; font-weight: 600; cursor: pointer; border: 0; }
 .vacts .rm { background: none; color: var(--del-bar); box-shadow: inset 0 0 0 1px currentColor; }
 .vacts .ok { background: var(--primary); color: var(--on-primary); }
+
+/* «Auf Bring!» genau wie die Kaufen-Zeilen: gleiche Schrift, Abstände, Trennlinien; Änderung nur als schmaler Farbstrich */
+.cell { padding: 9px 14px 9px 10px; font-size: 15px; }
+.cell .n { font-size: 15px; font-weight: 400 !important; color: var(--fg); text-decoration: none; }
+.cell .a { font-size: 13px; color: var(--muted) !important; }
+.cell.c2 { border-left: 0; border-right: 0; }
+.cell.pick, .cell.c3.vpick, .cell.add, .cell.chg, .cell.opt, .cell.del { background: none !important; }
+.cell.pick::after, .cell.c3.vpick::before { content: none; }
+.cell.add { box-shadow: inset 3px 0 var(--add-bar); } .cell.chg { box-shadow: inset 3px 0 var(--chg-bar); }
+.cell.opt { box-shadow: inset 3px 0 var(--opt-bar); } .cell.del { box-shadow: inset 3px 0 var(--del-bar); }
+.cell.del .n, .cell.have .n { text-decoration: line-through; color: var(--muted); }
 </style>
 
 <div class="wrap">
