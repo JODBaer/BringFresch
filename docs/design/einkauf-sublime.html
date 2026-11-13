@@ -200,6 +200,18 @@ button { font: inherit; color: inherit; }
 .phone.pruefen .seg button:nth-of-type(3) { border-radius: 0 14px 14px 0; }
 .phone.pruefen .seg button b { display: inline; }
 .phone.pruefen .cols { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+
+/* Vorrat wie Variante C */
+.vtop { display: flex; align-items: center; gap: 10px; padding: 10px 14px 4px; flex-wrap: wrap; }
+.vtop small { color: var(--muted); font-size: 12px; }
+.sw { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; font-weight: 600; font-size: 14px; cursor: pointer; padding: 4px 0; }
+.sw i { width: 44px; height: 26px; border-radius: 999px; background: var(--s4); position: relative; transition: background .2s; }
+.sw i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--fg); transition: transform .2s; }
+.sw[aria-checked="true"] i { background: var(--primary); }
+.sw[aria-checked="true"] i::after { transform: translateX(18px); background: var(--on-primary); }
+.vrow.low .amt { color: var(--chg-bar); font-weight: 600; }
+.vrow.zero .nm { text-decoration: line-through; }
+.vrow.zero .amt { color: var(--primary); font-weight: 700; }
 </style>
 
 <div class="wrap">
@@ -258,7 +270,7 @@ button { font: inherit; color: inherit; }
     <div class="box">
       <h2>Für dich zum Entscheiden</h2>
       <p class="q"><b>1.</b> Mitte: immer «nach dem Senden», Umschalter weg (entschieden 13.11.).</p>
-      <p class="q"><b>2.</b> Vorrat mit vier Stufen wie in der App (Leer · Fast leer · Halb · Voll), direkt im Reiter «Vorrat»: Halb/Voll = haben wir, Leer/Fast leer = kommt auf Bring!. Passt die Grenze bei «Fast leer»?</p>
+      <p class="q"><b>2.</b> Reiter «Vorrat» wie im Grundvorrat-Entwurf C (so auch in der App): «Diese Woche gebraucht» (noch → danach), «Geht oft aus – noch da?», «Sonst knapp», Zeile antippen = leer, Schalter «Woche gekocht». Stufen Leer/Fast leer/Halb/Voll bleiben im Blatt unter «Grundvorrat verwalten».</p>
       <p class="q"><b>3.</b> Zeilen ohne Gegenstück zeigen ein schraffiertes Feld (wie in Sublime). Gut so, oder lieber leer?</p>
     </div>
   </aside>
@@ -273,36 +285,41 @@ const SECS = [
     { n: "Magronen / Teigwaren", k: "Getreide & Teigwaren", L: "400 g", pick: true },
     { n: "Reibkäse", k: "Milch & Käse", L: "180 g", pick: true },
     { n: "Äpfel", k: "Früchte & Gemüse", L: "4 Stk", M: "6 Stk", ok: true },
-    { n: "Zwiebeln", k: "Früchte & Gemüse", L: "2 Stk", lv: 2 } ]],
+    { n: "Zwiebeln", k: "Früchte & Gemüse", L: "2 Stk", q: 3, u: "Stk", use: 2 } ]],
   ["DI", "Gnocchi mit Tomatensauce und Mozzarella", [
     { n: "Basilikum", k: "Früchte & Gemüse", L: "2 Bund", pick: true },
     { n: "Gnocchi", k: "Getreide & Teigwaren", L: "2 kg", pick: true },
     { n: "Mozzarella", k: "Milch & Käse", L: "500 g", pick: true },
-    { n: "Passata", k: "Fertig & Konserven", L: "7 dl", lv: 1 } ]],
+    { n: "Passata", k: "Fertig & Konserven", L: "7 dl", q: 1, u: "Stk", use: 1 } ]],
   ["DO", "Karotten mit Rindshuft", [
     { n: "Chilischote", k: "Früchte & Gemüse", L: "1 Stk", pick: true },
     { n: "Frühlingszwiebeln", k: "Früchte & Gemüse", L: "1 Bund", pick: true },
-    { n: "Kokosfett", k: "Zutaten & Gewürze", L: "1 EL", lv: 3 },
-    { n: "Maisstärke", k: "Zutaten & Gewürze", L: "1 TL", lv: 3 },
+    { n: "Kokosfett", k: "Zutaten & Gewürze", L: "1 EL", q: 8, u: "Znacht", use: 1 },
+    { n: "Maisstärke", k: "Zutaten & Gewürze", L: "1 TL", q: 6, u: "Znacht", use: 1 },
     { n: "Rindshuft", k: "Fleisch & Fisch", L: "80 g", pick: true },
     { n: "Karotten", k: "Früchte & Gemüse", L: "600 g", M: "1 kg", ok: true } ]],
   ["", "Für mehrere Gerichte", [
     { n: "Nüsslisalat", k: "Früchte & Gemüse", L: "300 g · Mo Di Do", pick: true } ]],
   ["", "Nur Vorrat", [
-    { n: "Olivenöl", k: "Zutaten & Gewürze", lv: 1 },
-    { n: "Reis", k: "Getreide & Teigwaren", lv: 2, why: "geht oft aus" } ]],
+    { n: "Olivenöl", k: "Zutaten & Gewürze", q: 1, u: "Stk", use: 0 },
+    { n: "Reis", k: "Getreide & Teigwaren", q: 2, u: "Znacht", use: 0, oft: true, why: "erkannt: 3 von 4 Wochen leer" } ]],
   ["", "Nur auf Bring!", [
     { n: "Brot", k: "Brot & Gebäck", M: "1 Stk", bot: true, why: "vom Bot, kein Rezept mehr" },
     { n: "WC-Papier", k: "Haushalt", M: "1 Pack", by: "Jo" } ]]
 ];
 const ALL = SECS.flatMap(s => s[2]);
-// Vorrat-Stufe wie in der App: Leer / Fast leer / Halb / Voll. Halb oder Voll = haben wir (nicht kaufen);
-// Leer oder Fast leer = knapp: braucht ein Rezept den Artikel, kommt er aus dem Plan auf die Liste, sonst ◀ aus dem Vorrat
-const LV = ["Leer", "Fast leer", "Halb", "Voll"];
+// Vorrat wie Variante C (App seit v1.8): «noch da», diese Woche gebraucht, knapp = 2 oder weniger danach.
+// Zeile antippen = im Vorrat leer (durchgestrichen), nochmals = zurück. Schalter «Woche gekocht» bucht ab.
+let cooked = false;
+const after = i => Math.max(0, (i.zero ? 0 : i.q) - (cooked ? 0 : i.use || 0));
+const nowQ = i => i.zero ? 0 : (cooked ? Math.max(0, i.q - (i.use || 0)) : i.q);
 function applyLevel(i) {
-  if (i.lv == null) return;
-  i.V = LV[i.lv]; i.low = i.lv <= 1; i.haveV = i.lv >= 2;
-  if (i.L) { i.pick = !i.haveV; i.vpick = false; } else i.vpick = i.low;
+  if (i.q == null) return;
+  const left = i.zero ? 0 : i.q - (i.use || 0);
+  i.low = left <= 2 && (i.zero || i.q <= 2 || left <= 0);
+  i.haveV = !i.zero && left >= 0 && i.q >= (i.use || 0);
+  i.V = i.zero ? "leer" : i.use && !cooked ? `noch ${i.q} → ${Math.max(0, i.q - i.use)}` : `noch ${nowQ(i)}`;
+  if (i.L) { i.pick = !i.haveV; i.vpick = false; } else if (i.vpick == null || i.zero) i.vpick = i.zero;
 }
 ALL.forEach(applyLevel);
 const $ = id => document.getElementById(id);
@@ -332,7 +349,8 @@ function counts() {
 }
 // Kaufen / Vorrat: wie v1.10 – eine Karte, Zeilen einzeln antippbar (nur vormerken)
 function renderList() {
-  const show = filter === "kaufen" ? toBuy : i => !!i.V;
+  if (filter === "vorrat") { $("list").innerHTML = vorratC(); return; }
+  const show = toBuy;
   let h = "";
   groups(ALL.filter(show)).forEach(([, l, d, t]) => {
     h += `<h3>${d ? `<span class="d">${d}</span>` : ""}${t}</h3>` + l.map(i => {
@@ -343,6 +361,15 @@ function renderList() {
     }).join("");
   });
   $("list").innerHTML = h || `<h3>Nichts</h3>`;
+}
+function vorratC() {
+  const v = ALL.filter(i => i.q != null);
+  const row = i => `<button type="button" class="item vrow${i.zero ? " zero" : ""}${i.low && !i.zero ? " low" : ""}" data-z="${i.n}"><span class="nm">${i.n}${i.why ? `<small>${i.why}</small>` : ""}</span><span class="amt">${i.zero ? "leer" : i.use && !cooked ? `noch ${i.q} → <b>${Math.max(0, i.q - i.use)}</b>` : `noch ${nowQ(i)}`} ${i.u}</span></button>`;
+  const used = v.filter(i => i.use), oft = v.filter(i => i.oft && !i.use), knapp = v.filter(i => !i.use && !i.oft);
+  return `<div class="vtop"><button type="button" class="sw" id="cookSw" role="switch" aria-checked="${cooked}"><i></i>Woche gekocht</button><small>${cooked ? "abgebucht – zurück = rückgängig" : "bucht ab, was die Woche braucht"}</small></div>`
+    + (used.length ? `<h3>Diese Woche gebraucht</h3>` + used.map(row).join("") : "")
+    + (oft.length ? `<h3>Geht oft aus – noch da?</h3>` + oft.map(row).join("") : "")
+    + (knapp.length ? `<h3>Sonst knapp</h3>` + knapp.map(row).join("") : "");
 }
 function levelRow(i) {
   return `<div class="item lvrow"><span class="nm">${i.n}${i.why ? `<small>${i.why}</small>` : ""}</span><span class="lv" role="group" aria-label="Stand ${i.n}">${LV.map((t, x) =>
@@ -386,7 +413,7 @@ const find = n => ALL.find(i => i.n === n);
 function tap(i, col) {
   if (!i) return;
   if (col === 1) { if (i.ok) return toast(`${i.n}: steht schon passend drauf`); i.pick = !i.pick; return toast(i.pick ? `▶ ${i.n} kommt auf Bring!` : `${i.n}: haben wir schon`); }
-  if (col === 3) { i.lv = i.lv === 0 ? 3 : i.lv - 1; applyLevel(i); return toast(`${i.n}: ${LV[i.lv]}${i.low ? " – kommt auf Bring!" : ""}`); }
+  if (col === 3) { if (i.zero || !i.L) { if (!i.L && !i.zero) { i.vpick = !i.vpick; return toast(i.vpick ? `◀ ${i.n} aus dem Vorrat auf Bring!` : `${i.n}: nicht auf Bring!`); } } i.zero = !i.zero; applyLevel(i); return toast(i.zero ? `${i.n}: im Vorrat leer` : `${i.n}: wieder da`); }
   // Mitte: an- und abwählen, was auf Bring! landet
   if (i.bot || i.del) { i.del = !i.del; return toast(i.del ? `${i.n}: kommt von Bring! weg` : `${i.n}: bleibt`); }
   if (i.vpick) { i.vpick = false; return toast(`${i.n}: nicht auf Bring!`); }
@@ -401,8 +428,9 @@ $("seg").addEventListener("click", e => {
 });
 $("sortsw").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (b) { sort = b.dataset.s; render(); } });
 $("list").addEventListener("click", e => {
-  const b = e.target.closest("[data-lv]");
-  if (b) { const i = find(b.dataset.n); i.lv = +b.dataset.lv; applyLevel(i); toast(`${i.n}: ${LV[i.lv]}${i.low ? (i.L ? " – kommt aus dem Plan auf Bring!" : " – ◀ für Bring! vorgemerkt") : ""}`); return render(); }
+  if (e.target.closest("#cookSw")) { cooked = !cooked; ALL.forEach(applyLevel); toast(cooked ? "Woche abgebucht" : "Abbuchen rückgängig"); return render(); }
+  const z = e.target.closest("[data-z]");
+  if (z) { const i = find(z.dataset.z); i.zero = !i.zero; applyLevel(i); toast(i.zero ? `${i.n}: im Vorrat leer${i.L ? " – kommt unter «Kaufen»" : " – ◀ für Bring! vorgemerkt"}` : `${i.n}: wieder da`); return render(); }
   const r = e.target.closest("[data-n]"); if (r && filter === "kaufen") { tap(find(r.dataset.n), 1); render(); }
 });
 $("cols").addEventListener("click", e => { const c = e.target.closest("[data-c]"); if (c) { tap(find(c.dataset.n), +c.dataset.c); render(); } });
