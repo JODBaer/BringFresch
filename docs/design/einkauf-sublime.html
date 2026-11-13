@@ -312,10 +312,34 @@ button { font: inherit; color: inherit; }
 .cell.r-add, .cell.r-chg, .cell.r-opt, .cell.r-del { background: none !important; }
 .cols .cell.c2 .a { display: block; margin-left: auto; text-align: right; font-size: 12px; }
 .cols .cell.c2.add .a { color: var(--add-bar) !important; } .cols .cell.c2.chg .a { color: var(--chg-bar) !important; } .cols .cell.c2.opt .a { color: var(--opt-bar) !important; } .cols .cell.c2.del .a { color: var(--del-bar) !important; }
+
+/* ---------- Farbvarianten für «Auf Bring!» (A–E), umschaltbar rechts ---------- */
+.vseg { display: flex; flex-wrap: wrap; gap: 6px; }
+.vseg button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.vseg button[aria-pressed="true"] { background: var(--fg); color: var(--s0); border-color: var(--fg); }
+/* A: schmaler Strich links + farbige Anmerkung (Grundzustand) */
+/* B: ganze Zeile hell eingefärbt */
+.vb .cell.r-add { background: var(--add-bg) !important; } .vb .cell.r-chg { background: var(--chg-bg) !important; }
+.vb .cell.r-opt { background: var(--opt-bg) !important; } .vb .cell.r-del { background: var(--del-bg) !important; }
+/* C: nur die mittlere Zelle eingefärbt, kein Strich */
+.vc .cell.c1[class*=" r-"] { box-shadow: none !important; }
+.vc .cell.c2.add { background: var(--add-bg) !important; } .vc .cell.c2.chg { background: var(--chg-bg) !important; }
+.vc .cell.c2.opt { background: var(--opt-bg) !important; } .vc .cell.c2.del { background: var(--del-bg) !important; }
+/* D: farbiger Punkt vor dem Namen in der Mitte, kein Strich */
+.vd .cell.c1[class*=" r-"] { box-shadow: none !important; }
+.vd .cell.c2 .n::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--same-bar); }
+.vd .cell.c2.none .n::before { content: none; }
+.vd .cell.c2.add .n::before { background: var(--add-bar); } .vd .cell.c2.chg .n::before { background: var(--chg-bar); }
+.vd .cell.c2.opt .n::before { background: var(--opt-bar); } .vd .cell.c2.del .n::before { background: var(--del-bar); }
+/* E: Anmerkung als farbiges Etikett (Pille) */
+.ve .cell.c1[class*=" r-"] { box-shadow: none !important; }
+.ve .cols .cell.c2 .a { border-radius: 999px; padding: 2px 8px; font-family: var(--font); font-weight: 700; font-size: 11px; background: var(--s2); color: var(--fg2) !important; }
+.ve .cols .cell.c2.add .a { background: var(--add-bar); color: #fff !important; } .ve .cols .cell.c2.chg .a { background: var(--chg-bar); color: #1d1600 !important; }
+.ve .cols .cell.c2.opt .a { background: var(--opt-bar); color: #fff !important; } .ve .cols .cell.c2.del .a { background: var(--del-bar); color: #fff !important; }
 </style>
 
 <div class="wrap">
-  <div class="phone" id="phone">
+  <div class="phone va" id="phone">
     <header class="appbar">
       <div class="t"><div class="sub">KW 46 · November</div><h1>Bring<span>Frisch</span></h1></div>
       <button class="ibtn" type="button" aria-label="Wochenwahl"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V9h14zm-7-8 1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z"/></svg></button>
@@ -353,6 +377,17 @@ button { font: inherit; color: inherit; }
 
   <aside class="side">
     <h1>Einkauf: drei Spalten wie Sublime Merge</h1>
+    <div class="box">
+      <h2>«Auf Bring!» – Farbvarianten</h2>
+      <div class="vseg" id="vseg" role="group" aria-label="Farbvariante">
+        <button type="button" data-v="va" aria-pressed="true">A · Strich</button>
+        <button type="button" data-v="vb" aria-pressed="false">B · ganze Zeile</button>
+        <button type="button" data-v="vc" aria-pressed="false">C · nur Mitte</button>
+        <button type="button" data-v="vd" aria-pressed="false">D · Punkt</button>
+        <button type="button" data-v="ve" aria-pressed="false">E · Etikett</button>
+      </div>
+      <p id="vtext">A · Strich: Zeile wie Kaufen, links ein schmaler Farbstrich, die Anmerkung in der Mitte farbig.</p>
+    </div>
     <p>Neu gestartet von der Einkauf-Seite in v1.10. «Kaufen» und «Vorrat» bleiben, wie sie sind. Der Reiter <b>«Auf Bring!»</b> zeigt alle Zutaten in drei Spalten nebeneinander – Kaufen | Auf Bring! | Vorrat –, nur die Namen, jede Zeile antippbar. Sortiert je nach Umschalter: nach Rezept oder nach Kategorie wie in Bring!.</p>
     <div class="box">
       <h2>So geht «Auf Bring!»</h2>
@@ -633,5 +668,20 @@ $("vPlus").onclick = () => setQ((vItem.zero ? 0 : vItem.q) + 1);
 $("vLv").addEventListener("click", e => { const b = e.target.closest("[data-lv]"); if (!b) return; const pk = vItem.pack; setQ([0, Math.max(1, Math.round(pk * .2)), Math.round(pk / 2), pk][+b.dataset.lv]); });
 $("vOk").onclick = closeV; $("scrim").onclick = closeV;
 $("vRm").onclick = () => { const n = vItem.n; closeV(); toast(`${n}: aus dem Grundvorrat genommen · Rückgängig`); };
+// Farbvarianten umschalten (A–E)
+const VTEXT = {
+  va: "A · Strich: Zeile wie Kaufen, links ein schmaler Farbstrich, die Anmerkung in der Mitte farbig.",
+  vb: "B · ganze Zeile: die ganze Zeile über alle drei Spalten hell in der Farbe der Änderung.",
+  vc: "C · nur Mitte: nur die Zelle in der Spalte «Auf Bring!» ist eingefärbt, links und rechts bleiben ruhig.",
+  vd: "D · Punkt: ein farbiger Punkt vor dem Namen in der Mitte, sonst wie die Kaufen-Liste.",
+  ve: "E · Etikett: die Anmerkung («neu · 400 g», «kommt weg» …) als farbige Pille rechts in der Mitte."
+};
+$("vseg").addEventListener("click", e => {
+  const b = e.target.closest("[data-v]"); if (!b) return;
+  const ph = $("phone"); ["va", "vb", "vc", "vd", "ve"].forEach(v => ph.classList.remove(v)); ph.classList.add(b.dataset.v);
+  document.querySelectorAll("#vseg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  $("vtext").textContent = VTEXT[b.dataset.v];
+  if (filter !== "bring") { filter = "bring"; render(); }
+});
 render();
 </script>
