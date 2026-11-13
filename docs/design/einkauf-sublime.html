@@ -295,6 +295,11 @@ button { font: inherit; color: inherit; }
 .cell.c1.have .n, .cell.c3 .n { text-decoration: none; color: var(--fg2); }
 
 .cell.full .w { white-space: normal; text-align: right; }
+
+.main { touch-action: pan-y pinch-zoom; }
+/* alle drei Reiter im Stil der Kaufen-Liste */
+.vrow .amt, .vrow.low .amt, .vrow.zero .amt { font-family: var(--mono); font-size: 13px; color: var(--muted); font-weight: 400; }
+.vrow .amt b { font-weight: 400; }
 </style>
 
 <div class="wrap">
@@ -538,6 +543,20 @@ $("seg").addEventListener("click", e => {
   filter = b.dataset.f; $("main").scrollTop = 0; render();
 });
 $("cookTop").addEventListener("click", e => { if (e.target.closest("#cookSw")) { cooked = !cooked; ALL.forEach(applyLevel); toast(cooked ? "Woche abgebucht" : "Abbuchen rückgängig"); render(); } });
+// Wischen nach links/rechts wechselt den Reiter: Kaufen ⇄ Auf Bring! ⇄ Vorrat (Kommentar 13.11.)
+(() => {
+  const order = ["kaufen", "bring", "vorrat"];
+  let x0 = null, y0 = null;
+  $("main").addEventListener("pointerdown", e => { x0 = e.clientX; y0 = e.clientY; });
+  $("main").addEventListener("pointerup", e => {
+    if (x0 == null) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const k = order.indexOf(filter) + (dx < 0 ? 1 : -1);
+    if (k < 0 || k > 2) return;
+    filter = order[k]; $("main").scrollTop = 0; render();
+  });
+})();
 $("sortsw").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (b) { sort = b.dataset.s; render(); } });
 $("list").addEventListener("click", e => {
   const z = e.target.closest("[data-z]");
