@@ -164,6 +164,33 @@ button { font: inherit; color: inherit; }
 .cell.add .n { color: var(--add-bar); font-weight: 600; } .cell.chg .n { color: var(--chg-bar); font-weight: 600; }
 .cell.opt .n { color: var(--opt-bar); font-weight: 600; } .cell.del .n { color: var(--del-bar); }
 .cell.add, .cell.chg, .cell.opt, .cell.del { background: none; }
+
+/* «Auf Bring!» richtig: Zeilen wie Kaufen, Spalten klar getrennt, Menge unter dem Namen */
+.phone.pruefen .seg button { font-size: 13.5px; padding: 11px 4px 9px; }
+.phone.pruefen .seg button + button { border-left: 1px solid var(--line); }
+.phone.pruefen .cols { background: var(--surface); }
+.cols .sec { padding: 14px 14px 6px; border-top: 1px solid var(--line); }
+.cols .sec:first-child { border-top: 0; }
+.cell { padding: 9px 10px; min-height: 52px; justify-content: center; gap: 1px; }
+.cell .n { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; hyphens: auto; font-size: 14px; line-height: 1.25; font-weight: 500; color: var(--fg); }
+.cell .a { font-size: 11.5px; white-space: normal; }
+.cell.c2 { border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.cell.none::after { content: "–"; color: var(--line); font-size: 18px; text-align: center; }
+.cell.c3.none::after { text-align: right; }
+.cell.c1.none::after { text-align: left; }
+.cell.pick { background: color-mix(in srgb, var(--add-bg) 55%, transparent); }
+.cell.pick .n { color: var(--fg); font-weight: 600; }
+.cell.pick .a { color: var(--add-bar); }
+.cell.have .n, .cell.have .a { color: var(--muted); }
+.cell.ok .a { color: var(--add-bar); }
+.cell.add { background: var(--add-bg); box-shadow: inset 3px 0 var(--add-bar); }
+.cell.chg { background: var(--chg-bg); box-shadow: inset 3px 0 var(--chg-bar); }
+.cell.opt { background: var(--opt-bg); box-shadow: inset 3px 0 var(--opt-bar); }
+.cell.del { background: var(--del-bg); box-shadow: inset 3px 0 var(--del-bar); }
+.cell.add .n, .cell.chg .n, .cell.opt .n { color: var(--fg); font-weight: 600; }
+.cell.add .a { color: var(--add-bar); } .cell.chg .a { color: var(--chg-bar); } .cell.opt .a { color: var(--opt-bar); } .cell.del .a, .cell.del .n { color: var(--del-bar); }
+.cell.c3.vpick { background: color-mix(in srgb, var(--opt-bg) 55%, transparent); }
+.cell.c3.vpick .n { color: var(--fg); font-weight: 600; }
 </style>
 
 <div class="wrap">
@@ -319,13 +346,14 @@ function renderCols() {
     h += `<div class="sec">${title}</div>`;
     items.forEach(i => {
       let L = `<div class="cell c1 none"></div>`;
-      if (i.L) L = i.ok ? `<div class="cell c1 ok" title="${i.L}"><span class="n">${i.n} ✓</span></div>`
-        : `<div class="cell c1${i.pick ? " pick" : " have"}" data-n="${i.n}" data-c="1" role="button" tabindex="0" title="${i.L}"><span class="n">${i.n}</span></div>`;
+      if (i.L) L = i.ok ? `<div class="cell c1 ok"><span class="n">${i.n}</span><span class="a">${i.L} ✓</span></div>`
+        : `<div class="cell c1${i.pick ? " pick" : " have"}" data-n="${i.n}" data-c="1" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.pick ? i.L : "haben wir"}</span></div>`;
       let M = `<div class="cell c2 none" data-n="${i.n}" data-c="2"></div>`, cls = "";
       const has = mid === "jetzt" ? !!i.M : !!(i.M || i.vpick || (i.pick && !i.ok));
       if (mid === "nachher") cls = i.del ? "del" : i.M && i.pick && !i.ok ? "chg" : i.M ? "" : i.vpick ? "opt" : i.pick ? "add" : "";
-      if (has) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0" title="${i.M || ""}${i.by ? " · " + i.by : ""}"><span class="n">${i.n}</span></div>`;
-      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0" title="${i.V}"><span class="n">${i.n}</span><span class="lvt">${i.V}</span></div>` : `<div class="cell c3 none"></div>`;
+      const amt = cls === "chg" ? `${i.M} + ${i.L}` : cls === "del" ? "kommt weg" : i.M ? `${i.M}${i.by ? " · " + i.by : ""}` : i.vpick ? "aus dem Vorrat" : i.L;
+      if (has) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}</span></div>`;
+      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a lvt">${i.V}</span></div>` : `<div class="cell c3 none"></div>`;
       h += L + M + R;
     });
   });
