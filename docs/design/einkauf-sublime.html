@@ -274,6 +274,14 @@ button { font: inherit; color: inherit; }
 .main { padding-top: 26px; }
 .topbtns { display: inline-flex; gap: 6px; text-transform: none; letter-spacing: 0; }
 .topbtns button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; color: var(--fg); cursor: pointer; }
+
+/* Ganze Zeile in der Farbe der Änderung auf Bring! (Kommentar 13.11.) */
+.cell.r-add { background: var(--add-bg) !important; } .cell.r-chg { background: var(--chg-bg) !important; }
+.cell.r-opt { background: var(--opt-bg) !important; } .cell.r-del { background: var(--del-bg) !important; }
+.cell.c1.r-add { box-shadow: inset 3px 0 var(--add-bar); } .cell.c1.r-chg { box-shadow: inset 3px 0 var(--chg-bar); }
+.cell.c1.r-opt { box-shadow: inset 3px 0 var(--opt-bar); } .cell.c1.r-del { box-shadow: inset 3px 0 var(--del-bar); }
+.cell.c2.r-add, .cell.c2.r-chg, .cell.c2.r-opt, .cell.c2.r-del { box-shadow: none; }
+.fab.undoing { background: var(--fg); color: var(--s0); }
 </style>
 
 <div class="wrap">
@@ -396,7 +404,7 @@ const $ = id => document.getElementById(id);
 let filter = "kaufen", mid = "nachher", sort = "rezept"; // Mitte zeigt immer den Stand nach dem Senden
 const KEYS = ["pick", "vpick", "del"];
 const snap = () => ALL.map(i => KEYS.map(k => !!i[k]));
-let start = null, sent = null; // Stand vor den Änderungen bzw. vor dem letzten Senden
+let start = null, sent = null; let undoLeft = 0, undoTimer = null; // Stand vor den Änderungen bzw. vor dem letzten Senden
 const toBuy = i => i.L && !i.ok && !i.haveV;
 const onBring = i => !!i.M;
 const changes = () => ALL.filter(i => (i.L && i.pick && !i.ok) || i.vpick || i.del);
@@ -413,7 +421,9 @@ function counts() {
   $("c3").textContent = ALL.filter(i => i.V).length;
   $("nZut").textContent = `${ALL.filter(i => i.L).length} Zutaten`;
   const n = changes().length;
-  $("fabL").textContent = filter === "bring" ? "Senden" : "Auf Bring!";
+  if (undoLeft > 0) { $("fabL").textContent = `Rückgängig · ${undoLeft}`; $("fabN").hidden = true; $("fab").disabled = false; $("fab").classList.add("undoing"); return; }
+  $("fab").classList.remove("undoing"); $("fabN").hidden = false;
+  $("fabL").textContent = filter === "bring" ? "Alles auf Bring!" : "Auf Bring!";
   $("fabN").textContent = n;
   $("fab").disabled = filter === "bring" && !n;
 }
@@ -460,7 +470,9 @@ function renderCols() {
       const amt = cls === "chg" ? `${i.M} + ${i.L}` : cls === "del" ? "kommt weg" : i.M ? `${i.M}${i.by ? " · " + i.by : ""}` : i.vpick ? "aus dem Vorrat" : i.L;
       if (has) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}</span></div>`;
       const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a lvt">${i.V}</span></div>` : `<div class="cell c3 none"></div>`;
-      h += L + M + R;
+      // Zeile über alle drei Spalten in der Farbe der Änderung auf Bring! (dazu, Menge dazu, aus dem Vorrat, weg)
+      const rc = has && cls ? ` r-${cls}` : "";
+      h += [L, M, R].map(c => c.replace(/^<div class="cell /, `<div class="cell${rc} `)).join("");
     });
   });
   $("cols").innerHTML = h;
@@ -469,8 +481,7 @@ function render() {
   counts();
   if (!start) start = snap();
   const dirty = JSON.stringify(snap()) !== JSON.stringify(start);
-  $("undo").hidden = filter !== "bring";
-  $("undo").disabled = !dirty && !sent;
+  $("undo").hidden = true; // Rückgängig steckt jetzt im Knopf unten rechts (10 Sekunden nach dem Senden)
   const p = $("phone"), was = p.classList.contains("pruefen");
   p.classList.toggle("pruefen", filter === "bring");
   if (filter === "bring") { renderCols(); if (!was) { p.classList.add("anim"); setTimeout(() => p.classList.remove("anim"), 600); } }
@@ -506,9 +517,25 @@ $("list").addEventListener("click", e => {
 $("cols").addEventListener("click", e => { const c = e.target.closest("[data-c]"); if (c) { tap(find(c.dataset.n), +c.dataset.c); render(); } });
 $("cols").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.c) { e.preventDefault(); e.target.click(); } });
 // ein Knopf: in Kaufen/Vorrat = zur Übersicht «Auf Bring!», dort = Senden
+// Nach «Alles auf Bring!» wird der Knopf 10 Sekunden lang zu «Rückgängig · 10 … 1»
 $("fab").onclick = () => {
+  if (undoLeft > 0) { // zurücknehmen
+    clearInterval(undoTimer); undoLeft = 0;
+    ALL.forEach((i, x) => { Object.keys(i).forEach(k => delete i[k]); Object.assign(i, sent[x]); });
+    sent = null; start = snap(); toast("Zurückgenommen – Bring! wieder wie vorher"); return render();
+  }
   if (filter !== "bring") { filter = "bring"; $("main").scrollTop = 0; return render(); }
-  const n = changes().length; sent = start; start = snap(); toast(`${n} Änderungen an Bring! gesendet`); render();
+  const n = changes().length; sent = ALL.map(i => JSON.parse(JSON.stringify(i)));
+  // gesendet: was dazukommt steht jetzt auf Bring!, Weggenommenes ist weg
+  ALL.forEach(i => {
+    if (i.del) { delete i.M; i.del = false; i.bot = false; }
+    else if (i.vpick) { i.M = "1 Pack"; i.vpick = false; i.bot = true; }
+    else if (i.L && i.pick && !i.ok) { i.M = i.M ? i.M + " + " + i.L : i.L; i.ok = true; i.bot = true; }
+  });
+  start = snap();
+  toast(`${n} Änderungen auf Bring!`);
+  undoLeft = 10; render();
+  undoTimer = setInterval(() => { undoLeft--; if (undoLeft <= 0) { clearInterval(undoTimer); sent = null; } render(); }, 1000);
 };
 // Rückgängig: zuerst die Auswahl seit dem Öffnen, nach dem Senden das Gesendete
 $("undo").onclick = () => {
