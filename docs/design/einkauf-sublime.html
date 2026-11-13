@@ -191,6 +191,15 @@ button { font: inherit; color: inherit; }
 .cell.add .a { color: var(--add-bar); } .cell.chg .a { color: var(--chg-bar); } .cell.opt .a { color: var(--opt-bar); } .cell.del .a, .cell.del .n { color: var(--del-bar); }
 .cell.c3.vpick { background: color-mix(in srgb, var(--opt-bg) 55%, transparent); }
 .cell.c3.vpick .n { color: var(--fg); font-weight: 600; }
+
+/* Reiter bleiben immer wie in v1.10 (Joshua 13.11.); bei «Auf Bring!» geht nur der Aktiv-Balken über alle drei */
+.phone.pruefen .main { gap: 10px; }
+.phone.pruefen .seg { border-radius: 18px; padding: 4px; gap: 0; border: 1px solid var(--line); position: static; }
+.phone.pruefen .seg button, .phone.pruefen .seg button[data-f="bring"] { background: var(--fg); color: var(--s0); border-radius: 0; border-left: 0; padding: 10px 4px; font-size: 14px; font-weight: 600; }
+.phone.pruefen .seg button:first-of-type { border-radius: 14px 0 0 14px; }
+.phone.pruefen .seg button:nth-of-type(3) { border-radius: 0 14px 14px 0; }
+.phone.pruefen .seg button b { display: inline; }
+.phone.pruefen .cols { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 </style>
 
 <div class="wrap">
