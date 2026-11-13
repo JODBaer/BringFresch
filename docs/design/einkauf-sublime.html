@@ -212,6 +212,39 @@ button { font: inherit; color: inherit; }
 .vrow.low .amt { color: var(--chg-bar); font-weight: 600; }
 .vrow.zero .nm { text-decoration: line-through; }
 .vrow.zero .amt { color: var(--primary); font-weight: 700; }
+
+/* «Auf Bring!» = Kaufen-Karte, nur dreispaltig (Kommentar 13.11.) */
+.cols .sec { padding: 14px 14px 4px; font-size: 14px; font-weight: 700; color: var(--fg); text-transform: none; letter-spacing: 0; border-top: 0; }
+.cols .sec .d { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+.cell { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 6px; row-gap: 0; padding: 9px 8px; min-height: 44px; }
+.cell.c1 { padding-left: 14px; } .cell.c3 { padding-right: 14px; }
+.cell .n { font-size: 15px; font-weight: 400; color: var(--fg); }
+.cell .a { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-left: auto; }
+.cell.c3 { align-items: baseline; text-align: left; }
+.cell.pick, .cell.c3.vpick { background: none; }
+.cell.pick .n, .cell.add .n, .cell.chg .n, .cell.opt .n, .cell.c3.vpick .n { font-weight: 400; }
+.cell.have .n { color: var(--muted); text-decoration: line-through; }
+.cell.none::after { content: ""; }
+/* Blatt zum Vorrat-Artikel (wie Grundvorrat-Entwurf C) */
+.scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .4); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 6; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.vsheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 28px 28px 0 0; padding: 8px 18px 24px; transform: translateY(105%); transition: transform .28s cubic-bezier(.2, 0, 0, 1); z-index: 7; display: flex; flex-direction: column; gap: 10px; }
+.vsheet.on { transform: none; }
+.vsheet .grab { width: 36px; height: 4px; border-radius: 4px; background: var(--line); margin: 2px auto 6px; }
+.vsh { display: flex; gap: 12px; align-items: center; }
+.vimg { width: 52px; height: 52px; border-radius: 14px; background: var(--pc); color: var(--on-pc); display: grid; place-items: center; font-size: 22px; font-weight: 700; flex: 0 0 auto; }
+.vsh h2 { margin: 0; font-size: 20px; } .vsh p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.qrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.qrow button { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--pc); color: var(--on-pc); font-size: 22px; font-weight: 700; cursor: pointer; }
+.qrow output { flex: 1; text-align: center; font-size: 18px; font-weight: 700; }
+.qbtns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.qbtns button { padding: 11px 2px; border-radius: 14px; border: 1px solid var(--line); background: none; font-weight: 600; font-size: 13px; cursor: pointer; }
+.qbtns button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: transparent; }
+.vfacts { margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
+.vacts { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.vacts button { border-radius: 999px; padding: 10px 16px; font-weight: 600; cursor: pointer; border: 0; }
+.vacts .rm { background: none; color: var(--del-bar); box-shadow: inset 0 0 0 1px currentColor; }
+.vacts .ok { background: var(--primary); color: var(--on-primary); }
 </style>
 
 <div class="wrap">
@@ -239,6 +272,15 @@ button { font: inherit; color: inherit; }
       <span><svg viewBox="0 0 24 24"><path d="M8.1 13.34 2.91 8.15a4 4 0 0 1 0-5.66l7.02 7.02zm6.78-1.81c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13z"/></svg></span>
       <span><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54a7.4 7.4 0 0 0-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.71 8.88a.49.49 0 0 0 .12.61l2.03 1.58a7.4 7.4 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.05.24.25.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54a7 7 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg></span>
     </nav>
+    <div class="scrim" id="scrim"></div>
+    <section class="vsheet" id="vsheet" role="dialog" aria-modal="true" aria-labelledby="vTitle">
+      <div class="grab"></div>
+      <div class="vsh"><span class="vimg" id="vImg"></span><div><h2 id="vTitle"></h2><p id="vSub"></p></div></div>
+      <div class="qrow"><button type="button" id="vMinus" aria-label="weniger">−</button><output id="vQty"></output><button type="button" id="vPlus" aria-label="mehr">+</button></div>
+      <div class="qbtns" id="vLv"><button type="button" data-lv="0">Leer</button><button type="button" data-lv="1">Fast leer</button><button type="button" data-lv="2">Halb</button><button type="button" data-lv="3">Voll</button></div>
+      <ul class="vfacts" id="vFacts"></ul>
+      <div class="vacts"><button type="button" class="rm" id="vRm">Aus dem Grundvorrat</button><button type="button" class="ok" id="vOk">Fertig</button></div>
+    </section>
     <div class="toast" id="toast"></div>
   </div>
 
@@ -270,7 +312,7 @@ button { font: inherit; color: inherit; }
     <div class="box">
       <h2>Für dich zum Entscheiden</h2>
       <p class="q"><b>1.</b> Mitte: immer «nach dem Senden», Umschalter weg (entschieden 13.11.).</p>
-      <p class="q"><b>2.</b> Reiter «Vorrat» wie im Grundvorrat-Entwurf C (so auch in der App): «Diese Woche gebraucht» (noch → danach), «Geht oft aus – noch da?», «Sonst knapp», Zeile antippen = leer, Schalter «Woche gekocht». Stufen Leer/Fast leer/Halb/Voll bleiben im Blatt unter «Grundvorrat verwalten».</p>
+      <p class="q"><b>2.</b> Reiter «Vorrat» wie im Grundvorrat-Entwurf C: «Diese Woche gebraucht» (noch → danach), «Geht oft aus – noch da?», «Sonst knapp», Schalter «Woche gekocht». Artikel antippen = sein Grundvorrat-Blatt (Menge − +, Leer / Fast leer / Halb / Voll).</p>
       <p class="q"><b>3.</b> Zeilen ohne Gegenstück zeigen ein schraffiertes Feld (wie in Sublime). Gut so, oder lieber leer?</p>
     </div>
   </aside>
@@ -285,24 +327,24 @@ const SECS = [
     { n: "Magronen / Teigwaren", k: "Getreide & Teigwaren", L: "400 g", pick: true },
     { n: "Reibkäse", k: "Milch & Käse", L: "180 g", pick: true },
     { n: "Äpfel", k: "Früchte & Gemüse", L: "4 Stk", M: "6 Stk", ok: true },
-    { n: "Zwiebeln", k: "Früchte & Gemüse", L: "2 Stk", q: 3, u: "Stk", use: 2 } ]],
+    { n: "Zwiebeln", k: "Früchte & Gemüse", L: "2 Stk", q: 3, u: "Stk", use: 2, pack: 6, size: "1 Netz = 6 Stk" } ]],
   ["DI", "Gnocchi mit Tomatensauce und Mozzarella", [
     { n: "Basilikum", k: "Früchte & Gemüse", L: "2 Bund", pick: true },
     { n: "Gnocchi", k: "Getreide & Teigwaren", L: "2 kg", pick: true },
     { n: "Mozzarella", k: "Milch & Käse", L: "500 g", pick: true },
-    { n: "Passata", k: "Fertig & Konserven", L: "7 dl", q: 1, u: "Stk", use: 1 } ]],
+    { n: "Passata", k: "Fertig & Konserven", L: "7 dl", q: 1, u: "Stk", use: 1, pack: 3, size: "1 Stk = 7 dl" } ]],
   ["DO", "Karotten mit Rindshuft", [
     { n: "Chilischote", k: "Früchte & Gemüse", L: "1 Stk", pick: true },
     { n: "Frühlingszwiebeln", k: "Früchte & Gemüse", L: "1 Bund", pick: true },
-    { n: "Kokosfett", k: "Zutaten & Gewürze", L: "1 EL", q: 8, u: "Znacht", use: 1 },
-    { n: "Maisstärke", k: "Zutaten & Gewürze", L: "1 TL", q: 6, u: "Znacht", use: 1 },
+    { n: "Kokosfett", k: "Zutaten & Gewürze", L: "1 EL", q: 8, u: "Znacht", use: 1, pack: 10, size: "1 Glas" },
+    { n: "Maisstärke", k: "Zutaten & Gewürze", L: "1 TL", q: 6, u: "Znacht", use: 1, pack: 10, size: "1 Pack = 250 g" },
     { n: "Rindshuft", k: "Fleisch & Fisch", L: "80 g", pick: true },
     { n: "Karotten", k: "Früchte & Gemüse", L: "600 g", M: "1 kg", ok: true } ]],
   ["", "Für mehrere Gerichte", [
     { n: "Nüsslisalat", k: "Früchte & Gemüse", L: "300 g · Mo Di Do", pick: true } ]],
   ["", "Nur Vorrat", [
-    { n: "Olivenöl", k: "Zutaten & Gewürze", q: 1, u: "Stk", use: 0 },
-    { n: "Reis", k: "Getreide & Teigwaren", q: 2, u: "Znacht", use: 0, oft: true, why: "erkannt: 3 von 4 Wochen leer" } ]],
+    { n: "Olivenöl", k: "Zutaten & Gewürze", q: 1, u: "Stk", use: 0, pack: 2, size: "1 Stk = 5 dl" },
+    { n: "Reis", k: "Getreide & Teigwaren", q: 2, u: "Znacht", use: 0, oft: true, pack: 6, size: "1 Pack = 1 kg", why: "erkannt: 3 von 4 Wochen leer" } ]],
   ["", "Nur auf Bring!", [
     { n: "Brot", k: "Brot & Gebäck", M: "1 Stk", bot: true, why: "vom Bot, kein Rezept mehr" },
     { n: "WC-Papier", k: "Haushalt", M: "1 Pack", by: "Jo" } ]]
@@ -378,8 +420,8 @@ function levelRow(i) {
 // Auf Bring!: alle Zutaten in drei Spalten (Kaufen | Auf Bring! | Vorrat), nur Namen, jede Zeile antippbar
 function renderCols() {
   let h = "";
-  groups(ALL).forEach(([title, items]) => {
-    h += `<div class="sec">${title}</div>`;
+  groups(ALL).forEach(([title, items, d, t]) => {
+    h += `<div class="sec">${d ? `<span class="d">${d}</span>` : ""}${t}</div>`;
     items.forEach(i => {
       let L = `<div class="cell c1 none"></div>`;
       if (i.L) L = i.ok ? `<div class="cell c1 ok"><span class="n">${i.n}</span><span class="a">${i.L} ✓</span></div>`
@@ -430,7 +472,7 @@ $("sortsw").addEventListener("click", e => { const b = e.target.closest("[data-s
 $("list").addEventListener("click", e => {
   if (e.target.closest("#cookSw")) { cooked = !cooked; ALL.forEach(applyLevel); toast(cooked ? "Woche abgebucht" : "Abbuchen rückgängig"); return render(); }
   const z = e.target.closest("[data-z]");
-  if (z) { const i = find(z.dataset.z); i.zero = !i.zero; applyLevel(i); toast(i.zero ? `${i.n}: im Vorrat leer${i.L ? " – kommt unter «Kaufen»" : " – ◀ für Bring! vorgemerkt"}` : `${i.n}: wieder da`); return render(); }
+  if (z) return openV(find(z.dataset.z));
   const r = e.target.closest("[data-n]"); if (r && filter === "kaufen") { tap(find(r.dataset.n), 1); render(); }
 });
 $("cols").addEventListener("click", e => { const c = e.target.closest("[data-c]"); if (c) { tap(find(c.dataset.n), +c.dataset.c); render(); } });
@@ -448,5 +490,24 @@ $("undo").onclick = () => {
   if (!dirty) { sent = null; start = snap(); toast("Gesendetes auf Bring! zurückgenommen"); } else toast("Auswahl zurückgesetzt");
   render();
 };
+// Blatt zum Vorrat-Artikel: Menge − +, Stufen Leer / Fast leer / Halb / Voll (wie Grundvorrat C)
+let vItem = null;
+const levelOf = i => { const q = i.zero ? 0 : i.q; return q <= 0 ? 0 : q <= Math.max(1, i.pack * .25) ? 1 : q < i.pack * .75 ? 2 : 3; };
+function fillV() {
+  const i = vItem; if (!i) return;
+  $("vImg").textContent = i.n[0]; $("vTitle").textContent = i.n;
+  $("vSub").textContent = `${i.k} · ${i.size}`;
+  $("vQty").textContent = i.zero || !i.q ? "leer" : `noch ${i.q} ${i.u}`;
+  document.querySelectorAll("#vLv button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.lv === levelOf(i))));
+  $("vFacts").innerHTML = [i.use ? `Diese Woche gebraucht: ${i.use} ${i.u}` : "", i.why || "", i.L ? `Für den Plan: ${i.L}` : "", "Im Vorrat seit Oktober 2026"].filter(Boolean).map(t => `<li>${t}</li>`).join("");
+}
+function openV(i) { vItem = i; fillV(); $("scrim").classList.add("on"); $("vsheet").classList.add("on"); }
+function closeV() { $("scrim").classList.remove("on"); $("vsheet").classList.remove("on"); vItem = null; render(); }
+function setQ(q) { const i = vItem; i.q = Math.max(0, q); i.zero = i.q === 0; applyLevel(i); fillV(); }
+$("vMinus").onclick = () => setQ((vItem.zero ? 0 : vItem.q) - 1);
+$("vPlus").onclick = () => setQ((vItem.zero ? 0 : vItem.q) + 1);
+$("vLv").addEventListener("click", e => { const b = e.target.closest("[data-lv]"); if (!b) return; const pk = vItem.pack; setQ([0, Math.max(1, Math.round(pk * .2)), Math.round(pk / 2), pk][+b.dataset.lv]); });
+$("vOk").onclick = closeV; $("scrim").onclick = closeV;
+$("vRm").onclick = () => { const n = vItem.n; closeV(); toast(`${n}: aus dem Grundvorrat genommen · Rückgängig`); };
 render();
 </script>
