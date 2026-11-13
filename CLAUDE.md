@@ -29,6 +29,7 @@ Ohne Worker: alles lokal, Bring! via Teilen/Kopieren.
 
 ## Fachregeln
 
+- **Einkauf/Vorrat-Reiter** (Entwurf `docs/design/einkauf-sublime.html`, Joshua 13.11.): Liste ohne Kasten, Reiter mit Trennstrichen, Umschalter **Rezept / Kategorie** (pro Handy `bringfrisch_shop_sort`, gilt für Kaufen und Vorrat), Wischen wechselt die Reiter. Vorrat: gleiche Abschnitte wie Kaufen, «Woche gekocht» oben in der Kopfzeile, **Zeile antippen = Blatt** (dort Leer · Fast leer · Halb · Voll). «Auf Bring!» noch im Entwurf.
 - **Einkauf nach Gericht** (nicht nach Abteilung): `groupByDish` in `core.js`, Gemeinsames unter «Für mehrere Gerichte». **Beliebtheit** = Stimmen der Wochenwahl dieser WG (Worker zählt nach jeder Stimme in `pop`, `GET /popular`), sortiert den Katalog. **Tauschen**: Menü-Blatt «Tauschen mit», `swapDishes` (Esser/Gäste/Puffer/Zeit bleiben am Tag).
 
 - **Nächste Woche** (ab Donnerstag): Chip «KW 47 →» in der Abschnittszeile bzw. Wischen; eigener Plan pro KW (`bringfrisch_next_plan`, Worker `/plan/:week`), `state.plan` ist immer die angezeigte Woche. Offene Tage (`empty: true`) kaufen nichts und stehen nicht im Kalender. Wochenwahl pro Woche gespeichert. Montag: geplante Woche wird zur laufenden.

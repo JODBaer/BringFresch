@@ -121,5 +121,11 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(list.map(r => r.id).join() === "c,a,b,x", `Sortierung: meiste Stimmen zuerst, dann Titel (${list.map(r => r.id)})`);
 }
 
+// Einkauf nach Kategorie wie in Bring!
+{
+  const g = C.groupByCategory([{ name: "Rahm", cat: "Milch & Käse" }, { name: "Lauch", cat: "Früchte & Gemüse" }, { name: "Butter", cat: "Milch & Käse" }, { name: "X" }]);
+  check(g.map(x => x.title).join("|") === "Früchte & Gemüse|Milch & Käse|Sonstiges" && g[1].items.map(i => i.name).join() === "Butter,Rahm" && g[0].cat, "nach Kategorie: Abteilungen und Artikel alphabetisch");
+}
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

@@ -573,6 +573,12 @@
     return out;
   }
 
+  // Einkauf nach Kategorie wie in Bring! (Abteilung des Artikels), Abteilungen und Artikel alphabetisch
+  function groupByCategory(items) {
+    const cats = [...new Set(items.map(it => it.cat || "Sonstiges"))].sort((a, b) => a.localeCompare(b, "de"));
+    return cats.map(c => ({ title: c, cat: true, items: items.filter(it => (it.cat || "Sonstiges") === c).sort((x, y) => x.name.localeCompare(y.name, "de")) }));
+  }
+
   // Beliebtheit (pro WG): Stimmen der Wochenwahl, gesammelt pro Woche { "2026-W46": { rezeptId: Anzahl } }
   function popularity(weeks) {
     const out = {};
@@ -583,7 +589,7 @@
     ((counts[b.id] || 0) - (counts[a.id] || 0)) || (inSeason(b, month) - inSeason(a, month)) || a.title.localeCompare(b.title, "de");
 
   root.BF_CORE = {
-    swapDishes, groupByDish, popularity, byPopularity,
+    swapDishes, groupByDish, groupByCategory, popularity, byPopularity,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
     effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, SEARCH_SITES, searchSite, searchHref, votersOf, ranking, assignDays,

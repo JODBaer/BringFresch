@@ -33,6 +33,7 @@
     MODE_KEY: "bf-mode",                           // Hell / Dunkel (auch in index.html gelesen)
     SHARED_RECIPES_KEY: "bringfrisch_shared_recipes", // Rezepte der anderen WGs (Zwischenspeicher von /recipes/shared, offline da)
     POPULAR_KEY: "bringfrisch_popular",            // Beliebtheit dieser WG (Zwischenspeicher von /popular: Stimmen pro Woche)
+    SHOP_SORT_KEY: "bringfrisch_shop_sort",        // Einkauf/Vorrat: "rezept" (nach Gericht) oder "kat" (nach Kategorie wie in Bring!)
     SEARCH_SITE_KEY: "bringfrisch_search_site"     // «Rezept suchen auf»: swissmilk | fooby | google
   };
   // Schlüssel mit Zusatz

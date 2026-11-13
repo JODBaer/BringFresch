@@ -123,11 +123,13 @@ check([3, 6].includes(sp[4].leftover_buffer) && !sp[0].eaters.includes("lukas") 
 const stA = JSON.parse(A.localStorage.getItem("bringfrisch_user_staples"));
 const mark = (w, re) => { const list = JSON.parse(w.localStorage.getItem("bringfrisch_user_staples")); return list.find(s => re.test(s.name)); };
 check(stA.length > 10, "Grundvorrat vorhanden");
-// «leer» melden wie beim Einkauf: Bereich «Vorrat», Zeile antippen (Variante C)
+// «leer» melden wie beim Einkauf: Bereich «Vorrat», Zeile antippen = Blatt, dort «Leer»
 const leer = (w, name) => {
   w.document.querySelector('#tab-shop .seg [data-filter="staples"]').click();
   w.document.getElementById("vAll").open = true;
-  [...w.document.querySelectorAll("#shopList [data-vleer]")].find(r => r.querySelector(".l").textContent.trim() === name).click();
+  [...w.document.querySelectorAll("#shopList [data-vleer]")].find(r => r.querySelector(".l").textContent.trim() === name).click(); // Blatt
+  w.document.querySelector('#vBody [data-v="set"][data-n="0"]').click(); // «Leer»
+  w.document.getElementById("stapleItemDialog").close();
 };
 for (const [w, name] of [[A, "Olivenöl"], [B, "Zucker"]]) leer(w, name);
 await wait(2600);

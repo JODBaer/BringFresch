@@ -601,6 +601,20 @@ await step(A, "Einkauf: Abschnitte Kaufen/Auf Bring!/Vorrat, Liste kopieren", as
   expect((await clip(A)).split("\n").length === parseInt(t, 10), "kopierte Zeilen ≠ Anzahl");
 });
 
+await step(A, "Einkauf: Umschalter Rezept / Kategorie (Kaufen und Vorrat), Liste ohne Kasten", async () => {
+  await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
+  expect(await A.page.$eval("#shopList", e => getComputedStyle(e).borderTopWidth === "0px"), "Liste hat noch einen Kasten");
+  await tap(A, '#shopSort [data-sort="kat"]');
+  await until(A, () => [...document.querySelectorAll("#shopList .aisle h3")].some(h => /Gemüse|Milch|Käse/.test(h.textContent)), "nach Kategorie: keine Bring!-Abteilungen");
+  expect(JSON.parse(await A.page.evaluate(() => localStorage.getItem("bringfrisch_shop_sort"))) === "kat", "Sortierung nicht gemerkt");
+  await tap(A, '#tab-shop .seg [data-filter="staples"]');
+  await until(A, () => document.querySelector("#shopList .vsec.kat") || document.querySelector("#shopList .vnone"), "Vorrat nicht nach Kategorie");
+  await shot(A, "08a-einkauf-kategorie");
+  await tap(A, '#shopSort [data-sort="rezept"]');
+  await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
+  await until(A, () => document.querySelector("#shopList .aisle.dish h3 .dd-day"), "zurück nach Rezept klappt nicht");
+});
+
 await step(A, "Einkauf ohne WG-Server: Zeile antippen = Hinweis", async () => {
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await clearToasts(A);
@@ -610,16 +624,21 @@ await step(A, "Einkauf ohne WG-Server: Zeile antippen = Hinweis", async () => {
 });
 
 let leerIdx = "", leerName = "";
-await step(A, "Einkauf «Vorrat»: Zeile antippen = leer (nichts geht auf Bring!), steht unter «Kaufen» als knapp, Leiste «Für Bring!»", async () => {
+// Vorrat-Zeile antippen öffnet das Blatt zum Artikel; dort «Leer» (erste Stufe) oder «Voll» (letzte Stufe), dann zu
+async function setLevel(P, sel, which) {
+  await tap(P, sel);
+  await until(P, () => document.getElementById("stapleItemDialog").open, "Blatt zum Artikel geht nicht auf");
+  await tap(P, which === "leer" ? '#vBody [data-v="set"]:first-child' : '#vBody [data-v="set"]:last-child');
+  await closeDialog(P, "stapleItemDialog");
+}
+await step(A, "Einkauf «Vorrat»: Zeile antippen = Blatt, dort «Leer» (nichts geht auf Bring!), steht unter «Kaufen» als knapp, Leiste «Für Bring!»", async () => {
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   await until(A, () => document.getElementById("cookSw") && document.getElementById("vorratTray").hidden, "Vorrat-Liste fehlt / Leiste schon da");
   await tap(A, "#vAll summary");
   await until(A, () => document.getElementById("vAll").open, "«Alles da» geht nicht auf");
   leerIdx = await A.page.$eval("#vAll [data-vleer]", b => b.dataset.vleer);
   leerName = await A.page.$eval(`#vAll [data-vleer="${leerIdx}"] .l`, e => e.textContent.trim());
-  await clearToasts(A);
-  await tap(A, `#vAll [data-vleer="${leerIdx}"]`);
-  await toastIs(A, /leer – kommt mit «Prüfen» auf Bring!/);
+  await setLevel(A, `#vAll [data-vleer="${leerIdx}"]`, "leer");
   await until(A, i => { const r = document.querySelector(`#shopList .vsec [data-vleer="${i}"]`); return r && r.getAttribute("aria-pressed") === "true" && r.classList.contains("zero"); }, "Zeile nicht leer / nicht unter «Sonst knapp»", leerIdx);
   await until(A, n => !document.getElementById("vorratTray").hidden && document.getElementById("vorratTray").textContent.includes(n), "Leiste «Für Bring!» fehlt", leerName);
   expect((await ls(A, "bringfrisch_user_staples"))[+leerIdx].in_stock === false, "leer nicht gespeichert");
@@ -641,7 +660,8 @@ await step(A, "Schalter «Woche gekocht»: bucht ab, was der Plan braucht; zurü
   await clearToasts(A);
   await tap(A, "#cookSw");
   await toastIs(A, /Woche gekocht: \d+ Artikel abgebucht/);
-  await until(A, () => document.getElementById("cookSw").getAttribute("aria-checked") === "true" && /abgebucht/.test(document.querySelector(".vsec.woche h3").textContent), "Schalter nicht an");
+  await until(A, () => document.getElementById("cookSw").getAttribute("aria-checked") === "true" && /abgebucht/.test(document.querySelector("#shopList .vfoot").textContent), "Schalter nicht an");
+  expect(await A.page.$eval("#cookSw", b => !!b.closest(".shophead")), "«Woche gekocht» steht nicht oben in der Kopfzeile");
   expect((await ls(A, "bringfrisch_user_staples")).some(s => s.booked), "nichts abgebucht");
   await clearToasts(A);
   await tap(A, "#cookSw");
@@ -669,8 +689,8 @@ await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wähl
   expect((await clip(A)).includes(leerName) && (await clip(A)).split("\n").length === n0, "kopierte Liste falsch");
   await until(A, () => !document.getElementById("compareDialog").open, "Gegenüberstellung bleibt offen");
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
-  await tap(A, `#shopList .vsec [data-vleer="${leerIdx}"]`);
-  await until(A, () => document.getElementById("vorratTray").hidden, "nach «wieder da» noch knapp");
+  await setLevel(A, `#shopList .vsec [data-vleer="${leerIdx}"]`, "voll");
+  await until(A, () => document.getElementById("vorratTray").hidden, "nach «Voll» noch knapp");
 });
 
 await step(A, "Grundvorrat (ohne Server): Kacheln, Blatt (Menge, Leer…Voll, Einheit), lange drücken = − + und ✕ mit Rückgängig, Dringend, hinzufügen mit Vorschlag, Inventur", async () => {
@@ -1264,7 +1284,7 @@ await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegen�
     return free[0].dataset.vleer;
   });
   const before = wgNames();
-  await tap(B, `#vAll [data-vleer="${idx}"]`);
+  await setLevel(B, `#vAll [data-vleer="${idx}"]`, "leer");
   await until(B, i => { const r = document.querySelector(`#shopList .vsec [data-vleer="${i}"]`); return r && r.getAttribute("aria-pressed") === "true"; }, "nicht leer gemeldet", idx);
   await sleep(300);
   expect(wgNames().join() === before.join(), "«leer» hat schon etwas auf Bring! gesetzt");

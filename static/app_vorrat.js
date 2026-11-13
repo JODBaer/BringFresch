@@ -7,7 +7,7 @@
   const app = window.BF_APP;
   if (!app) return;
   const { CORE, MONTHS, cleanIngredient, hasWord, bringItemId, bringPayload, weekKey, state, saveStaples, $, esc, toast,
-    copyText, refresh } = app;
+    copyText, refresh, DAYS, STORE, load } = app;
   const { vUnit, vPack, vQty, knappAb, isKnapp, setQty, stapleUse, isBooked, bookWeek, unbookWeek, emptyWeeks, oftLeer,
     monthsSince, isOld, qtyText, packText, qtyLevels, bringSuggest, normName } = CORE;
 
@@ -45,7 +45,7 @@
   function vrow(i, extra = "") {
     const st = state.staples[i], q = vQty(st), use = useOf(st);
     const cls = q === 0 ? " zero" : isKnapp(st) ? " low" : "";
-    return `<button type="button" class="vrow${cls}" data-vleer="${i}" aria-pressed="${q === 0}" aria-label="${esc(label(st))}, ${esc(qtyText(st, q, true))}. Antippen = leer">
+    return `<button type="button" class="vrow${cls}" data-vleer="${i}" aria-pressed="${q === 0}" aria-label="${esc(label(st))}, ${esc(qtyText(st, q, true))}. Antippen = Blatt zum Artikel">
       <span class="l">${esc(label(st))}${onBringSt(st) ? " " + cart : ""}</span>
       <span class="r">${q === 0 ? "leer" : esc(qtyText(st) + useText(st, use))}${extra ? `<small>${esc(extra)}</small>` : ""}</span></button>`;
   }
@@ -61,21 +61,44 @@
     return { week, oft, low, rest: idx.filter(i => !shown.has(i)) };
   }
   let allOpen = false;
+  // «Woche gekocht» steht oben in der Kopfzeile (nur im Reiter «Vorrat»)
+  function cookSwHtml() {
+    const booked = isBooked(state.staples, app.shownWeek());
+    return `<button type="button" class="vsw" role="switch" id="cookSw" aria-checked="${booked}"><i></i><span>Woche gekocht</span></button>`;
+  }
+  // Gerichte der angezeigten Woche, die einen Vorrat-Artikel brauchen
+  const dishesOf = st => state.plan.filter(d => d && !d.empty && stapleUse(st, [d]) > 0).map(d => d.title).filter((t, k, a) => a.indexOf(t) === k);
+  // Vorrat-Liste mit denselben Abschnitten wie «Kaufen»: nach Rezept (Gerichte des Plans) oder nach Kategorie (wie in Bring!)
   function vorratShopHtml() {
     const g = vorratGroups();
     const booked = isBooked(state.staples, app.shownWeek());
-    const sec = (cls, title, hint, list, none, extra) => `<section class="vsec ${cls}"><h3><span>${esc(title)}</span><small>${list.length}${hint ? " · " + esc(hint) : ""}</small></h3>
-      ${list.length ? list.map(i => vrow(i, extra ? extra(state.staples[i]) : "")).join("") : `<p class="vnone">${esc(none)}</p>`}</section>`;
     const seen = st => (!st.weekly && emptyWeeks(st, thisWeek()) >= 3 ? `erkannt: ${emptyWeeks(st, thisWeek())} von 4 Wochen leer` : "");
+    const extra = i => (g.oft.includes(i) ? seen(state.staples[i]) || "geht oft aus" : "");
+    const sec = (cls, head, list) => `<section class="vsec ${cls}"><h3><span>${head}</span></h3>${list.map(i => vrow(i, extra(i))).join("")}</section>`;
+    const shown = [...g.week, ...g.oft, ...g.low];
+    let html = "";
+    if (load(STORE.KEYS.SHOP_SORT_KEY, "rezept") === "kat") {
+      const cats = [...new Set(shown.map(i => sectionOf(state.staples[i])))].sort((a, b) => a.localeCompare(b, "de"));
+      html = cats.map(c => sec("kat", esc(c), shown.filter(i => sectionOf(state.staples[i]) === c).sort((a, b) => label(state.staples[a]).localeCompare(label(state.staples[b]), "de")))).join("");
+    } else {
+      const titles = [];
+      state.plan.forEach(d => { if (d && d.title && !d.empty && !titles.includes(d.title)) titles.push(d.title); });
+      const of = new Map(g.week.map(i => [i, dishesOf(state.staples[i])]));
+      const daysOf = t => state.plan.map((d, k) => (d && d.title === t && !d.empty ? DAYS[k].slice(0, 2) : "")).filter(Boolean).join(", ");
+      titles.forEach(t => {
+        const list = g.week.filter(i => (of.get(i) || []).length === 1 && of.get(i)[0] === t);
+        if (list.length) html += sec("woche dish", `<span class="dd-day">${esc(daysOf(t))}</span> ${esc(t)}`, list);
+      });
+      const several = g.week.filter(i => (of.get(i) || []).length > 1);
+      if (several.length) html += sec("woche dish", "Für mehrere Gerichte", several);
+      const rest = [...g.oft, ...g.low];
+      if (rest.length) html += sec("low dish", "Knapp oder geht oft aus", rest);
+    }
+    if (!shown.length) html = `<p class="vnone">Der Plan braucht nichts aus dem Vorrat, nichts ist knapp.</p>`;
     return {
-      count: g.week.length + g.oft.length + g.low.length,
-      html: `<div class="vbar"><button type="button" class="vsw" role="switch" id="cookSw" aria-checked="${booked}"><i></i><span>Woche gekocht</span></button>
-          <span class="hint">Bucht ab, was der Plan aus dem Vorrat braucht.</span></div>
-        ${sec("woche", "Diese Woche gebraucht", booked ? "abgebucht" : "noch da → danach", g.week, "Der Plan braucht nichts aus dem Vorrat.")}
-        ${sec("oft", "Geht oft aus – noch da?", "", g.oft, "Keine Vorschläge.", seen)}
-        ${sec("low", "Sonst knapp", "", g.low, "Nichts knapp.")}
-        <details class="vall" id="vAll"${allOpen ? " open" : ""}><summary>Alles da <small>${g.rest.length}</small></summary>${g.rest.map(i => vrow(i)).join("")}</details>
-        <p class="hint vfoot">Zeile antippen = im Vorrat leer, nochmals = wieder da.</p>`
+      count: shown.length,
+      html: html + `<details class="vall" id="vAll"${allOpen ? " open" : ""}><summary>Alles da <small>${g.rest.length}</small></summary>${g.rest.map(i => vrow(i)).join("")}</details>
+        <p class="hint vfoot">${booked ? "Woche abgebucht. " : ""}Zeile antippen = Blatt zum Artikel (Menge, Leer · Fast leer · Halb · Voll).</p>`
     };
   }
   // Kaufen: knapper Vorrat (noch nicht auf Bring!) – antippen = Blatt zum Artikel
@@ -120,11 +143,10 @@
     refresh();
   }
 
+  $("shopTool").addEventListener("click", e => { if (e.target.closest("#cookSw")) cookToggle(); });
   $("shopList").addEventListener("click", e => {
-    const sw = e.target.closest("#cookSw");
-    if (sw) return cookToggle();
     const v = e.target.closest("[data-vleer]");
-    if (v) return toggleLeer(+v.dataset.vleer);
+    if (v) return openItem(+v.dataset.vleer); // Zeile antippen = Blatt zum Artikel (dort Leer · Fast leer · Halb · Voll)
     const it = e.target.closest("[data-vitem]");
     if (it) return openItem(+it.dataset.vitem);
   });
@@ -495,6 +517,6 @@
     return state.staples.find(st => (st.keywords || [st.name.toLowerCase()]).some(k => hasWord(lower, k)));
   }
 
-  Object.assign(app, { stapleTarget, onBringNow, toggleOnBring, stapleFor, vorratShopHtml, knappShopHtml, renderTray,
+  Object.assign(app, { stapleTarget, onBringNow, toggleOnBring, stapleFor, vorratShopHtml, knappShopHtml, renderTray, cookSwHtml, toggleLeer,
     renderStaples, openItem, openCompare, nowYm });
 })();

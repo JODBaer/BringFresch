@@ -52,7 +52,8 @@
 
     <!-- 2. Einkauf -->
     <section class="tab" id="tab-shop" hidden>
-      <div class="label shophead"><span>Einkaufsliste <small id="shopSummary"></small></span>
+      <div class="label shophead"><span id="shopTool"></span><small id="shopSummary"></small>
+        <span class="sortsw" id="shopSort" role="group" aria-label="Sortieren"><button type="button" data-sort="rezept" aria-pressed="true">Rezept</button><button type="button" data-sort="kat" aria-pressed="false">Kategorie</button></span>
         <button type="button" class="cmpchip" id="compareBtn" aria-label="Auf Bring! setzen: Gegenüberstellung Kaufen und Vorrat"><span aria-hidden="true">🛒</span> <span id="cmpCount">0</span></button></div>
       <div class="card seg" role="group" aria-label="Filter">
         <button type="button" data-filter="toBuy" aria-pressed="true">Kaufen <span id="cntToBuy">0</span></button>

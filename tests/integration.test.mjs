@@ -215,9 +215,12 @@ await wait(100);
 const vrowOf = name => [...A2.document.querySelectorAll("#shopList [data-vleer]")].find(r => r.querySelector(".l").textContent.trim() === name);
 A2.document.getElementById("vAll").open = true;
 const nBring = bringList.length;
-vrowOf("Olivenöl").click();
+vrowOf("Olivenöl").click(); // Zeile antippen = Blatt zum Artikel, dort «Leer»
+check(A2.document.getElementById("stapleItemDialog").open, "Vorrat: Zeile antippen öffnet das Blatt zum Artikel");
+A2.document.querySelector('#vBody [data-v="set"][data-n="0"]').click();
+A2.document.getElementById("stapleItemDialog").close();
 await wait(300);
-check(vrowOf("Olivenöl").getAttribute("aria-pressed") === "true" && bringList.length === nBring, "Vorrat: Olivenöl antippen = leer (durchgestrichen), Bring! bleibt unberührt");
+check(vrowOf("Olivenöl").getAttribute("aria-pressed") === "true" && bringList.length === nBring, "Vorrat: im Blatt «Leer» = leer (durchgestrichen), Bring! bleibt unberührt");
 check(!A2.document.getElementById("vorratTray").hidden && /Olivenöl/.test(A2.document.getElementById("vorratTray").textContent), "Leiste «Für Bring!» zeigt Olivenöl");
 A2.document.getElementById("trayCheckBtn").click();
 await wait(100);
@@ -236,7 +239,9 @@ check(/~10 Znacht/.test(tile("Olivenöl").textContent) && !tile("Olivenöl").cla
 A2.document.getElementById("staplesDialog").close();
 
 // Grundvorrat gilt für die ganze WG: Handy B sieht, was Handy A als leer gemeldet hat
-vrowOf("Olivenöl").click();
+vrowOf("Olivenöl").click(); // Blatt
+A2.document.querySelector('#vBody [data-v="set"][data-n="0"]').click(); // «Leer»
+A2.document.getElementById("stapleItemDialog").close();
 await wait(1500); // Vorrat wird nach 0.8 s an den Server geschickt
 const B2 = phone("jo");
 await wait(500);

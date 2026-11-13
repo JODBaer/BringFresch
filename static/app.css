@@ -810,3 +810,22 @@ button, a, label, summary, [role="button"], .item, .btile, .qt, .vrow, .dchip { 
 /* «Suchen auf Swissmilk ▾» – Vermerk zum Umschalten wie die Suchmaschine im Browser */
 .search-site { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted, inherit); margin: 6px 0; }
 .search-site select { width: auto; padding: 4px 8px; font-size: 13px; border-radius: 999px; }
+
+/* ---------------------------------------------------------------------------
+   Einkauf: Kaufen + Vorrat nach Entwurf docs/design/einkauf-sublime.html (Joshua 13.11.2026)
+   Liste ohne Kasten, Reiter mit Trennstrichen und runder Pille, Umschalter Rezept / Kategorie, «Woche gekocht» oben
+   --------------------------------------------------------------------------- */
+#tab-shop #shopList { background: none; border: 0; box-shadow: none; border-radius: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+#tab-shop .seg { gap: 0; }
+#tab-shop .seg button + button { border-left: 1px solid var(--line); border-radius: 0; }
+#tab-shop .seg button[aria-pressed="true"], #tab-shop .seg button + button[aria-pressed="true"] { border-radius: 10px; border-left-color: transparent; }
+#tab-shop .seg button[aria-pressed="true"] + button { border-left-color: transparent; }
+.shophead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 40px; }
+#shopTool:empty { display: none; }
+#shopTool .vsw { text-transform: none; letter-spacing: 0; }
+.sortsw { margin-left: auto; display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; border: 1px solid var(--line); text-transform: none; letter-spacing: 0; }
+.sortsw button { border: 0; background: none; color: var(--muted); border-radius: 999px; padding: 4px 10px; font: 600 12px var(--font); cursor: pointer; min-height: 28px; }
+.sortsw button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.vsec.dish h3, .vsec.kat h3 { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--fg); justify-content: flex-start; }
+.vsec.dish h3 .dd-day { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-right: 4px; }
+.vrow .r small { color: var(--warn); }
