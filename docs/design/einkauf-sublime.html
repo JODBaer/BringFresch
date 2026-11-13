@@ -341,6 +341,9 @@ button { font: inherit; color: inherit; }
 .phone.pruefen .seg { position: relative; gap: 0; }
 .phone.pruefen .seg::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 8.33%; right: 8.33%; border-radius: 999px; background: var(--fg); z-index: 0; }
 .phone.pruefen .seg button[data-f], .phone.pruefen .seg button[data-f] + button[data-f] { position: relative; z-index: 1; background: none !important; color: var(--s0) !important; border-radius: 0; border-left: 0; }
+
+.cell.c3.vfrom .n { color: var(--opt-bar); }
+.cell.c3 { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 </style>
 
 <div class="wrap">
@@ -546,6 +549,13 @@ function renderCols() {
         h += `<div class="cell full${c ? " r-" + c : ""}" data-n="${i.n}" data-c="2"><span class="n">${i.n}</span><span class="w">${txt}</span></div>`;
         return;
       }
+      // In «Kaufen» weggenommen (haben wir) = hier auch weg; deckt der Vorrat es, steht es rechts im Vorrat
+      const gone = i.L && !i.pick && !i.ok && !i.M;
+      if (gone && !i.fromV && i.q == null) return;
+      if (gone) {
+        h += `<div class="cell c1 none"></div><div class="cell c2 none" data-n="${i.n}" data-c="2"></div><div class="cell c3 vfrom" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a lvt">${i.V || "aus dem Vorrat"}</span></div>`;
+        return;
+      }
       let L = `<div class="cell c1 none"></div>`;
       if (i.L) L = i.ok ? `<div class="cell c1 ok"><span class="n">${i.n}</span><span class="a">${i.L} ✓</span></div>`
         : `<div class="cell c1${i.pick ? " pick" : " have"}" data-n="${i.n}" data-c="1" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.pick ? i.L : "haben wir"}</span></div>`;
@@ -555,7 +565,7 @@ function renderCols() {
       // Anmerkung rechts in der Mitte: was dazukommt und was schon drauf ist
       const amt = cls === "chg" ? `schon ${i.M} + ${i.L}` : cls === "del" ? "kommt weg" : i.M ? `schon drauf · ${i.M}` : i.vpick ? "neu · aus Vorrat" : `neu · ${i.L}`;
       if (has) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}</span></div>`;
-      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a lvt">${i.V}</span></div>` : `<div class="cell c3 none"></div>`;
+      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a lvt">${i.V}</span></div>` : `<div class="cell c3 none" data-n="${i.n}" data-hold="v"></div>`;
       // Zeile über alle drei Spalten in der Farbe der Änderung auf Bring! (dazu, Menge dazu, aus dem Vorrat, weg)
       const rc = has && cls ? ` r-${cls}` : "";
       h += [L, M, R].map(c => c.replace(/^<div class="cell /, `<div class="cell${rc} `)).join("");
@@ -618,9 +628,24 @@ $("list").addEventListener("click", e => {
 });
 // Antippen: umschalten wie vorher, dazu 4 Sekunden das Detail über die ganze Zeile
 let flash = null, flashT = null;
+// Lange drücken in der Vorrat-Spalte = Zutat kommt aus dem Vorrat (nicht kaufen), steht dann rechts
+let holdT = null, held = false;
+$("cols").addEventListener("pointerdown", e => {
+  const c = e.target.closest(".cell.c3[data-n]"); if (!c) return;
+  held = false; clearTimeout(holdT);
+  holdT = setTimeout(() => {
+    const i = find(c.dataset.n); if (!i || !i.L) return;
+    held = true; i.pick = false; i.fromV = true; toast(`${i.n}: aus dem Vorrat – nicht kaufen`); render();
+  }, 550);
+});
+["pointerup", "pointercancel", "pointerleave"].forEach(t => $("cols").addEventListener(t, () => clearTimeout(holdT)));
+$("cols").addEventListener("contextmenu", e => { if (e.target.closest(".cell.c3")) e.preventDefault(); });
 $("cols").addEventListener("click", e => {
+  if (held) { held = false; return; }
   const c = e.target.closest("[data-c]"); if (!c) return;
-  const i = find(c.dataset.n); tap(i, +c.dataset.c);
+  const i = find(c.dataset.n);
+  if (c.classList.contains("vfrom")) { i.pick = true; i.fromV = false; toast(`${i.n}: doch kaufen`); render(); return; }
+  tap(i, +c.dataset.c);
   flash = { n: i.n }; clearTimeout(flashT); flashT = setTimeout(() => { flash = null; render(); }, 4000);
   render();
 });
