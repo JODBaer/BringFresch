@@ -1,0 +1,322 @@
+<title>Einkauf Drei Spalten</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: links das Handy wie BringFrisch v1.10 (Einkauf, Android-Stil), rechts Erklärung. «Prüfen» macht aus den drei Reitern drei echte Spalten. */
+:root {
+  /* Farben der App (Material 3, hell) */
+  --s0: #f8fcf4; --s2: #eaf4e1; --s4: #d9e9cd; --fg: #172116; --fg2: #47573f; --outline: #c6d8ba;
+  --primary: #568f56; --on-primary: #ffffff; --pc: #c8f6c8; --on-pc: #1d301d; --brand: #3f7a3f;
+  --surface: #fbfef8; --muted: #5b6a54; --line: #dbe7d0; --page: #eef3e9; --focus: #1a73e8;
+  /* Vergleich (aus dem letzten Entwurf übernommen) */
+  --add-bg: #dff5d2; --add-bar: #4f9a2f; --chg-bg: #fff1c7; --chg-bar: #c48a00;
+  --opt-bg: #e8eefc; --opt-bar: #5a7bd6; --del-bg: #fbe1dd; --del-bar: #c4473a; --same-bar: #b9c6b1;
+  --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --s0: #101510; --s2: #1c261b; --s4: #2f3c2d; --fg: #e2ecdc; --fg2: #b7c8ad; --outline: #3d4f3a;
+  --primary: #90ee90; --on-primary: #1d301d; --pc: #3a5f3a; --on-pc: #c8f6c8; --brand: #90ee90;
+  --surface: #172017; --muted: #a9b9a0; --line: #2a3628; --page: #0b0f0b; --focus: #8ab4ff;
+  --add-bg: #1f3a18; --add-bar: #7fd35a; --chg-bg: #3b3115; --chg-bar: #f0bf4a;
+  --opt-bg: #1d2740; --opt-bar: #8eaaf5; --del-bg: #3d1d19; --del-bar: #f08a7e; --same-bar: #4a5a45;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --s0: #101510; --s2: #1c261b; --s4: #2f3c2d; --fg: #e2ecdc; --fg2: #b7c8ad; --outline: #3d4f3a;
+  --primary: #90ee90; --on-primary: #1d301d; --pc: #3a5f3a; --on-pc: #c8f6c8; --brand: #90ee90;
+  --surface: #172017; --muted: #a9b9a0; --line: #2a3628; --page: #0b0f0b; --focus: #8ab4ff;
+  --add-bg: #1f3a18; --add-bar: #7fd35a; --chg-bg: #3b3115; --chg-bar: #f0bf4a;
+  --opt-bg: #1d2740; --opt-bar: #8eaaf5; --del-bg: #3d1d19; --del-bar: #f08a7e; --same-bar: #4a5a45;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.35; overflow-x: hidden; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Handy (v1.10) ---------- */
+.phone { width: 100%; max-width: 400px; height: 800px; justify-self: center; position: relative; overflow: hidden; border-radius: 36px; background: var(--s0); border: 1px solid var(--outline); display: flex; flex-direction: column; }
+.appbar { padding: 26px 16px 8px 22px; display: flex; align-items: flex-end; gap: 10px; transition: padding .35s; }
+.appbar .t { flex: 1; min-width: 0; }
+.appbar .sub { font-weight: 600; font-size: 14px; color: var(--primary); }
+.appbar h1 { margin: 0; font-size: 40px; line-height: 1; font-weight: 800; letter-spacing: -.02em; }
+.appbar h1 span { color: var(--brand); }
+.ibtn { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--pc); color: var(--on-pc); display: grid; place-items: center; cursor: pointer; }
+.ibtn svg { width: 22px; height: 22px; fill: currentColor; }
+.main { flex: 1; overflow-y: auto; padding: 6px 10px 120px; display: flex; flex-direction: column; gap: 10px; }
+.sechead { display: flex; align-items: baseline; gap: 8px; padding: 6px 6px 0; font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--fg2); }
+.sechead small { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 18px; background: var(--s2); border: 1px solid var(--line); transition: border-radius .35s, padding .35s; }
+.seg button { border: 0; background: none; border-radius: 14px; padding: 10px 4px; font-weight: 600; font-size: 14px; color: var(--fg2); cursor: pointer; transition: background .25s, color .25s; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--s0); }
+.seg button b { font-weight: 600; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.card h3 { margin: 0; padding: 14px 14px 4px; font-size: 14px; font-weight: 700; }
+.card h3 .d { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+.item { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 14px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; font-size: 15px; cursor: pointer; }
+.card h3 + .item { border-top: 0; }
+.item .amt { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.item.have .nm, .item.have .amt { color: var(--muted); text-decoration: line-through; }
+.item.del .nm, .item.del .amt { color: var(--del-bar); text-decoration: line-through; }
+.item.mark { background: var(--opt-bg); }
+.item small { display: block; font-size: 11.5px; color: var(--muted); }
+.btnrow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btnrow button { border: 1px solid var(--line); background: var(--surface); border-radius: 18px; padding: 13px; font-weight: 600; cursor: pointer; }
+.nav { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: var(--s2); display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; padding: 0 8px 10px; }
+.nav span { display: grid; place-items: center; height: 44px; min-width: 56px; border-radius: 22px; color: var(--fg2); }
+.nav span.on { background: var(--pc); color: var(--on-pc); padding: 0 22px; gap: 8px; grid-auto-flow: column; font-weight: 700; }
+.nav svg { width: 24px; height: 24px; fill: currentColor; }
+/* der eine Bring!-Knopf (unten rechts) */
+.fab { position: absolute; right: 16px; bottom: 100px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 20px; padding: 16px 18px; background: var(--pc); color: var(--on-pc); font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); transition: transform .3s, opacity .3s; }
+.fab svg { width: 22px; height: 22px; fill: currentColor; }
+.fab b { background: var(--primary); color: var(--on-primary); border-radius: 999px; padding: 1px 8px; font-size: 13px; }
+
+/* ---------- Prüfen: die drei Reiter werden drei Spalten ---------- */
+.mbar { display: none; gap: 8px; padding: 22px 12px 8px; }
+.mbar button { flex: 1; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 11px; font-weight: 700; cursor: pointer; }
+.mbar .go { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.mbar .go:disabled { opacity: .5; }
+.phone.pruefen .appbar, .phone.pruefen .sechead, .phone.pruefen .btnrow, .phone.pruefen .fab, .phone.pruefen #list { display: none; }
+.phone.pruefen .mbar { display: flex; }
+.phone.pruefen .main { padding: 0 0 100px; gap: 0; }
+/* Reiter -> Spaltenköpfe: gleiche Reihenfolge, «Auf Bring!» in der Mitte */
+.phone.pruefen .seg { border-radius: 0; padding: 0; gap: 0; border-left: 0; border-right: 0; position: sticky; top: 0; z-index: 2; }
+.phone.pruefen .seg button { border-radius: 0; background: none; color: var(--fg); padding: 9px 4px 3px; pointer-events: none; font-size: 13px; }
+.phone.pruefen .seg button + button { border-left: 1px solid var(--line); }
+.phone.pruefen .seg button b { display: none; }
+.midsw { display: none; grid-column: 2; justify-self: center; margin: 0 0 6px; padding: 2px; border-radius: 999px; background: var(--s4); gap: 2px; pointer-events: auto; }
+.phone.pruefen .midsw { display: inline-flex; }
+.midsw button { border: 0; background: none; border-radius: 999px; padding: 3px 9px; font-size: 11px; font-weight: 600; color: var(--fg2); cursor: pointer; pointer-events: auto !important; }
+.midsw button[aria-pressed="true"] { background: var(--fg); color: var(--s0); }
+.cols { display: none; }
+.phone.pruefen .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cols .sec { grid-column: 1 / -1; padding: 12px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); background: var(--s0); border-top: 1px solid var(--line); }
+.cell { min-width: 0; min-height: 46px; padding: 6px 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; position: relative; background: var(--surface); }
+.cell.c2 { border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.cell .n { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell .a { font-family: var(--mono); font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell.none { background: repeating-linear-gradient(135deg, var(--s0) 0 5px, color-mix(in srgb, var(--line) 70%, var(--s0)) 5px 6px); }
+.cell[role="button"] { cursor: pointer; }
+.cell.pick { background: var(--add-bg); padding-right: 18px; }
+.cell.pick::after { content: "▶"; position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--add-bar); }
+.cell.have .n, .cell.have .a { color: var(--muted); text-decoration: line-through; }
+.cell.ok .a { color: var(--add-bar); }
+.cell.c3 { text-align: right; align-items: flex-end; }
+.cell.c3.vpick { background: var(--opt-bg); padding-left: 18px; }
+.cell.c3.vpick::before { content: "◀"; position: absolute; left: 5px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--opt-bar); }
+.cell.c3.low .a { color: var(--chg-bar); }
+.cell.add { background: var(--add-bg); box-shadow: inset 3px 0 var(--add-bar); }
+.cell.chg { background: var(--chg-bg); box-shadow: inset 3px 0 var(--chg-bar); }
+.cell.opt { background: var(--opt-bg); box-shadow: inset 3px 0 var(--opt-bar); }
+.cell.del { background: var(--del-bg); box-shadow: inset 3px 0 var(--del-bar); }
+.cell.del .n { text-decoration: line-through; }
+/* Verschmelzen: Spalten gleiten von ihrem Reiter aus auf */
+.phone.pruefen.anim .cols .c1 { animation: from-l .45s cubic-bezier(.2, .9, .3, 1) both; }
+.phone.pruefen.anim .cols .c3 { animation: from-r .45s cubic-bezier(.2, .9, .3, 1) both; }
+.phone.pruefen.anim .cols .c2, .phone.pruefen.anim .cols .sec { animation: fade .45s ease-out both; }
+@keyframes from-l { from { transform: translateX(40%); opacity: 0; } }
+@keyframes from-r { from { transform: translateX(-40%); opacity: 0; } }
+@keyframes fade { from { opacity: 0; transform: scaleY(.9); } }
+@media (prefers-reduced-motion: reduce) { .phone.pruefen.anim .cols > * { animation: none; } }
+.toast { position: absolute; left: 14px; right: 14px; bottom: 96px; background: var(--fg); color: var(--s0); border-radius: 14px; padding: 12px 14px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 5; }
+.toast.on { opacity: 1; }
+
+/* ---------- Erklärung ---------- */
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.side h1 { font-size: 22px; margin: 0; text-wrap: balance; }
+.side p { margin: 0; color: var(--fg2); max-width: 64ch; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.box h2 { font-size: 16px; margin: 0; }
+.box ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.legend { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px 10px; align-items: center; font-size: 14px; }
+.sw { height: 20px; border-radius: 5px; box-shadow: inset 3px 0 var(--b); background: var(--c); }
+.q { border-top: 1px solid var(--line); padding-top: 8px; }
+</style>
+
+<div class="wrap">
+  <div class="phone" id="phone">
+    <div class="mbar"><button type="button" id="cancel">Abbrechen</button><button type="button" class="go" id="send">Senden</button></div>
+    <header class="appbar">
+      <div class="t"><div class="sub">KW 46 · November</div><h1>Bring<span>Frisch</span></h1></div>
+      <button class="ibtn" type="button" aria-label="Wochenwahl"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V9h14zm-7-8 1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z"/></svg></button>
+    </header>
+    <div class="main" id="main">
+      <div class="sechead">Einkaufsliste <small id="nZut"></small></div>
+      <div class="seg" id="seg">
+        <button type="button" data-f="kaufen" aria-pressed="true">Kaufen <b id="c1"></b></button>
+        <button type="button" data-f="bring" aria-pressed="false">Auf Bring! <b id="c2"></b></button>
+        <button type="button" data-f="vorrat" aria-pressed="false">Vorrat <b id="c3"></b></button>
+        <span class="midsw" id="midsw"><button type="button" data-m="jetzt" aria-pressed="false">jetzt</button><button type="button" data-m="nachher" aria-pressed="true">nachher</button></span>
+      </div>
+      <div class="card" id="list"></div>
+      <div class="cols" id="cols"></div>
+      <div class="btnrow"><button type="button">Grundvorrat verwalten</button><button type="button">Liste kopieren</button></div>
+    </div>
+    <button type="button" class="fab" id="fab"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42a.25.25 0 0 1-.22-.37L8.1 13h7.45a2 2 0 0 0 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2zm16 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Prüfen <b id="fabN"></b></button>
+    <nav class="nav" aria-hidden="true">
+      <span><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14zM7 12h5v5H7z"/></svg></span>
+      <span class="on"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42a.25.25 0 0 1-.22-.37L8.1 13h7.45a2 2 0 0 0 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2zm16 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Einkauf</span>
+      <span><svg viewBox="0 0 24 24"><path d="M8.1 13.34 2.91 8.15a4 4 0 0 1 0-5.66l7.02 7.02zm6.78-1.81c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13z"/></svg></span>
+      <span><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54a7.4 7.4 0 0 0-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.71 8.88a.49.49 0 0 0 .12.61l2.03 1.58a7.4 7.4 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .59.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.05.24.25.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54a7 7 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg></span>
+    </nav>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <aside class="side">
+    <h1>Einkauf: drei Spalten wie Sublime Merge</h1>
+    <p>Neu gestartet von der Einkauf-Seite in v1.10. Die drei Reiter bleiben, wie sie sind. «Prüfen» (Knopf unten rechts) macht aus ihnen drei echte Spalten nebeneinander: Kaufen | Auf Bring! | Vorrat. Jede Zeile ist eine Zutat über alle drei Spalten.</p>
+    <div class="box">
+      <h2>So geht «Prüfen»</h2>
+      <ul>
+        <li>Die Reiter werden zu Spaltenköpfen, in derselben Reihenfolge: links <b>Kaufen</b> (was der Plan braucht), in der Mitte <b>Auf Bring!</b>, rechts <b>Vorrat</b>.</li>
+        <li>Links antippen: ▶ kommt in die Mitte (auf Bring!), nochmals = haben wir schon.</li>
+        <li>Rechts antippen: ◀ Vorrat-Artikel kommt auf Bring!.</li>
+        <li>In der Mitte einen Eintrag des Bots antippen: kommt weg.</li>
+        <li>Mitte umschalten wie Base / Merged in Sublime Merge: <b>jetzt</b> = Bring! heute, <b>nachher</b> = nach dem Senden.</li>
+        <li>Oben «Abbrechen» · «Senden» – erst dann geht etwas an Bring!.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h2>Farben (Mitte, «nachher»)</h2>
+      <div class="legend">
+        <span class="sw" style="--c:var(--add-bg);--b:var(--add-bar)"></span><span><b>kommt dazu</b></span>
+        <span class="sw" style="--c:var(--chg-bg);--b:var(--chg-bar)"></span><span><b>Menge kommt dazu</b> (steht schon drauf, alt → neu)</span>
+        <span class="sw" style="--c:var(--opt-bg);--b:var(--opt-bar)"></span><span><b>aus dem Vorrat</b></span>
+        <span class="sw" style="--c:var(--del-bg);--b:var(--del-bar)"></span><span><b>kommt weg</b></span>
+        <span class="sw" style="--c:var(--surface);--b:var(--same-bar)"></span><span><b>bleibt</b> – steht schon passend drauf</span>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Für dich zum Entscheiden</h2>
+      <p class="q"><b>1.</b> Mitte zuerst «nachher» (so im Entwurf) oder «jetzt»?</p>
+      <p class="q"><b>2.</b> Steht eine Zutat im Vorrat und reicht (z.B. Zwiebeln, noch 3), ist sie links schon «haben wir» – passt das?</p>
+      <p class="q"><b>3.</b> Zeilen ohne Gegenstück zeigen ein schraffiertes Feld (wie in Sublime). Gut so, oder lieber leer?</p>
+    </div>
+  </aside>
+</div>
+
+<script>
+// Beispiel KW 46 (wie im Screenshot von v1.10). L = Plan braucht, M = Bring! jetzt, V = Vorrat
+// pick: kommt aus dem Plan auf Bring! · vpick: kommt aus dem Vorrat · del: Bot-Eintrag kommt weg
+const SECS = [
+  ["MO", "Klassische Älplermagronen mit Apfelmus", [
+    { n: "Halbrahm", L: "1,5 dl", M: "2 dl", by: "Leonie", pick: true },
+    { n: "Magronen / Teigwaren", L: "400 g", pick: true },
+    { n: "Reibkäse", L: "180 g", pick: true },
+    { n: "Äpfel", L: "4 Stk", M: "6 Stk", ok: true },
+    { n: "Zwiebeln", L: "2 Stk", V: "noch 3 · reicht", haveV: true } ]],
+  ["DI", "Gnocchi mit Tomatensauce und Mozzarella", [
+    { n: "Basilikum", L: "2 Bund", pick: true },
+    { n: "Gnocchi", L: "2 kg", pick: true },
+    { n: "Mozzarella", L: "500 g", pick: true },
+    { n: "Passata", L: "7 dl", V: "noch 1 → danach 0", low: true } ]],
+  ["DO", "Karotten mit Rindshuft", [
+    { n: "Chilischote", L: "1 Stk", pick: true },
+    { n: "Frühlingszwiebeln", L: "1 Bund", pick: true },
+    { n: "Kokosfett", L: "1 EL", V: "da", haveV: true },
+    { n: "Maisstärke", L: "1 TL", V: "da", haveV: true },
+    { n: "Rindshuft", L: "80 g", pick: true },
+    { n: "Karotten", L: "600 g", M: "1 kg", ok: true } ]],
+  ["", "Für mehrere Gerichte", [
+    { n: "Nüsslisalat", L: "300 g · Mo Di Do", pick: true } ]],
+  ["", "Nur Vorrat", [
+    { n: "Olivenöl", V: "noch 1 · knapp", low: true },
+    { n: "Reis", V: "geht oft aus", low: true } ]],
+  ["", "Nur auf Bring!", [
+    { n: "Brot", M: "1 Stk", bot: true, why: "vom Bot, kein Rezept mehr" },
+    { n: "WC-Papier", M: "1 Pack", by: "Jo" } ]]
+];
+const ALL = SECS.flatMap(s => s[2]);
+ALL.forEach(i => { if (i.haveV) i.pick = false; });
+const $ = id => document.getElementById(id);
+let filter = "kaufen", mid = "nachher";
+const toBuy = i => i.L && !i.ok && !i.haveV;
+const onBring = i => !!i.M;
+const changes = () => ALL.filter(i => (i.L && i.pick && !i.ok) || i.vpick || i.del);
+
+function counts() {
+  $("c1").textContent = ALL.filter(toBuy).length;
+  $("c2").textContent = ALL.filter(onBring).length;
+  $("c3").textContent = ALL.filter(i => i.V).length;
+  $("nZut").textContent = `${ALL.filter(i => i.L).length} Zutaten`;
+  $("fabN").textContent = changes().length;
+}
+// Normale Ansicht: wie v1.10 – eine Karte, nach Gericht, Zeilen einzeln antippbar (nur vormerken)
+function renderList() {
+  const show = { kaufen: toBuy, bring: onBring, vorrat: i => !!i.V }[filter];
+  let h = "";
+  SECS.forEach(([d, t, items]) => {
+    const l = items.filter(show);
+    if (!l.length) return;
+    h += `<h3>${d ? `<span class="d">${d}</span>` : ""}${t}</h3>` + l.map(i => {
+      const amt = filter === "kaufen" ? i.L : filter === "bring" ? i.M : i.V;
+      const cls = filter === "kaufen" && !i.pick ? " have" : filter === "bring" && i.del ? " del" : filter === "vorrat" && i.vpick ? " mark" : "";
+      const sub = filter === "bring" && (i.by || i.why) ? `<small>${i.by ? "von " + i.by : i.why}</small>` : "";
+      return `<button type="button" class="item${cls}" data-n="${i.n}"><span class="nm">${i.n}${sub}</span><span class="amt">${amt}</span></button>`;
+    }).join("");
+  });
+  $("list").innerHTML = h || `<h3>Nichts</h3>`;
+}
+// Prüfen: drei echte Spalten, jede Zeile eine Zutat
+function renderCols() {
+  let h = "";
+  SECS.forEach(([d, t, items]) => {
+    h += `<div class="sec">${d ? d + " · " : ""}${t}</div>`;
+    items.forEach(i => {
+      // links: Kaufen
+      let L = `<div class="cell c1 none"></div>`;
+      if (i.L) {
+        if (i.ok) L = `<div class="cell c1 ok"><span class="n">${i.n}</span><span class="a">${i.L} ✓</span></div>`;
+        else L = `<div class="cell c1${i.pick ? " pick" : " have"}" data-n="${i.n}" data-c="1" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.haveV && !i.pick ? "haben wir" : i.L}</span></div>`;
+      }
+      // Mitte: Auf Bring!
+      let M = `<div class="cell c2 none"></div>`, cls = "", amt = "";
+      if (mid === "jetzt") { if (i.M) { amt = i.M; } }
+      else if (i.del) { cls = "del"; amt = i.M; }
+      else if (i.M && i.pick && !i.ok) { cls = "chg"; amt = `${i.M} → ${i.M} + ${i.L}`; }
+      else if (i.M) { amt = i.M; }
+      else if (i.vpick) { cls = "opt"; amt = "1 Pack · Vorrat"; }
+      else if (i.pick) { cls = "add"; amt = i.L; }
+      if (amt) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}${i.by && mid === "jetzt" ? " · " + i.by : ""}</span></div>`;
+      // rechts: Vorrat
+      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.V}</span></div>` : `<div class="cell c3 none"></div>`;
+      h += L + M + R;
+    });
+  });
+  $("cols").innerHTML = h;
+  const ch = changes(), add = ch.filter(i => !i.del).length, del = ch.filter(i => i.del).length;
+  $("send").textContent = ch.length ? `Senden · ${add} dazu${del ? ` · ${del} weg` : ""}` : "Nichts zu senden";
+  $("send").disabled = !ch.length;
+  document.querySelectorAll("#midsw button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === mid)));
+}
+function render() { counts(); renderList(); renderCols(); }
+function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("on"), 2000); }
+const find = n => ALL.find(i => i.n === n);
+function tap(i, col) {
+  if (!i) return;
+  if (col === 1) { i.pick = !i.pick; return toast(i.pick ? `▶ ${i.n} kommt auf Bring!` : `${i.n}: haben wir schon`); }
+  if (col === 3) { if (!i.low) return toast(`${i.n}: genug da`); i.vpick = !i.vpick; return toast(i.vpick ? `◀ ${i.n} aus dem Vorrat auf Bring!` : `${i.n}: nicht auf Bring!`); }
+  if (i.bot || i.del) { i.del = !i.del; return toast(i.del ? `${i.n}: kommt von Bring! weg` : `${i.n}: bleibt`); }
+  if (i.vpick) { i.vpick = false; return toast(`${i.n}: nicht auf Bring!`); }
+  if (i.pick && !i.ok) { i.pick = false; return toast(`${i.n}: haben wir schon`); }
+  toast(i.by ? `${i.n}: hat ${i.by} eingetragen – bleibt` : `${i.n}: steht schon passend drauf`);
+}
+$("seg").addEventListener("click", e => {
+  const m = e.target.closest("[data-m]"); if (m) { mid = m.dataset.m; return renderCols(); }
+  const b = e.target.closest("[data-f]"); if (!b || $("phone").classList.contains("pruefen")) return;
+  filter = b.dataset.f; document.querySelectorAll("#seg [data-f]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderList();
+});
+$("list").addEventListener("click", e => {
+  const r = e.target.closest("[data-n]"); if (!r) return;
+  tap(find(r.dataset.n), filter === "kaufen" ? 1 : filter === "bring" ? 2 : 3); render();
+});
+$("cols").addEventListener("click", e => { const c = e.target.closest("[data-c]"); if (c) { tap(find(c.dataset.n), +c.dataset.c); render(); } });
+$("cols").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.c) { e.preventDefault(); e.target.click(); } });
+function open() { renderCols(); const p = $("phone"); p.classList.add("pruefen", "anim"); $("main").scrollTop = 0; setTimeout(() => p.classList.remove("anim"), 600); }
+function close() { $("phone").classList.remove("pruefen"); }
+$("fab").onclick = open;
+$("cancel").onclick = close;
+$("send").onclick = () => { const n = changes().length; close(); toast(`${n} Änderungen an Bring! gesendet · Rückgängig`); };
+render();
+</script>
