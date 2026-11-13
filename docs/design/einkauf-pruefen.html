@@ -164,6 +164,38 @@ button { font: inherit; color: inherit; }
 /* Prüfen genauso dicht */
 .diff { padding: 0 8px 96px; }
 .dl { border-radius: 0; margin: 0; border-bottom: 1px solid var(--line); padding: 8px 10px 8px 10px; }
+
+/* ---------- Prüfen: drei Spalten wie Sublime Merge (Plan | Bring! | Vorrat), jede Zeile eine Zutat ---------- */
+.mbar { display: flex; justify-content: space-between; gap: 8px; padding: 14px 10px 6px; }
+.mbtn { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 9px 14px; font-weight: 600; font-size: 14px; cursor: pointer; }
+.mbtn.go { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.mbtn:disabled { opacity: .5; }
+.mhead { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: center; padding: 4px 8px 6px; border-bottom: 1px solid var(--line); font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.mhead > span:first-child { padding-left: 4px; } .mhead > span:last-child { text-align: right; padding-right: 4px; }
+.mhead .mid { justify-self: center; padding: 2px; }
+.mhead .mid button { padding: 4px 8px; font-size: 11px; }
+.diff { padding: 0 8px 30px; }
+.mg { display: grid; grid-template-columns: 1fr 1.15fr 1fr; }
+.mgsec { grid-column: 1 / -1; font-size: 11px; font-weight: 700; color: var(--muted); padding: 10px 4px 3px; text-transform: uppercase; letter-spacing: .05em; }
+.mc { min-width: 0; min-height: 40px; padding: 5px 7px; border-top: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; position: relative; }
+.mc .n { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc .a { font-size: 10.5px; color: var(--muted); font-family: ui-monospace, 'Roboto Mono', Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc.none { background: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--line) 40%, transparent) 5px 6px); }
+.mc.bring { background: var(--card); }
+.mc[role="button"] { cursor: pointer; }
+.mc.plan.pick { background: var(--add-bg); padding-right: 18px; }
+.mc.plan.pick::after { content: "▶"; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--add-bar); }
+.mc.plan.have .n, .mc.plan.have .a { color: var(--muted); text-decoration: line-through; }
+.mc.plan.same .n { color: var(--muted); }
+.mc.vorrat { text-align: right; align-items: flex-end; }
+.mc.vorrat.pick { background: var(--opt-bg); padding-left: 18px; }
+.mc.vorrat.pick::before { content: "◀"; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--opt-bar); }
+.mc.bring.add { background: var(--add-bg); box-shadow: inset 3px 0 var(--add-bar); }
+.mc.bring.chg { background: var(--chg-bg); box-shadow: inset 3px 0 var(--chg-bar); }
+.mc.bring.opt { background: var(--opt-bg); box-shadow: inset 3px 0 var(--opt-bar); }
+.mc.bring.del { background: var(--del-bg); box-shadow: inset 3px 0 var(--del-bar); }
+.mc.bring.del .n { text-decoration: line-through; }
+.mc.bring, .mc.m { border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
 </style>
 
 <div class="page">
@@ -175,8 +207,6 @@ button { font: inherit; color: inherit; }
   <div class="controls">
     <span>Knopf</span>
     <div class="seg" id="fabSide"><button type="button" data-v="left" aria-pressed="false">unten links</button><button type="button" data-v="right" aria-pressed="true">unten rechts</button></div>
-    <span>Prüfen</span>
-    <div class="seg" id="viewMode"><button type="button" data-v="unified" aria-pressed="true">eine Liste</button><button type="button" data-v="split" aria-pressed="false">nebeneinander</button></div>
   </div>
 
   <div class="stage">
@@ -192,10 +222,9 @@ button { font: inherit; color: inherit; }
       <button type="button" class="fab right" id="fab">Prüfen &amp; auf Bring! <b id="fabN">0</b></button>
 
       <section class="sheet" id="sheet" aria-label="Prüfen">
-        <div class="sh-head"><h3>Auf Bring! – prüfen</h3><button type="button" class="x" id="close" aria-label="Schliessen">✕</button></div>
-        <div class="sum" id="sum"></div>
+        <div class="mbar"><button type="button" class="mbtn" id="close">Abbrechen</button><button type="button" class="mbtn go" id="send">Senden</button></div>
+        <div class="mhead"><span>Plan braucht</span><span class="seg sm mid" id="midSeg"><button type="button" data-m="jetzt" aria-pressed="false">Bring! jetzt</button><button type="button" data-m="neu" aria-pressed="true">nachher</button></span><span>Vorrat</span></div>
         <div class="diff" id="diff"></div>
-        <button type="button" class="send" id="send">Senden</button>
       </section>
       <div class="merge" id="merge" hidden></div>
       <div class="toast" id="toast"></div>
@@ -208,7 +237,7 @@ button { font: inherit; color: inherit; }
           <li><b>Ein Knopf</b> statt vier Wege: kein 🛒 oben rechts, keine Leiste «Für Bring! · Prüfen», kein «Bring! füllen» im Plan. Der schwebende Knopf zeigt, wie viel neu dazukommt.</li>
           <li><b>Zeilen bleiben einzeln antippbar</b>, in allen drei Reitern – aber nichts geht sofort weg, alles wird vorgemerkt: «Kaufen» = haben wir schon (grau ✓) · «Auf Bring!» = Bot-Eintrag kommt weg (rot) · «Vorrat» = für Bring! vormerken (blau). Gesendet wird nur über den Knopf.</li>
           <li><b>Der Knopf (unten rechts)</b> lässt die drei Reiter als Spalten zusammenlaufen und zu einer Übersicht verschmelzen.</li>
-          <li><b>«Prüfen»</b> ist kein Reiter und kein Fenster mit Spalten mehr, sondern eine Seite: alles aus dem Plan, der knappe Vorrat und was schon auf Bring! steht – in einer Liste, nach Gericht.</li>
+          <li><b>«Prüfen»</b> wie die Konfliktansicht in Sublime Merge: drei Spalten, jede Zeile eine Zutat – links was der Plan braucht, in der Mitte Bring!, rechts der Vorrat. ▶ links bzw. ◀ rechts = kommt in die Mitte (auf Bring!). Oben in der Mitte umschalten: «Bring! jetzt» oder «nachher» (wie Base / Merged).</li>
         </ul>
       </div>
       <div class="box">
@@ -226,7 +255,7 @@ button { font: inherit; color: inherit; }
       <div class="box">
         <h2>Für dich zum Entscheiden</h2>
         <p class="q"><b>1.</b> Knopf: <b>unten rechts</b> (entschieden 13.11.).</p>
-        <p class="q"><b>2.</b> «Prüfen» als eine Liste oder nebeneinander (links Bring! jetzt, rechts nach dem Senden)?</p>
+        <p class="q"><b>2.</b> «Prüfen» = drei Spalten (Plan | Bring! | Vorrat) wie Sublime Merge (Joshua 13.11.). Mitte zuerst «nachher» oder «Bring! jetzt»?</p>
         <p class="q"><b>3.</b> Zeile in «Kaufen» antippen = «haben wir schon» – passt das, oder soll es gar nichts tun?</p>
         <p class="q"><b>4.</b> Fremde Einträge (z.B. Leonies Milch) mit Menge ergänzen: <b>vorgewählt</b> (entschieden 13.11.).</p>
         <p class="q"><b>5.</b> Umschalter «nach Rezept / nach Kategorie»: gilt er für Einkauf und Prüfen zusammen (so im Entwurf), und merkt sich jedes Handy die Wahl?</p>
@@ -302,53 +331,66 @@ function renderList() {
   $("fabN").textContent = sending().length;
 }
 
-function diffLine(i) {
-  const t = total(i), shown = t || fullTotal(i);
-  const amt = i.s === "chg" ? `<s>${i.old}</s><span class="arrow">→</span><b>${i.old} + ${fmt(shown, i.u)}</b>` : i.s === "same" ? fmt(fullTotal(i), i.u) : `<b>${fmt(shown, i.u)}</b>`;
-  const why = [i.why, i.s === "chg" ? `steht schon drauf (${i.oldBy})` : ""].filter(Boolean).join(" · ");
-  const shares = i.parts.length > 1 ? `<span class="shares">${i.parts.map(([g, v]) => `<span class="share" role="button" tabindex="0" data-share="${g}" aria-pressed="${i.on[g]}">${g} ${fmt(v, i.u)}</span>`).join("")}</span>` : "";
-  if (i.remove) return `<div class="dl del" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a"><s>${fmt(fullTotal(i), i.u)}</s></span><span class="why">kommt von Bring! weg${i.why ? " · " + i.why : ""}</span></div>`;
-  return `<div class="dl ${i.s}${i.s !== "same" && t === 0 ? " off" : ""}" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}</span>${why ? `<span class="why">${why}</span>` : ""}${shares}</div>`;
-}
-function groupsForDiff() {
+// «Prüfen» wie die Konfliktansicht in Sublime Merge: drei Spalten, jede Zeile = eine Zutat.
+// Links was der Plan braucht (▶ = kommt auf Bring!), Mitte Bring! (Jetzt / Nach dem Senden), rechts Vorrat (◀ = kommt auf Bring!)
+let mid = "neu"; // "jetzt" = Bring! wie es heute ist · "neu" = Bring! nach dem Senden
+function rowsForMerge() {
+  const want = i => i.parts.length || i.vorrat || i.bot;
   if (grouping === "kat") {
-    const cats = [...new Set(ITEMS.map(i => i.k))].sort((a, b) => (a === "Vorrat") - (b === "Vorrat") || a.localeCompare(b, "de"));
-    return cats.map(k => [k === "Vorrat" ? "Aus dem Vorrat – wird knapp" : k, ITEMS.filter(i => i.k === k)]);
+    const cats = [...new Set(ITEMS.filter(want).map(i => i.k))].sort((a, b) => (a === "Vorrat") - (b === "Vorrat") || a.localeCompare(b, "de"));
+    return cats.map(k => [k === "Vorrat" ? "Vorrat" : k, ITEMS.filter(i => want(i) && i.k === k)]);
   }
-  // nach Rezept: was mehrere Rezepte brauchen, steht EINMAL unter «Für mehrere Gerichte» (ein Bring!-Eintrag, Anteile antippbar)
   const out = DISHES.map(([g, t]) => [`${g} · ${t}`, ITEMS.filter(i => i.parts.length === 1 && i.parts[0][0] === g)]);
   out.push(["Für mehrere Gerichte", ITEMS.filter(i => i.parts.length > 1)]);
-  out.push(["Aus dem Vorrat – wird knapp", ITEMS.filter(i => i.vorrat)]);
-  out.push(["Ohne Rezept", ITEMS.filter(i => !i.vorrat && !i.parts.length)]);
+  out.push(["Vorrat", ITEMS.filter(i => i.vorrat)]);
+  out.push(["Nur auf Bring!", ITEMS.filter(i => i.bot)]);
   return out.filter(([, l]) => l.length);
+}
+const cell = (cls, n, a, extra = "") => `<div class="mc ${cls}"${extra}><span class="n">${n}</span>${a ? `<span class="a">${a}</span>` : ""}</div>`;
+const tapAttr = (n, side) => ` data-n="${n}" data-side="${side}" role="button" tabindex="0"`;
+function mergeRow(i) {
+  const t = total(i), full = fullTotal(i);
+  // links: Plan
+  let L;
+  if (!i.parts.length) L = `<div class="mc none"></div>`;
+  else if (i.s === "same") L = cell("plan same", i.n, `${fmt(full, i.u)} ✓`);
+  else L = cell(`plan tap${t ? " pick" : " have"}`, i.n, `${fmt(t || full, i.u)}${i.parts.length > 1 ? ` · ${days(i)}` : ""}`, tapAttr(i.n, "L"));
+  // Mitte: Bring!
+  const onNow = i.s === "same" || i.s === "chg";
+  const nowAmt = i.s === "chg" ? i.old : fmt(full, i.u);
+  let M;
+  if (mid === "jetzt") M = onNow ? cell("bring", i.n, nowAmt, tapAttr(i.n, "M")) : `<div class="mc none m"></div>`;
+  else if (i.remove) M = cell("bring del", i.n, `<s>${nowAmt}</s>`, tapAttr(i.n, "M"));
+  else if (i.s === "chg" && t) M = cell("bring chg", i.n, `${i.old} → ${i.old} + ${fmt(t, i.u)}`, tapAttr(i.n, "M"));
+  else if (onNow) M = cell("bring", i.n, nowAmt, tapAttr(i.n, "M"));
+  else if (t > 0) M = cell(`bring ${i.vorrat ? "opt" : "add"}`, i.n, fmt(t, i.u), tapAttr(i.n, "M"));
+  else M = `<div class="mc none m"></div>`;
+  // rechts: Vorrat
+  const v = i.vorrat ? VORRAT.find(x => x[0] === i.n) : null;
+  const R = v ? cell(`vorrat tap${i.vOn ? " pick" : ""}`, i.n, v[1], tapAttr(i.n, "R")) : `<div class="mc none"></div>`;
+  return L + M + R;
 }
 function renderDiff() {
   const sel = sending();
-  const cnt = s => ITEMS.filter(i => i.s === s).length;
-  $("sum").innerHTML = [["add", "kommt dazu", cnt("add")], ["chg", "Menge dazu", cnt("chg")], ["opt", "Vorrat knapp", cnt("opt")], ["del", "kommt weg", ITEMS.filter(i => i.remove).length], ["same", "schon da", cnt("same")]]
-    .map(([s, l, n]) => `<span class="chip"><i style="background:var(--${s}-bar)"></i>${n} ${l}</span>`).join("");
-  let h = "";
-  if (view === "unified") {
-    groupsForDiff().forEach(([title, list]) => { h += `<div class="dsec">${title}</div>` + list.map(diffLine).join(""); });
-  } else {
-    h += `<div class="split"><div class="colh">Bring! jetzt</div><div class="colh">nach dem Senden</div>`;
-    groupsForDiff().forEach(([title, list]) => {
-      h += `<div class="dsec" style="grid-column:1/-1">${title}</div>`;
-      list.forEach(i => {
-        const t = total(i), shown = t || fullTotal(i);
-        const left = i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${fmt(fullTotal(i), i.u)}</span></div>`
-          : i.s === "chg" ? `<div class="cell"><span class="n">${i.n}</span><span class="a">${i.old}</span></div>` : `<div class="cell empty"></div>`;
-        const right = i.remove ? `<div class="cell tap del" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">kommt weg</span></div>`
-          : i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${fmt(fullTotal(i), i.u)}</span></div>`
-          : `<div class="cell tap ${i.s}${t === 0 ? " off" : ""}" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.s === "chg" ? `${i.old} + ${fmt(shown, i.u)}` : fmt(shown, i.u)}${i.parts.length > 1 ? ` · ${days(i)}` : ""}</span></div>`;
-        h += left + right;
-      });
-    });
-    h += `</div>`;
-  }
+  let h = `<div class="mg">`;
+  rowsForMerge().forEach(([title, list]) => {
+    h += `<div class="mgsec">${title}</div>` + list.map(mergeRow).join("");
+  });
+  h += `</div>`;
   $("diff").innerHTML = h;
-  $("send").textContent = sel.length ? `${sel.length} auf Bring! senden` : "Nichts zu senden";
+  const add = sel.filter(i => !i.remove).length, del = sel.filter(i => i.remove).length;
+  $("send").textContent = sel.length ? `Senden · ${add} dazu${del ? ` · ${del} weg` : ""}` : "Nichts zu senden";
   $("send").disabled = !sel.length;
+  document.querySelectorAll("#midSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === mid)));
+}
+function tapMerge(i, side) {
+  if (!i) return;
+  if (side === "R") { i.vOn = !i.vOn; return toast(i.vOn ? `◀ ${i.n} aus dem Vorrat auf Bring!` : `${i.n}: bleibt weg`); }
+  if (side === "M" && (i.bot || i.remove)) { i.remove = !i.remove; return toast(i.remove ? `${i.n}: kommt von Bring! weg` : `${i.n}: bleibt auf Bring!`); }
+  if (side === "M" && i.vorrat) { i.vOn = !i.vOn; return; }
+  if (side === "M" && i.s === "same") return toast(`${i.n}: steht schon passend drauf`);
+  const to = total(i) === 0; i.parts.forEach(([g]) => { i.on[g] = to; });
+  toast(to ? `▶ ${i.n} kommt auf Bring!` : `${i.n}: haben wir schon`);
 }
 
 function toggleItem(i) { // ganzer Artikel: alle Anteile an oder aus
@@ -390,16 +432,12 @@ function mergeIn() {
 }
 $("fab").onclick = mergeIn;
 $("close").onclick = () => $("sheet").classList.remove("show");
-$("diff").addEventListener("click", e => {
-  const sh = e.target.closest("[data-share]");
-  if (sh) { const i = find(sh.closest("[data-n]").dataset.n); i.on[sh.dataset.share] = !i.on[sh.dataset.share]; render(); return; }
-  const r = e.target.closest("[data-n]"); if (r) { toggleItem(find(r.dataset.n)); render(); }
-});
-$("diff").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && (e.target.dataset.n || e.target.dataset.share)) { e.preventDefault(); e.target.click(); } });
+$("diff").addEventListener("click", e => { const r = e.target.closest("[data-side]"); if (r) { tapMerge(find(r.dataset.n), r.dataset.side); render(); } });
+$("diff").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.side) { e.preventDefault(); e.target.click(); } });
+$("midSeg").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (b) { mid = b.dataset.m; renderDiff(); } });
 $("send").onclick = () => { const n = sending().length; $("sheet").classList.remove("show"); toast(`${n} Artikel auf Bring! · Rückgängig`); };
 function seg(id, fn) { $(id).addEventListener("click", e => { const b = e.target.closest("[data-v]"); if (!b) return; $(id).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); fn(b.dataset.v); }); }
 seg("fabSide", v => { $("fab").className = `fab ${v}`; });
-seg("viewMode", v => { view = v; renderDiff(); $("sheet").classList.add("show"); });
 seg("grouping", v => { grouping = v; render(); });
 render();
 // Entwurf startet auf der Einkauf-Seite: Knopf unten rechts antippen = die drei Reiter verschmelzen zu «Prüfen»
