@@ -307,6 +307,11 @@ button { font: inherit; color: inherit; }
 /* «Auf Bring!»: alle drei dunkel, aber jeder als eigene runde Pille (Kommentar 13.11.: runder Knopf) */
 .phone.pruefen .seg { gap: 4px; }
 .phone.pruefen .seg button[data-f], .phone.pruefen .seg button[data-f] + button[data-f], .phone.pruefen .seg button:first-of-type, .phone.pruefen .seg button:nth-of-type(3) { border-radius: 14px; border-left: 0; }
+
+/* «Auf Bring!» wieder im Stil der Kaufen-Liste: keine Flächen, nur schmaler Farbstrich; Anmerkung rechts in der Mitte (Kommentare 13.11.) */
+.cell.r-add, .cell.r-chg, .cell.r-opt, .cell.r-del { background: none !important; }
+.cols .cell.c2 .a { display: block; margin-left: auto; text-align: right; font-size: 12px; }
+.cols .cell.c2.add .a { color: var(--add-bar) !important; } .cols .cell.c2.chg .a { color: var(--chg-bar) !important; } .cols .cell.c2.opt .a { color: var(--opt-bar) !important; } .cols .cell.c2.del .a { color: var(--del-bar) !important; }
 </style>
 
 <div class="wrap">
@@ -507,7 +512,8 @@ function renderCols() {
       let M = `<div class="cell c2 none" data-n="${i.n}" data-c="2"></div>`, cls = "";
       const has = mid === "jetzt" ? !!i.M : !!(i.M || i.vpick || (i.pick && !i.ok));
       if (mid === "nachher") cls = i.del ? "del" : i.M && i.pick && !i.ok ? "chg" : i.M ? "" : i.vpick ? "opt" : i.pick ? "add" : "";
-      const amt = cls === "chg" ? `${i.M} + ${i.L}` : cls === "del" ? "kommt weg" : i.M ? `${i.M}${i.by ? " · " + i.by : ""}` : i.vpick ? "aus dem Vorrat" : i.L;
+      // Anmerkung rechts in der Mitte: was dazukommt und was schon drauf ist
+      const amt = cls === "chg" ? `schon ${i.M} + ${i.L}` : cls === "del" ? "kommt weg" : i.M ? `schon drauf · ${i.M}` : i.vpick ? "neu · aus Vorrat" : `neu · ${i.L}`;
       if (has) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}</span></div>`;
       const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a lvt">${i.V}</span></div>` : `<div class="cell c3 none"></div>`;
       // Zeile über alle drei Spalten in der Farbe der Änderung auf Bring! (dazu, Menge dazu, aus dem Vorrat, weg)
