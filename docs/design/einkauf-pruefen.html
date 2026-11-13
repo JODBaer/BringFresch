@@ -10,6 +10,7 @@
   --chg-bg: #fff1c7; --chg-bar: #c48a00;      /* steht schon drauf, Menge kommt dazu */
   --same-bg: transparent; --same-bar: #b9c6b1; /* steht schon drauf, nichts zu tun */
   --opt-bg: #e8eefc; --opt-bar: #5a7bd6;      /* Vorrat knapp: nur wenn ihr wollt */
+  --del-bg: #fbe1dd; --del-bar: #c4473a;      /* kommt von Bring! weg */
   --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
@@ -17,14 +18,14 @@
   :root:not([data-theme="light"]) {
     --bg: #0e130e; --fg: #e2ecdc; --muted: #a9bba0; --card: #182018; --line: #2f3c2d; --phone: #121912;
     --accent: #90ee90; --accent-bg: #2f4a2f; --on-accent: #142414; --focus: #8ab4ff;
-    --add-bg: #1f3a18; --add-bar: #7fd35a; --chg-bg: #3b3115; --chg-bar: #f0bf4a; --same-bar: #4a5a45; --opt-bg: #1d2740; --opt-bar: #8eaaf5;
+    --add-bg: #1f3a18; --add-bar: #7fd35a; --chg-bg: #3b3115; --chg-bar: #f0bf4a; --same-bar: #4a5a45; --opt-bg: #1d2740; --opt-bar: #8eaaf5; --del-bg: #3d1d19; --del-bar: #f08a7e;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0e130e; --fg: #e2ecdc; --muted: #a9bba0; --card: #182018; --line: #2f3c2d; --phone: #121912;
   --accent: #90ee90; --accent-bg: #2f4a2f; --on-accent: #142414; --focus: #8ab4ff;
-  --add-bg: #1f3a18; --add-bar: #7fd35a; --chg-bg: #3b3115; --chg-bar: #f0bf4a; --same-bar: #4a5a45; --opt-bg: #1d2740; --opt-bar: #8eaaf5;
+  --add-bg: #1f3a18; --add-bar: #7fd35a; --chg-bg: #3b3115; --chg-bar: #f0bf4a; --same-bar: #4a5a45; --opt-bg: #1d2740; --opt-bar: #8eaaf5; --del-bg: #3d1d19; --del-bar: #f08a7e;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -90,6 +91,32 @@ button { font: inherit; color: inherit; }
 .diff { flex: 1; overflow-y: auto; padding: 0 10px 96px; }
 .dsec { font-size: 12px; font-weight: 700; color: var(--muted); margin: 12px 6px 4px; text-transform: uppercase; letter-spacing: .06em; }
 .dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 8px 10px 8px 12px; border-left: 4px solid var(--same-bar); background: var(--same-bg); border-radius: 6px; margin: 2px 0; cursor: pointer; width: 100%; text-align: left; border-top: 0; border-right: 0; border-bottom: 0; }
+.dl.del { background: var(--del-bg); border-left-color: var(--del-bar); }
+.dl.del .n { text-decoration: line-through; }
+.cell.del { background: var(--del-bg); border-left-color: var(--del-bar); text-decoration: line-through; }
+.row.del .n, .row.del .amt { text-decoration: line-through; color: var(--del-bar); }
+.row.mark { background: var(--opt-bg); }
+.row { cursor: pointer; }
+/* kompakt (Kommentar «braucht viel Platz»): Hinweis in derselben Zeile, wenig Abstand */
+.dl { padding: 5px 8px 5px 10px; margin: 1px 0; gap: 0 8px; grid-template-columns: auto minmax(0, 1fr) auto; }
+.dl .n { font-size: 13.5px; white-space: nowrap; }
+.dl .why { grid-column: 2; grid-row: 1; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl .a { grid-column: 3; grid-row: 1; font-size: 12.5px; }
+.dl .shares { grid-row: 2; margin-top: 2px; }
+.dsec { margin: 8px 4px 2px; font-size: 11px; }
+.sum { margin-bottom: 4px; }
+.chip { padding: 2px 8px; font-size: 11.5px; }
+/* Verschmelzen: drei Spalten (Kaufen | Auf Bring! | Vorrat) laufen zusammen */
+.merge { position: absolute; inset: 70px 10px 90px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; pointer-events: none; z-index: 5; }
+.mcol { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 4px; overflow: hidden; border-top: 4px solid; }
+.mcol.k { border-top-color: var(--add-bar); } .mcol.b { border-top-color: var(--same-bar); } .mcol.v { border-top-color: var(--opt-bar); }
+.mcol b { font-size: 12px; } .mcol i { font-style: normal; font-size: 11.5px; padding: 3px 5px; border-radius: 5px; background: color-mix(in srgb, var(--line) 35%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.merge.go .mcol { animation: mcol .8s cubic-bezier(.5, 0, .2, 1) both; }
+.merge.go .mcol.k { --dx: 105%; } .merge.go .mcol.b { --dx: 0%; } .merge.go .mcol.v { --dx: -105%; }
+@keyframes mcol { 0% { transform: translateY(30px); opacity: 0; } 25% { transform: none; opacity: 1; } 60% { transform: translateX(var(--dx)) scaleY(1.05); opacity: 1; } 100% { transform: translateX(var(--dx)) scale(.9); opacity: 0; } }
+.sheet.fadein .diff { animation: din .4s ease-out both; }
+@keyframes din { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .merge.go .mcol, .sheet.fadein .diff { animation: none; } }
 .dl.add { background: var(--add-bg); border-left-color: var(--add-bar); }
 .dl.chg { background: var(--chg-bg); border-left-color: var(--chg-bar); }
 .dl.opt { background: var(--opt-bg); border-left-color: var(--opt-bar); }
@@ -133,7 +160,7 @@ button { font: inherit; color: inherit; }
 
   <div class="controls">
     <span>Knopf</span>
-    <div class="seg" id="fabSide"><button type="button" data-v="left" aria-pressed="true">unten links</button><button type="button" data-v="right" aria-pressed="false">unten rechts</button></div>
+    <div class="seg" id="fabSide"><button type="button" data-v="left" aria-pressed="false">unten links</button><button type="button" data-v="right" aria-pressed="true">unten rechts</button></div>
     <span>Prüfen</span>
     <div class="seg" id="viewMode"><button type="button" data-v="unified" aria-pressed="true">eine Liste</button><button type="button" data-v="split" aria-pressed="false">nebeneinander</button></div>
   </div>
@@ -148,7 +175,7 @@ button { font: inherit; color: inherit; }
       </div>
       <div class="grouping"><div class="seg sm" id="grouping"><button type="button" data-v="rezept" aria-pressed="true">nach Rezept</button><button type="button" data-v="kat" aria-pressed="false">nach Kategorie</button></div></div>
       <div class="scroll" id="list"></div>
-      <button type="button" class="fab left" id="fab">Prüfen &amp; auf Bring! <b id="fabN">0</b></button>
+      <button type="button" class="fab right" id="fab">Prüfen &amp; auf Bring! <b id="fabN">0</b></button>
 
       <section class="sheet" id="sheet" aria-label="Prüfen">
         <div class="sh-head"><h3>Auf Bring! – prüfen</h3><button type="button" class="x" id="close" aria-label="Schliessen">✕</button></div>
@@ -156,6 +183,7 @@ button { font: inherit; color: inherit; }
         <div class="diff" id="diff"></div>
         <button type="button" class="send" id="send">Senden</button>
       </section>
+      <div class="merge" id="merge" hidden></div>
       <div class="toast" id="toast"></div>
     </div>
 
@@ -164,7 +192,8 @@ button { font: inherit; color: inherit; }
         <h2>Was neu ist</h2>
         <ul>
           <li><b>Ein Knopf</b> statt vier Wege: kein 🛒 oben rechts, keine Leiste «Für Bring! · Prüfen», kein «Bring! füllen» im Plan. Der schwebende Knopf zeigt, wie viel neu dazukommt.</li>
-          <li><b>Zeile antippen</b> im Reiter «Kaufen» schickt nichts mehr direkt. Sie hakt ab: «haben wir schon» (grau, mit ✓). Gesendet wird nur über den Knopf.</li>
+          <li><b>Zeilen bleiben einzeln antippbar</b>, in allen drei Reitern – aber nichts geht sofort weg, alles wird vorgemerkt: «Kaufen» = haben wir schon (grau ✓) · «Auf Bring!» = Bot-Eintrag kommt weg (rot) · «Vorrat» = für Bring! vormerken (blau). Gesendet wird nur über den Knopf.</li>
+          <li><b>Der Knopf (unten rechts)</b> lässt die drei Reiter als Spalten zusammenlaufen und zu einer Übersicht verschmelzen.</li>
           <li><b>«Prüfen»</b> ist kein Reiter und kein Fenster mit Spalten mehr, sondern eine Seite: alles aus dem Plan, der knappe Vorrat und was schon auf Bring! steht – in einer Liste, nach Gericht.</li>
         </ul>
       </div>
@@ -174,6 +203,7 @@ button { font: inherit; color: inherit; }
           <span class="sw" style="background:var(--add-bg);border-color:var(--add-bar)"></span><span><b>Kommt dazu</b> – steht noch nicht auf Bring!</span>
           <span class="sw" style="background:var(--chg-bg);border-color:var(--chg-bar)"></span><span><b>Menge kommt dazu</b> – steht schon drauf (alt → neu)</span>
           <span class="sw" style="background:var(--opt-bg);border-color:var(--opt-bar)"></span><span><b>Vorrat knapp</b> – nur wenn ihr wollt, nicht vorgewählt</span>
+          <span class="sw" style="background:var(--del-bg);border-color:var(--del-bar)"></span><span><b>Kommt weg</b> – Bot-Eintrag, den kein Rezept mehr braucht (im Reiter «Auf Bring!» angetippt)</span>
           <span class="sw" style="border-color:var(--same-bar)"></span><span><b>Schon da</b> – steht passend auf Bring!, nichts zu tun</span>
         </div>
         <p>Antippen schaltet eine Zeile ein oder aus (ausgeschaltet = durchgestrichen). Gesendet wird erst mit dem Knopf unten.</p>
@@ -181,10 +211,10 @@ button { font: inherit; color: inherit; }
       </div>
       <div class="box">
         <h2>Für dich zum Entscheiden</h2>
-        <p class="q"><b>1.</b> Knopf unten links oder rechts? (oben umschaltbar)</p>
+        <p class="q"><b>1.</b> Knopf: <b>unten rechts</b> (entschieden 13.11.).</p>
         <p class="q"><b>2.</b> «Prüfen» als eine Liste oder nebeneinander (links Bring! jetzt, rechts nach dem Senden)?</p>
         <p class="q"><b>3.</b> Zeile in «Kaufen» antippen = «haben wir schon» – passt das, oder soll es gar nichts tun?</p>
-        <p class="q"><b>4.</b> Fremde Einträge (z.B. Leonies Milch) mit Menge ergänzen vorgewählt oder nicht? Im Entwurf: nicht vorgewählt.</p>
+        <p class="q"><b>4.</b> Fremde Einträge (z.B. Leonies Milch) mit Menge ergänzen: <b>vorgewählt</b> (entschieden 13.11.).</p>
         <p class="q"><b>5.</b> Umschalter «nach Rezept / nach Kategorie»: gilt er für Einkauf und Prüfen zusammen (so im Entwurf), und merkt sich jedes Handy die Wahl?</p>
       </div>
     </aside>
@@ -210,17 +240,19 @@ const ITEMS = [
   { n: "Champignons", u: "g", k: "Früchte & Gemüse", s: "add", parts: [["Fr", 400]] },
   { n: "Nüsslisalat", u: "g", k: "Früchte & Gemüse", s: "add", parts: [["Mo", 100], ["Di", 100], ["Mi", 100], ["Do", 100], ["Fr", 100]] },
   { n: "Olivenöl", u: "Fl.", k: "Vorrat", s: "opt", parts: [], why: "noch 1 · knapp", vorrat: 1 },
-  { n: "Reis", u: "Pack", k: "Vorrat", s: "opt", parts: [], why: "geht oft aus", vorrat: 1 }
+  { n: "Reis", u: "Pack", k: "Vorrat", s: "opt", parts: [], why: "geht oft aus", vorrat: 1 },
+  { n: "Zwiebeln", u: "Stk", k: "Früchte & Gemüse", s: "same", parts: [], extra: "3 Stk", why: "vom Bot, kein Rezept braucht sie mehr", bot: true }
 ];
-// an/aus pro Anteil (Rezept); fremde Einträge und Vorrat sind zuerst aus
-ITEMS.forEach(i => { i.on = Object.fromEntries(i.parts.map(([g]) => [g, !i.foreign])); i.vOn = false; });
+const VORRAT = [["Olivenöl", "noch 1 → danach 0", "knapp"], ["Reis", "noch 2 → danach 1", "geht oft aus"], ["Salz", "da", ""]];
+// an/aus pro Anteil (Rezept); fremde Einträge mit Menge ergänzen = vorgewählt (Entscheid 13.11.), Vorrat zuerst aus
+ITEMS.forEach(i => { i.on = Object.fromEntries(i.parts.map(([g]) => [g, true])); i.vOn = false; });
 const $ = id => document.getElementById(id);
 let tab = "kaufen", view = "unified", grouping = "rezept";
 const fmt = (v, u) => `${String(Math.round(v * 10) / 10).replace(".", ",")} ${u}`;
 const total = i => i.vorrat ? (i.vOn ? i.vorrat : 0) : i.parts.reduce((t, [g, v]) => t + (i.on[g] ? v : 0), 0);
-const fullTotal = i => i.vorrat || i.parts.reduce((t, [, v]) => t + v, 0);
+const fullTotal = i => i.vorrat || i.parts.reduce((t, [, v]) => t + v, 0) || parseFloat(i.extra) || 0;
 const days = i => i.parts.map(([g]) => g).join(", ");
-const active = i => i.s !== "same" && total(i) > 0;
+const active = i => i.remove || (i.s !== "same" && total(i) > 0);
 const sending = () => ITEMS.filter(active);
 const find = n => ITEMS.find(x => x.n === n);
 
@@ -230,19 +262,23 @@ function itemRow(i, g) {
   const amt = share ? fmt(share[1], i.u) : fmt(fullTotal(i), i.u);
   const off = share ? !i.on[g] : total(i) === 0;
   const note = i.parts.length > 1 ? (share ? `zusammen ${fmt(fullTotal(i), i.u)} · ${days(i)}` : days(i)) : (tab === "bring" ? i.why || "" : "");
-  return `<div class="row${off && tab === "kaufen" ? " ok" : ""}" data-n="${i.n}" data-g="${g || ""}"><span class="n">${i.n}${note ? `<span class="tag">${note}</span>` : ""}</span><span class="amt">${tab === "bring" && i.s === "chg" ? i.old : amt}</span></div>`;
+  const del = tab === "bring" && i.remove;
+  return `<div class="row${off && tab === "kaufen" ? " ok" : ""}${del ? " del" : ""}" data-n="${i.n}" data-g="${g || ""}"><span class="n">${i.n}${note ? `<span class="tag">${note}</span>` : ""}</span><span class="amt">${tab === "bring" && i.s === "chg" ? i.old : amt}</span></div>`;
 }
 function renderList() {
   let h = "";
   if (tab === "vorrat") {
-    h = `<div class="grp"><h4>Diese Woche gebraucht</h4>` + ["Olivenöl|noch 1 → danach 0", "Reis|noch 2 → danach 1", "Salz|da"].map(x => { const [n, a] = x.split("|"); return `<div class="row"><span class="n">${n}</span><span class="amt">${a}</span></div>`; }).join("") + `</div>`;
+    h = `<div class="grp"><h4>Diese Woche gebraucht</h4>` + VORRAT.map(([n, a, w]) => { const i = find(n); const on = i && i.vOn;
+      return `<div class="row${on ? " mark" : ""}" data-v="${n}"><span class="n">${n}<span class="tag">${on ? "für Bring! vorgemerkt" : w || "antippen = für Bring! vormerken"}</span></span><span class="amt">${a}</span></div>`; }).join("") + `</div>`;
   } else {
-    const show = i => !i.vorrat && (tab === "bring" ? i.s === "same" || i.s === "chg" : i.s !== "same");
+    const show = i => !i.vorrat && (tab === "bring" ? i.s === "same" || i.s === "chg" : i.s !== "same" && i.parts.length);
     if (grouping === "rezept") {
       DISHES.forEach(([g, t]) => {
         const list = ITEMS.filter(i => show(i) && i.parts.some(p => p[0] === g));
         if (list.length) h += `<div class="grp"><h4><span class="d">${g}</span>${t}</h4>` + list.map(i => itemRow(i, g)).join("") + `</div>`;
       });
+      const loose = ITEMS.filter(i => show(i) && !i.parts.length);
+      if (loose.length) h += `<div class="grp"><h4>Ohne Rezept</h4>` + loose.map(i => itemRow(i, null)).join("") + `</div>`;
     } else {
       const cats = [...new Set(ITEMS.filter(show).map(i => i.k))].sort((a, b) => a.localeCompare(b, "de"));
       cats.forEach(k => { h += `<div class="grp"><h4>${k}</h4>` + ITEMS.filter(i => show(i) && i.k === k).map(i => itemRow(i, null)).join("") + `</div>`; });
@@ -257,6 +293,7 @@ function diffLine(i) {
   const amt = i.s === "chg" ? `<s>${i.old}</s><span class="arrow">→</span><b>${i.old} + ${fmt(shown, i.u)}</b>` : i.s === "same" ? fmt(fullTotal(i), i.u) : `<b>${fmt(shown, i.u)}</b>`;
   const why = [i.why, i.s === "chg" ? `steht schon drauf (${i.oldBy})` : ""].filter(Boolean).join(" · ");
   const shares = i.parts.length > 1 ? `<span class="shares">${i.parts.map(([g, v]) => `<span class="share" role="button" tabindex="0" data-share="${g}" aria-pressed="${i.on[g]}">${g} ${fmt(v, i.u)}</span>`).join("")}</span>` : "";
+  if (i.remove) return `<div class="dl del" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a"><s>${fmt(fullTotal(i), i.u)}</s></span><span class="why">kommt von Bring! weg${i.why ? " · " + i.why : ""}</span></div>`;
   return `<div class="dl ${i.s}${i.s !== "same" && t === 0 ? " off" : ""}" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}</span>${why ? `<span class="why">${why}</span>` : ""}${shares}</div>`;
 }
 function groupsForDiff() {
@@ -268,12 +305,13 @@ function groupsForDiff() {
   const out = DISHES.map(([g, t]) => [`${g} · ${t}`, ITEMS.filter(i => i.parts.length === 1 && i.parts[0][0] === g)]);
   out.push(["Für mehrere Gerichte", ITEMS.filter(i => i.parts.length > 1)]);
   out.push(["Aus dem Vorrat – wird knapp", ITEMS.filter(i => i.vorrat)]);
+  out.push(["Ohne Rezept", ITEMS.filter(i => !i.vorrat && !i.parts.length)]);
   return out.filter(([, l]) => l.length);
 }
 function renderDiff() {
   const sel = sending();
   const cnt = s => ITEMS.filter(i => i.s === s).length;
-  $("sum").innerHTML = [["add", "kommt dazu", cnt("add")], ["chg", "Menge dazu", cnt("chg")], ["opt", "Vorrat knapp", cnt("opt")], ["same", "schon da", cnt("same")]]
+  $("sum").innerHTML = [["add", "kommt dazu", cnt("add")], ["chg", "Menge dazu", cnt("chg")], ["opt", "Vorrat knapp", cnt("opt")], ["del", "kommt weg", ITEMS.filter(i => i.remove).length], ["same", "schon da", cnt("same")]]
     .map(([s, l, n]) => `<span class="chip"><i style="background:var(--${s}-bar)"></i>${n} ${l}</span>`).join("");
   let h = "";
   if (view === "unified") {
@@ -286,7 +324,8 @@ function renderDiff() {
         const t = total(i), shown = t || fullTotal(i);
         const left = i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${fmt(fullTotal(i), i.u)}</span></div>`
           : i.s === "chg" ? `<div class="cell"><span class="n">${i.n}</span><span class="a">${i.old}</span></div>` : `<div class="cell empty"></div>`;
-        const right = i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${fmt(fullTotal(i), i.u)}</span></div>`
+        const right = i.remove ? `<div class="cell tap del" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">kommt weg</span></div>`
+          : i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${fmt(fullTotal(i), i.u)}</span></div>`
           : `<div class="cell tap ${i.s}${t === 0 ? " off" : ""}" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.s === "chg" ? `${i.old} + ${fmt(shown, i.u)}` : fmt(shown, i.u)}${i.parts.length > 1 ? ` · ${days(i)}` : ""}</span></div>`;
         h += left + right;
       });
@@ -299,7 +338,9 @@ function renderDiff() {
 }
 
 function toggleItem(i) { // ganzer Artikel: alle Anteile an oder aus
-  if (!i || i.s === "same") return;
+  if (!i) return;
+  if (i.remove || (i.s === "same" && i.bot)) { i.remove = !i.remove; return; }
+  if (i.s === "same") return;
   if (i.vorrat) i.vOn = !i.vOn;
   else { const to = total(i) === 0; i.parts.forEach(([g]) => { i.on[g] = to; }); }
 }
@@ -308,13 +349,32 @@ function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); 
 
 $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; tab = b.dataset.t; document.querySelectorAll("#tabs button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderList(); });
 $("list").addEventListener("click", e => {
-  const r = e.target.closest(".row[data-n]"); if (!r || tab !== "kaufen") return;
+  const v = e.target.closest(".row[data-v]");
+  if (v) { const i = find(v.dataset.v); if (!i) return toast(`${v.dataset.v}: genug da`); i.vOn = !i.vOn; toast(i.vOn ? `${i.n}: für Bring! vorgemerkt` : `${i.n}: nicht vorgemerkt`); return render(); }
+  const r = e.target.closest(".row[data-n]"); if (!r) return;
   const i = find(r.dataset.n), g = r.dataset.g;
+  if (tab === "bring") {
+    if (!i.bot && i.s === "same") return toast(`${i.n}: hat jemand anderes eingetragen – bleibt`);
+    if (i.s === "chg") return toast(`${i.n}: kommt mit mehr Menge – in «Prüfen» abwählen`);
+    i.remove = !i.remove; toast(i.remove ? `${i.n}: kommt beim Senden von Bring! weg` : `${i.n}: bleibt auf Bring!`); return render();
+  }
   if (g) { i.on[g] = !i.on[g]; toast(i.on[g] ? `${i.n} (${g}): wieder kaufen` : `${i.n} (${g}): haben wir schon${i.parts.length > 1 ? ` – noch ${fmt(total(i), i.u)} auf Bring!` : ""}`); }
   else { toggleItem(i); toast(total(i) ? `${i.n}: wieder kaufen` : `${i.n}: haben wir schon`); }
   render();
 });
-$("fab").onclick = () => { renderDiff(); $("sheet").classList.add("show"); };
+// Knopf: die drei Reiter laufen als Spalten zusammen und verschmelzen zur einen Übersicht
+function mergeIn() {
+  renderDiff();
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) return $("sheet").classList.add("show");
+  const col = (t, cls, list) => `<div class="mcol ${cls}"><b>${t}</b>${list.slice(0, 7).map(n => `<i>${n}</i>`).join("")}</div>`;
+  $("merge").innerHTML = col("Kaufen", "k", ITEMS.filter(i => i.s === "add").map(i => i.n)) + col("Auf Bring!", "b", ITEMS.filter(i => i.s === "same" || i.s === "chg").map(i => i.n)) + col("Vorrat", "v", VORRAT.map(x => x[0]));
+  $("merge").hidden = false;
+  $("merge").classList.remove("go"); void $("merge").offsetWidth; $("merge").classList.add("go");
+  setTimeout(() => { $("sheet").classList.add("show", "fadein"); }, 520);
+  setTimeout(() => { $("merge").hidden = true; $("sheet").classList.remove("fadein"); }, 900);
+}
+$("fab").onclick = mergeIn;
 $("close").onclick = () => $("sheet").classList.remove("show");
 $("diff").addEventListener("click", e => {
   const sh = e.target.closest("[data-share]");
@@ -328,5 +388,5 @@ seg("fabSide", v => { $("fab").className = `fab ${v}`; });
 seg("viewMode", v => { view = v; renderDiff(); $("sheet").classList.add("show"); });
 seg("grouping", v => { grouping = v; render(); });
 render();
-$("sheet").classList.add("show"); // Entwurf öffnet gleich auf «Prüfen»; ✕ zeigt die Einkauf-Seite mit dem Knopf
+// Entwurf startet auf der Einkauf-Seite: Knopf unten rechts antippen = die drei Reiter verschmelzen zu «Prüfen»
 </script>
