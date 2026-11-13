@@ -114,6 +114,13 @@ button { font: inherit; color: inherit; }
 .cell.c3.vpick { background: var(--opt-bg); padding-left: 18px; }
 .cell.c3.vpick::before { content: "◀"; position: absolute; left: 5px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--opt-bar); }
 .cell.c3.low .a { color: var(--chg-bar); }
+.cell.c3 .lvt { font-size: 11px; font-weight: 700; color: var(--muted); }
+.cell.c3.low .lvt { color: var(--chg-bar); }
+.lvrow { cursor: default; flex-wrap: wrap; row-gap: 6px; }
+.lv { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--s2); border: 1px solid var(--line); }
+.lvb { border: 0; background: none; border-radius: 999px; padding: 4px 8px; font-size: 11.5px; font-weight: 600; color: var(--fg2); cursor: pointer; white-space: nowrap; }
+.lvb[aria-pressed="true"] { background: var(--fg); color: var(--s0); }
+.lvb.lv0[aria-pressed="true"], .lvb.lv1[aria-pressed="true"] { background: var(--chg-bar); color: #1d1600; }
 .cell.add { background: var(--add-bg); box-shadow: inset 3px 0 var(--add-bar); }
 .cell.chg { background: var(--chg-bg); box-shadow: inset 3px 0 var(--chg-bar); }
 .cell.opt { background: var(--opt-bg); box-shadow: inset 3px 0 var(--opt-bar); }
@@ -215,7 +222,7 @@ button { font: inherit; color: inherit; }
     <div class="box">
       <h2>Für dich zum Entscheiden</h2>
       <p class="q"><b>1.</b> Mitte: immer «nach dem Senden», Umschalter weg (entschieden 13.11.).</p>
-      <p class="q"><b>2.</b> Steht eine Zutat im Vorrat und reicht (z.B. Zwiebeln, noch 3), ist sie links schon «haben wir» – passt das?</p>
+      <p class="q"><b>2.</b> Vorrat mit vier Stufen wie in der App (Leer · Fast leer · Halb · Voll), direkt im Reiter «Vorrat»: Halb/Voll = haben wir, Leer/Fast leer = kommt auf Bring!. Passt die Grenze bei «Fast leer»?</p>
       <p class="q"><b>3.</b> Zeilen ohne Gegenstück zeigen ein schraffiertes Feld (wie in Sublime). Gut so, oder lieber leer?</p>
     </div>
   </aside>
@@ -230,30 +237,38 @@ const SECS = [
     { n: "Magronen / Teigwaren", k: "Getreide & Teigwaren", L: "400 g", pick: true },
     { n: "Reibkäse", k: "Milch & Käse", L: "180 g", pick: true },
     { n: "Äpfel", k: "Früchte & Gemüse", L: "4 Stk", M: "6 Stk", ok: true },
-    { n: "Zwiebeln", k: "Früchte & Gemüse", L: "2 Stk", V: "noch 3 · reicht", haveV: true } ]],
+    { n: "Zwiebeln", k: "Früchte & Gemüse", L: "2 Stk", lv: 2 } ]],
   ["DI", "Gnocchi mit Tomatensauce und Mozzarella", [
     { n: "Basilikum", k: "Früchte & Gemüse", L: "2 Bund", pick: true },
     { n: "Gnocchi", k: "Getreide & Teigwaren", L: "2 kg", pick: true },
     { n: "Mozzarella", k: "Milch & Käse", L: "500 g", pick: true },
-    { n: "Passata", k: "Fertig & Konserven", L: "7 dl", V: "noch 1 → danach 0", low: true } ]],
+    { n: "Passata", k: "Fertig & Konserven", L: "7 dl", lv: 1 } ]],
   ["DO", "Karotten mit Rindshuft", [
     { n: "Chilischote", k: "Früchte & Gemüse", L: "1 Stk", pick: true },
     { n: "Frühlingszwiebeln", k: "Früchte & Gemüse", L: "1 Bund", pick: true },
-    { n: "Kokosfett", k: "Zutaten & Gewürze", L: "1 EL", V: "da", haveV: true },
-    { n: "Maisstärke", k: "Zutaten & Gewürze", L: "1 TL", V: "da", haveV: true },
+    { n: "Kokosfett", k: "Zutaten & Gewürze", L: "1 EL", lv: 3 },
+    { n: "Maisstärke", k: "Zutaten & Gewürze", L: "1 TL", lv: 3 },
     { n: "Rindshuft", k: "Fleisch & Fisch", L: "80 g", pick: true },
     { n: "Karotten", k: "Früchte & Gemüse", L: "600 g", M: "1 kg", ok: true } ]],
   ["", "Für mehrere Gerichte", [
     { n: "Nüsslisalat", k: "Früchte & Gemüse", L: "300 g · Mo Di Do", pick: true } ]],
   ["", "Nur Vorrat", [
-    { n: "Olivenöl", k: "Zutaten & Gewürze", V: "noch 1 · knapp", low: true },
-    { n: "Reis", k: "Getreide & Teigwaren", V: "geht oft aus", low: true } ]],
+    { n: "Olivenöl", k: "Zutaten & Gewürze", lv: 1 },
+    { n: "Reis", k: "Getreide & Teigwaren", lv: 2, why: "geht oft aus" } ]],
   ["", "Nur auf Bring!", [
     { n: "Brot", k: "Brot & Gebäck", M: "1 Stk", bot: true, why: "vom Bot, kein Rezept mehr" },
     { n: "WC-Papier", k: "Haushalt", M: "1 Pack", by: "Jo" } ]]
 ];
 const ALL = SECS.flatMap(s => s[2]);
-ALL.forEach(i => { if (i.haveV) i.pick = false; });
+// Vorrat-Stufe wie in der App: Leer / Fast leer / Halb / Voll. Halb oder Voll = haben wir (nicht kaufen);
+// Leer oder Fast leer = knapp: braucht ein Rezept den Artikel, kommt er aus dem Plan auf die Liste, sonst ◀ aus dem Vorrat
+const LV = ["Leer", "Fast leer", "Halb", "Voll"];
+function applyLevel(i) {
+  if (i.lv == null) return;
+  i.V = LV[i.lv]; i.low = i.lv <= 1; i.haveV = i.lv >= 2;
+  if (i.L) { i.pick = !i.haveV; i.vpick = false; } else i.vpick = i.low;
+}
+ALL.forEach(applyLevel);
 const $ = id => document.getElementById(id);
 let filter = "kaufen", mid = "nachher", sort = "rezept"; // Mitte zeigt immer den Stand nach dem Senden
 const KEYS = ["pick", "vpick", "del"];
@@ -285,12 +300,17 @@ function renderList() {
   let h = "";
   groups(ALL.filter(show)).forEach(([, l, d, t]) => {
     h += `<h3>${d ? `<span class="d">${d}</span>` : ""}${t}</h3>` + l.map(i => {
-      const amt = filter === "kaufen" ? i.L : i.V;
+      if (filter === "vorrat") return levelRow(i);
+      const amt = i.L;
       const cls = filter === "kaufen" && !i.pick ? " have" : filter === "vorrat" && i.vpick ? " mark" : "";
       return `<button type="button" class="item${cls}" data-n="${i.n}"><span class="nm">${i.n}</span><span class="amt">${amt}</span></button>`;
     }).join("");
   });
   $("list").innerHTML = h || `<h3>Nichts</h3>`;
+}
+function levelRow(i) {
+  return `<div class="item lvrow"><span class="nm">${i.n}${i.why ? `<small>${i.why}</small>` : ""}</span><span class="lv" role="group" aria-label="Stand ${i.n}">${LV.map((t, x) =>
+    `<button type="button" class="lvb lv${x}" data-lv="${x}" data-n="${i.n}" aria-pressed="${i.lv === x}">${t}</button>`).join("")}</span></div>`;
 }
 // Auf Bring!: alle Zutaten in drei Spalten (Kaufen | Auf Bring! | Vorrat), nur Namen, jede Zeile antippbar
 function renderCols() {
@@ -305,7 +325,7 @@ function renderCols() {
       const has = mid === "jetzt" ? !!i.M : !!(i.M || i.vpick || (i.pick && !i.ok));
       if (mid === "nachher") cls = i.del ? "del" : i.M && i.pick && !i.ok ? "chg" : i.M ? "" : i.vpick ? "opt" : i.pick ? "add" : "";
       if (has) M = `<div class="cell c2 ${cls}" data-n="${i.n}" data-c="2" role="button" tabindex="0" title="${i.M || ""}${i.by ? " · " + i.by : ""}"><span class="n">${i.n}</span></div>`;
-      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0" title="${i.V}"><span class="n">${i.n}</span></div>` : `<div class="cell c3 none"></div>`;
+      const R = i.V ? `<div class="cell c3${i.vpick ? " vpick" : ""}${i.low ? " low" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0" title="${i.V}"><span class="n">${i.n}</span><span class="lvt">${i.V}</span></div>` : `<div class="cell c3 none"></div>`;
       h += L + M + R;
     });
   });
@@ -329,7 +349,7 @@ const find = n => ALL.find(i => i.n === n);
 function tap(i, col) {
   if (!i) return;
   if (col === 1) { if (i.ok) return toast(`${i.n}: steht schon passend drauf`); i.pick = !i.pick; return toast(i.pick ? `▶ ${i.n} kommt auf Bring!` : `${i.n}: haben wir schon`); }
-  if (col === 3) { if (!i.low) return toast(`${i.n}: genug da`); i.vpick = !i.vpick; return toast(i.vpick ? `◀ ${i.n} aus dem Vorrat auf Bring!` : `${i.n}: nicht auf Bring!`); }
+  if (col === 3) { i.lv = i.lv === 0 ? 3 : i.lv - 1; applyLevel(i); return toast(`${i.n}: ${LV[i.lv]}${i.low ? " – kommt auf Bring!" : ""}`); }
   // Mitte: an- und abwählen, was auf Bring! landet
   if (i.bot || i.del) { i.del = !i.del; return toast(i.del ? `${i.n}: kommt von Bring! weg` : `${i.n}: bleibt`); }
   if (i.vpick) { i.vpick = false; return toast(`${i.n}: nicht auf Bring!`); }
@@ -343,7 +363,11 @@ $("seg").addEventListener("click", e => {
   filter = b.dataset.f; $("main").scrollTop = 0; render();
 });
 $("sortsw").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (b) { sort = b.dataset.s; render(); } });
-$("list").addEventListener("click", e => { const r = e.target.closest("[data-n]"); if (r) { tap(find(r.dataset.n), filter === "kaufen" ? 1 : 3); render(); } });
+$("list").addEventListener("click", e => {
+  const b = e.target.closest("[data-lv]");
+  if (b) { const i = find(b.dataset.n); i.lv = +b.dataset.lv; applyLevel(i); toast(`${i.n}: ${LV[i.lv]}${i.low ? (i.L ? " – kommt aus dem Plan auf Bring!" : " – ◀ für Bring! vorgemerkt") : ""}`); return render(); }
+  const r = e.target.closest("[data-n]"); if (r && filter === "kaufen") { tap(find(r.dataset.n), 1); render(); }
+});
 $("cols").addEventListener("click", e => { const c = e.target.closest("[data-c]"); if (c) { tap(find(c.dataset.n), +c.dataset.c); render(); } });
 $("cols").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.c) { e.preventDefault(); e.target.click(); } });
 // ein Knopf: in Kaufen/Vorrat = zur Übersicht «Auf Bring!», dort = Senden
