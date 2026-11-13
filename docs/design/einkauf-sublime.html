@@ -300,6 +300,13 @@ button { font: inherit; color: inherit; }
 /* alle drei Reiter im Stil der Kaufen-Liste */
 .vrow .amt, .vrow.low .amt, .vrow.zero .amt { font-family: var(--mono); font-size: 13px; color: var(--muted); font-weight: 400; }
 .vrow .amt b { font-weight: 400; }
+
+/* aktiver Reiter immer rund (auch «Auf Bring!» / «Vorrat») */
+.phone:not(.pruefen) .seg button[data-f] + button[data-f][aria-pressed="true"], .phone:not(.pruefen) .seg button[data-f][aria-pressed="true"] { border-radius: 14px; }
+
+/* «Auf Bring!»: alle drei dunkel, aber jeder als eigene runde Pille (Kommentar 13.11.: runder Knopf) */
+.phone.pruefen .seg { gap: 4px; }
+.phone.pruefen .seg button[data-f], .phone.pruefen .seg button[data-f] + button[data-f], .phone.pruefen .seg button:first-of-type, .phone.pruefen .seg button:nth-of-type(3) { border-radius: 14px; border-left: 0; }
 </style>
 
 <div class="wrap">
