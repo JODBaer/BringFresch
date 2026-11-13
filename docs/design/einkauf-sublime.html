@@ -262,6 +262,12 @@ button { font: inherit; color: inherit; }
 
 /* «Auf Bring!»: nur Namen, alle Zusätze aus (Kommentar 13.11.: überlappt zu viel) */
 .cols .cell .a { display: none; }
+
+/* Trennstriche zwischen den Reitern (Kommentar 13.11.) */
+.seg { gap: 0; }
+.seg button[data-f] + button[data-f] { border-left: 1px solid var(--outline); border-radius: 0; }
+.seg button[data-f][aria-pressed="true"] { border-radius: 14px; }
+.seg button[data-f][aria-pressed="true"] + button[data-f] { border-left-color: transparent; }
 </style>
 
 <div class="wrap">
