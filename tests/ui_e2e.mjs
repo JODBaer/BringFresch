@@ -1582,7 +1582,7 @@ await step(C, "Chip → nächste Woche: 7 Tage «noch offen», nichts einzukaufe
   await until(C, () => document.getElementById("secTitle").textContent === "Nächste Woche" && document.querySelectorAll("#days .prow.unplanned").length === 7, "nächste Woche nicht offen");
   expect((await text(C, "#weekLabel")) === "KW 47 · nächste Woche" && (await text(C, "#weekChip")) === "← KW 46", "Beschriftung");
   expect((await titles(C)).every(t => t === "noch offen"), "Titel nicht «noch offen»");
-  expect((await text(C, "#shopSummary")).startsWith("Nächste Woche (KW 47) · 0 Zutaten"), await text(C, "#shopSummary"));
+  expect((await text(C, "#shopSummary")) === "Nächste Woche (KW 47)" && (await count(C, "#shopList [data-shop]")) === 0, await text(C, "#shopSummary"));
   await tap(C, '.prow[data-i="0"] .pday');
   await until(C, () => /Noch kein Menü/.test(document.querySelector('.prow[data-i="0"] .ing').textContent), "Hinweis im offenen Tag fehlt");
   await tap(C, '.prow[data-i="0"] .pday');

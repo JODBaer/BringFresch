@@ -20,7 +20,7 @@
     $("cntToBuy").textContent = toBuy.length + knapp.count;
     $("cntOnBring").textContent = onBring.length;
     $("cntStaples").textContent = vorrat.count;
-    $("shopSummary").textContent = state.viewNext ? `KW ${isoWeek(plusWeek())}` : "";
+    $("shopSummary").textContent = state.viewNext ? `Nächste Woche (KW ${isoWeek(plusWeek())})` : "";
     document.querySelectorAll("#shopSort [data-sort]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sort === sortMode())));
     $("shopTool").innerHTML = state.shopFilter === "staples" ? app.cookSwHtml() : ""; // «Woche gekocht» oben, nur im Vorrat
     document.querySelectorAll("#tab-shop .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === state.shopFilter)));
