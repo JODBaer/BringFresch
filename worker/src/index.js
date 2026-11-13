@@ -1,4 +1,4 @@
-// BringFrisch Worker: kleine Brücke zwischen der Handy-App und Bring! + gemeinsamer WG-Speicher.
+// Obsonare Worker: kleine Brücke zwischen der Handy-App und Bring! + gemeinsamer WG-Speicher.
 //
 // Mehrere WGs: Header X-WG (Kurzname) + X-WG-PIN. Ohne X-WG oder mit X-WG = MAIN_WG ist es die erste WG
 // (PIN = Secret WG_PIN, Daten ohne Präfix wie bisher). Weitere WGs stehen in KV unter wgs:<name>
@@ -120,7 +120,7 @@ async function route(request, env, url) {
     return putDoc(env, `plan:${planWeek[1]}`, { week: planWeek[1], plan: data.plan, members: data.members || [], dinnerTime: data.dinnerTime || "18:30" }, data.base, { expirationTtl: 60 * 60 * 24 * 35 });
   }
 
-  // Grundvorrat der WG – Wahrheit liegt in BringFrisch (Bring! sagt nur, was auf der Liste steht)
+  // Grundvorrat der WG – Wahrheit liegt in Obsonare (Bring! sagt nur, was auf der Liste steht)
   if (path === "/vorrat" && method === "GET") return json((await env.WG.get("vorrat", "json")) || { staples: null, updated: 0 });
   if (path === "/vorrat" && method === "PUT") {
     const data = await body(request);

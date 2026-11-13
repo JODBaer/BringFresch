@@ -198,7 +198,7 @@ check(!rootStyle().getPropertyValue("--primary") && !rootStyle().getPropertyValu
 // 9. Wochenwahl (Memory)
 d.getElementById("openVoteBtn").click();
 check(d.getElementById("voteDialog").open, "Wochenwahl öffnet");
-const nRec = w.BRINGFRISCH_DATA.recipes.length + (w.BRINGFRISCH_IMPORTED || []).length + w.recipeImporter.customRecipes.length;
+const nRec = w.OBSONARE_DATA.recipes.length + (w.OBSONARE_IMPORTED || []).length + w.recipeImporter.customRecipes.length;
 const cards = () => [...d.querySelectorAll("#voteGrid .vcard")];
 check(cards().length === Math.min(14, nRec), `Raster zeigt ${Math.min(14, nRec)} Gerichte (${cards().length})`);
 const titleOf = c => c.querySelector(".vt").textContent;
@@ -236,7 +236,7 @@ const linkDom = new JSDOM(html, { url: `https://jodbaer.github.io/BringFresch/#p
 check(linkDom.window.document.querySelectorAll("#days .prow")[0].querySelectorAll(".av").length === 1, "Plan-Link wird übernommen");
 
 // 9. Schnelles & Reste
-const R = id => w.BRINGFRISCH_DATA.recipes.find(r => r.id === id);
+const R = id => w.OBSONARE_DATA.recipes.find(r => r.id === id);
 const wg = ["joshua", "lukas", "leonie", "jo"];
 const qday = (id, i) => ({ ...R(id), day: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"][i], eaters: wg, leftover_buffer: 0, extra_guests: 0 });
 const qDom = boot({

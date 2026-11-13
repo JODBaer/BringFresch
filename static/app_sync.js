@@ -1,4 +1,4 @@
-// BringFrisch – Abgleich mit dem WG-Server (Cloudflare Worker): Verbindung, Plan / nächste Woche / Vorrat / Einstellungen
+// Obsonare – Abgleich mit dem WG-Server (Cloudflare Worker): Verbindung, Plan / nächste Woche / Vorrat / Einstellungen
 // ohne Uhrenvergleich zusammenführen, Herunterziehen = synchronisieren, Bring! füllen über den Bot.
 // Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {

@@ -1,7 +1,7 @@
-// BringFrisch: Vollständige Standalone-Daten für alle 12 Monate & Rezepte
+// Obsonare: Vollständige Standalone-Daten für alle 12 Monate & Rezepte
 // Läuft 100% autonom direkt im Browser auf jedem Smartphone (iOS / Android)
 
-window.BRINGFRISCH_DATA = {
+window.OBSONARE_DATA = {
   version: "3.0.0",
   // Alle Rezeptmengen gelten für 4 Portionen (recipe.servings, Standard 4)
   pantry_staples: [

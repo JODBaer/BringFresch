@@ -1,4 +1,4 @@
-// BringFrisch – Einkauf: Liste (zu kaufen / auf Bring! / Grundvorrat), kopieren, Bring! füllen per Teilen/Kopieren.
+// Obsonare – Einkauf: Liste (zu kaufen / auf Bring! / Grundvorrat), kopieren, Bring! füllen per Teilen/Kopieren.
 // Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {
   "use strict";
@@ -114,7 +114,7 @@
     const text = toBuyItems().map(listLine).join("\n");
     if (navigator.share) {
       try {
-        await navigator.share({ title: "BringFrisch Einkaufsliste", text });
+        await navigator.share({ title: "Obsonare Einkaufsliste", text });
         return;
       } catch (e) { /* abgebrochen → kopieren */ }
     }

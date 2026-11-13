@@ -794,15 +794,15 @@ await step(A, "Saison: Bilder, Hochdeutsch; Gemüse antippen = «… Rezept» ko
   await shot(A, "10-saison-suche");
 });
 
-await step(A, "Einstellungen: Über BringFrisch (Version, GitHub, Impressum)", async () => {
+await step(A, "Einstellungen: Über Obsonare (Version, GitHub, Impressum)", async () => {
   await goTab(A, "wg");
   expect(/^\d+\.\d+\.\d+$/.test(await text(A, "#appVersionTop")), "Version fehlt");
   expect((await A.page.$eval("#repoLink", a => a.href)) === "https://github.com/jodbaer/BringFresch" && /Impressum/.test(await text(A, "#tab-wg")), "GitHub-Link/Impressum fehlt");
 });
 
-await step(A, "Über BringFrisch: Version + «Aktualisieren» in einer Zeile, gleicht ab und prüft die Version; Statusleiste im Design", async () => {
+await step(A, "Über Obsonare: Version + «Aktualisieren» in einer Zeile, gleicht ab und prüft die Version; Statusleiste im Design", async () => {
   await goTab(A, "wg");
-  const top = await A.page.evaluate(() => { const c = document.getElementById("versionCard"); return { inAbout: !!c.closest(".card") && c.closest(".card").previousElementSibling.textContent.includes("Über BringFrisch"), btn: !!c.querySelector("#updateBtn"), v: document.getElementById("appVersionTop").textContent, repo: document.getElementById("repoLinkTop").href }; });
+  const top = await A.page.evaluate(() => { const c = document.getElementById("versionCard"); return { inAbout: !!c.closest(".card") && c.closest(".card").previousElementSibling.textContent.includes("Über Obsonare"), btn: !!c.querySelector("#updateBtn"), v: document.getElementById("appVersionTop").textContent, repo: document.getElementById("repoLinkTop").href }; });
   expect(top.inAbout && top.btn && /^\d+\.\d+\.\d+$/.test(top.v) && top.repo === "https://bringfrisch-test.bringfrisch-worker.workers.dev/", `Version/Aktualisieren nicht unter «Über»: ${JSON.stringify(top)}`);
   await clearToasts(A);
   await tap(A, "#updateBtn");

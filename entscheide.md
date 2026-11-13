@@ -1,4 +1,4 @@
-# BringFrisch – Entscheide
+# Obsonare – Entscheide
 
 | # | Entscheid | Warum |
 |---|---|---|
@@ -13,7 +13,7 @@
 | 9 | Kalender als Abo (iCal), Zusagen in der App | Abos sind in Google/Apple/Outlook nur lesbar; Esser antippen = zusagen |
 | 10 | Rezepte: einmaliger Import von Fakten + Link, keine Texte/Bilder | Öffentliches Repo, Urheberrecht/AGB respektieren; kein weiteres Massen-Scraping |
 | 11 | Keine externen CDNs in der App | Läuft offline, keine fremden Abhängigkeiten |
-| 12 | Bring! ist die Wahrheit für die Liste, BringFrisch für Plan, Stimmen und Grundvorrat | Abhaken/Löschen in Bring! gilt immer; keine zweite Einkaufsliste pflegen |
+| 12 | Bring! ist die Wahrheit für die Liste, Obsonare für Plan, Stimmen und Grundvorrat | Abhaken/Löschen in Bring! gilt immer; keine zweite Einkaufsliste pflegen |
 | 13 | Bot löscht nur, was er selbst gesetzt hat (Merkliste im Worker) | Einträge von Mitbewohnern bleiben unangetastet |
 | 14 | Schon Vorhandenes: pro Artikel nachfragen statt doppelt senden; danach «Rückgängig» | Zweites Rezept mit Rahm soll Menge erhöhen dürfen, aber nie unbemerkt |
 | 15 | Zutaten auf Bring!-Katalognamen abbilden, genaue Sorte in die Mengenangabe | Bring!-Bilder und -Abteilungen; eigene Bilder hochladen kann die API nicht |

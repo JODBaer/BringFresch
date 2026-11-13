@@ -1,4 +1,4 @@
-// BringFrisch – Plan-Ansicht: Kopf, Tage (auf/zu, Esser, Reste, Zeit), Menü-Blatt «Gericht wechseln», Dichte d1–d3,
+// Obsonare – Plan-Ansicht: Kopf, Tage (auf/zu, Esser, Reste, Zeit), Menü-Blatt «Gericht wechseln», Dichte d1–d3,
 // Bring!-Chip, Woche wechseln (Chip/Wischen), Plan per Link teilen, Scrollbalken.
 // Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {
@@ -123,7 +123,7 @@
     const url = `${location.href.split("#")[0]}#plan=${encodeURIComponent(encodePlan())}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "BringFrisch Wochenplan", text: "Unser WG-Wochenplan:", url });
+        await navigator.share({ title: "Obsonare Wochenplan", text: "Unser WG-Wochenplan:", url });
         return;
       } catch (e) { /* abgebrochen → kopieren */ }
     }

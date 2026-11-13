@@ -29,7 +29,7 @@ export async function recipeImage(env, link) {
     else return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg");
   }
   const none = async () => { await kv.put(key, "", { metadata: { none: true, v: IMG_V }, expirationTtl: 7 * 86400 }); return new Response(null, { status: 204 }); };
-  const UA = { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)" };
+  const UA = { "User-Agent": "Mozilla/5.0 (compatible; Obsonare-RecipeImport/1.1; private WG meal planner)" };
   let html = "";
   try {
     const res = await safeFetch(u.toString(), { ...UA, Accept: "text/html" });
@@ -78,7 +78,7 @@ export async function importRecipe(link) {
   if (u.protocol !== "https:" || BLOCKED_HOSTS.test(u.hostname)) throw httpError(400, "Nur normale Webseiten (https://…)");
   let res;
   try {
-    res = await safeFetch(u.toString(), { "User-Agent": "Mozilla/5.0 (compatible; BringFrisch-RecipeImport/1.1; private WG meal planner)", Accept: "text/html" });
+    res = await safeFetch(u.toString(), { "User-Agent": "Mozilla/5.0 (compatible; Obsonare-RecipeImport/1.1; private WG meal planner)", Accept: "text/html" });
   } catch (e) {
     throw e.status === 400 ? e : httpError(502, "Seite nicht erreichbar");
   }

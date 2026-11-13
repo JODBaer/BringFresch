@@ -1,4 +1,4 @@
-# 🥬 BringFrisch
+# 🥬 Obsonare
 
 WG-Menüplaner mit Schweizer Saisongemüse. Die WG wählt gemeinsam 7 Znacht für die Woche, die App rechnet die Mengen für alle Anwesenden (plus Reste fürs Zmittag) und schreibt die Einkaufsliste direkt in **Bring!**.
 
@@ -36,7 +36,7 @@ Unsere WG: Name **`Allmen`** + bisheriger PIN (`wg1` geht auch; schon verbundene
 5. **Herunterziehen** = sofort synchronisieren (eigene Änderungen hoch, Stand der anderen holen).
 6. **📅 Kalender**: Alle Znacht als Abo im iPhone-, Google- oder Outlook-Kalender.
 
-**Wer hat recht?** Bring! für «was steht auf der Liste» (BringFrisch fragt immer neu nach). BringFrisch (WG-Server) für Plan, Stimmen und Grundvorrat. Der Bot nimmt nur weg, was er selbst gesetzt hat.
+**Wer hat recht?** Bring! für «was steht auf der Liste» (Obsonare fragt immer neu nach). Obsonare (WG-Server) für Plan, Stimmen und Grundvorrat. Der Bot nimmt nur weg, was er selbst gesetzt hat.
 
 Rezepte: 10 Klassiker + 6 schnelle/Reste + 82 Saisonrezepte von Betty Bossi, Migusto, Fooby und Swissmilk (verlinkt aufs Original) + eigene Rezepte mit Link.
 

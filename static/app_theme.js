@@ -1,4 +1,4 @@
-// BringFrisch – Theme: Formen, Stil iPhone (Glas) / Android (Material 3), Farben (Akzent, Hintergrund), Hell/Dunkel.
+// Obsonare – Theme: Formen, Stil iPhone (Glas) / Android (Material 3), Farben (Akzent, Hintergrund), Hell/Dunkel.
 // Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {
   "use strict";

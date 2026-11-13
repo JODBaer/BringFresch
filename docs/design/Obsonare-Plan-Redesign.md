@@ -1,6 +1,6 @@
-# BringFrisch – Redesign «Plan»-Ansicht (Übergabe zur Umsetzung)
+# Obsonare – Redesign «Plan»-Ansicht (Übergabe zur Umsetzung)
 
-Referenz-Prototyp: `bringfrisch-prototyp.html` (eine Datei, im Browser öffnen; `?os=ios` / `?os=android` erzwingt den Stil).
+Referenz-Prototyp: `obsonare-prototyp.html` (eine Datei, im Browser öffnen; `?os=ios` / `?os=android` erzwingt den Stil).
 Nur die **Plan**-Ansicht ist ausgearbeitet. Einkauf, Rezepte & Saison, Einstellungen folgen separat.
 
 ## 1. Plattform & Stil

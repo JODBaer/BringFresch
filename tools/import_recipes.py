@@ -1,5 +1,5 @@
 """
-BringFrisch Rezept-Import (einmalig, von Hand gestartet – nicht Teil der App).
+Obsonare Rezept-Import (einmalig, von Hand gestartet – nicht Teil der App).
 
 Liest die standardisierten Rezeptdaten (schema.org Recipe als JSON-LD oder Microdata)
 von Betty Bossi, Migusto, Fooby, Swissmilk und einzelnen Chefkoch-Links.
@@ -40,7 +40,7 @@ PAGES = CACHE / "recipes"
 STAGING = ROOT / "recipes_staging.json"
 EXTRA_URLS = ROOT / "extra_urls.txt"
 
-UA = "BringFrisch-RecipeImport/1.0 (private WG meal planner; low volume)"
+UA = "Obsonare-RecipeImport/1.0 (private WG meal planner; low volume)"
 DELAY_S = 3.0
 PER_SITE = 90  # Kandidaten pro Website, die abgerufen werden
 SEED = 2026
@@ -629,7 +629,7 @@ def cmd_merge():
     target.write_text(
         "// Automatisch erzeugt von tools/import_recipes.py merge – nicht von Hand bearbeiten.\n"
         "// Nur Fakten (Titel, Portionen, Zutaten); Zubereitung steht auf der verlinkten Originalseite.\n"
-        "window.BRINGFRISCH_IMPORTED = " + json.dumps(out, ensure_ascii=False, indent=0).replace("\n", "") + ";\n",
+        "window.OBSONARE_IMPORTED = " + json.dumps(out, ensure_ascii=False, indent=0).replace("\n", "") + ";\n",
         encoding="utf-8",
     )
     print(f"{len(out)} Rezepte → {target.relative_to(ROOT.parent)}")

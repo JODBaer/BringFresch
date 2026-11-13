@@ -1,4 +1,4 @@
-// BringFrisch – reine Regeln (Woche, Portionen, Zutaten, Einkaufsliste). Kein Bildschirm, kein Speicher, kein Netz.
+// Obsonare – reine Regeln (Woche, Portionen, Zutaten, Einkaufsliste). Kein Bildschirm, kein Speicher, kein Netz.
 // Dieselbe Datei läuft als <script> in der App (vor app.js) und als Import im WG-Server (worker/src/index.js) und in
 // Node-Tests: sie legt alles unter BF_CORE ab. Nichts hier darf document, localStorage oder fetch benutzen.
 (function (root) {
