@@ -282,6 +282,8 @@ button { font: inherit; color: inherit; }
 .cell.c1.r-opt { box-shadow: inset 3px 0 var(--opt-bar); } .cell.c1.r-del { box-shadow: inset 3px 0 var(--del-bar); }
 .cell.c2.r-add, .cell.c2.r-chg, .cell.c2.r-opt, .cell.c2.r-del { box-shadow: none; }
 .fab.undoing { background: var(--fg); color: var(--s0); }
+
+#cookTop .sw { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--fg); }
 </style>
 
 <div class="wrap">
@@ -291,7 +293,7 @@ button { font: inherit; color: inherit; }
       <button class="ibtn" type="button" aria-label="Wochenwahl"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V9h14zm-7-8 1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z"/></svg></button>
     </header>
     <div class="main" id="main">
-      <div class="sechead"><span class="topbtns"><button type="button">Grundvorrat verwalten</button><button type="button">Liste kopieren</button></span><small id="nZut" hidden></small><span class="sortsw" id="sortsw"><button type="button" data-s="rezept" aria-pressed="true">Rezept</button><button type="button" data-s="kat" aria-pressed="false">Kategorie</button></span></div>
+      <div class="sechead"><span id="cookTop"></span><small id="nZut" hidden></small><span class="sortsw" id="sortsw"><button type="button" data-s="rezept" aria-pressed="true">Rezept</button><button type="button" data-s="kat" aria-pressed="false">Kategorie</button></span></div>
       <div class="seg" id="seg">
         <button type="button" data-f="kaufen" aria-pressed="true">Kaufen <b id="c1"></b></button>
         <button type="button" data-f="bring" aria-pressed="false">Auf Bring! <b id="c2"></b></button>
@@ -299,6 +301,7 @@ button { font: inherit; color: inherit; }
       </div>
       <div class="card" id="list"></div>
       <div class="cols" id="cols"></div>
+      <div class="btnrow"><button type="button">Grundvorrat verwalten</button><button type="button">Liste kopieren</button></div>
     </div>
     <button type="button" class="undo" id="undo" hidden>Rückgängig</button>
     <button type="button" class="fab" id="fab"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42a.25.25 0 0 1-.22-.37L8.1 13h7.45a2 2 0 0 0 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2zm16 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg><span id="fabL">Auf Bring!</span> <b id="fabN"></b></button>
@@ -446,8 +449,7 @@ function vorratC() {
   const v = ALL.filter(i => i.q != null);
   const row = i => `<button type="button" class="item vrow${i.zero ? " zero" : ""}${i.low && !i.zero ? " low" : ""}" data-z="${i.n}"><span class="nm">${i.n}${i.why ? `<small>${i.why}</small>` : ""}</span><span class="amt">${i.zero ? "leer" : i.use && !cooked ? `noch ${i.q} → <b>${Math.max(0, i.q - i.use)}</b>` : `noch ${nowQ(i)}`} ${i.u}</span></button>`;
   const used = v.filter(i => i.use), oft = v.filter(i => i.oft && !i.use), knapp = v.filter(i => !i.use && !i.oft);
-  return `<div class="vtop"><button type="button" class="sw" id="cookSw" role="switch" aria-checked="${cooked}"><i></i>Woche gekocht</button><small>${cooked ? "abgebucht – zurück = rückgängig" : "bucht ab, was die Woche braucht"}</small></div>`
-    + (used.length ? `<h3>Diese Woche gebraucht</h3>` + used.map(row).join("") : "")
+  return (used.length ? `<h3>Diese Woche gebraucht</h3>` + used.map(row).join("") : "")
     + (oft.length ? `<h3>Geht oft aus – noch da?</h3>` + oft.map(row).join("") : "")
     + (knapp.length ? `<h3>Sonst knapp</h3>` + knapp.map(row).join("") : "");
 }
@@ -487,6 +489,8 @@ function render() {
   if (filter === "bring") { renderCols(); if (!was) { p.classList.add("anim"); setTimeout(() => p.classList.remove("anim"), 600); } }
   else renderList();
   document.querySelectorAll("#seg [data-f]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.f === filter)));
+  // «Woche gekocht» oben in der Zeile über den Reitern (Kommentar 13.11.), nur im Reiter «Vorrat»
+  $("cookTop").innerHTML = filter === "vorrat" ? `<button type="button" class="sw" id="cookSw" role="switch" aria-checked="${cooked}"><i></i>Woche gekocht</button>` : "";
   document.querySelectorAll("#sortsw button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.s === sort)));
 }
 function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("on"), 2000); }
@@ -507,9 +511,9 @@ $("seg").addEventListener("click", e => {
   const b = e.target.closest("[data-f]"); if (!b) return;
   filter = b.dataset.f; $("main").scrollTop = 0; render();
 });
+$("cookTop").addEventListener("click", e => { if (e.target.closest("#cookSw")) { cooked = !cooked; ALL.forEach(applyLevel); toast(cooked ? "Woche abgebucht" : "Abbuchen rückgängig"); render(); } });
 $("sortsw").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (b) { sort = b.dataset.s; render(); } });
 $("list").addEventListener("click", e => {
-  if (e.target.closest("#cookSw")) { cooked = !cooked; ALL.forEach(applyLevel); toast(cooked ? "Woche abgebucht" : "Abbuchen rückgängig"); return render(); }
   const z = e.target.closest("[data-z]");
   if (z) return openV(find(z.dataset.z));
   const r = e.target.closest("[data-n]"); if (r && filter === "kaufen") { tap(find(r.dataset.n), 1); render(); }
