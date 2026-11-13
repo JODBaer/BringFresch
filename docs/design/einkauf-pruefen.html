@@ -117,6 +117,12 @@ button { font: inherit; color: inherit; }
 .send { position: absolute; left: 12px; right: 12px; bottom: 18px; border: 0; border-radius: 18px; padding: 15px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 16px; cursor: pointer; box-shadow: 0 8px 24px rgba(20, 40, 20, .25); }
 .toast { position: absolute; left: 16px; right: 16px; bottom: 90px; background: var(--fg); color: var(--bg); border-radius: 14px; padding: 12px 14px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.on { opacity: 1; }
+.grouping { margin: 0 14px 4px; display: flex; justify-content: flex-end; }
+.seg.sm button { padding: 5px 11px; font-size: 12.5px; }
+.shares { display: flex; flex-wrap: wrap; gap: 4px; grid-column: 1 / -1; margin-top: 4px; }
+.share { font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
+.share[aria-pressed="false"] { opacity: .5; text-decoration: line-through; }
+.dl { cursor: pointer; }
 </style>
 
 <div class="page">
@@ -140,6 +146,7 @@ button { font: inherit; color: inherit; }
         <button type="button" data-t="bring" aria-pressed="false">Auf Bring!</button>
         <button type="button" data-t="vorrat" aria-pressed="false">Vorrat</button>
       </div>
+      <div class="grouping"><div class="seg sm" id="grouping"><button type="button" data-v="rezept" aria-pressed="true">nach Rezept</button><button type="button" data-v="kat" aria-pressed="false">nach Kategorie</button></div></div>
       <div class="scroll" id="list"></div>
       <button type="button" class="fab left" id="fab">Prüfen &amp; auf Bring! <b id="fabN">0</b></button>
 
@@ -170,6 +177,7 @@ button { font: inherit; color: inherit; }
           <span class="sw" style="border-color:var(--same-bar)"></span><span><b>Schon da</b> – steht passend auf Bring!, nichts zu tun</span>
         </div>
         <p>Antippen schaltet eine Zeile ein oder aus (ausgeschaltet = durchgestrichen). Gesendet wird erst mit dem Knopf unten.</p>
+        <p><b>Ein Artikel, mehrere Rezepte:</b> Rahm aus Di, Do und Fr ist <i>ein</i> Eintrag auf Bring! mit der Gesamtmenge, nie dreimal. «Nach Rezept» steht er bei jedem Gericht mit seinem Anteil («zusammen 6 dl · Di, Do, Fr»); einen Anteil antippen zieht nur diesen ab. In «Prüfen» steht er einmal unter «Für mehrere Gerichte», die Anteile als kleine Knöpfe.</p>
       </div>
       <div class="box">
         <h2>Für dich zum Entscheiden</h2>
@@ -177,72 +185,109 @@ button { font: inherit; color: inherit; }
         <p class="q"><b>2.</b> «Prüfen» als eine Liste oder nebeneinander (links Bring! jetzt, rechts nach dem Senden)?</p>
         <p class="q"><b>3.</b> Zeile in «Kaufen» antippen = «haben wir schon» – passt das, oder soll es gar nichts tun?</p>
         <p class="q"><b>4.</b> Fremde Einträge (z.B. Leonies Milch) mit Menge ergänzen vorgewählt oder nicht? Im Entwurf: nicht vorgewählt.</p>
+        <p class="q"><b>5.</b> Umschalter «nach Rezept / nach Kategorie»: gilt er für Einkauf und Prüfen zusammen (so im Entwurf), und merkt sich jedes Handy die Wahl?</p>
       </div>
     </aside>
   </div>
 </div>
 
 <script>
-// Beispieldaten (KW 46). state: add = neu, chg = Menge dazu, opt = Vorrat knapp, same = schon da
-const DATA = [
-  { g: "Mo", t: "Linsen-Dal mit Wintergemüse", items: [
-    { n: "Rote Linsen", a: "300 g", s: "add" }, { n: "Kokosmilch", a: "4 dl", s: "add" }, { n: "Kürbis", a: "1 Stk", s: "add", why: "Butternuss" } ] },
-  { g: "Di", t: "Lauch-Schinken-Rollen in Salbeirahm", items: [
-    { n: "Lauch", a: "4 Stk", s: "add" }, { n: "Schinken", a: "8 Tranchen", s: "add" }, { n: "Rahm", a: "2 dl", s: "chg", old: "2 dl", now: "4 dl", why: "auch für Do · Bot" } ] },
-  { g: "Mi", t: "Reblochon-Kartoffeln", items: [
-    { n: "Kartoffeln", a: "1 kg", s: "same", why: "steht schon drauf (Leonie)" }, { n: "Reblochon", a: "1 Stk", s: "add" }, { n: "Chicorée", a: "4 Stk", s: "add" } ] },
-  { g: "Do", t: "Pizokel mit Gemüse", items: [
-    { n: "Buchweizenmehl", a: "250 g", s: "add" }, { n: "Wirz", a: "½ Kopf", s: "add" }, { n: "Milch", a: "2 dl", s: "chg", old: "1 l", now: "1.2 l", why: "fremder Eintrag (Leonie)", off: true } ] },
-  { g: "", t: "Für mehrere Gerichte", items: [
-    { n: "Nüsslisalat", a: "400 g", s: "add", why: "Mo, Di, Mi, Do" }, { n: "Grillkäse", a: "300 g", s: "add", why: "für Jo · 3 Gerichte" } ] },
-  { g: "", t: "Aus dem Vorrat – wird knapp", items: [
-    { n: "Olivenöl", a: "1 Fl.", s: "opt", why: "noch 1 · knapp", off: true }, { n: "Reis", a: "1 Pack", s: "opt", why: "geht oft aus", off: true } ] }
+// Beispieldaten (KW 46). Ein Artikel = ein Eintrag auf Bring!, auch wenn ihn mehrere Rezepte brauchen (parts).
+// s: add = neu · chg = steht schon drauf (old), Menge kommt dazu · opt = Vorrat knapp · same = schon passend drauf
+const DISHES = [["Mo", "Linsen-Dal mit Wintergemüse"], ["Di", "Lauch-Schinken-Rollen in Salbeirahm"], ["Mi", "Reblochon-Kartoffeln"], ["Do", "Pizokel mit Gemüse"], ["Fr", "Pilzrisotto"]];
+const ITEMS = [
+  { n: "Rote Linsen", u: "g", k: "Getreide & Teigwaren", s: "add", parts: [["Mo", 300]] },
+  { n: "Kokosmilch", u: "dl", k: "Milch & Käse", s: "add", parts: [["Mo", 4]] },
+  { n: "Kürbis", u: "Stk", k: "Früchte & Gemüse", s: "add", parts: [["Mo", 1]], why: "Butternuss" },
+  { n: "Lauch", u: "Stk", k: "Früchte & Gemüse", s: "add", parts: [["Di", 4]] },
+  { n: "Schinken", u: "Tranchen", k: "Fleisch & Fisch", s: "add", parts: [["Di", 8]] },
+  { n: "Rahm", u: "dl", k: "Milch & Käse", s: "chg", old: "2 dl", oldBy: "Bot", parts: [["Di", 2], ["Do", 2], ["Fr", 2]] },
+  { n: "Kartoffeln", u: "kg", k: "Früchte & Gemüse", s: "same", parts: [["Mi", 1]], why: "steht schon drauf (Leonie)" },
+  { n: "Reblochon", u: "Stk", k: "Milch & Käse", s: "add", parts: [["Mi", 1]] },
+  { n: "Chicorée", u: "Stk", k: "Früchte & Gemüse", s: "add", parts: [["Mi", 4]] },
+  { n: "Buchweizenmehl", u: "g", k: "Getreide & Teigwaren", s: "add", parts: [["Do", 250]] },
+  { n: "Milch", u: "dl", k: "Milch & Käse", s: "chg", old: "1 l", oldBy: "Leonie", parts: [["Do", 2]], foreign: true },
+  { n: "Champignons", u: "g", k: "Früchte & Gemüse", s: "add", parts: [["Fr", 400]] },
+  { n: "Nüsslisalat", u: "g", k: "Früchte & Gemüse", s: "add", parts: [["Mo", 100], ["Di", 100], ["Mi", 100], ["Do", 100], ["Fr", 100]] },
+  { n: "Olivenöl", u: "Fl.", k: "Vorrat", s: "opt", parts: [], why: "noch 1 · knapp", vorrat: 1 },
+  { n: "Reis", u: "Pack", k: "Vorrat", s: "opt", parts: [], why: "geht oft aus", vorrat: 1 }
 ];
+// an/aus pro Anteil (Rezept); fremde Einträge und Vorrat sind zuerst aus
+ITEMS.forEach(i => { i.on = Object.fromEntries(i.parts.map(([g]) => [g, !i.foreign])); i.vOn = false; });
 const $ = id => document.getElementById(id);
-let tab = "kaufen", view = "unified";
-const all = () => DATA.flatMap(g => g.items);
-const sending = () => all().filter(i => (i.s === "add" || i.s === "chg" || i.s === "opt") && !i.off);
+let tab = "kaufen", view = "unified", grouping = "rezept";
+const fmt = (v, u) => `${String(Math.round(v * 10) / 10).replace(".", ",")} ${u}`;
+const total = i => i.vorrat ? (i.vOn ? i.vorrat : 0) : i.parts.reduce((t, [g, v]) => t + (i.on[g] ? v : 0), 0);
+const fullTotal = i => i.vorrat || i.parts.reduce((t, [, v]) => t + v, 0);
+const days = i => i.parts.map(([g]) => g).join(", ");
+const active = i => i.s !== "same" && total(i) > 0;
+const sending = () => ITEMS.filter(active);
+const find = n => ITEMS.find(x => x.n === n);
 
+function itemRow(i, g) {
+  // nach Rezept: Rahm steht bei jedem Gericht mit seinem Anteil, bleibt aber derselbe Bring!-Eintrag
+  const share = g ? i.parts.find(p => p[0] === g) : null;
+  const amt = share ? fmt(share[1], i.u) : fmt(fullTotal(i), i.u);
+  const off = share ? !i.on[g] : total(i) === 0;
+  const note = i.parts.length > 1 ? (share ? `zusammen ${fmt(fullTotal(i), i.u)} · ${days(i)}` : days(i)) : (tab === "bring" ? i.why || "" : "");
+  return `<div class="row${off && tab === "kaufen" ? " ok" : ""}" data-n="${i.n}" data-g="${g || ""}"><span class="n">${i.n}${note ? `<span class="tag">${note}</span>` : ""}</span><span class="amt">${tab === "bring" && i.s === "chg" ? i.old : amt}</span></div>`;
+}
 function renderList() {
   let h = "";
   if (tab === "vorrat") {
     h = `<div class="grp"><h4>Diese Woche gebraucht</h4>` + ["Olivenöl|noch 1 → danach 0", "Reis|noch 2 → danach 1", "Salz|da"].map(x => { const [n, a] = x.split("|"); return `<div class="row"><span class="n">${n}</span><span class="amt">${a}</span></div>`; }).join("") + `</div>`;
   } else {
-    DATA.filter(g => !/Vorrat/.test(g.t)).forEach(g => {
-      const items = g.items.filter(i => tab === "bring" ? i.s === "same" || i.s === "chg" : i.s !== "same");
-      if (!items.length) return;
-      h += `<div class="grp"><h4>${g.g ? `<span class="d">${g.g}</span>` : ""}${g.t}</h4>` + items.map(i =>
-        `<div class="row${i.have ? " ok" : ""}" data-n="${i.n}"><span class="n">${i.n}${i.why && tab === "bring" ? `<span class="tag">${i.why}</span>` : ""}</span><span class="amt">${tab === "bring" && i.s === "chg" ? i.old : i.a}</span></div>`).join("") + `</div>`;
-    });
+    const show = i => !i.vorrat && (tab === "bring" ? i.s === "same" || i.s === "chg" : i.s !== "same");
+    if (grouping === "rezept") {
+      DISHES.forEach(([g, t]) => {
+        const list = ITEMS.filter(i => show(i) && i.parts.some(p => p[0] === g));
+        if (list.length) h += `<div class="grp"><h4><span class="d">${g}</span>${t}</h4>` + list.map(i => itemRow(i, g)).join("") + `</div>`;
+      });
+    } else {
+      const cats = [...new Set(ITEMS.filter(show).map(i => i.k))].sort((a, b) => a.localeCompare(b, "de"));
+      cats.forEach(k => { h += `<div class="grp"><h4>${k}</h4>` + ITEMS.filter(i => show(i) && i.k === k).map(i => itemRow(i, null)).join("") + `</div>`; });
+    }
   }
   $("list").innerHTML = h;
   $("fabN").textContent = sending().length;
 }
 
+function diffLine(i) {
+  const t = total(i), shown = t || fullTotal(i);
+  const amt = i.s === "chg" ? `<s>${i.old}</s><span class="arrow">→</span><b>${i.old} + ${fmt(shown, i.u)}</b>` : i.s === "same" ? fmt(fullTotal(i), i.u) : `<b>${fmt(shown, i.u)}</b>`;
+  const why = [i.why, i.s === "chg" ? `steht schon drauf (${i.oldBy})` : ""].filter(Boolean).join(" · ");
+  const shares = i.parts.length > 1 ? `<span class="shares">${i.parts.map(([g, v]) => `<span class="share" role="button" tabindex="0" data-share="${g}" aria-pressed="${i.on[g]}">${g} ${fmt(v, i.u)}</span>`).join("")}</span>` : "";
+  return `<div class="dl ${i.s}${i.s !== "same" && t === 0 ? " off" : ""}" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${amt}</span>${why ? `<span class="why">${why}</span>` : ""}${shares}</div>`;
+}
+function groupsForDiff() {
+  if (grouping === "kat") {
+    const cats = [...new Set(ITEMS.map(i => i.k))].sort((a, b) => (a === "Vorrat") - (b === "Vorrat") || a.localeCompare(b, "de"));
+    return cats.map(k => [k === "Vorrat" ? "Aus dem Vorrat – wird knapp" : k, ITEMS.filter(i => i.k === k)]);
+  }
+  // nach Rezept: was mehrere Rezepte brauchen, steht EINMAL unter «Für mehrere Gerichte» (ein Bring!-Eintrag, Anteile antippbar)
+  const out = DISHES.map(([g, t]) => [`${g} · ${t}`, ITEMS.filter(i => i.parts.length === 1 && i.parts[0][0] === g)]);
+  out.push(["Für mehrere Gerichte", ITEMS.filter(i => i.parts.length > 1)]);
+  out.push(["Aus dem Vorrat – wird knapp", ITEMS.filter(i => i.vorrat)]);
+  return out.filter(([, l]) => l.length);
+}
 function renderDiff() {
   const sel = sending();
-  const cnt = s => all().filter(i => i.s === s).length;
+  const cnt = s => ITEMS.filter(i => i.s === s).length;
   $("sum").innerHTML = [["add", "kommt dazu", cnt("add")], ["chg", "Menge dazu", cnt("chg")], ["opt", "Vorrat knapp", cnt("opt")], ["same", "schon da", cnt("same")]]
     .map(([s, l, n]) => `<span class="chip"><i style="background:var(--${s}-bar)"></i>${n} ${l}</span>`).join("");
   let h = "";
   if (view === "unified") {
-    DATA.forEach(g => {
-      h += `<div class="dsec">${g.g ? g.g + " · " : ""}${g.t}</div>`;
-      h += g.items.map(i => {
-        const amt = i.s === "chg" ? `<s>${i.old}</s><span class="arrow">→</span><b>${i.now}</b>` : i.s === "same" ? i.a : `<b>${i.a}</b>`;
-        return `<button type="button" class="dl ${i.s}${i.off ? " off" : ""}" data-n="${i.n}" ${i.s === "same" ? "disabled" : `aria-pressed="${!i.off}"`}><span class="n">${i.n}</span><span class="a">${amt}</span>${i.why ? `<span class="why">${i.why}</span>` : ""}</button>`;
-      }).join("");
-    });
+    groupsForDiff().forEach(([title, list]) => { h += `<div class="dsec">${title}</div>` + list.map(diffLine).join(""); });
   } else {
     h += `<div class="split"><div class="colh">Bring! jetzt</div><div class="colh">nach dem Senden</div>`;
-    DATA.forEach(g => {
-      h += `<div class="dsec" style="grid-column:1/-1">${g.g ? g.g + " · " : ""}${g.t}</div>`;
-      g.items.forEach(i => {
-        const left = i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${i.a}</span></div>`
-          : i.s === "chg" ? `<div class="cell"><span class="n">${i.n}</span><span class="a">${i.old}</span></div>`
-          : `<div class="cell empty"></div>`;
-        const right = i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${i.a}</span></div>`
-          : `<div class="cell tap ${i.s}${i.off ? " off" : ""}" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.s === "chg" ? i.now : i.a}</span></div>`;
+    groupsForDiff().forEach(([title, list]) => {
+      h += `<div class="dsec" style="grid-column:1/-1">${title}</div>`;
+      list.forEach(i => {
+        const t = total(i), shown = t || fullTotal(i);
+        const left = i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${fmt(fullTotal(i), i.u)}</span></div>`
+          : i.s === "chg" ? `<div class="cell"><span class="n">${i.n}</span><span class="a">${i.old}</span></div>` : `<div class="cell empty"></div>`;
+        const right = i.s === "same" ? `<div class="cell same"><span class="n">${i.n}</span><span class="a">${fmt(fullTotal(i), i.u)}</span></div>`
+          : `<div class="cell tap ${i.s}${t === 0 ? " off" : ""}" data-n="${i.n}" role="button" tabindex="0"><span class="n">${i.n}</span><span class="a">${i.s === "chg" ? `${i.old} + ${fmt(shown, i.u)}` : fmt(shown, i.u)}${i.parts.length > 1 ? ` · ${days(i)}` : ""}</span></div>`;
         h += left + right;
       });
     });
@@ -253,20 +298,35 @@ function renderDiff() {
   $("send").disabled = !sel.length;
 }
 
-function toggle(n) { const i = all().find(x => x.n === n); if (i && i.s !== "same") { i.off = !i.off; renderDiff(); renderList(); } }
+function toggleItem(i) { // ganzer Artikel: alle Anteile an oder aus
+  if (!i || i.s === "same") return;
+  if (i.vorrat) i.vOn = !i.vOn;
+  else { const to = total(i) === 0; i.parts.forEach(([g]) => { i.on[g] = to; }); }
+}
+function render() { renderList(); renderDiff(); }
 function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("on"), 2200); }
 
 $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; tab = b.dataset.t; document.querySelectorAll("#tabs button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderList(); });
-$("list").addEventListener("click", e => { const r = e.target.closest(".row[data-n]"); if (!r || tab !== "kaufen") return; const i = all().find(x => x.n === r.dataset.n); i.have = !i.have; i.off = !!i.have; renderList(); toast(i.have ? `${i.n}: haben wir schon` : `${i.n}: wieder kaufen`); });
+$("list").addEventListener("click", e => {
+  const r = e.target.closest(".row[data-n]"); if (!r || tab !== "kaufen") return;
+  const i = find(r.dataset.n), g = r.dataset.g;
+  if (g) { i.on[g] = !i.on[g]; toast(i.on[g] ? `${i.n} (${g}): wieder kaufen` : `${i.n} (${g}): haben wir schon${i.parts.length > 1 ? ` – noch ${fmt(total(i), i.u)} auf Bring!` : ""}`); }
+  else { toggleItem(i); toast(total(i) ? `${i.n}: wieder kaufen` : `${i.n}: haben wir schon`); }
+  render();
+});
 $("fab").onclick = () => { renderDiff(); $("sheet").classList.add("show"); };
 $("close").onclick = () => $("sheet").classList.remove("show");
-$("diff").addEventListener("click", e => { const r = e.target.closest("[data-n]"); if (r) toggle(r.dataset.n); });
-$("diff").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.n) { e.preventDefault(); toggle(e.target.dataset.n); } });
+$("diff").addEventListener("click", e => {
+  const sh = e.target.closest("[data-share]");
+  if (sh) { const i = find(sh.closest("[data-n]").dataset.n); i.on[sh.dataset.share] = !i.on[sh.dataset.share]; render(); return; }
+  const r = e.target.closest("[data-n]"); if (r) { toggleItem(find(r.dataset.n)); render(); }
+});
+$("diff").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && (e.target.dataset.n || e.target.dataset.share)) { e.preventDefault(); e.target.click(); } });
 $("send").onclick = () => { const n = sending().length; $("sheet").classList.remove("show"); toast(`${n} Artikel auf Bring! · Rückgängig`); };
 function seg(id, fn) { $(id).addEventListener("click", e => { const b = e.target.closest("[data-v]"); if (!b) return; $(id).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); fn(b.dataset.v); }); }
 seg("fabSide", v => { $("fab").className = `fab ${v}`; });
-seg("viewMode", v => { view = v; renderDiff(); if (!$("sheet").classList.contains("show")) $("sheet").classList.add("show"); });
-renderList();
-renderDiff();
+seg("viewMode", v => { view = v; renderDiff(); $("sheet").classList.add("show"); });
+seg("grouping", v => { grouping = v; render(); });
+render();
 $("sheet").classList.add("show"); // Entwurf öffnet gleich auf «Prüfen»; ✕ zeigt die Einkauf-Seite mit dem Knopf
 </script>
