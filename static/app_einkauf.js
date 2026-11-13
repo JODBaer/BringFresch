@@ -108,6 +108,9 @@
     $("handoffDialog").showModal();
   }
 
+  // Hofläden & Märkte: Blatt mit Karten-Suche (in der Nähe, Rapperswil-Jona, Zürich)
+  $("hofBtn").onclick = () => $("hofDialog").showModal();
+
   $("syncBtn").onclick = () => (app.connected() ? app.syncToBring() : openHandoff());
 
   $("shareListBtn").onclick = async () => {

@@ -66,6 +66,7 @@
         <button class="btn" id="openStaplesBtn" type="button">Grundvorrat verwalten</button>
         <button class="btn" id="copyListBtn" type="button">Liste kopieren</button>
       </div>
+      <button class="btn hofbtn" id="hofBtn" type="button">🧺 Hofläden &amp; Märkte</button>
     </section>
 
     <!-- 3. Saison -->
@@ -458,6 +459,19 @@
   </dialog>
 
   <!-- Bring! Übergabe (Fallback ohne Sync) -->
+  <dialog id="hofDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>Hofläden &amp; Märkte</h2><p>Frisch vom Hof – öffnet die Karte</p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="hofrow"><span>In der Nähe</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt" target="_blank" rel="noopener">Märkte</a></div>
+        <div class="hofrow"><span>Rapperswil-Jona</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen+Rapperswil-Jona" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt+Rapperswil" target="_blank" rel="noopener">Märkte</a></div>
+        <div class="hofrow"><span>Zürich</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen+Zürich" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt+Zürich" target="_blank" rel="noopener">Märkte</a></div>
+      </div>
+    </div>
+  </dialog>
   <dialog id="handoffDialog">
     <div class="sheet">
       <div class="sheet-head">
