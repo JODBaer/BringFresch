@@ -845,3 +845,8 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 
 /* Kaufen: vorgemerkt für Bring! = durchgestrichen, bleibt stehen bis «Auf Bring!» */
 #shopList .item.marked > span:first-child, #shopList .item.marked .amt { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); }
+/* Einkauf: Hofläden & Märkte (Karten-Links) */
+.hofbtn { width: 100%; margin-top: 10px; }
+.hofrow { display: flex; align-items: center; gap: 8px; }
+.hofrow span { flex: 1 1 auto; font-weight: 600; }
+.hofrow .btn { flex: 0 0 auto; text-decoration: none; color: inherit; padding: 9px 14px; }
