@@ -690,8 +690,8 @@ await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wähl
   expect((await count(A, '#compareCols [data-cmp^="p:"]')) > 3, "links fehlt «Kaufen» aus dem Plan");
   await shot(A, "08c-gegenueberstellung");
   await dialogNoHScroll(A, "compareDialog");
-  // ganz unten «Alle auswählen» / «Alle abwählen»
-  await tap(A, "#compareAllBtn");
+  // ganz unten «Alle auswählen» / «Alle abwählen» (ist schon alles vorgewählt, heisst der Knopf gleich «Alle abwählen»)
+  if ((await text(A, "#compareAllBtn")) === "Alle auswählen") await tap(A, "#compareAllBtn");
   await until(A, () => document.getElementById("compareAllBtn").textContent === "Alle abwählen" && ![...document.querySelectorAll("#compareCols [data-cmp]:not([disabled])")].some(b => b.getAttribute("aria-pressed") !== "true"), "«Alle auswählen» wählt nicht alles");
   await tap(A, "#compareAllBtn");
   await until(A, () => document.getElementById("compareSendBtn").textContent === "Nichts gewählt", "«Alle abwählen» wählt nicht alles ab");
