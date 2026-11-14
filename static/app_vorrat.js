@@ -1,4 +1,4 @@
-// BringFrisch – Grundvorrat (Variante C, docs/design/grundvorrat-varianten.html): Mengen pro Artikel, Knappes und
+// Obsonare – Grundvorrat (Variante C, docs/design/grundvorrat-varianten.html): Mengen pro Artikel, Knappes und
 // «Diese Woche gebraucht» vorne beim Einkauf, ein Grundvorrat dahinter (Kacheln, Blatt pro Artikel, Inventur) und die
 // Gegenüberstellung Kaufen | Vorrat vor dem Senden. Nichts aus dem Vorrat geht ungefragt auf Bring!.
 // Die Regeln (Knapp, Abbuchen, Mengen) stehen in core.js. Teil der App (Namensraum BF_APP: siehe Kopf von app.js).

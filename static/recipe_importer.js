@@ -1,4 +1,4 @@
-// BringFrisch: Eigene Rezepte (von Hand oder mit Link einer Rezeptseite), bearbeiten, löschen
+// Obsonare: Eigene Rezepte (von Hand oder mit Link einer Rezeptseite), bearbeiten, löschen
 
 const UNIT_PATTERN = "kg|g|dl|ml|cl|l|el|tl|stk|stück|bund|prise|glas|dose|becher|pck|packung|tranchen|kopf|rolle|zehe|zehen|portion";
 

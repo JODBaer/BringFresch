@@ -1,4 +1,4 @@
-// BringFrisch – WG-Menüplaner mit Schweizer Saisongemüse und Bring!-Übergabe.
+// Obsonare – WG-Menüplaner mit Schweizer Saisongemüse und Bring!-Übergabe.
 // Läuft komplett im Browser; alle Daten liegen in localStorage (store.js), die reinen Regeln in core.js.
 //
 // Die App besteht aus klassischen Skripten (kein Bündler, kein Bau-Schritt), Reihenfolge wie in index.html:
@@ -35,7 +35,7 @@
     } catch (e) { /* ohne Speicher: Seite von Hand neu laden */ }
   });
 
-  const DATA = window.BRINGFRISCH_DATA || {};
+  const DATA = window.OBSONARE_DATA || {};
   // Reine Regeln (auch vom WG-Server benutzt): core.js
   const CORE = window.BF_CORE;
   const { isoWeek, weekKey, plusWeek, portionsFor, formatAmount, cleanIngredient, hasWord, bringItemId, bringPayload } = CORE;
@@ -239,7 +239,7 @@
   // ---------------------------------------------------------------------------
   function allRecipes() {
     // gleicher Bestand für alle WGs: Katalog + eigene + geteilte der anderen WGs (Stimmen bleiben pro WG)
-    return [...(DATA.recipes || []), ...(window.BRINGFRISCH_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
+    return [...(DATA.recipes || []), ...(window.OBSONARE_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
   }
   // Beliebtheit: Stimmen der Wochenwahl dieser WG (vom WG-Server); ohne Server: wie oft auf diesem Handy gewählt
   function popularCounts() {

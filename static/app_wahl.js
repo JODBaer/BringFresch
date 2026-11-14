@@ -1,4 +1,4 @@
-// BringFrisch – Wochenwahl (Memory): 14 Saison-Gerichte, Stimmen der WG, Bilder, Top 7 -> Plan, Pop-up beim Start.
+// Obsonare – Wochenwahl (Memory): 14 Saison-Gerichte, Stimmen der WG, Bilder, Top 7 -> Plan, Pop-up beim Start.
 // Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {
   "use strict";

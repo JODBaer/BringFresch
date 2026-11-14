@@ -1,4 +1,4 @@
-﻿# BringFrisch: alle Zugangsdaten Schritt für Schritt einrichten – du tippst, das Skript speichert.
+﻿# Obsonare: alle Zugangsdaten Schritt für Schritt einrichten – du tippst, das Skript speichert.
 #   powershell -ExecutionPolicy Bypass -File tools\setup-secrets.ps1
 #
 # Grundsatz: Kein Wert wird angezeigt, gespeichert oder in eine Datei geschrieben. Alles läuft über
@@ -79,7 +79,7 @@ if ($AccountId) {
 }
 if ($Neu) {
   # Alles von Grund auf neu. Kein Wert wird angezeigt oder gespeichert.
-  Write-Host 'BringFrisch – alle Zugänge neu einrichten. Nichts von dem, was du eingibst, wird angezeigt oder gespeichert.' -ForegroundColor Cyan
+  Write-Host 'Obsonare – alle Zugänge neu einrichten. Nichts von dem, was du eingibst, wird angezeigt oder gespeichert.' -ForegroundColor Cyan
 
   Step 1 'Anmeldungen am PC (GitHub + Cloudflare)'
   gh auth status 2>$null | Out-Null
@@ -171,7 +171,7 @@ if ($BotPassword) {
   return
 }
 
-Write-Host "BringFrisch – Zugangsdaten einrichten (Repo: $Repo)" -ForegroundColor Cyan
+Write-Host "Obsonare – Zugangsdaten einrichten (Repo: $Repo)" -ForegroundColor Cyan
 Write-Host "Nichts von dem, was du eingibst, wird angezeigt oder gespeichert."
 
 # ---------------------------------------------------------------- 1. GitHub

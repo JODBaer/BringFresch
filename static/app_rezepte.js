@@ -1,4 +1,4 @@
-// BringFrisch – Rezepte & Saison: Saisonliste, Rezeptsuche, Katalog (Gericht wählen), eigenes Rezept, Webseiten,
+// Obsonare – Rezepte & Saison: Saisonliste, Rezeptsuche, Katalog (Gericht wählen), eigenes Rezept, Webseiten,
 // meine Rezepte, Rezept-Link importieren.
 // Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {
@@ -250,7 +250,7 @@
     const base = edit || copyOf;
     $("recipeFormTitle").textContent = edit ? "Rezept bearbeiten" : copyOf ? "Rezept anpassen (eigene Kopie)" : "Eigenes Rezept";
     $("recipeSubmitBtn").textContent = state.catalogMode === "save" ? "Speichern" : "Speichern & einplanen";
-    $("recipeServingsHint").textContent = "Die Zutaten unten gelten für so viele Personen; BringFrisch rechnet dann für eure Esser um.";
+    $("recipeServingsHint").textContent = "Die Zutaten unten gelten für so viele Personen; Obsonare rechnet dann für eure Esser um.";
     $("recipeServings").value = base ? base.servings || DEFAULT_SERVINGS : DEFAULT_SERVINGS;
     if (base) {
       $("recipeTitle").value = base.title || "";

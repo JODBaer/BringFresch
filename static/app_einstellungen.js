@@ -1,4 +1,4 @@
-// BringFrisch – Einstellungen + Willkommen: Mitbewohner, Anwesenheit, «Du bist», Verbindung (WG + PIN),
+// Obsonare – Einstellungen + Willkommen: Mitbewohner, Anwesenheit, «Du bist», Verbindung (WG + PIN),
 // erster Start, Bring!-Liste, Znacht-Zeit, Kalender-Abo, Aktualisieren.
 // Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {

@@ -48,8 +48,8 @@ export async function calendar(env, token, params = new URLSearchParams()) {
   const docs = week ? [doc.week === week ? doc : next && next.week === week ? next : await env.WG.get(`plan:${week}`, "json")] : [doc, next];
   const meName = me && ((doc.members || []).find(m => m.id === me) || {}).name;
   const lines = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//BringFrisch//WG-Znacht//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    `X-WR-CALNAME:BringFrisch Znacht${meName ? ` (${icsEscape(meName)})` : ""}`, "X-WR-TIMEZONE:Europe/Zurich", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Obsonare//WG-Znacht//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    `X-WR-CALNAME:Obsonare Znacht${meName ? ` (${icsEscape(meName)})` : ""}`, "X-WR-TIMEZONE:Europe/Zurich", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H",
   ];
   for (const d of docs) if (d) lines.push(...events(d, { me, dl }));
   lines.push("END:VCALENDAR");
@@ -57,7 +57,7 @@ export async function calendar(env, token, params = new URLSearchParams()) {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Cache-Control": dl ? "no-store" : "max-age=300",
-      ...(dl ? { "Content-Disposition": `attachment; filename="BringFrisch-${week || doc.week || "Woche"}.ics"` } : {}),
+      ...(dl ? { "Content-Disposition": `attachment; filename="Obsonare-${week || doc.week || "Woche"}.ics"` } : {}),
     },
   });
 }

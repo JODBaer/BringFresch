@@ -13,7 +13,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const ctx = { window: {} };
 vm.createContext(ctx);
 for (const f of ["standalone_data.js", "recipes_imported.js"]) vm.runInContext(readFileSync(path.join(here, "../static", f), "utf8"), ctx);
-const recipes = [...ctx.window.BRINGFRISCH_DATA.recipes, ...ctx.window.BRINGFRISCH_IMPORTED].filter(r => r.source_url);
+const recipes = [...ctx.window.OBSONARE_DATA.recipes, ...ctx.window.OBSONARE_IMPORTED].filter(r => r.source_url);
 
 const browserPath = [
   process.env.BROWSER,

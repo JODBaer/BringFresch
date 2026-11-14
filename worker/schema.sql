@@ -1,4 +1,4 @@
--- BringFrisch: Datenmodell für Cloudflare D1 (SQLite). ENTWURF, noch nicht aktiv – siehe docs/plan-d1.md.
+-- Obsonare: Datenmodell für Cloudflare D1 (SQLite). ENTWURF, noch nicht aktiv – siehe docs/plan-d1.md.
 -- Einspielen (später): npx wrangler d1 execute bringfrisch --remote --file worker/schema.sql
 -- Grundsatz: jede WG-Tabelle hat wg_id; jede Abfrage im Worker filtert darauf.
 

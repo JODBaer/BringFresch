@@ -17,7 +17,7 @@ const check = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) f
 
 const data = {};
 new Function("window", fs.readFileSync(path.join(root, "standalone_data.js"), "utf8") + fs.readFileSync(path.join(root, "recipes_imported.js"), "utf8"))(data);
-const recipes = [...(data.BRINGFRISCH_DATA.recipes || []), ...(data.BRINGFRISCH_IMPORTED || [])];
+const recipes = [...(data.OBSONARE_DATA.recipes || []), ...(data.OBSONARE_IMPORTED || [])];
 const eaters = ["joshua", "lukas", "leonie", "jo"];
 
 function week(list) {

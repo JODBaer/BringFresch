@@ -3,7 +3,7 @@
 #   2. danach die App auf GitHub Pages veröffentlichen          (Server zuerst: neue App findet immer schon den neuen Server)
 # Zurück zur alten Server-Version: cd worker && npx wrangler rollback
 # Ein normaler Push auf main veröffentlicht nichts. Lokal dasselbe: cd tests && npm ci && npm run ci
-name: Release BringFrisch (Tests + WG-Server + GitHub Pages)
+name: Release Obsonare (Tests + WG-Server + GitHub Pages)
 
 on:
   push:

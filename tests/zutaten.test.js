@@ -19,7 +19,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 // Alle Zutaten aus den Rezeptdaten
 const data = {};
 new Function("window", fs.readFileSync(path.join(root, "standalone_data.js"), "utf8") + fs.readFileSync(path.join(root, "recipes_imported.js"), "utf8"))(data);
-const recipes = [...(data.BRINGFRISCH_DATA.recipes || []), ...(data.BRINGFRISCH_IMPORTED || [])];
+const recipes = [...(data.OBSONARE_DATA.recipes || []), ...(data.OBSONARE_IMPORTED || [])];
 const names = [...new Set(recipes.flatMap(r => (r.ingredients || []).map(i => i.name.trim())))].sort((a, b) => a.localeCompare(b, "de"));
 
 // Ein Plan: Montag enthält jede Zutat einmal, die übrigen Tage sind offen (kaufen nichts)

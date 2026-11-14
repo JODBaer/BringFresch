@@ -459,7 +459,7 @@ const WEEK = [
 const INFO = {
   A: {
     title: "A · Merken – mit «Bring! füllen» senden",
-    idea: "Antippen merkt «leer» nur in BringFrisch. Auf Bring! kommt es erst mit «Bring! füllen» – zusammen mit dem Wochenplan, mit Häkchen pro Artikel und «Rückgängig».",
+    idea: "Antippen merkt «leer» nur in Obsonare. Auf Bring! kommt es erst mit «Bring! füllen» – zusammen mit dem Wochenplan, mit Häkchen pro Artikel und «Rückgängig».",
     how: ["Pille antippen = leer (durchgestrichen), nochmals = wieder da. Bring! bleibt unberührt.",
       "Unten steht «3 leer». «Bring! füllen» (derselbe Knopf wie im Plan) zeigt Plan + Vorrat mit Häkchen.",
       "«Bearbeiten» oben rechts: Feld zum Hinzufügen, ✕ = wegnehmen, Pille antippen = umbenennen, Doppelte zusammenführen.",
@@ -527,7 +527,7 @@ function fresh() {
       return { id: "i" + i, name, bring, sec: SEC_OF[bring] || OWN, status: bring === "Eier" ? "leer" : "da", left: left == null ? null : left,
         qty: q[0], unit: q[1], full: q[2], use: q[3], since: q[4] || `2026-0${1 + i % 9}`, size: SIZE[bring] || "", weekly: ["Joghurt", "Milch", "Eier"].includes(bring) && name === bring, seen: SEEN[bring] && name === bring ? SEEN[bring] : null };
     }),
-    bring: [{ name: "Milch", spec: "", by: "Lukas" }, { name: "WC-Papier", spec: "", by: "Leonie" }, { name: "Eier", spec: "", by: "BringFrisch" }]
+    bring: [{ name: "Milch", spec: "", by: "Lukas" }, { name: "WC-Papier", spec: "", by: "Leonie" }, { name: "Eier", spec: "", by: "Obsonare" }]
   };
   UI = { edit: false, addA: "", addC: "", qB: "", openRest: false, tab: "vorrat", coll: {}, editing: null, renVal: "", sheetFn: null, sheetName: null, clean: 0, grp: "abteilung", page: "einkauf", seg: "kaufen", flip: null, openAll: false, diffSel: null, opener: null, flash: null, focusK: null };
   prevBring = new Set(S.bring.map(b => b.name));
@@ -662,9 +662,9 @@ function sendToBring(names, msg, week) {
       if (onBring(n)) return;
       const w = WEEK.find(x => x.n === n);
       const vi = V === "C" ? S.items.find(x => x.bring === n) : null;
-      S.bring.push({ name: n, spec: w ? w.spec : vi ? `Vorrat · ${pack(vi)}` : "", by: "BringFrisch" });
+      S.bring.push({ name: n, spec: w ? w.spec : vi ? `Vorrat · ${pack(vi)}` : "", by: "Obsonare" });
     });
-    S.log = `BringFrisch hat ${names.length} Artikel gesetzt.`;
+    S.log = `Obsonare hat ${names.length} Artikel gesetzt.`;
     closeSheet(true);
   });
 }
@@ -872,7 +872,7 @@ function rowB(it, top) {
   const ob = onBring(it.bring), e = bringEntry(it.bring);
   let sub = "", low = false;
   if (top) {
-    if (ob) sub = e && e.by !== "BringFrisch" ? `steht auf Bring! (${e.by})` : "steht auf Bring!";
+    if (ob) sub = e && e.by !== "Obsonare" ? `steht auf Bring! (${e.by})` : "steht auf Bring!";
     else if (it.status === "leer") { sub = "leer"; low = true; }
     else { sub = `reicht noch für ~${it.left} Znacht`; low = true; }
   } else sub = it.name !== it.bring ? it.name : "";
@@ -1059,12 +1059,12 @@ function onAct(b) {
     }
     case "leer": if (it) act(`${it.bring} ist leer`, () => { it.status = "leer"; UI.flash = it.id; }); break;
     case "da": if (it) act(`${it.bring} wieder da`, () => { it.status = "da"; it.left = null; }); break;
-    case "bring": if (it) act(`${it.bring} auf Bring! ✓`, () => { S.bring.push({ name: it.bring, spec: "", by: "BringFrisch" }); S.log = `BringFrisch hat «${it.bring}» gesetzt.`; }); break;
+    case "bring": if (it) act(`${it.bring} auf Bring! ✓`, () => { S.bring.push({ name: it.bring, spec: "", by: "Obsonare" }); S.log = `Obsonare hat «${it.bring}» gesetzt.`; }); break;
     case "unbring": {
       if (!it) break;
       const e = bringEntry(it.bring);
-      if (e && e.by !== "BringFrisch") { snack(`${e.by} hat ${it.bring} gesetzt – in Bring! abhaken`); break; }
-      act(`${it.bring} von Bring! genommen`, () => { S.bring = S.bring.filter(x => x !== e); S.log = `BringFrisch hat «${it.bring}» wieder entfernt.`; });
+      if (e && e.by !== "Obsonare") { snack(`${e.by} hat ${it.bring} gesetzt – in Bring! abhaken`); break; }
+      act(`${it.bring} von Bring! genommen`, () => { S.bring = S.bring.filter(x => x !== e); S.log = `Obsonare hat «${it.bring}» wieder entfernt.`; });
       break;
     }
     case "rest": UI.openRest = !UI.openRest; render(); break;

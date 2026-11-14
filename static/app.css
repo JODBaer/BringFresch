@@ -1,4 +1,4 @@
-/* BringFrisch – gesamtes Aussehen der App (vorher im <style> von index.html). Farben nur über Tokens, Hell/Dunkel nur über html.dark. */
+/* Obsonare – gesamtes Aussehen der App (vorher im <style> von index.html). Farben nur über Tokens, Hell/Dunkel nur über html.dark. */
 /* Alpine Minimalist: tags Schneeweiss, nachts Granit (folgt der Handy-Einstellung).
    Alpengrün nur für die Hauptaktion und Markierungen. */
 :root {
@@ -272,7 +272,7 @@ dialog.full .sheet { max-height: 100vh; height: 100%; }
 
 
 /* =====================================================================
-   Redesign Plan + Navigation (BringFrisch-Plan-Redesign.md)
+   Redesign Plan + Navigation (Obsonare-Plan-Redesign.md)
    html.glass = iPhone (Liquid Glass) · html.m3 = Android (Material 3 Expressive)
    Gleicher Aufbau, gleiche Farben: Hellgrün #90EE90 + Pistazie #93C572
    ===================================================================== */

@@ -1,4 +1,4 @@
-// BringFrisch – Start: Dialoge schliessen, Navigation (Tabs), Plan laden (Link, Wochenwechsel), erstes Zeichnen, Service Worker.
+// Obsonare – Start: Dialoge schliessen, Navigation (Tabs), Plan laden (Link, Wochenwechsel), erstes Zeichnen, Service Worker.
 // Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {
   "use strict";

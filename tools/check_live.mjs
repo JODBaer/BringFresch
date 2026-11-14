@@ -3,7 +3,7 @@
 //   node tools/check_live.mjs                 # fragt nach dem WG-PIN (wird nicht angezeigt)
 //   node tools/check_live.mjs --out datei.txt # Ergebnis zusätzlich in eine Datei
 //
-// Setzt kurz einen Test-Artikel «BringFrisch Test» auf Bring! und entfernt ihn wieder.
+// Setzt kurz einen Test-Artikel «Obsonare Test» auf Bring! und entfernt ihn wieder.
 // PIN und Kalender-Token werden nie ausgegeben.
 import readline from "node:readline";
 import { writeFileSync, readFileSync, readdirSync } from "node:fs";
@@ -12,7 +12,7 @@ const APP = "https://jodbaer.github.io/BringFresch/";
 const ORIGIN = "https://jodbaer.github.io";
 const appJsLocal = readFileSync(new URL("../static/app.js", import.meta.url), "utf8");
 const WORKER = (appJsLocal.match(/DEFAULT_SYNC_URL = "([^"]*)"/) || [])[1];
-const TEST_ITEM = "BringFrisch Test";
+const TEST_ITEM = "Obsonare Test";
 
 const outIdx = process.argv.indexOf("--out");
 const outFile = outIdx > 0 ? process.argv[outIdx + 1] : null;
@@ -62,7 +62,7 @@ async function api(path, { method = "GET", body, pin = PIN } = {}) {
   return data;
 }
 
-log(`BringFrisch Live-Check  ${new Date().toLocaleString("de-CH")}`);
+log(`Obsonare Live-Check  ${new Date().toLocaleString("de-CH")}`);
 log(`App:    ${APP}`);
 log(`Server: ${WORKER || "(nicht gesetzt!)"}`);
 log("");

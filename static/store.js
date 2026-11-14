@@ -1,4 +1,4 @@
-// BringFrisch – Speicher auf dem Handy (localStorage) an einer Stelle: alle Schlüssel, Lesen, Schreiben, Löschen.
+// Obsonare – Speicher auf dem Handy (localStorage) an einer Stelle: alle Schlüssel, Lesen, Schreiben, Löschen.
 // Läuft als <script> vor app.js und legt BF_STORE ab. Neue Schlüssel hier eintragen, nicht verstreut in app.js.
 (function (root) {
   "use strict";

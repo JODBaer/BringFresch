@@ -1,6 +1,6 @@
 // Baut die Test-Seite (Stage) aus static/ nach dist-stage/:
 //   - spricht mit dem Test-Worker (bringfrisch-test, gleiche Adresse wie die Seite), der nur in die Bring!-Liste «Home-test» des Bots schreibt
-//   - heisst «BringFrisch Test» und zeigt oben ein kleines «TEST»-Band, damit man sie nicht verwechselt
+//   - heisst «Obsonare Test» und zeigt oben ein kleines «TEST»-Band, damit man sie nicht verwechselt
 //   - Version = nächste Version nach dem letzten Release-Tag + «-test.N» (N = Commits seit dem Tag):
 //     v1.6.7 + 3 Commits -> «1.6.8-test.3». So steht die Test-Version immer VOR der WG-Version
 //     (im Quellcode steht nur ein alter Platzhalter; die WG-Version bekommt ihre Nummer vom Tag, build_site.mjs).
@@ -40,9 +40,9 @@ edit("app.js", s => {
   return s;
 });
 edit("index.html", s => s
-  .replace("<title>BringFrisch</title>", "<title>BringFrisch Test</title>")
-  .replace('content="BringFrisch">', 'content="BringFrisch Test">')
+  .replace("<title>Obsonare</title>", "<title>Obsonare Test</title>")
+  .replace('content="Obsonare">', 'content="Obsonare Test">')
   .replace("</body>", `<div aria-hidden="true" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;padding:1px 10px 2px;border-radius:0 0 8px 8px;background:#e8590c;color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.1em;pointer-events:none">TEST · Bring!-Liste «Home-test»</div>\n</body>`));
-edit("manifest.json", s => s.replace(/"name": "BringFrisch"/, '"name": "BringFrisch Test"').replace(/"short_name": "BringFrisch"/, '"short_name": "BF Test"'));
+edit("manifest.json", s => s.replace(/"name": "Obsonare"/, '"name": "Obsonare Test"').replace(/"short_name": "Obsonare"/, '"short_name": "Obsonare Test"'));
 edit("sw.js", s => s.replace(/bringfrisch-cache-/, "bringfrisch-stage-cache-"));
 console.log(`dist-stage/ gebaut (Server: ${STAGE_WORKER}${version ? `, Version ${version}` : ""})`);

@@ -1,7 +1,7 @@
 // Layout-Prüfung der Plan-Ansicht in einem echten Browser (Edge/Chrome, headless).
 //   node layout_check.mjs            -> prüft 390×844, 375×667, 390×600 in iPhone- und Android-Stil, hell und dunkel
 //   node layout_check.mjs --shots    -> legt zusätzlich Bildschirmfotos in tests/shots/ ab
-// Regeln (BringFrisch-Plan-Redesign.md §5): Mit einem offenen Tag bleiben alle 7 Tage sichtbar;
+// Regeln (Obsonare-Plan-Redesign.md §5): Mit einem offenen Tag bleiben alle 7 Tage sichtbar;
 // beim Aufklappen bewegt sich nichts ausser dem geöffneten Tag (Zeilen darüber, Kopfzeile, Schrift bleiben stehen).
 // Geprüft wird an einem Donnerstag: laufende Woche und nächste Woche (Chip «KW n →», offene Tage).
 import puppeteer from "puppeteer-core";

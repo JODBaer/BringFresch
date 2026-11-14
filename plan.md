@@ -1,7 +1,7 @@
-# BringFrisch – Plan
+# Obsonare – Plan
 
 Ziel: Tool für **unsere WG**, einfach zu benutzen. Erst mit der WG testen, dann erweitern.
-Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch baut nur drumherum. **Grundvorrat, Plan und Wochenwahl** sind die Wahrheit von BringFrisch (gemeinsam im WG-Server).
+Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – Obsonare baut nur drumherum. **Grundvorrat, Plan und Wochenwahl** sind die Wahrheit von Obsonare (gemeinsam im WG-Server).
 
 ## Erledigt
 
@@ -156,7 +156,7 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
   - **Was nicht gefällt**: Die Verwaltung schreibt beim Antippen **direkt auf Bring!**; auch **Hinzufügen und Wegnehmen** sind so nicht gut
   - **Vorgehen**: nichts im Alleingang bauen. Zuerst 2–3 Varianten als HTML zum Antippen zeigen (Design-Fragen entscheidet Joshua selbst), dann bauen. Erst nach dem Umbau von `app.js` (Schritte 3 und 5 in `docs/refactoring-plan.md`), damit die Ansicht nur einmal angefasst wird
   - **Zu klären** (Fragen an Joshua, nicht vorentscheiden):
-    - Soll «leer» zuerst nur in BringFrisch gemerkt werden und erst mit «Bring! füllen» auf die Liste kommen (mit Nachfragen und «Rückgängig» wie beim Plan)? Oder ein eigener, klar beschrifteter Knopf «auf Bring!» pro Artikel?
+    - Soll «leer» zuerst nur in Obsonare gemerkt werden und erst mit «Bring! füllen» auf die Liste kommen (mit Nachfragen und «Rückgängig» wie beim Plan)? Oder ein eigener, klar beschrifteter Knopf «auf Bring!» pro Artikel?
     - Verwalten (hinzufügen, wegnehmen, umbenennen) getrennt vom täglichen «ist leer» – eigener Bearbeiten-Modus?
     - Wie viel soll man auf einen Blick sehen: alle ~45 Pillen oder nur «bald leer / leer» und der Rest eingeklappt?
   - **Im Bild aufgefallen** (heutiger Stand, als Aufgabe für den Neubau): mehrere Vorrat-Einträge zeigen denselben Bring!-Namen und stehen darum doppelt da – Kartoffeln ×2, Zwiebeln ×2, Butter ×2, Pfeffer ×2, Reis ×2; dazu «Sojasauce» und «Soja Sauce» (eigener Artikel). Zusammenführen bzw. beim Hinzufügen verhindern
@@ -173,7 +173,7 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – BringFrisch ba
 - [ ] **Emoji als Namenkürzel**: lange auf den eigenen Kreis/Namen drücken → Emoji wählen (z.B. 🦊) statt «J»; gilt für die ganze WG (in den Einstellungen gespeichert)
 - [ ] **«Wer bin ich» nur in den Einstellungen**: die Auswahl «Ich bin» in der Wochenwahl weg; die Wochenwahl nimmt «Du bist» aus den Einstellungen (fehlt es, einmal fragen). Ein Handy für mehrere Personen: dann dort wechseln
 - [ ] **Sprache Deutsch / English** vorbereiten: alle Texte in `static/i18n.js` (Schlüssel → de/en), Auswahl pro Handy unter Einstellungen → Stil, Standard nach Handy-Sprache; Rezepte/Zutaten bleiben deutsch (Bring!-Namen)
-- [x] **«Aktualisieren» bei der Version** unter «Über BringFrisch» statt ganz oben in den Einstellungen
+- [x] **«Aktualisieren» bei der Version** unter «Über Obsonare» statt ganz oben in den Einstellungen
 - [x] **Wochenwahl mit Bildern**: Vorschaubild der Rezeptseite, einmal vom WG-Server geholt und abgelegt (nur mit PIN), auf dem Handy zwischengespeichert
 - [ ] **Wochenwahl wie Memory**: Karte zeigt nur das Bild (+ kurzer Titel unten); antippen = Karte dreht sich (3D-Flip) → Rückseite: ganzer Titel, Vegi/Fleisch, Minuten, Wunschtag, «Wählen» / «Abwählen», 🌐 Rezept; nochmals antippen (oder ✓) = zurück aufs Bild, gewählte Karten mit Häkchen und Rahmen. Ohne Bild: Vorderseite mit Gemüse-Bild/Farbe. Zuerst als HTML-Vorschau zeigen (Joshua wählt)
 - [x] **Gratis-Kontingent des WG-Servers schonen** (Cloudflare KV: 1000 Schreib-/Listen-Aufrufe pro Tag fürs ganze Konto): Wochenwahl listet keine Schlüssel mehr, fragt alle 30 s statt 15 s und nur bei offener App
