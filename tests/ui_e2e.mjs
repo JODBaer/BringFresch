@@ -623,7 +623,7 @@ await step(A, "Einkauf ohne WG-Server: Zeile antippen = Hinweis", async () => {
   await toastIs(A, /Ohne WG-Server/);
 });
 
-let leerIdx = "", leerName = "";
+let leerIdx = "", leerName = "", fab0 = 0; // fab0 = Zahl im Bring!-Knopf vor dem Leer-Melden
 // Vorrat-Zeile antippen öffnet das Blatt zum Artikel; dort «Leer» (erste Stufe) oder «Voll» (letzte Stufe), dann zu
 async function setLevel(P, sel, which) {
   await tap(P, sel);
@@ -634,7 +634,7 @@ async function setLevel(P, sel, which) {
 await step(A, "Einkauf «Vorrat»: Zeile antippen = Blatt, dort «Leer» (nichts geht auf Bring!), steht unter «Kaufen» als knapp, Leiste «Für Bring!»", async () => {
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   await until(A, () => document.getElementById("cookSw"), "Vorrat-Liste fehlt");
-  const fab0 = +(await text(A, "#shopFabN"));
+  fab0 = +(await text(A, "#shopFabN"));
   await tap(A, "#vAll summary");
   await until(A, () => document.getElementById("vAll").open, "«Alles da» geht nicht auf");
   leerIdx = await A.page.$eval("#vAll [data-vleer]", b => b.dataset.vleer);
