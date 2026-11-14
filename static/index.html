@@ -52,7 +52,7 @@
 
     <!-- 2. Einkauf -->
     <section class="tab" id="tab-shop" hidden>
-      <div class="label shophead"><span id="shopTool"></span><small id="shopSummary"></small>
+      <div class="label shophead"><span id="shopTool"></span><button type="button" class="hofchip" id="hofBtn" aria-label="Hofläden und Märkte">🧺 Markt</button><small id="shopSummary"></small>
         <span class="sortsw" id="shopSort" role="group" aria-label="Sortieren"><button type="button" data-sort="rezept" aria-pressed="true">Rezept</button><button type="button" data-sort="kat" aria-pressed="false">Kategorie</button></span>
 </div>
       <div class="card seg" role="group" aria-label="Filter">
@@ -65,7 +65,6 @@
         <button class="btn" id="openStaplesBtn" type="button">Grundvorrat verwalten</button>
         <button class="btn" id="copyListBtn" type="button">Liste kopieren</button>
       </div>
-      <button class="btn hofbtn" id="hofBtn" type="button">🧺 Hofläden &amp; Märkte</button>
       <!-- der eine Bring!-Knopf (Entwurf einkauf-sublime.html): öffnet die Gegenüberstellung; nach dem Senden 10 s «Rückgängig» -->
       <button type="button" class="shopfab" id="shopFab"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42a.25.25 0 0 1-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg><span id="shopFabL">Auf Bring!</span> <b id="shopFabN">0</b></button>
     </section>
@@ -486,6 +485,7 @@
         <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
       <div class="sheet-body">
+        <div class="hofrow"><span>Wochenmarkt Robenhausen (Wetzikon)</span><a class="btn" href="https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon" target="_blank" rel="noopener">Infos</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt+Robenhausen+Wetzikon" target="_blank" rel="noopener">Karte</a></div>
         <div class="hofrow"><span>In der Nähe</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt" target="_blank" rel="noopener">Märkte</a></div>
         <div class="hofrow"><span>Rapperswil-Jona</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen+Rapperswil-Jona" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt+Rapperswil" target="_blank" rel="noopener">Märkte</a></div>
         <div class="hofrow"><span>Zürich</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen+Zürich" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt+Zürich" target="_blank" rel="noopener">Märkte</a></div>
