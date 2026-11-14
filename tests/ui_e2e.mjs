@@ -210,6 +210,7 @@ async function phone({ name, os, scheme, now, preset = {}, context, url }) {
   return P;
 }
 
+const TILE_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mO8XwcAAkUBnRGyqqwAAAAASUVORK5CYII=", "base64");
 async function handle(P, req) {
   const url = req.url();
   if (url.startsWith(WORKER)) {
@@ -226,6 +227,8 @@ async function handle(P, req) {
     }
   }
   if (url.startsWith(BASE) || url.startsWith("data:")) return req.continue();
+  // Kartenbilder (Hofläden & Märkte): kleines graues Bild statt OpenStreetMap
+  if (url.startsWith("https://tile.openstreetmap.org/")) { P.tiles = (P.tiles || 0) + 1; return req.respond({ status: 200, contentType: "image/png", body: TILE_PNG }); }
   P.blocked.push(url); // nichts darf ins Internet
   return req.abort("blockedbyclient");
 }
@@ -601,17 +604,29 @@ await step(A, "Einkauf: Abschnitte Kaufen/Auf Bring!/Vorrat, Liste kopieren", as
   expect((await clip(A)).split("\n").length === parseInt(t, 10), "kopierte Zeilen ≠ Anzahl");
 });
 
-await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) öffnet Blatt: Wochenmarkt Robenhausen, Nähe, Rapperswil, Zürich", async () => {
+await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte: Karte, Liste nach Entfernung mit Öffnungszeiten, Filter", async () => {
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   await until(A, () => document.getElementById("hofBtn").hidden, "Markt-Chip im Vorrat sichtbar");
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await until(A, () => !document.getElementById("hofBtn").hidden, "Markt-Chip bei Kaufen nicht sichtbar");
   await tap(A, "#hofBtn");
-  await until(A, () => document.getElementById("hofDialog").open, "Blatt Hofläden nicht offen");
-  const hrefs = await A.page.$$eval("#hofDialog a", as => as.map(a => a.href));
-  expect(hrefs.length === 8 && hrefs[0] === "https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon", "Robenhausen-Infos fehlen");
-  expect(hrefs.slice(1).every(h => h.startsWith("https://www.google.com/maps/search/")), "Karten-Links fehlen");
-  expect(hrefs.some(h => /Rapperswil/.test(h)) && hrefs.some(h => /Z%C3%BCrich|Zürich/.test(h)), "Rapperswil/Zürich fehlt");
+  await until(A, () => document.getElementById("hofDialog").open && document.querySelectorAll("#hofList .hofit").length > 5, "Blatt mit Orten nicht offen");
+  await until(A, () => document.querySelectorAll("#hofTiles img").length > 0 && document.querySelectorAll("#hofTiles .hofpin").length > 0, "Karte ohne Bilder/Punkte");
+  expect(A.tiles > 0, "keine Kartenbilder angefragt");
+  const km = await A.page.$$eval("#hofList .hofit small:first-of-type", s => s.map(x => parseFloat((x.textContent.match(/([\d.]+) (k?m)$/) || [])[1]) * (/ m$/.test(x.textContent) ? 0.001 : 1)));
+  expect(km.every((v, i) => i === 0 || v >= km[i - 1] - 0.05), `nicht nach Entfernung: ${km.slice(0, 6)}`);
+  expect(await A.page.$$eval("#hofList .hofit", r => r.some(x => /\d:\d\d/.test(x.textContent))), "keine Öffnungszeiten in der Liste");
+  await tap(A, '#hofKind [data-hk="markt"]');
+  await until(A, () => [...document.querySelectorAll("#hofList .hofit small:first-of-type")].every(s => /^Markt/.test(s.textContent)), "Filter Märkte");
+  await tap(A, "#hofOpen");
+  await until(A, () => document.getElementById("hofOpen").getAttribute("aria-pressed") === "true" && [...document.querySelectorAll("#hofList .hofit .st")].every(s => s.classList.contains("open")), "Filter «Jetzt offen»");
+  await tap(A, "#hofOpen");
+  await tap(A, '#hofKind [data-hk="alle"]');
+  await tap(A, '#hofMap [data-z="1"]');
+  await tap(A, "#hofList .hofit small");
+  await until(A, () => document.querySelector("#hofList .hofit.sel") && document.querySelector("#hofTiles .hofpin.sel"), "Ort antippen zeigt ihn nicht auf der Karte");
+  await shot(A, "08b-hoflaeden");
+  await noHScroll(A, "Hofläden");
   await tap(A, "#hofDialog [data-close]");
   await until(A, () => !document.getElementById("hofDialog").open, "Blatt geht nicht zu");
 });

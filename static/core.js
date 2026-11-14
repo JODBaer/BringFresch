@@ -623,7 +623,112 @@
       }));
   }
 
+  // ---------------------------------------------------------------------------
+  // Hofläden & Märkte (Daten aus OpenStreetMap, static/hoflaeden.js): Öffnungszeiten, Entfernung
+  // ---------------------------------------------------------------------------
+  // Liest das Übliche aus «opening_hours» (z.B. «Apr-Oct: Mo-Fr 08:00-12:00,14:00-18:30; Sa 08:00-12:00; PH off»).
+  // Spätere Regeln ersetzen frühere für ihre Tage (wie bei OSM). Feiertage (PH) werden übergangen.
+  // Unbekanntes (sunrise, «by appointment», Wochen-Nummern …) → null: dann zeigt die App den Text roh.
+  const OH_DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  const OH_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+  const OH_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const ohRange = (list, a, b) => { const i = list.indexOf(a), j = list.indexOf(b), out = []; for (let k = i; ; k = (k + 1) % list.length) { out.push(k); if (k === j) break; } return out; };
+  function ohSel(txt, list) { // «Mo-Fr,Sa» → Set der Indizes; null wenn unbekannt
+    const set = new Set();
+    for (const p of txt.split(",")) {
+      const m = p.trim().match(/^(\w\w\w?)(?:\s*-\s*(\w\w\w?))?$/);
+      if (!m || !list.includes(m[1]) || (m[2] && !list.includes(m[2]))) return null;
+      (m[2] ? ohRange(list, m[1], m[2]) : [list.indexOf(m[1])]).forEach(i => set.add(i));
+    }
+    return set;
+  }
+  const ohMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  function parseHours(oh) {
+    const s = String(oh || "").trim();
+    if (!s) return null;
+    if (s === "24/7") return [{ months: null, days: new Set([0, 1, 2, 3, 4, 5, 6]), spans: [[0, 1440]] }];
+    const rules = [];
+    const DAY = "(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)";
+    const parts = s.replace(new RegExp(`(\\d)\\s*,\\s*(?=${DAY}\\b)`, "g"), "$1; ").split(/\s*(?:;|\|\|)\s*/).filter(Boolean);
+    for (const part of parts) {
+      const m = part.match(/^(?:((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\w,\s-]*?)\s*:?\s+)?(?:((?:Mo|Tu|We|Th|Fr|Sa|Su|PH)[\w,\s-]*?)\s+)?(off|closed|(?:\d{1,2}:\d\d\s*-\s*\d{1,2}:\d\d\+?(?:\s*,\s*\d{1,2}:\d\d\s*-\s*\d{1,2}:\d\d\+?)*))$/);
+      if (!m) return null;
+      const months = m[1] ? ohSel(m[1].replace(/\s+/g, ""), OH_MON) : null;
+      if (m[1] && !months) return null;
+      let dayTxt = m[2] ? m[2].replace(/\s+/g, "") : "";
+      if (dayTxt) {
+        dayTxt = dayTxt.split(",").filter(d => d !== "PH").join(",");
+        if (!dayTxt) continue; // nur Feiertage
+      }
+      const days = dayTxt ? ohSel(dayTxt, OH_DAYS) : new Set([0, 1, 2, 3, 4, 5, 6]);
+      if (!days) return null;
+      const spans = /^(off|closed)$/.test(m[3]) ? [] : m[3].split(",").map(t => {
+        const [a, b] = t.replace(/\+/g, "").split("-").map(x => ohMin(x.trim()));
+        return [a, b > a ? b : 1440];
+      });
+      rules.push({ months, days, spans });
+    }
+    return rules.length ? rules : null;
+  }
+  const ohWeekday = date => (date.getDay() + 6) % 7; // Mo = 0
+  function ohSpansOn(rules, date) {
+    const wd = ohWeekday(date), mon = date.getMonth();
+    let spans = [];
+    for (const r of rules) if (r.days.has(wd) && (!r.months || r.months.has(mon))) spans = r.spans;
+    return spans;
+  }
+  const ohClock = min => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`;
+  // Jetzt offen? → { open, text } («offen bis 18:30», «öffnet 14:00», «öffnet Sa 8:00», «geschlossen»); null = unbekannt
+  function openState(oh, now) {
+    const rules = parseHours(oh);
+    if (!rules) return null;
+    const min = now.getHours() * 60 + now.getMinutes();
+    const today = ohSpansOn(rules, now);
+    const cur = today.find(([a, b]) => min >= a && min < b);
+    if (cur) return { open: true, text: cur[1] >= 1440 ? (cur[0] === 0 ? "immer offen" : "offen bis Mitternacht") : `offen bis ${ohClock(cur[1])}` };
+    const later = today.find(([a]) => a > min);
+    if (later) return { open: false, text: `öffnet ${ohClock(later[0])}` };
+    for (let k = 1; k <= 7; k++) {
+      const d = new Date(now); d.setDate(d.getDate() + k);
+      const sp = ohSpansOn(rules, d);
+      if (sp.length) return { open: false, text: `öffnet ${k === 1 ? "morgen" : OH_DE[ohWeekday(d)]} ${ohClock(sp[0][0])}` };
+    }
+    return { open: false, text: "Saisonpause" };
+  }
+  // Öffnungszeiten der Woche (im Monat von «now») kurz auf Deutsch: «Mo–Fr 8:00–18:30 · Sa 8:00–12:00»; unbekannt = Text roh
+  function hoursText(oh, now) {
+    const rules = parseHours(oh);
+    if (!rules) return String(oh || "").trim();
+    const monday = new Date(now); monday.setDate(now.getDate() - ohWeekday(now));
+    const week = OH_DAYS.map((_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return ohSpansOn(rules, d); });
+    const key = sp => sp.map(([a, b]) => `${ohClock(a)}–${b >= 1440 ? "24:00" : ohClock(b)}`).join(", ");
+    const out = [];
+    for (let i = 0; i < 7;) {
+      let j = i;
+      while (j + 1 < 7 && key(week[j + 1]) === key(week[i])) j++;
+      if (week[i].length) out.push(`${i === 0 && j === 6 ? "täglich" : i === j ? OH_DE[i] : `${OH_DE[i]}${j === i + 1 ? "," : "–"}${OH_DE[j]}`} ${key(week[i])}`);
+      i = j + 1;
+    }
+    return out.length ? (key(week[0]) === "0:00–24:00" && out.length === 1 ? "immer offen" : out.join(" · ")) : "Saisonpause";
+  }
+  // Entfernung in km (Luftlinie)
+  function distKm(a, b) {
+    const R = 6371, rad = x => x * Math.PI / 180;
+    const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  // Liste für die Anzeige: Art filtern, «jetzt offen», nach Entfernung sortiert
+  function farmList(items, { kind = "alle", openOnly = false, ref, now }) {
+    return items
+      .filter(it => kind === "alle" || it.k === kind)
+      .map(it => ({ ...it, km: distKm(ref, it), state: openState(it.oh, now) }))
+      .filter(it => !openOnly || (it.state && it.state.open))
+      .sort((a, b) => a.km - b.km);
+  }
+
   root.BF_CORE = {
+    parseHours, openState, hoursText, distKm, farmList,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,

@@ -7,6 +7,8 @@ const STATIC_ASSETS = [
   './app_plan.js',
   './app_einkauf.js',
   './app_vorrat.js',
+  './app_hof.js',
+  './hoflaeden.js',
   './app_rezepte.js',
   './app_wahl.js',
   './app_alle.js',

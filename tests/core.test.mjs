@@ -145,5 +145,26 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(C.recipeSource(rs[2]).label === "Swissmilk" && C.recipeSource(rs[3]).label === "Klassiker", "Herkunft aus dem Link");
 }
 
+// Hofläden & Märkte: Öffnungszeiten aus OpenStreetMap (Di 10.11.2026)
+{
+  const di10 = new Date(2026, 10, 10, 10, 0), di19 = new Date(2026, 10, 10, 19, 0);
+  const hof = "Mo-Fr 08:00-12:00,14:00-18:30; Sa 08:00-12:00; PH off";
+  check(C.openState(hof, di10).text === "offen bis 12:00" && C.openState(hof, di10).open, "Hofladen Di 10 Uhr: offen bis 12:00");
+  check(C.openState(hof, new Date(2026, 10, 10, 12, 30)).text === "öffnet 14:00", "Mittagspause: öffnet 14:00");
+  check(C.openState(hof, di19).text === "öffnet morgen 8:00", "abends: öffnet morgen");
+  check(C.hoursText(hof, di10) === "Mo–Fr 8:00–12:00, 14:00–18:30 · Sa 8:00–12:00", `Wochentext: ${C.hoursText(hof, di10)}`);
+  check(C.openState("Sa 07:00-11:00", di10).text === "öffnet Sa 7:00", "Samstagsmarkt: öffnet Sa 7:00");
+  check(C.openState("Apr-Oct: Sa 08:00-12:00", di10).text === "Saisonpause" && C.hoursText("Apr-Oct: Sa 08:00-12:00", di10) === "Saisonpause", "nur im Sommer: im November Saisonpause");
+  check(C.openState("Mo 08:00-12:00, We 08:00-12:00", di10).text === "öffnet morgen 8:00", "Komma statt Strichpunkt zwischen Regeln");
+  check(C.hoursText("Mo-Fr 08:00-18:00; We off", di10) === "Mo,Di 8:00–18:00 · Do,Fr 8:00–18:00", "spätere Regel ersetzt frühere (Mi zu)");
+  check(C.hoursText("Mo-Su 07:00-21:00", di10) === "täglich 7:00–21:00" && C.openState("24/7", di10).text === "immer offen", "täglich / 24/7");
+  check(C.openState("sunrise-sunset", di10) === null && C.hoursText("sunrise-sunset", di10) === "sunrise-sunset", "Unbekanntes: null, Text roh");
+  const items = [{ n: "Weit", k: "hof", lat: 47.37, lon: 8.54, oh: hof }, { n: "Nah", k: "markt", lat: 47.227, lon: 8.82, oh: "Sa 07:00-11:00" }, { n: "Ohne", k: "hof", lat: 47.3, lon: 8.8 }];
+  const rap = { lat: 47.2267, lon: 8.8184 };
+  check(Math.abs(C.distKm(rap, { lat: 47.3769, lon: 8.5417 }) - 26.9) < 1, "Rapperswil–Zürich ≈ 27 km");
+  check(C.farmList(items, { ref: rap, now: di10 }).map(i => i.n).join() === "Nah,Ohne,Weit", "nach Entfernung sortiert");
+  check(C.farmList(items, { ref: rap, now: di10, kind: "hof", openOnly: true }).map(i => i.n).join() === "Weit", "nur Hofläden, jetzt offen");
+}
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

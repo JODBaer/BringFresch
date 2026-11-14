@@ -119,9 +119,6 @@
     $("handoffDialog").showModal();
   }
 
-  // Hofläden & Märkte (Chip oben links): Wochenmarkt Robenhausen, Karten-Suche in der Nähe, Rapperswil-Jona, Zürich
-  $("hofBtn").onclick = () => $("hofDialog").showModal();
-
   $("syncBtn").onclick = () => (app.connected() ? app.syncToBring() : openHandoff());
 
   $("shareListBtn").onclick = async () => {
