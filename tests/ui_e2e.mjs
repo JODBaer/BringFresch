@@ -857,6 +857,19 @@ await step(A, "Alle Rezepte: Knopf bei «Meine Rezepte», Karten nach Herkunft u
   expect(await A.page.$eval(`${card} .vwish`, e => e.textContent.includes("Mi")), "Karte zeigt den Tag nicht");
   await tap(A, ".toast button");
   await until(A, t => document.querySelector('.prow[data-i="2"] .t').textContent === t, "Rückgängig klappt nicht", before);
+  // aus Versehen gewählt: denselben Tag nochmals antippen = abwählen, Tag ist offen
+  await tap(A, `${card} .vfront`);
+  await until(A, c => document.querySelector(c)?.classList.contains("open"), "Karte dreht nicht um", card);
+  await tap(A, `${card} [data-day="3"]`);
+  await until(A, c => document.querySelector(`${c} .vwish`)?.textContent.includes("Do"), "Do nicht eingeplant", card);
+  await tap(A, `${card} .vfront`);
+  await until(A, c => document.querySelector(`${c} [data-day="3"]`)?.getAttribute("aria-pressed") === "true", "Do nicht als gewählt markiert", card);
+  await clearToasts(A);
+  await tap(A, `${card} [data-day="3"]`);
+  await toastIs(A, /abgewählt/);
+  await until(A, c => !(document.querySelector(`${c} .vwish`)?.textContent || "").includes("Do") && window.BF_APP.state.plan[3].empty === true, "Abwählen klappt nicht", card);
+  await tap(A, ".toast button");
+  await until(A, c => document.querySelector(`${c} .vwish`)?.textContent.includes("Do"), "Rückgängig nach Abwählen klappt nicht", card);
   await typeInto(A, "#allSearch", "Kürbis");
   await until(A, () => { const c = [...document.querySelectorAll("#allList .acard")]; return c.length > 0 && c.length < 40; }, "Suche filtert nicht");
   await shot(A, "10b-alle-rezepte");
