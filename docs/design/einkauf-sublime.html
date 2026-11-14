@@ -359,13 +359,13 @@ button { font: inherit; color: inherit; }
 .cols .cell.full .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cols .cell.full .w, .cols .cell.full .g { line-height: 1.35; }
 
-/* Lesbar bei 15 px (Kommentar 14.11.): Name darf umbrechen, «neu» und Menge rechts kompakt untereinander, weniger Padding */
-.cols .cell.full { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 8px 10px; }
-.cols .cell.full .n { grid-row: 1 / 3; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-.cols .cell.full .w { grid-column: 2; grid-row: 1; font-size: 11px; text-align: right; line-height: 1.2; }
-.cols .cell.full .g { grid-column: 2; grid-row: 2; font-size: 12px; text-align: right; line-height: 1.2; }
-.cols .cell.c1, .cols .cell.c3 { padding: 8px 10px; }
-.cols .cell .n { white-space: normal; overflow-wrap: anywhere; }
+/* Kommentar 14.11.: eine Zeile wie Kaufen – Name links, «neu · 180 g» rechts, gleiches Padding wie Kaufen */
+.cols .cell.full { display: flex !important; flex-wrap: nowrap; align-items: baseline; gap: 6px; padding: 9px 14px; }
+.cols .cell.full .n { flex: 1; min-width: 0; white-space: normal; }
+.cols .cell.full .w { font-size: 12px; white-space: nowrap; }
+.cols .cell.full .w::after { content: " ·"; }
+.cols .cell.full .g { font-size: 13px; white-space: nowrap; }
+.cols .cell.c1, .cols .cell.c3 { padding: 9px 14px 9px 10px; }
 </style>
 
 <div class="wrap">
