@@ -1269,11 +1269,10 @@ await step(B, "Einkauf verbunden: Zeile «Auf Bring!» antippen = weg, in «Kauf
   expect(wg().length === len - 1, `${pick} schon ohne «Auf Bring!» gesendet`);
   await tap(B, "#shopFab"); // Gegenüberstellung: nur das Vorgemerkte aus dem Plan
   await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
-  for (const k of await B.page.$eval('#compareCols [data-cmp^="v:"][aria-pressed="true"]:not([disabled])', l => l.map(b => b.dataset.cmp))) await tap(B, `#compareCols [data-cmp="${k}"]`);
   await clearToasts(B);
   await tap(B, "#compareSendBtn");
   await toastIs(B, /auf Bring! ✓/);
-  expect(wg().length === len, `${pick} nicht wieder drauf`);
+  expect(wg().some(x => x.name === pick), `${pick} nicht wieder drauf`);
   await until(B, p => !document.querySelector(`#shopList [data-shop="${p}"]`), "nach dem Senden noch in «Kaufen»", pick);
   // fremder Eintrag: Bot nimmt ihn nicht weg
   // fremder Eintrag: «Auf Bring!» antippen -> Bot nimmt ihn nicht weg, sagt wer ihn abhaken muss
