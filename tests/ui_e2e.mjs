@@ -654,10 +654,11 @@ await step(A, "Einkauf «Vorrat»: Zeile antippen = Blatt, dort «Leer» (nichts
   expect((await ls(A, "obsonare_user_staples"))[+leerIdx].in_stock === false, "leer nicht gespeichert");
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await until(A, i => document.querySelector(`#shopList [data-vitem="${i}"]`), "knapper Vorrat nicht unter «Kaufen»", leerIdx);
-  // Antippen = Blatt zum Artikel
+  // Antippen = für Bring! vormerken (durchgestrichen, bleibt stehen), nochmals = nicht mehr
   await tap(A, `#shopList [data-vitem="${leerIdx}"]`);
-  await until(A, n => document.getElementById("stapleItemDialog").open && document.getElementById("vTitle").textContent === n, "Blatt zum Artikel geht nicht auf", leerName);
-  await closeDialog(A, "stapleItemDialog");
+  await until(A, i => document.querySelector(`#shopList [data-vitem="${i}"]`).classList.contains("marked"), "Vorrat-Zeile in «Kaufen» nicht vorgemerkt", leerIdx);
+  await tap(A, `#shopList [data-vitem="${leerIdx}"]`);
+  await until(A, i => !document.querySelector(`#shopList [data-vitem="${i}"]`).classList.contains("marked"), "Vormerkung lässt sich nicht aufheben", leerIdx);
   await shot(A, "08b-einkauf-knapp");
 });
 
@@ -689,6 +690,14 @@ await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wähl
   expect((await count(A, '#compareCols [data-cmp^="p:"]')) > 3, "links fehlt «Kaufen» aus dem Plan");
   await shot(A, "08c-gegenueberstellung");
   await dialogNoHScroll(A, "compareDialog");
+  // ganz unten «Alle auswählen» / «Alle abwählen»
+  await tap(A, "#compareAllBtn");
+  await until(A, () => document.getElementById("compareAllBtn").textContent === "Alle abwählen" && ![...document.querySelectorAll("#compareCols [data-cmp]:not([disabled])")].some(b => b.getAttribute("aria-pressed") !== "true"), "«Alle auswählen» wählt nicht alles");
+  await tap(A, "#compareAllBtn");
+  await until(A, () => document.getElementById("compareSendBtn").textContent === "Nichts gewählt", "«Alle abwählen» wählt nicht alles ab");
+  await closeDialog(A, "compareDialog");
+  await openFab(A);
+  await until(A, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht wieder auf");
   const n0 = parseInt(await text(A, "#compareSendBtn"), 10);
   await tap(A, `[data-cmp="${key}"]`);
   await until(A, n => parseInt(document.getElementById("compareSendBtn").textContent, 10) === n - 1, "Abwählen zählt nicht", n0);

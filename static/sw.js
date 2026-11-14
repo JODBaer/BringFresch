@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'obsonare-cache-v68';
+﻿const CACHE_NAME = 'obsonare-cache-v69';
 const STATIC_ASSETS = [
   './',
   './index.html',
