@@ -615,15 +615,24 @@ await step(A, "Einkauf: Umschalter Rezept / Kategorie (Kaufen und Vorrat), Liste
   await until(A, () => document.querySelector("#shopList .aisle.dish h3 .dd-day"), "zurück nach Rezept klappt nicht");
 });
 
-await step(A, "Einkauf ohne WG-Server: Zeile antippen = Hinweis", async () => {
+await step(A, "Kaufen: Zeile antippen = vorgemerkt (durchgestrichen, bleibt stehen), nochmals = nicht mehr", async () => {
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await clearToasts(A);
   const rowName = await A.page.$eval("#shopList [data-shop]", b => b.dataset.shop);
   await tap(A, `#shopList [data-shop="${rowName}"]`);
-  await toastIs(A, /Ohne WG-Server/);
+  await toastIs(A, /vorgemerkt/);
+  await until(A, n => document.querySelector(`#shopList [data-shop="${n}"]`).classList.contains("marked"), "Zeile nicht durchgestrichen / verschwunden", rowName);
+  expect(+(await text(A, "#shopFabN")) >= 1, "Knopf zählt die Vorgemerkte nicht");
+  await tap(A, `#shopList [data-shop="${rowName}"]`);
+  await until(A, n => !document.querySelector(`#shopList [data-shop="${n}"]`).classList.contains("marked"), "Vormerkung lässt sich nicht aufheben", rowName);
 });
 
-let leerIdx = "", leerName = "";
+// Der Bring!-Knopf ist nach dem Senden 10 s lang «Rückgängig» – zum Öffnen der Gegenüberstellung das abwarten
+async function openFab(P) {
+  await until(P, () => !document.getElementById("shopFab").classList.contains("undoing"), "Bring!-Knopf bleibt «Rückgängig»", undefined, 13000);
+  await tap(P, "#shopFab");
+}
+let leerIdx = "", leerName = "", fab0 = 0; // fab0 = Zahl im Bring!-Knopf vor dem Leer-Melden
 // Vorrat-Zeile antippen öffnet das Blatt zum Artikel; dort «Leer» (erste Stufe) oder «Voll» (letzte Stufe), dann zu
 async function setLevel(P, sel, which) {
   await tap(P, sel);
@@ -633,14 +642,15 @@ async function setLevel(P, sel, which) {
 }
 await step(A, "Einkauf «Vorrat»: Zeile antippen = Blatt, dort «Leer» (nichts geht auf Bring!), steht unter «Kaufen» als knapp, Leiste «Für Bring!»", async () => {
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
-  await until(A, () => document.getElementById("cookSw") && document.getElementById("vorratTray").hidden, "Vorrat-Liste fehlt / Leiste schon da");
+  await until(A, () => document.getElementById("cookSw"), "Vorrat-Liste fehlt");
+  fab0 = +(await text(A, "#shopFabN"));
   await tap(A, "#vAll summary");
   await until(A, () => document.getElementById("vAll").open, "«Alles da» geht nicht auf");
   leerIdx = await A.page.$eval("#vAll [data-vleer]", b => b.dataset.vleer);
   leerName = await A.page.$eval(`#vAll [data-vleer="${leerIdx}"] .l`, e => e.textContent.trim());
   await setLevel(A, `#vAll [data-vleer="${leerIdx}"]`, "leer");
   await until(A, i => { const r = document.querySelector(`#shopList .vsec [data-vleer="${i}"]`); return r && r.getAttribute("aria-pressed") === "true" && r.classList.contains("zero"); }, "Zeile nicht leer / nicht unter «Sonst knapp»", leerIdx);
-  await until(A, n => !document.getElementById("vorratTray").hidden && document.getElementById("vorratTray").textContent.includes(n), "Leiste «Für Bring!» fehlt", leerName);
+  await until(A, n => +document.getElementById("shopFabN").textContent === n + 1, "Knopf «Auf Bring!» zählt den leeren Artikel nicht", fab0);
   expect((await ls(A, "bringfrisch_user_staples"))[+leerIdx].in_stock === false, "leer nicht gespeichert");
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await until(A, i => document.querySelector(`#shopList [data-vitem="${i}"]`), "knapper Vorrat nicht unter «Kaufen»", leerIdx);
@@ -672,7 +682,7 @@ await step(A, "Schalter «Woche gekocht»: bucht ab, was der Plan braucht; zurü
 });
 
 await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wählen, ohne WG-Server = kopieren; Zeile nochmals = wieder da", async () => {
-  await tap(A, "#trayCheckBtn");
+  await openFab(A);
   await until(A, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
   const key = `v:${leerIdx}`;
   expect(await A.page.$eval(`[data-cmp="${key}"]`, b => b.getAttribute("aria-pressed") === "true"), "knapper Vorrat nicht vorausgewählt");
@@ -690,7 +700,7 @@ await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wähl
   await until(A, () => !document.getElementById("compareDialog").open, "Gegenüberstellung bleibt offen");
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   await setLevel(A, `#shopList .vsec [data-vleer="${leerIdx}"]`, "voll");
-  await until(A, () => document.getElementById("vorratTray").hidden, "nach «Voll» noch knapp");
+  await until(A, n => +document.getElementById("shopFabN").textContent === n, "nach «Voll» noch knapp", fab0);
 });
 
 await step(A, "Grundvorrat (ohne Server): Kacheln, Blatt (Menge, Leer…Voll, Einheit), lange drücken = − + und ✕ mit Rückgängig, Dringend, hinzufügen mit Vorschlag, Inventur", async () => {
@@ -1259,9 +1269,16 @@ await step(B, "Einkauf verbunden: Zeile «Auf Bring!» antippen = weg, in «Kauf
   expect(wg().length === len - 1 && !wg().some(x => x.name === pick), `${pick} noch auf Bring!`);
   await tap(B, '#tab-shop .seg [data-filter="toBuy"]');
   await clearToasts(B);
-  await tap(B, `#shopList [data-shop="${pick}"]`);
+  await tap(B, `#shopList [data-shop="${pick}"]`); // vormerken: durchgestrichen, noch nicht auf Bring!
+  await until(B, p => document.querySelector(`#shopList [data-shop="${p}"]`).classList.contains("marked"), "nicht durchgestrichen", pick);
+  expect(wg().length === len - 1, `${pick} schon ohne «Auf Bring!» gesendet`);
+  await openFab(B); // Gegenüberstellung: nur das Vorgemerkte aus dem Plan
+  await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
+  await clearToasts(B);
+  await tap(B, "#compareSendBtn");
   await toastIs(B, /auf Bring! ✓/);
-  expect(wg().length === len, `${pick} nicht wieder drauf`);
+  expect(wg().some(x => x.name === pick), `${pick} nicht wieder drauf`);
+  await until(B, p => !document.querySelector(`#shopList [data-shop="${p}"]`), "nach dem Senden noch in «Kaufen»", pick);
   // fremder Eintrag: Bot nimmt ihn nicht weg
   // fremder Eintrag: «Auf Bring!» antippen -> Bot nimmt ihn nicht weg, sagt wer ihn abhaken muss
   await tap(B, '#tab-shop .seg [data-filter="onBring"]');
@@ -1289,7 +1306,7 @@ await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegen�
   await sleep(300);
   expect(wgNames().join() === before.join(), "«leer» hat schon etwas auf Bring! gesetzt");
   const send = async () => {
-    await tap(B, "#trayCheckBtn");
+    await openFab(B);
     await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
     // nur den Vorrat senden: Plan-Artikel abwählen
     for (const k of await B.page.$$eval('#compareCols [data-cmp^="p:"][aria-pressed="true"]:not([disabled])', l => l.map(b => b.dataset.cmp))) await tap(B, `#compareCols [data-cmp="${k}"]`);
@@ -1299,6 +1316,7 @@ await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegen�
     await toastIs(B, /auf Bring! ✓/);
   };
   await send();
+  expect((await text(B, "#shopFabL")).startsWith("Rückgängig"), "Knopf zeigt nach dem Senden kein «Rückgängig · 10»");
   const added = wgNames().filter(n => !before.includes(n));
   expect(added.length === 1 && /^Vorrat · /.test(wg().find(x => x.name === added[0]).specification), `nicht genau 1 Vorrat-Artikel mit Vermerk: ${added}`);
   await tap(B, ".toast button");
@@ -1582,7 +1600,7 @@ await step(C, "Chip → nächste Woche: 7 Tage «noch offen», nichts einzukaufe
   await until(C, () => document.getElementById("secTitle").textContent === "Nächste Woche" && document.querySelectorAll("#days .prow.unplanned").length === 7, "nächste Woche nicht offen");
   expect((await text(C, "#weekLabel")) === "KW 47 · nächste Woche" && (await text(C, "#weekChip")) === "← KW 46", "Beschriftung");
   expect((await titles(C)).every(t => t === "noch offen"), "Titel nicht «noch offen»");
-  expect((await text(C, "#shopSummary")).startsWith("Nächste Woche (KW 47) · 0 Zutaten"), await text(C, "#shopSummary"));
+  expect((await text(C, "#shopSummary")) === "Nächste Woche (KW 47)" && (await count(C, "#shopList [data-shop]")) === 0, await text(C, "#shopSummary"));
   await tap(C, '.prow[data-i="0"] .pday');
   await until(C, () => /Noch kein Menü/.test(document.querySelector('.prow[data-i="0"] .ing').textContent), "Hinweis im offenen Tag fehlt");
   await tap(C, '.prow[data-i="0"] .pday');

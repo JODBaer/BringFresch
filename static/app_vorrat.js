@@ -111,13 +111,23 @@
         ${list.map(i => { const st = state.staples[i]; return `<button type="button" class="vrow low" data-vitem="${i}"><span class="l">${esc(label(st))}</span><span class="r">${esc(qtyText(st))}<small>+ ${esc(packText(st))}</small></span></button>`; }).join("")}</section>`
     };
   }
+  // Der eine Bring!-Knopf unten rechts: zählt, was die Gegenüberstellung vorauswählt (Plan + knapper Vorrat, noch nicht drauf)
+  let undoLeft = 0, undoTimer = null, undoRun = null;
   function renderTray() {
-    const tray = $("vorratTray");
-    const p = pendingIdx();
-    tray.hidden = state.shopFilter === "onBring" || !p.length;
-    tray.innerHTML = p.length ? `<div class="tx"><b>Für Bring! (${p.length}) · knapp</b><span>${esc(p.map(i => label(state.staples[i])).join(", "))}</span></div>
-      <button type="button" class="btn primary" id="trayCheckBtn">Prüfen</button>` : "";
-    $("cmpCount").textContent = state.bringItems.length;
+    const fab = $("shopFab");
+    if (undoLeft > 0) {
+      $("shopFabL").textContent = `Rückgängig · ${undoLeft}`; $("shopFabN").hidden = true; fab.classList.add("undoing"); fab.disabled = false;
+      return;
+    }
+    const { plan, vor } = compareRows();
+    const mk = app.shopMarked || new Set();
+    const n = (mk.size ? plan.filter(x => !x.on && mk.has(x.name)).length : plan.filter(x => !x.on).length) + vor.filter(x => x.knapp && !x.on).length;
+    fab.classList.remove("undoing");
+    $("shopFabL").textContent = "Auf Bring!"; $("shopFabN").hidden = false; $("shopFabN").textContent = n;
+  }
+  function startUndo(run) {
+    clearInterval(undoTimer); undoRun = run; undoLeft = 10; renderTray();
+    undoTimer = setInterval(() => { undoLeft--; if (undoLeft <= 0) { clearInterval(undoTimer); undoRun = null; } renderTray(); }, 1000);
   }
 
   function toggleLeer(i) {
@@ -151,8 +161,13 @@
     if (it) return openItem(+it.dataset.vitem);
   });
   $("shopList").addEventListener("toggle", e => { if (e.target.id === "vAll") allOpen = e.target.open; }, true);
-  $("vorratTray").addEventListener("click", e => { if (e.target.closest("#trayCheckBtn")) openCompare(); });
-  $("compareBtn").onclick = () => openCompare();
+  $("shopFab").onclick = async () => {
+    if (undoLeft > 0 && undoRun) { // innerhalb von 10 s: zurücknehmen
+      const run = undoRun; clearInterval(undoTimer); undoLeft = 0; undoRun = null; renderTray();
+      await run(); toast("Rückgängig gemacht"); return;
+    }
+    openCompare();
+  };
 
   // ---------------------------------------------------------------------------
   // Gegenüberstellung: links Kaufen (Plan), rechts Vorrat (leer, knapp, geht oft aus). Antippen = kommt auf Bring!
@@ -169,7 +184,8 @@
   }
   function openCompare() {
     const { plan, vor } = compareRows();
-    cmp = { plan, vor, sel: new Set([...plan, ...vor.filter(v => v.knapp)].filter(x => !x.on).map(x => x.key)) };
+    const mk = app.shopMarked || new Set(); // in «Kaufen» vorgemerkt? dann nur diese aus dem Plan vorwählen
+    cmp = { plan, vor, sel: new Set([...plan.filter(p => !mk.size || mk.has(p.name)), ...vor.filter(v => v.knapp)].filter(x => !x.on).map(x => x.key)) };
     renderCompare();
     $("compareDialog").showModal();
   }
@@ -211,12 +227,16 @@
       if (sent.length) saveStaples();
       app.setBringList(await app.api("/bring/list"));
       $("compareDialog").close();
+      if (app.shopMarked) items.forEach(x => app.shopMarked.delete(x.name)); // gesendet: Vormerkung erledigt
       refresh();
-      toast(`${pushed || items.length} auf Bring! ✓`, { label: "Rückgängig", run: async () => {
+      const undo = async () => {
         sent.forEach(st => { st.sent = false; });
         if (sent.length) saveStaples();
         await app.undoBring({ remove: items.map(x => x.name), restore: [] });
-      } });
+      };
+      const undoOnce = async () => { clearInterval(undoTimer); undoLeft = 0; undoRun = null; renderTray(); await undo(); }; // nur einmal (Hinweis oder Knopf)
+      toast(`${pushed || items.length} auf Bring! ✓`, { label: "Rückgängig", run: undoOnce });
+      startUndo(undo); // 10 Sekunden «Rückgängig» direkt im Knopf
     } catch (err) {
       toast(`Bring!: ${err.message}`);
     } finally {
