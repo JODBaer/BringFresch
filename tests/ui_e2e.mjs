@@ -615,12 +615,16 @@ await step(A, "Einkauf: Umschalter Rezept / Kategorie (Kaufen und Vorrat), Liste
   await until(A, () => document.querySelector("#shopList .aisle.dish h3 .dd-day"), "zurück nach Rezept klappt nicht");
 });
 
-await step(A, "Einkauf ohne WG-Server: Zeile antippen = Hinweis", async () => {
+await step(A, "Kaufen: Zeile antippen = vorgemerkt (durchgestrichen, bleibt stehen), nochmals = nicht mehr", async () => {
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await clearToasts(A);
   const rowName = await A.page.$eval("#shopList [data-shop]", b => b.dataset.shop);
   await tap(A, `#shopList [data-shop="${rowName}"]`);
-  await toastIs(A, /Ohne WG-Server/);
+  await toastIs(A, /vorgemerkt/);
+  await until(A, n => document.querySelector(`#shopList [data-shop="${n}"]`).classList.contains("marked"), "Zeile nicht durchgestrichen / verschwunden", rowName);
+  expect(+(await text(A, "#shopFabN")) >= 1, "Knopf zählt die Vorgemerkte nicht");
+  await tap(A, `#shopList [data-shop="${rowName}"]`);
+  await until(A, n => !document.querySelector(`#shopList [data-shop="${n}"]`).classList.contains("marked"), "Vormerkung lässt sich nicht aufheben", rowName);
 });
 
 let leerIdx = "", leerName = "", fab0 = 0; // fab0 = Zahl im Bring!-Knopf vor dem Leer-Melden
@@ -1260,9 +1264,17 @@ await step(B, "Einkauf verbunden: Zeile «Auf Bring!» antippen = weg, in «Kauf
   expect(wg().length === len - 1 && !wg().some(x => x.name === pick), `${pick} noch auf Bring!`);
   await tap(B, '#tab-shop .seg [data-filter="toBuy"]');
   await clearToasts(B);
-  await tap(B, `#shopList [data-shop="${pick}"]`);
+  await tap(B, `#shopList [data-shop="${pick}"]`); // vormerken: durchgestrichen, noch nicht auf Bring!
+  await until(B, p => document.querySelector(`#shopList [data-shop="${p}"]`).classList.contains("marked"), "nicht durchgestrichen", pick);
+  expect(wg().length === len - 1, `${pick} schon ohne «Auf Bring!» gesendet`);
+  await tap(B, "#shopFab"); // Gegenüberstellung: nur das Vorgemerkte aus dem Plan
+  await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
+  for (const k of await B.page.$eval('#compareCols [data-cmp^="v:"][aria-pressed="true"]:not([disabled])', l => l.map(b => b.dataset.cmp))) await tap(B, `#compareCols [data-cmp="${k}"]`);
+  await clearToasts(B);
+  await tap(B, "#compareSendBtn");
   await toastIs(B, /auf Bring! ✓/);
   expect(wg().length === len, `${pick} nicht wieder drauf`);
+  await until(B, p => !document.querySelector(`#shopList [data-shop="${p}"]`), "nach dem Senden noch in «Kaufen»", pick);
   // fremder Eintrag: Bot nimmt ihn nicht weg
   // fremder Eintrag: «Auf Bring!» antippen -> Bot nimmt ihn nicht weg, sagt wer ihn abhaken muss
   await tap(B, '#tab-shop .seg [data-filter="onBring"]');

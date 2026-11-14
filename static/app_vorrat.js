@@ -120,7 +120,8 @@
       return;
     }
     const { plan, vor } = compareRows();
-    const n = plan.filter(x => !x.on).length + vor.filter(x => x.knapp && !x.on).length;
+    const mk = app.shopMarked || new Set();
+    const n = (mk.size ? plan.filter(x => !x.on && mk.has(x.name)).length : plan.filter(x => !x.on).length) + vor.filter(x => x.knapp && !x.on).length;
     fab.classList.remove("undoing");
     $("shopFabL").textContent = "Auf Bring!"; $("shopFabN").hidden = false; $("shopFabN").textContent = n;
   }
@@ -183,7 +184,8 @@
   }
   function openCompare() {
     const { plan, vor } = compareRows();
-    cmp = { plan, vor, sel: new Set([...plan, ...vor.filter(v => v.knapp)].filter(x => !x.on).map(x => x.key)) };
+    const mk = app.shopMarked || new Set(); // in «Kaufen» vorgemerkt? dann nur diese aus dem Plan vorwählen
+    cmp = { plan, vor, sel: new Set([...plan.filter(p => !mk.size || mk.has(p.name)), ...vor.filter(v => v.knapp)].filter(x => !x.on).map(x => x.key)) };
     renderCompare();
     $("compareDialog").showModal();
   }
@@ -225,6 +227,7 @@
       if (sent.length) saveStaples();
       app.setBringList(await app.api("/bring/list"));
       $("compareDialog").close();
+      if (app.shopMarked) items.forEach(x => app.shopMarked.delete(x.name)); // gesendet: Vormerkung erledigt
       refresh();
       const undo = async () => {
         sent.forEach(st => { st.sent = false; });

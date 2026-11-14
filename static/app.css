@@ -842,3 +842,6 @@ html[data-tab="shop"] #syncBtn { display: none; }
 
 /* Einkauf: Hinweis unten über dem Bring!-Knopf, damit er ihn nicht verdeckt */
 html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78px); }
+
+/* Kaufen: vorgemerkt für Bring! = durchgestrichen, bleibt stehen bis «Auf Bring!» */
+#shopList .item.marked > span:first-child, #shopList .item.marked .amt { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); }
