@@ -627,6 +627,11 @@ await step(A, "Kaufen: Zeile antippen = vorgemerkt (durchgestrichen, bleibt steh
   await until(A, n => !document.querySelector(`#shopList [data-shop="${n}"]`).classList.contains("marked"), "Vormerkung lässt sich nicht aufheben", rowName);
 });
 
+// Der Bring!-Knopf ist nach dem Senden 10 s lang «Rückgängig» – zum Öffnen der Gegenüberstellung das abwarten
+async function openFab(P) {
+  await until(P, () => !document.getElementById("shopFab").classList.contains("undoing"), "Bring!-Knopf bleibt «Rückgängig»", undefined, 13000);
+  await tap(P, "#shopFab");
+}
 let leerIdx = "", leerName = "", fab0 = 0; // fab0 = Zahl im Bring!-Knopf vor dem Leer-Melden
 // Vorrat-Zeile antippen öffnet das Blatt zum Artikel; dort «Leer» (erste Stufe) oder «Voll» (letzte Stufe), dann zu
 async function setLevel(P, sel, which) {
@@ -677,7 +682,7 @@ await step(A, "Schalter «Woche gekocht»: bucht ab, was der Plan braucht; zurü
 });
 
 await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wählen, ohne WG-Server = kopieren; Zeile nochmals = wieder da", async () => {
-  await tap(A, "#shopFab");
+  await openFab(A);
   await until(A, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
   const key = `v:${leerIdx}`;
   expect(await A.page.$eval(`[data-cmp="${key}"]`, b => b.getAttribute("aria-pressed") === "true"), "knapper Vorrat nicht vorausgewählt");
@@ -1267,7 +1272,7 @@ await step(B, "Einkauf verbunden: Zeile «Auf Bring!» antippen = weg, in «Kauf
   await tap(B, `#shopList [data-shop="${pick}"]`); // vormerken: durchgestrichen, noch nicht auf Bring!
   await until(B, p => document.querySelector(`#shopList [data-shop="${p}"]`).classList.contains("marked"), "nicht durchgestrichen", pick);
   expect(wg().length === len - 1, `${pick} schon ohne «Auf Bring!» gesendet`);
-  await tap(B, "#shopFab"); // Gegenüberstellung: nur das Vorgemerkte aus dem Plan
+  await openFab(B); // Gegenüberstellung: nur das Vorgemerkte aus dem Plan
   await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
   await clearToasts(B);
   await tap(B, "#compareSendBtn");
@@ -1301,7 +1306,7 @@ await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegen�
   await sleep(300);
   expect(wgNames().join() === before.join(), "«leer» hat schon etwas auf Bring! gesetzt");
   const send = async () => {
-    await tap(B, "#shopFab");
+    await openFab(B);
     await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
     // nur den Vorrat senden: Plan-Artikel abwählen
     for (const k of await B.page.$$eval('#compareCols [data-cmp^="p:"][aria-pressed="true"]:not([disabled])', l => l.map(b => b.dataset.cmp))) await tap(B, `#compareCols [data-cmp="${k}"]`);
