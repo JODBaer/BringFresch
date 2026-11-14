@@ -298,12 +298,12 @@
   function tile(i) {
     const st = state.staples[i], q = vQty(st), use = useOf(st);
     if (flip === i) {
-      return `<div class="qt back" data-back="${i}"><span class="n">${esc(label(st))}</span>
-        <button type="button" class="xs" data-del="${i}" aria-label="${esc(label(st))} wegnehmen">✕</button>
+      return `<div class="qt back" data-back="${i}"><div class="bk"><button type="button" class="xs" data-del="${i}" aria-label="${esc(label(st))} wegnehmen">✕</button>
+        <button type="button" class="lz" data-leer="${i}" aria-pressed="${q === 0}">leer</button></div><span class="n">${esc(label(st))}</span>
         <div class="st"><button type="button" data-step="-1" data-i="${i}" aria-label="weniger">−</button><output aria-label="${esc(qtyText(st))}">${q}</output><button type="button" data-step="1" data-i="${i}" aria-label="mehr">+</button></div></div>`;
     }
     const cls = q === 0 ? " zero" : isKnapp(st) ? " low" : "";
-    return `<button type="button" class="qt${cls}" data-staple="${i}" title="${esc(st.name)}" aria-label="${esc(label(st))}, ${esc(qtyText(st, q, true))}${onBringSt(st) ? ", steht auf Bring!" : ""}. Lange drücken zum Ändern">
+    return `<button type="button" class="qt${cls}" data-staple="${i}" title="${esc(st.name)}" aria-label="${esc(label(st))}, ${esc(qtyText(st, q, true))}${onBringSt(st) ? ", steht auf Bring!" : ""}. Antippen = − + und ✕, lange drücken = Blatt zum Artikel">
       <span class="n">${esc(label(st))}${onBringSt(st) ? " " + cart : ""}</span><span class="q">${esc(qtyText(st) + useText(st, use))}</span>${isOld(st, nowYm()) ? `<span class="old">seit ${esc(ymText(st.since))}</span>` : ""}</button>`;
   }
   function sections() {
@@ -388,10 +388,10 @@
     else if ($("newStaple").value.trim()) toast("Ist schon im Grundvorrat");
   });
 
-  // Kacheln: antippen = Blatt; lange drücken (oder Rechtsklick) = Karte dreht sich (− + und ✕); daneben tippen = zurück
+  // Kacheln (Joshua 15.11.): antippen = Karte dreht sich (✕ links, «leer» rechts, − +); lange drücken (oder Rechtsklick) = Blatt
   let holdT = null, held = false;
   const list = $("staplesList");
-  const doFlip = el => { held = true; flip = +el.dataset.staple; renderStaples(); };
+  const doFlip = el => { held = true; flip = null; openItem(+el.dataset.staple); };
   list.addEventListener("pointerdown", e => {
     const b = e.target.closest("[data-staple]");
     held = false;
@@ -406,6 +406,13 @@
     if (flip != null && !e.target.closest(".qt.back")) { flip = null; renderStaples(); if (!e.target.closest("[data-staple],[data-close]")) return; }
     const del = e.target.closest("[data-del]");
     if (del) { flip = null; return removeStaple(+del.dataset.del); }
+    const lz = e.target.closest("[data-leer]");
+    if (lz) {
+      const st = state.staples[+lz.dataset.leer];
+      if (vQty(st) > 0) setQty(st, 0, thisWeek()); else setQty(st, st.prev || vPack(st));
+      saveStaples();
+      return refresh();
+    }
     const step = e.target.closest("[data-step]");
     if (step) {
       const st = state.staples[+step.dataset.i];
@@ -414,7 +421,7 @@
       return refresh();
     }
     const t = e.target.closest("[data-staple]");
-    if (t) openItem(+t.dataset.staple);
+    if (t) { flip = +t.dataset.staple; renderStaples(); }
     if (e.target.closest("#invBtn")) startInventur();
   }, true);
   document.addEventListener("keydown", e => {

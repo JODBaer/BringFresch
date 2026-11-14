@@ -754,16 +754,17 @@ await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wähl
   await until(A, n => +document.getElementById("shopFabN").textContent === n, "nach «Voll» noch knapp", fab0);
 });
 
-await step(A, "Grundvorrat (ohne Server): Kacheln, Blatt (Menge, Leer…Voll, Einheit), lange drücken = − + und ✕ mit Rückgängig, Dringend, hinzufügen mit Vorschlag, Inventur", async () => {
+await step(A, "Grundvorrat (ohne Server): Kacheln, lange drücken = Blatt (Menge, Leer…Voll, Einheit), antippen = − + und ✕ (links) / «leer» (rechts) mit Rückgängig, Dringend, hinzufügen mit Vorschlag, Inventur", async () => {
   await tap(A, "#openStaplesBtn");
   await until(A, () => document.getElementById("staplesDialog").open && document.querySelectorAll("#staplesList .qt[data-staple]").length > 5, "Grundvorrat geht nicht auf");
-  expect((await text(A, "#staplesHint")).startsWith("Antippen = alles zum Artikel"), "Hinweis falsch");
+  expect((await text(A, "#staplesHint")).startsWith("Antippen = − + und ✕"), "Hinweis falsch");
   expect(/Artikel · \d+ knapp/.test(await text(A, "#stapleSum")), "Übersicht in einer Zeile fehlt");
   const idx = await A.page.$eval("#staplesList .qt[data-staple]:not(.zero):not(.low)", b => b.dataset.staple);
   const sel = `#staplesList [data-staple="${idx}"]`;
-  // Blatt
-  await tap(A, sel);
-  await until(A, () => document.getElementById("stapleItemDialog").open, "Blatt geht nicht auf");
+  // Lange drücken = Blatt
+  const hold = async () => { const bx = await (await A.page.$(sel)).boundingBox(); await A.page.touchscreen.touchStart(bx.x + bx.width / 2, bx.y + bx.height / 2); await sleep(750); await A.page.touchscreen.touchEnd(); };
+  await hold();
+  await until(A, () => document.getElementById("stapleItemDialog").open, "Blatt geht nicht auf (lange drücken)");
   await tap(A, '#vBody [data-v="set"][data-n="1"]');
   await until(A, i => JSON.parse(localStorage.getItem("bringfrisch_user_staples"))[i].qty === 1, "«Fast leer» setzt nicht 1", +idx);
   await tap(A, '#vBody [data-v="q+"]');
@@ -776,16 +777,17 @@ await step(A, "Grundvorrat (ohne Server): Kacheln, Blatt (Menge, Leer…Voll, Ei
   await shot(A, "09a-grundvorrat-blatt");
   await dialogNoHScroll(A, "stapleItemDialog");
   await closeDialog(A, "stapleItemDialog");
-  // Lange drücken: Karte dreht sich (− + und ✕)
+  // Antippen: Karte dreht sich (✕ links, «leer» rechts, − +)
   const n0 = await count(A, "#staplesList .qt[data-staple]");
-  const box = await (await A.page.$(sel)).boundingBox();
-  await A.page.touchscreen.touchStart(box.x + box.width / 2, box.y + box.height / 2);
-  await sleep(750);
-  await A.page.touchscreen.touchEnd();
+  await tap(A, sel);
   await until(A, i => document.querySelector(`#staplesList .qt.back[data-back="${i}"]`), "Karte dreht sich nicht", idx);
   const q0 = +(await text(A, "#staplesList .qt.back output"));
   await tap(A, '#staplesList .qt.back [data-step="1"]');
   await until(A, q => +document.querySelector("#staplesList .qt.back output").textContent === q + 1, "+ auf der Karte zählt nicht", q0);
+  await tap(A, "#staplesList .qt.back [data-leer]");
+  await until(A, () => +document.querySelector("#staplesList .qt.back output").textContent === 0, "«leer» auf der Karte setzt nicht 0");
+  await tap(A, "#staplesList .qt.back [data-leer]");
+  await until(A, () => +document.querySelector("#staplesList .qt.back output").textContent > 0, "«leer» nochmals bringt die Menge nicht zurück");
   await shot(A, "09b-grundvorrat-karte");
   await clearToasts(A);
   await tap(A, "#staplesList .qt.back .xs");
