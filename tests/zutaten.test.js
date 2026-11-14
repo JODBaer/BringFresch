@@ -35,8 +35,8 @@ function boot(ingredients, bringItems) {
     beforeParse(win) {
       win.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
       win.HTMLDialogElement.prototype.close = function () { this.open = false; };
-      const preset = { bringfrisch_welcome: true, bringfrisch_current_plan: plan(ingredients), bringfrisch_plan_updated: 9e15 };
-      if (bringItems) preset.bringfrisch_sync = { url: "https://wg.test", pin: "1" };
+      const preset = { obsonare_welcome: true, obsonare_current_plan: plan(ingredients), obsonare_plan_updated: 9e15 };
+      if (bringItems) preset.obsonare_sync = { url: "https://wg.test", pin: "1" };
       Object.entries(preset).forEach(([k, v]) => win.localStorage.setItem(k, JSON.stringify(v)));
       fixWindow(win, { now: STANDARD_NOW });
       // WG-Server-Attrappe: nur der Bring!-Stand zählt

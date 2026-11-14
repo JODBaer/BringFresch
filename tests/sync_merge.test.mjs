@@ -65,7 +65,7 @@ function phone(me, { skew = 0, preset = {} } = {}) {
       w.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new w.Event("close")); } };
       fixWindow(w, { now: STANDARD_NOW, realNow: true });
       if (skew) { const real = w.Date.now; w.Date.now = () => real() + skew; }
-      Object.entries({ bringfrisch_sync: { url: "https://wg.test", pin: "4711" }, bringfrisch_me: me, bringfrisch_welcome: true, ...preset })
+      Object.entries({ obsonare_sync: { url: "https://wg.test", pin: "4711" }, obsonare_me: me, obsonare_welcome: true, ...preset })
         .forEach(([k, v]) => w.localStorage.setItem(k, JSON.stringify(v)));
       w.fetch = async (u, init = {}) => {
         const res = await worker.fetch(new Request(String(u), { ...init, headers: { ...(init.headers || {}), Origin: "https://jodbaer.github.io" } }), env);
@@ -85,7 +85,7 @@ const row = (w, i) => w.document.querySelectorAll("#days .prow")[i];
 const av = (w, i, n) => row(w, i).querySelectorAll(".av")[n];
 const setBuf = (w, i, v) => { const b = row(w, i).querySelector(".buf"); b.value = String(v); b.dispatchEvent(new w.Event("change", { bubbles: true })); };
 const serverPlan = () => JSON.parse(store.get("plan")).plan;
-const localPlan = w => JSON.parse(w.localStorage.getItem("bringfrisch_current_plan"));
+const localPlan = w => JSON.parse(w.localStorage.getItem("obsonare_current_plan"));
 
 // Ausgangslage: A setzt den Plan der WG, B übernimmt ihn
 const A = phone("joshua");
@@ -120,8 +120,8 @@ sp = serverPlan();
 check([3, 6].includes(sp[4].leftover_buffer) && !sp[0].eaters.includes("lukas") && sp[2].leftover_buffer === 5, `gleicher Tag: ein Stand gilt (${sp[4].leftover_buffer}), andere Tage bleiben`);
 
 // 3. Grundvorrat: A meldet Olivenöl leer, B gleichzeitig Zucker leer -> beides bleibt
-const stA = JSON.parse(A.localStorage.getItem("bringfrisch_user_staples"));
-const mark = (w, re) => { const list = JSON.parse(w.localStorage.getItem("bringfrisch_user_staples")); return list.find(s => re.test(s.name)); };
+const stA = JSON.parse(A.localStorage.getItem("obsonare_user_staples"));
+const mark = (w, re) => { const list = JSON.parse(w.localStorage.getItem("obsonare_user_staples")); return list.find(s => re.test(s.name)); };
 check(stA.length > 10, "Grundvorrat vorhanden");
 // «leer» melden wie beim Einkauf: Bereich «Vorrat», Zeile antippen = Blatt, dort «Leer»
 const leer = (w, name) => {
@@ -152,9 +152,9 @@ check(localPlan(C)[5].leftover_buffer === 6, "Handy mit falscher Uhr übernimmt 
 check(serverPlan()[1].leftover_buffer === 4 && serverPlan()[5].leftover_buffer === 6, "Server hat beide Änderungen");
 
 // 5. Handy von früher (ohne gemerkten Stand): verhält sich wie bisher, neuerer Server-Stand gilt
-const D = phone("leonie", { preset: { bringfrisch_plan_updated: 5 } });
+const D = phone("leonie", { preset: { obsonare_plan_updated: 5 } });
 await wait(400);
-check(localPlan(D)[5].leftover_buffer === 6 && D.localStorage.getItem("bringfrisch_base_plan"), "Handy ohne gemerkten Stand lädt den WG-Plan und merkt ihn sich");
+check(localPlan(D)[5].leftover_buffer === 6 && D.localStorage.getItem("obsonare_base_plan"), "Handy ohne gemerkten Stand lädt den WG-Plan und merkt ihn sich");
 
 // 6. Speicher des Servers antwortet kurz mit dem alten Stand (Cloudflare KV): eigene Änderungen dürfen nicht zurückspringen
 staleMs = 4000;

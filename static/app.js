@@ -54,7 +54,7 @@
   ];
 
   // Adresse des Cloudflare Workers (nach dem ersten Deploy hier eintragen; in der App änderbar)
-  const APP_VERSION = "1.5.2";
+  const APP_VERSION = "2.0.0";
   // Spenden-Link (z.B. Wise «Pay me»-Link https://wise.com/pay/me/…); leer = Knopf ausgeblendet
   const DONATE_URL = "";
   const REPO_URL = "https://github.com/jodbaer/BringFresch";

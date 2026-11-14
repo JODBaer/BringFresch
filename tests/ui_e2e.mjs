@@ -181,7 +181,7 @@ async function phone({ name, os, scheme, now, preset = {}, context, url }) {
     Math.random = () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     try {
       if (!localStorage.getItem("__ui_seeded")) {
-        for (const [k, v] of Object.entries({ bringfrisch_welcome: "true", ...preset })) localStorage.setItem(k, v);
+        for (const [k, v] of Object.entries({ obsonare_welcome: "true", ...preset })) localStorage.setItem(k, v);
         localStorage.setItem("__ui_seeded", "1");
       }
     } catch (e) { /* ohne Speicher */ }
@@ -606,7 +606,7 @@ await step(A, "Einkauf: Umschalter Rezept / Kategorie (Kaufen und Vorrat), Liste
   expect(await A.page.$eval("#shopList", e => getComputedStyle(e).borderTopWidth === "0px"), "Liste hat noch einen Kasten");
   await tap(A, '#shopSort [data-sort="kat"]');
   await until(A, () => [...document.querySelectorAll("#shopList .aisle h3")].some(h => /Gemüse|Milch|Käse/.test(h.textContent)), "nach Kategorie: keine Bring!-Abteilungen");
-  expect(JSON.parse(await A.page.evaluate(() => localStorage.getItem("bringfrisch_shop_sort"))) === "kat", "Sortierung nicht gemerkt");
+  expect(JSON.parse(await A.page.evaluate(() => localStorage.getItem("obsonare_shop_sort"))) === "kat", "Sortierung nicht gemerkt");
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   await until(A, () => document.querySelector("#shopList .vsec.kat") || document.querySelector("#shopList .vnone"), "Vorrat nicht nach Kategorie");
   await shot(A, "08a-einkauf-kategorie");
@@ -651,7 +651,7 @@ await step(A, "Einkauf «Vorrat»: Zeile antippen = Blatt, dort «Leer» (nichts
   await setLevel(A, `#vAll [data-vleer="${leerIdx}"]`, "leer");
   await until(A, i => { const r = document.querySelector(`#shopList .vsec [data-vleer="${i}"]`); return r && r.getAttribute("aria-pressed") === "true" && r.classList.contains("zero"); }, "Zeile nicht leer / nicht unter «Sonst knapp»", leerIdx);
   await until(A, n => +document.getElementById("shopFabN").textContent === n + 1, "Knopf «Auf Bring!» zählt den leeren Artikel nicht", fab0);
-  expect((await ls(A, "bringfrisch_user_staples"))[+leerIdx].in_stock === false, "leer nicht gespeichert");
+  expect((await ls(A, "obsonare_user_staples"))[+leerIdx].in_stock === false, "leer nicht gespeichert");
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await until(A, i => document.querySelector(`#shopList [data-vitem="${i}"]`), "knapper Vorrat nicht unter «Kaufen»", leerIdx);
   // Antippen = Blatt zum Artikel
@@ -665,19 +665,19 @@ await step(A, "Schalter «Woche gekocht»: bucht ab, was der Plan braucht; zurü
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   const used = await count(A, "#shopList .vsec.woche [data-vleer]");
   expect(used > 0, "der Plan braucht nichts aus dem Vorrat");
-  const qtys = () => A.page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem("bringfrisch_user_staples")).map(window.BF_CORE.vQty)));
+  const qtys = () => A.page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem("obsonare_user_staples")).map(window.BF_CORE.vQty)));
   const before = await qtys();
   await clearToasts(A);
   await tap(A, "#cookSw");
   await toastIs(A, /Woche gekocht: \d+ Artikel abgebucht/);
   await until(A, () => document.getElementById("cookSw").getAttribute("aria-checked") === "true" && /abgebucht/.test(document.querySelector("#shopList .vfoot").textContent), "Schalter nicht an");
   expect(await A.page.$eval("#cookSw", b => !!b.closest(".shophead")), "«Woche gekocht» steht nicht oben in der Kopfzeile");
-  expect((await ls(A, "bringfrisch_user_staples")).some(s => s.booked), "nichts abgebucht");
+  expect((await ls(A, "obsonare_user_staples")).some(s => s.booked), "nichts abgebucht");
   await clearToasts(A);
   await tap(A, "#cookSw");
   await toastIs(A, /Abbuchen rückgängig gemacht/);
   await until(A, () => document.getElementById("cookSw").getAttribute("aria-checked") === "false", "Schalter nicht aus");
-  const after = await ls(A, "bringfrisch_user_staples");
+  const after = await ls(A, "obsonare_user_staples");
   expect((await qtys()) === before && !after.some(s => s.booked), "Rückgängig stellt die Mengen nicht her");
 });
 
@@ -714,14 +714,14 @@ await step(A, "Grundvorrat (ohne Server): Kacheln, Blatt (Menge, Leer…Voll, Ei
   await tap(A, sel);
   await until(A, () => document.getElementById("stapleItemDialog").open, "Blatt geht nicht auf");
   await tap(A, '#vBody [data-v="set"][data-n="1"]');
-  await until(A, i => JSON.parse(localStorage.getItem("bringfrisch_user_staples"))[i].qty === 1, "«Fast leer» setzt nicht 1", +idx);
+  await until(A, i => JSON.parse(localStorage.getItem("obsonare_user_staples"))[i].qty === 1, "«Fast leer» setzt nicht 1", +idx);
   await tap(A, '#vBody [data-v="q+"]');
-  await until(A, i => JSON.parse(localStorage.getItem("bringfrisch_user_staples"))[i].qty === 2, "+ zählt nicht", +idx);
+  await until(A, i => JSON.parse(localStorage.getItem("obsonare_user_staples"))[i].qty === 2, "+ zählt nicht", +idx);
   await tap(A, '#vBody [data-v="unit"][data-u="Stk"]');
   await until(A, () => document.getElementById("vSize"), "«1 Stück =» fehlt bei Stück");
   await tap(A, '#vBody [data-v="unit"][data-u="Znacht"]');
   await tap(A, '#vBody [data-v="set"]:last-child');
-  await until(A, i => JSON.parse(localStorage.getItem("bringfrisch_user_staples"))[i].in_stock === true, "«Voll» nicht gespeichert", +idx);
+  await until(A, i => JSON.parse(localStorage.getItem("obsonare_user_staples"))[i].in_stock === true, "«Voll» nicht gespeichert", +idx);
   await shot(A, "09a-grundvorrat-blatt");
   await dialogNoHScroll(A, "stapleItemDialog");
   await closeDialog(A, "stapleItemDialog");
@@ -798,7 +798,7 @@ await step(A, "Saison: Bilder, Hochdeutsch; Gemüse antippen = «… Rezept» ko
   expect((await A.page.$eval("#searchSite", s => s.value)) === "swissmilk", "Standard ist nicht Swissmilk");
   await A.page.evaluate(v => { const s = document.getElementById("searchSite"); s.value = v; s.dispatchEvent(new Event("change")); }, "google");
   await until(A, () => document.getElementById("recipeSearchGo").href.endsWith("google.com/search?q=Spinat%20Risotto%20Rezept"), "Umschalten auf Google wirkt nicht");
-  expect(await A.page.evaluate(() => localStorage.getItem("bringfrisch_search_site")) === '"google"', "Wahl nicht gespeichert");
+  expect(await A.page.evaluate(() => localStorage.getItem("obsonare_search_site")) === '"google"', "Wahl nicht gespeichert");
   await A.page.evaluate(v => { const s = document.getElementById("searchSite"); s.value = v; s.dispatchEvent(new Event("change")); }, "swissmilk");
   await noHScroll(A, "Saison mit Suche");
   await shot(A, "10-saison-suche");
@@ -838,7 +838,7 @@ await step(A, "Mitbewohner: hinzufügen (Vegi), Ernährung ändern (Vegan), entf
   await until(A, () => document.querySelectorAll("#members .member").length === 5 && document.querySelectorAll('.prow[data-i="0"] .av').length === 5, "Mia fehlt im Plan");
   expect(await A.page.$eval('.prow[data-i="0"] .who', w => w.classList.contains("many")), "5 Personen: kompakte Kreise fehlen");
   await choose(A, "#members .member:last-child select", "vegan");
-  await until(A, () => (JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.name === "Mia") || {}).diet === "vegan", "Ernährung nicht gespeichert");
+  await until(A, () => (JSON.parse(localStorage.getItem("obsonare_members")).find(m => m.name === "Mia") || {}).diet === "vegan", "Ernährung nicht gespeichert");
   await tap(A, "#members .member:last-child [data-remove]");
   await until(A, () => document.querySelector("#members .member:last-child [data-remove]").textContent === "Entfernen?", "Nachfrage fehlt");
   await tap(A, "#members .member:last-child [data-remove]");
@@ -877,7 +877,7 @@ await step(A, "Plan-Link teilen (ohne Teilen-Blatt → kopiert)", async () => {
 
 await step(A, "Znacht-Zeit 19:15 (Zeitwähler) wird gespeichert", async () => {
   await pickNative(A, "#dinnerTime", "19:15");
-  expect((await ls(A, "bringfrisch_dinner_time")) === "19:15", "Zeit nicht gespeichert");
+  expect((await ls(A, "obsonare_dinner_time")) === "19:15", "Zeit nicht gespeichert");
 });
 
 await step(A, "Stil umschalten: iPhone ↔ Android", async () => {
@@ -966,7 +966,7 @@ await step(A, "Kalender abonnieren (iPhone): persönlicher Link, Kalender-App ö
   await tap(A, "#calendarBtn");
   await toastIs(A, /Kalender öffnet sich – «Abonnieren» tippen/);
   const link = await clip(A);
-  const me = await A.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_me")) || JSON.parse(localStorage.getItem("bringfrisch_members"))[0].id);
+  const me = await A.page.evaluate(() => JSON.parse(localStorage.getItem("obsonare_me")) || JSON.parse(localStorage.getItem("obsonare_members"))[0].id);
   expect(link === `${WORKER}/cal/cal-test.ics?me=${me}`, `Link ${link}`);
   await until(A, () => /webcal:/.test(window.__nav || ""), "Kalender-App wird nicht geöffnet");
   const ics = await (await worker.fetch(new Request(link), env)).text();
@@ -1062,7 +1062,7 @@ await A2.context.close();
 // ---------------------------------------------------------------------------------------------
 const B = await phone({
   name: "B-android-dunkel", os: "android", scheme: "dark", now: "2026-11-10T12:00:00",
-  preset: { bringfrisch_sync: JSON.stringify({ url: WORKER, pin: PIN }), bringfrisch_me: JSON.stringify("lukas") },
+  preset: { obsonare_sync: JSON.stringify({ url: WORKER, pin: PIN }), obsonare_me: JSON.stringify("lukas") },
 });
 
 await step(B, "Start verbunden: WG-Plan geladen, Android-Stil, dunkel", async () => {
@@ -1333,7 +1333,7 @@ await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegen�
   await pullDown(B);
   await toastIs(B, /Synchronisiert ✓/);
   await goTab(B, "shop");
-  const st = (await ls(B, "bringfrisch_user_staples"))[+idx];
+  const st = (await ls(B, "obsonare_user_staples"))[+idx];
   expect(st.in_stock === true && st.qty > 0 && !st.sent && st.since === "2026-11", `gekaufter Vorrat nicht wieder da: ${JSON.stringify(st)}`);
   await waitPushed(B);
   expect(kvJson("vorrat").staples[+idx].qty === st.qty, "WG-Server kennt die neue Menge nicht");
@@ -1506,7 +1506,7 @@ await step(B, "Katalog: «Anpassen» macht eine eigene Kopie (z.B. andere Person
   await B.page.$eval("#recipeServings", e => { e.value = "2"; e.dispatchEvent(new Event("change", { bubbles: true })); });
   await tap(B, "#recipeSubmitBtn");
   await until(B, t => document.querySelector('.prow[data-i="2"] .t').textContent === t, "Kopie nicht eingeplant", title);
-  const mine = await ls(B, "bringfrisch_custom_recipes");
+  const mine = await ls(B, "obsonare_custom_recipes");
   expect(mine.some(r => r.title === title && r.servings === 2), "Kopie mit 2 Personen nicht gespeichert");
 });
 
@@ -1521,7 +1521,7 @@ await step(B, "Geteilte Rezepte: eigene gehen standardmässig an alle WGs, Rezep
   await goTab(B, "wg");
   await B.page.evaluate(() => { document.getElementById("setMore").open = true; }); // «Abgleichen» liegt unter «Mehr»
   await tap(B, "#syncNowBtn");
-  await until(B, () => (JSON.parse(localStorage.getItem("bringfrisch_shared_recipes") || "[]")).some(r => r.title === "Sonnenhof-Curry"), "geteiltes Rezept nicht abgeholt");
+  await until(B, () => (JSON.parse(localStorage.getItem("obsonare_shared_recipes") || "[]")).some(r => r.title === "Sonnenhof-Curry"), "geteiltes Rezept nicht abgeholt");
   await goTab(B, "plan");
   await tap(B, '.prow[data-i="3"] .t');
   await tap(B, "#mlist [data-catalog]");
@@ -1558,7 +1558,7 @@ await step(B, "Menü tauschen (Blatt «Tauschen mit»), Einkauf nach Gericht, Ka
   await shot(B, "09c-einkauf-nach-gericht");
   await goTab(B, "plan");
   // Beliebtheit: Stimmen der Wochenwahl dieser WG (vom WG-Server) sortieren den Katalog
-  const pop = await B.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_popular") || "null"));
+  const pop = await B.page.evaluate(() => JSON.parse(localStorage.getItem("obsonare_popular") || "null"));
   expect(pop && Object.keys(pop.weeks || {}).length > 0, `Beliebtheit nicht vom WG-Server geholt: ${JSON.stringify(pop)}`);
   await tap(B, '.prow[data-i="2"] .t');
   await tap(B, "#mlist [data-catalog]");
@@ -1580,7 +1580,7 @@ await B.context.close();
 // ---------------------------------------------------------------------------------------------
 const C = await phone({
   name: "C-android-donnerstag", os: "android", scheme: "light", now: "2026-11-12T12:00:00",
-  preset: { bringfrisch_sync: JSON.stringify({ url: WORKER, pin: PIN }), bringfrisch_me: JSON.stringify("joshua") },
+  preset: { obsonare_sync: JSON.stringify({ url: WORKER, pin: PIN }), obsonare_me: JSON.stringify("joshua") },
 });
 let cur = [];
 await step(C, "Donnerstag: Pop-up für KW 47, «Später», roter Punkt, Chip «KW 47 →»", async () => {
@@ -1669,7 +1669,7 @@ await step(C2, "Montag: die geplante KW 47 ist jetzt die laufende Woche", async 
 // ---------------------------------------------------------------------------------------------
 // Ablauf D: iPhone, dunkel, ganz neues Handy – Willkommen (WG-Name + PIN), «Wer bist du?», Rechtliches
 // ---------------------------------------------------------------------------------------------
-const D = await phone({ name: "D-iphone-erster-start", os: "ios", scheme: "dark", now: "2026-11-10T12:00:00", preset: { bringfrisch_welcome: "false" } });
+const D = await phone({ name: "D-iphone-erster-start", os: "ios", scheme: "dark", now: "2026-11-10T12:00:00", preset: { obsonare_welcome: "false" } });
 await step(D, "Erster Start: WG-Name + PIN, falscher PIN zeigt Fehler, dann «Wer bist du?» antippen", async () => {
   await until(D, () => document.getElementById("welcomeDialog").open && !document.getElementById("welcomeJoin").hidden, "Willkommen fehlt");
   expect((await count(D, "#welcomeJoin .legal a")) === 3, "Links Nutzungsbedingungen/Datenschutz/Cookies fehlen");
@@ -1687,22 +1687,22 @@ await step(D, "Erster Start: WG-Name + PIN, falscher PIN zeigt Fehler, dann «We
   const id = await D.page.$eval("#welcomeMembers [data-me]:last-child", b => b.dataset.me);
   await tap(D, "#welcomeMembers [data-me]:last-child");
   await until(D, () => !document.getElementById("welcomeDialog").open, "Willkommen bleibt offen");
-  expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_me"))) === id, "«Ich bin» nicht gespeichert");
-  expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_sync")).wg === "WG1" && !!JSON.parse(localStorage.getItem("bringfrisch_terms")).at), "WG-Name/Zustimmung nicht gemerkt");
+  expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("obsonare_me"))) === id, "«Ich bin» nicht gespeichert");
+  expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("obsonare_sync")).wg === "WG1" && !!JSON.parse(localStorage.getItem("obsonare_terms")).at), "WG-Name/Zustimmung nicht gemerkt");
   await until(D, () => document.getElementById("syncStatus").textContent === "Verbunden ✓", "nicht verbunden");
 });
 await step(D, "Du bist: eigener Kreis umrandet; Zeit pro Tag ändern gilt für alle (mit Name); Kalender nur meine Abende", async () => {
   await until(D, () => !document.getElementById("wpop").hidden, "nach dem Willkommen kommt die Wochenwahl nicht");
   await tap(D, "#wlater");
   await until(D, () => document.getElementById("wpop").hidden && !document.getElementById("wscrim").classList.contains("show"), "Pop-up bleibt");
-  const me = await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_me")));
+  const me = await D.page.evaluate(() => JSON.parse(localStorage.getItem("obsonare_me")));
   expect((await count(D, '.prow[data-i="0"] .av.me')) === 1 && (await D.page.$eval('.prow[data-i="0"] .av.me', b => b.dataset.member)) === me, "eigener Kreis nicht umrandet");
   await tap(D, '.prow[data-i="0"] .pday');
   await until(D, () => document.querySelector('.prow[data-i="0"]').classList.contains("open"), "Tag geht nicht auf");
   await clearToasts(D);
   await pickNative(D, '.prow[data-i="0"] [data-time]', "20:15");
   await toastIs(D, /Montag: Znacht um 20:15 – gilt für alle/);
-  const myName = await D.page.evaluate(id => JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.id === id).name, me);
+  const myName = await D.page.evaluate(id => JSON.parse(localStorage.getItem("obsonare_members")).find(m => m.id === id).name, me);
   expect((await text(D, '.prow[data-i="0"] .meta .by')) === `🕖 20:15 (${myName})`, "Zeit mit Name fehlt in der Zeile");
   await waitPushed(D);
   expect(kvJson("plan").plan[0].time === "20:15" && kvJson("plan").plan[0].time_by === myName, "Zeit nicht beim WG-Server");

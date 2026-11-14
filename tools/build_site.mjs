@@ -32,8 +32,8 @@ if (version) {
   // Cache des Service Workers heisst wie die Version: jede Veröffentlichung räumt den alten Cache von selbst weg
   const sw = path.join(out, "static", "sw.js");
   const swSrc = readFileSync(sw, "utf8");
-  if (!/bringfrisch-cache-v\d+/.test(swSrc)) fail("sw.js: CACHE_NAME «bringfrisch-cache-v…» nicht gefunden");
-  writeFileSync(sw, swSrc.replace(/bringfrisch-cache-v\d+/, `bringfrisch-cache-${version}`));
+  if (!/obsonare-cache-v\d+/.test(swSrc)) fail("sw.js: CACHE_NAME «obsonare-cache-v…» nicht gefunden");
+  writeFileSync(sw, swSrc.replace(/obsonare-cache-v\d+/, `obsonare-cache-${version}`));
 }
 
 // Alles, was veröffentlicht wird, muss gültiges JavaScript sein.

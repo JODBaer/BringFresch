@@ -81,7 +81,7 @@ Ein Objekt für den ganzen Zustand inkl. angezeigter Woche; alle localStorage-Sc
 
 Gebaut, einfacher als unten skizziert: als Version dient der Server-Stempel `updated` selbst (kein neues Feld, alte Dokumente passen).
 - Worker `putDoc`: `base` ≠ gespeicherter Stempel → `409` mit aktuellem Dokument; Stempel steigen immer. Ohne `base` wie früher.
-- App: `bringfrisch_base_<plan|next|vorrat|settings>` = Stempel + Inhalt beim letzten Abgleich. `syncCase` (take / push / merge) vergleicht nur auf Gleichheit, nie zwei Uhren. `merge3` pro Tag (`dayView`: was ein Mensch ändert), pro Vorrat-Artikel, pro Einstellung.
+- App: `obsonare_base_<plan|next|vorrat|settings>` = Stempel + Inhalt beim letzten Abgleich. `syncCase` (take / push / merge) vergleicht nur auf Gleichheit, nie zwei Uhren. `merge3` pro Tag (`dayView`: was ein Mensch ändert), pro Vorrat-Artikel, pro Einstellung.
 - Handys ohne gemerkten Stand (direkt nach dem Update) verhalten sich einmal wie früher.
 - Tests: `tests/sync_merge.test.mjs` (rot mit altem Code), `worker/test.mjs`.
 - Bekannte Grenze: KV kann nicht «prüfen und schreiben» in einem Schritt; zwei Speicherungen in derselben Sekunde können sich noch überholen. Für eine WG vernachlässigbar, mit D1 ganz lösbar.

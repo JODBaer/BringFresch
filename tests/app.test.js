@@ -24,7 +24,7 @@ function boot(preset, fakeNow) {
       win.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
       win.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new win.Event("close")); } };
       win.navigator.clipboard = { writeText: async () => {} };
-      Object.entries({ bringfrisch_welcome: true, ...(preset || {}) }).forEach(([k, v]) => win.localStorage.setItem(k, JSON.stringify(v)));
+      Object.entries({ obsonare_welcome: true, ...(preset || {}) }).filter(([, v]) => v !== undefined).forEach(([k, v]) => win.localStorage.setItem(k, JSON.stringify(v)));
       fixWindow(win, { now: fakeNow || STANDARD_NOW }); // feste Uhrzeit (Standard Dienstag, z.B. Donnerstag) + fester Zufall
     }
   });
@@ -34,7 +34,7 @@ let fails = 0;
 const check = (cond, msg) => { console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`); if (!cond) fails++; };
 
 // 1. Migration alter Platzhalter + Rendering
-const dom = boot({ bringfrisch_members: [{ id: "m1", name: "Jonas", diet: "vegi" }, { id: "m2", name: "Anna", diet: "vegan" }], bringfrisch_phone_bring_creds: { password: "x" } });
+const dom = boot({ obsonare_members: [{ id: "m1", name: "Jonas", diet: "vegi" }, { id: "m2", name: "Anna", diet: "vegan" }], bringfrisch_phone_bring_creds: { password: "x" } });
 const w = dom.window, d = w.document;
 check(errors.length === 0, `keine JS-Fehler beim Start ${errors.join(" | ")}`);
 const rows = d.querySelectorAll("#days .prow");
@@ -42,7 +42,7 @@ check(rows.length === 7, `7 Tage im Plan (${rows.length})`);
 const chips = [...rows[0].querySelectorAll(".av")].map(c => c.textContent);
 check(chips.join(" ") === "J L Le Jo", `Kürzel J L Le Jo (${chips.join(" ")})`);
 check(w.localStorage.getItem("bringfrisch_phone_bring_creds") === null, "alte Bring!-Zugangsdaten gelöscht");
-const members = JSON.parse(w.localStorage.getItem("bringfrisch_members"));
+const members = JSON.parse(w.localStorage.getItem("obsonare_members"));
 check(members.map(m => m.name).join(",") === "Joshua,Lukas,Leonie,Jo", "Platzhalter durch echte WG ersetzt");
 
 const count = () => parseInt(d.getElementById("ctaCount").textContent.replace(/\D/g, ""), 10);
@@ -64,17 +64,17 @@ const sameNode = d.querySelectorAll("#days .prow")[1];
 d.querySelectorAll("#days .prow")[2].querySelector(".pday").click();
 check(d.querySelectorAll("#days .prow")[1] === sameNode && !row0().classList.contains("open"), "Aufklappen zeichnet die anderen Zeilen nicht neu");
 d.querySelectorAll("#days .prow")[2].querySelector(".pday").click();
-const p0 = JSON.parse(w.localStorage.getItem("bringfrisch_current_plan"))[0];
+const p0 = JSON.parse(w.localStorage.getItem("obsonare_current_plan"))[0];
 const numBefore = +row0().querySelector(".num").textContent;
 check(numBefore === p0.eaters.length + (p0.extra_guests || 0) + p0.leftover_buffer, `Zahl = Personen + Reste (${numBefore})`);
 row0().querySelector(".num").click();
 check(+row0().querySelector(".num").textContent === numBefore + 1 && /\+3/.test(row0().querySelector(".plus").textContent), "Zahl antippen = +1 Reste, Hochzahl +3");
 for (let k = 0; k < 4; k++) row0().querySelector(".num").click();
-check(JSON.parse(w.localStorage.getItem("bringfrisch_current_plan"))[0].leftover_buffer === 0, "nach +6 wieder +0");
+check(JSON.parse(w.localStorage.getItem("obsonare_current_plan"))[0].leftover_buffer === 0, "nach +6 wieder +0");
 for (let k = 0; k < 2; k++) row0().querySelector(".num").click();
 
 // 2. Esser abwählen → Plan + Liste aktualisieren sich
-const plan0 = () => JSON.parse(w.localStorage.getItem("bringfrisch_current_plan"));
+const plan0 = () => JSON.parse(w.localStorage.getItem("obsonare_current_plan"));
 d.querySelectorAll("#days .prow")[0].querySelector(".av").click();
 check(plan0()[0].eaters.length === 3, "Esser-Chip schaltet Anwesenheit");
 check(d.querySelectorAll("#days .prow")[0].querySelector(".av").classList.contains("off"), "Chip neu gezeichnet (nicht veraltet)");
@@ -147,10 +147,10 @@ const p = plan0()[3];
 check(p.title === "Testgratin" && p.servings === 2, "eigenes Rezept gespeichert und eingeplant");
 check(p.ingredients[2].name === "Gemüsebouillon" && p.ingredients[2].unit === "Stk", "Parser: '500 Gemüsebouillon' wird nicht als 'g emüsebouillon' gelesen");
 {
-  const mine = JSON.parse(w.localStorage.getItem("bringfrisch_custom_recipes")).find(r => r.title === "Testgratin");
+  const mine = JSON.parse(w.localStorage.getItem("obsonare_custom_recipes")).find(r => r.title === "Testgratin");
   check(mine && mine.shared === undefined, "eigenes Rezept: standardmässig für alle WGs geteilt (kein shared:false)");
   // Rezepte anderer WGs (Zwischenspeicher von /recipes/shared) gehören zum Bestand: Katalog, Filter «Andere WGs»
-  w.localStorage.setItem("bringfrisch_shared_recipes", JSON.stringify([{ id: "x-sonnenhof-custom-9", title: "Sonnenhof-Curry", diet: "vegi", servings: 4, ingredients: [{ name: "Kichererbsen", amount: "400", unit: "g" }], season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], shared_from: true }]));
+  w.localStorage.setItem("obsonare_shared_recipes", JSON.stringify([{ id: "x-sonnenhof-custom-9", title: "Sonnenhof-Curry", diet: "vegi", servings: 4, ingredients: [{ name: "Kichererbsen", amount: "400", unit: "g" }], season_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], shared_from: true }]));
   d.querySelector("#days [data-pick='3']").click();
   d.querySelector("#mlist [data-catalog]").click();
   d.querySelector('#catalogFilters [data-filter="shared"]').click();
@@ -162,9 +162,9 @@ check(p.ingredients[2].name === "Gemüsebouillon" && p.ingredients[2].unit === "
   d.getElementById("recipeIngredients").value = "1 Stk Ei";
   d.getElementById("recipeShared").checked = false;
   d.getElementById("recipeForm").dispatchEvent(new w.Event("submit", { cancelable: true }));
-  const priv = JSON.parse(w.localStorage.getItem("bringfrisch_custom_recipes")).find(r => r.title === "Nur für uns");
+  const priv = JSON.parse(w.localStorage.getItem("obsonare_custom_recipes")).find(r => r.title === "Nur für uns");
   check(priv && priv.shared === false, "abgewählt: Rezept bleibt in der eigenen WG (shared:false)");
-  w.localStorage.removeItem("bringfrisch_shared_recipes");
+  w.localStorage.removeItem("obsonare_shared_recipes");
   d.querySelector("#days [data-pick='3']").click();
   d.querySelector("#mlist [data-catalog]").click();
   d.querySelector('#catalogFilters [data-filter="all"]').click(); // Katalog wieder «Alle» für die nächsten Schritte
@@ -240,8 +240,8 @@ const R = id => w.OBSONARE_DATA.recipes.find(r => r.id === id);
 const wg = ["joshua", "lukas", "leonie", "jo"];
 const qday = (id, i) => ({ ...R(id), day: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"][i], eaters: wg, leftover_buffer: 0, extra_guests: 0 });
 const qDom = boot({
-  bringfrisch_members: [{ id: "joshua", name: "Joshua", diet: "fleisch" }, { id: "lukas", name: "Lukas", diet: "fleisch" }, { id: "leonie", name: "Leonie", diet: "fleisch" }, { id: "jo", name: "Jo", diet: "vegi" }],
-  bringfrisch_current_plan: [qday("chicken_nuggets", 0), ...[1, 2, 3, 4, 5, 6].map(i => qday("resteessen", i))],
+  obsonare_members: [{ id: "joshua", name: "Joshua", diet: "fleisch" }, { id: "lukas", name: "Lukas", diet: "fleisch" }, { id: "leonie", name: "Leonie", diet: "fleisch" }, { id: "jo", name: "Jo", diet: "vegi" }],
+  obsonare_current_plan: [qday("chicken_nuggets", 0), ...[1, 2, 3, 4, 5, 6].map(i => qday("resteessen", i))],
 });
 const qd = qDom.window.document;
 qd.querySelector('[data-tab="shop"]') && qd.querySelector('[data-tab="shop"]').click();
@@ -257,7 +257,7 @@ check(quickCards === 2, `2 schnelle/Reste-Gerichte im Memory (${quickCards})`);
 // 10. Ab Donnerstag: nächste Woche planen
 const wed = boot({}, "2026-11-11T12:00:00");
 check(wed.window.document.getElementById("weekChip").hidden, "Mittwoch: kein Wochen-Chip");
-const thuDom = boot({ "bringfrisch_wahl_2026-W46": true }, "2026-11-12T12:00:00");
+const thuDom = boot({ "obsonare_wahl_2026-W46": true }, "2026-11-12T12:00:00");
 const td = thuDom.window.document;
 const chip = td.getElementById("weekChip");
 check(!chip.hidden && /KW 47/.test(chip.textContent), `Donnerstag: Chip «KW 47 →» (${chip.textContent})`);
@@ -271,7 +271,7 @@ check(!td.querySelector("#days .prow.today"), "kein «heute» in der nächsten W
 check(/^0 Artikel/.test(td.getElementById("ctaCount").textContent), `offene Tage kaufen nichts (${td.getElementById("ctaCount").textContent})`);
 td.querySelectorAll("#days .prow")[0].querySelector(".t").click();
 td.querySelector("#mlist [data-id]") && td.querySelector("#mlist [data-id]").click();
-const nd = JSON.parse(thuDom.window.localStorage.getItem("bringfrisch_next_plan"));
+const nd = JSON.parse(thuDom.window.localStorage.getItem("obsonare_next_plan"));
 check(nd && nd.week === "2026-W47" && !nd.plan[0].empty, "Menü für nächsten Montag gewählt und gespeichert");
 check([...td.querySelectorAll("#days .prow .t")].map(e => e.textContent).join("|") !== curTitles, "angezeigte Woche ist die nächste");
 td.getElementById("openVoteBtn").click();
@@ -279,22 +279,22 @@ check(/KW 47/.test(td.getElementById("voteSubtitle").textContent), "Wochenwahl g
 td.getElementById("voteDialog").close();
 chip.click();
 check([...td.querySelectorAll("#days .prow .t")].map(e => e.textContent).join("|") === curTitles, "zurück: laufende Woche unverändert");
-check(JSON.parse(thuDom.window.localStorage.getItem("bringfrisch_current_plan"))[0].title === curTitles.split("|")[0], "laufender Plan nicht überschrieben");
+check(JSON.parse(thuDom.window.localStorage.getItem("obsonare_current_plan"))[0].title === curTitles.split("|")[0], "laufender Plan nicht überschrieben");
 // Montag darauf: geplante Woche wird zur laufenden
 const nextPlan = nd.plan.map((x, i) => (x.empty ? { ...nd.plan[0], day: x.day } : x));
-const monDom = boot({ bringfrisch_current_plan: JSON.parse(thuDom.window.localStorage.getItem("bringfrisch_current_plan")), bringfrisch_plan_week: "2026-W46", bringfrisch_next_plan: { ...nd, plan: nextPlan } }, "2026-11-16T09:00:00");
-check(JSON.parse(monDom.window.localStorage.getItem("bringfrisch_current_plan"))[0].title === nextPlan[0].title && !monDom.window.localStorage.getItem("bringfrisch_next_plan"), "Montag: geplante Woche wird zur laufenden");
+const monDom = boot({ obsonare_current_plan: JSON.parse(thuDom.window.localStorage.getItem("obsonare_current_plan")), obsonare_plan_week: "2026-W46", obsonare_next_plan: { ...nd, plan: nextPlan } }, "2026-11-16T09:00:00");
+check(JSON.parse(monDom.window.localStorage.getItem("obsonare_current_plan"))[0].title === nextPlan[0].title && !monDom.window.localStorage.getItem("obsonare_next_plan"), "Montag: geplante Woche wird zur laufenden");
 
 // Erster Start: WG-Name + PIN (mit Hinweis auf Nutzungsbedingungen/Datenschutz), «Ohne WG ausprobieren» schliesst
-const firstDom = boot({ bringfrisch_welcome: false });
+const firstDom = boot({ obsonare_welcome: false });
 const fd = firstDom.window.document;
 check(fd.getElementById("welcomeDialog").open && !fd.getElementById("welcomeJoin").hidden, "erster Start: Willkommen mit WG-Name + PIN");
 check(!fd.getElementById("wpop").classList.contains("show"), "erster Start: kein Wochenwahl-Pop-up darüber");
 check([...fd.querySelectorAll("#welcomeJoin .legal a")].map(a => a.getAttribute("href")).join() === "rechtliches.html#nutzung,rechtliches.html#datenschutz,rechtliches.html#cookies", "Willkommen: kleine Links Nutzungsbedingungen, Datenschutz, Cookies");
 check(fd.querySelectorAll("#legalLinks a").length === 3, "Einstellungen: Links Nutzungsbedingungen · Datenschutz · Cookies");
 fd.getElementById("welcomeSkip").click();
-check(!fd.getElementById("welcomeDialog").open && firstDom.window.localStorage.getItem("bringfrisch_welcome") === "true", "«Ohne WG ausprobieren» schliesst und merkt es sich");
-check(!boot({ bringfrisch_sync: { pin: "1" }, bringfrisch_welcome: false }).window.document.getElementById("welcomeDialog").open, "schon verbunden: kein Willkommen");
+check(!fd.getElementById("welcomeDialog").open && firstDom.window.localStorage.getItem("obsonare_welcome") === "true", "«Ohne WG ausprobieren» schliesst und merkt es sich");
+check(!boot({ obsonare_sync: { pin: "1" }, obsonare_welcome: false }).window.document.getElementById("welcomeDialog").open, "schon verbunden: kein Willkommen");
 
 // Hell/Dunkel-Schalter (pro Handy) und Gäste in der Plan-Zeile sichtbar
 const md = boot({}).window, mdd = md.document;
@@ -305,12 +305,12 @@ setMode("light");
 check(!mdd.documentElement.classList.contains("dark") && md.localStorage.getItem("bf-mode") === "light", "Hell gewählt");
 setMode("auto");
 check(md.localStorage.getItem("bf-mode") === null, "Automatisch: nichts gespeichert, folgt dem System");
-const gp = JSON.parse(md.localStorage.getItem("bringfrisch_current_plan"));
+const gp = JSON.parse(md.localStorage.getItem("obsonare_current_plan"));
 const gplan = Array.isArray(gp) ? gp : gp.plan;
 const gi = gplan.findIndex(d => !d.empty);
 gplan[gi].extra_guests = 1;
 
-const gd = boot({ bringfrisch_current_plan: gp, bringfrisch_plan_week: JSON.parse(md.localStorage.getItem("bringfrisch_plan_week")) }).window.document;
+const gd = boot({ obsonare_current_plan: gp, obsonare_plan_week: JSON.parse(md.localStorage.getItem("obsonare_plan_week")) }).window.document;
 check(/\+1 Gast$/.test(gd.querySelectorAll("#days .prow")[gi].querySelector(".meta").textContent), `Gast sichtbar in der Zeile (${gd.querySelectorAll("#days .prow")[gi].querySelector(".meta").textContent})`);
 
 { // Ein Zustand: alles Geteilte liegt in state; Abonnenten werden nach refresh() gerufen
@@ -322,6 +322,18 @@ check(/\+1 Gast$/.test(gd.querySelectorAll("#days .prow")[gi].querySelector(".me
   check(calls === 1, "subscribe: Abonnent wird nach refresh() gerufen");
   off(); A.refresh();
   check(calls === 1, "Abmelden wirkt");
+}
+// Umbenennung BringFrisch -> Obsonare: Daten unter «bringfrisch_…» werden beim Start nach «obsonare_…» übernommen
+{
+  const oldPlan = JSON.parse(w.localStorage.getItem("obsonare_current_plan"));
+  oldPlan[0].leftover_buffer = 5;
+  const old = boot({ obsonare_welcome: undefined, bringfrisch_welcome: true, bringfrisch_current_plan: oldPlan, bringfrisch_me: "lukas",
+    bringfrisch_sync: { url: "https://bringfrisch.bringfrisch-worker.workers.dev", pin: "4711", wg: "allmen" }, bringfrisch_phone_bring_creds: { password: "x" } });
+  const ls = old.window.localStorage, keys = Object.keys(ls);
+  check(!keys.some(k => k.startsWith("bringfrisch_")), `keine alten Schlüssel mehr (${keys.filter(k => k.startsWith("bringfrisch_")).join(",")})`);
+  check(JSON.parse(ls.getItem("obsonare_me")) === "lukas" && JSON.parse(ls.getItem("obsonare_sync")).pin === "4711", "«Ich bin» und Verbindung übernommen");
+  check(JSON.parse(ls.getItem("obsonare_current_plan"))[0].leftover_buffer === 5 && ls.getItem("obsonare_welcome") === "true", "Plan und «Willkommen gesehen» übernommen");
+  check(!old.window.document.getElementById("welcomeDialog") || !old.window.document.getElementById("welcomeDialog").open, "kein Willkommen nach der Übernahme");
 }
 check(errors.length === 0, `keine JS-Fehler insgesamt ${errors.join(" | ")}`);
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

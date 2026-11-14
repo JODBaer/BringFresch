@@ -44,5 +44,5 @@ edit("index.html", s => s
   .replace('content="Obsonare">', 'content="Obsonare Test">')
   .replace("</body>", `<div aria-hidden="true" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;padding:1px 10px 2px;border-radius:0 0 8px 8px;background:#e8590c;color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.1em;pointer-events:none">TEST · Bring!-Liste «Home-test»</div>\n</body>`));
 edit("manifest.json", s => s.replace(/"name": "Obsonare"/, '"name": "Obsonare Test"').replace(/"short_name": "Obsonare"/, '"short_name": "Obsonare Test"'));
-edit("sw.js", s => s.replace(/bringfrisch-cache-/, "bringfrisch-stage-cache-"));
+edit("sw.js", s => s.replace(/obsonare-cache-/, "obsonare-stage-cache-"));
 console.log(`dist-stage/ gebaut (Server: ${STAGE_WORKER}${version ? `, Version ${version}` : ""})`);

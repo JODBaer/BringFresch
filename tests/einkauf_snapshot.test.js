@@ -29,8 +29,8 @@ function week(list) {
     beforeParse(win) {
       win.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
       win.HTMLDialogElement.prototype.close = function () { this.open = false; };
-      win.localStorage.setItem("bringfrisch_welcome", "true");
-      win.localStorage.setItem("bringfrisch_current_plan", JSON.stringify(plan));
+      win.localStorage.setItem("obsonare_welcome", "true");
+      win.localStorage.setItem("obsonare_current_plan", JSON.stringify(plan));
       fixWindow(win, { now: STANDARD_NOW });
     }
   });

@@ -89,9 +89,9 @@ try {
       w.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new w.Event("close")); } };
       w.navigator.clipboard = { writeText: async () => {} };
       fixWindow(w, { realNow: true });
-      w.localStorage.setItem("bringfrisch_sync", JSON.stringify({ url: SERVER, pin: PIN }));
-      w.localStorage.setItem("bringfrisch_me", JSON.stringify("joshua"));
-      w.localStorage.setItem("bringfrisch_wahl_2026-W46", "true");
+      w.localStorage.setItem("obsonare_sync", JSON.stringify({ url: SERVER, pin: PIN }));
+      w.localStorage.setItem("obsonare_me", JSON.stringify("joshua"));
+      w.localStorage.setItem("obsonare_wahl_2026-W46", "true");
       w.fetch = (u, init = {}) => fetch(u, { ...init, headers: { ...(init.headers || {}), Origin: ORIGIN } }); // echtes Netz
     },
   });

@@ -14,8 +14,11 @@
   // Verbindung zum Cloudflare Worker (Bring!-Sync, gemeinsamer Plan, Wochenwahl, Kalender)
   // ---------------------------------------------------------------------------
   state.sync = { url: DEFAULT_SYNC_URL, pin: "", wg: "", ...(load(SYNC_KEY, {}) || {}) };
-  // alter Test-Server (bringfrisch-stage) ist im Test-Worker aufgegangen
-  if (!state.sync.url || /\/\/bringfrisch-stage\./.test(state.sync.url)) state.sync.url = DEFAULT_SYNC_URL;
+  // Alte Server-Adressen -> aktuelle: alter Test-Server (bringfrisch-stage, im Test-Worker aufgegangen) und der
+  // WG-Server unter dem alten Namen «bringfrisch» (Umzug auf «obsonare»: nur DEFAULT_SYNC_URL in app.js umstellen,
+  // docs/umzug-obsonare.md). Solange DEFAULT_SYNC_URL noch die alte Adresse ist, ändert sich nichts.
+  const OLD_SERVER = /^https:\/\/(bringfrisch|bringfrisch-stage)\.bringfrisch-worker\.workers\.dev\/?$/;
+  if (!state.sync.url || /\/\/bringfrisch-stage\./.test(state.sync.url) || OLD_SERVER.test(state.sync.url)) state.sync.url = DEFAULT_SYNC_URL;
 
   function connected() {
     return !!(state.sync.url && state.sync.pin);

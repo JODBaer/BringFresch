@@ -4,7 +4,7 @@ const UNIT_PATTERN = "kg|g|dl|ml|cl|l|el|tl|stk|stück|bund|prise|glas|dose|bech
 
 class RecipeImporter {
   constructor() {
-    this.customRecipesKey = "bringfrisch_custom_recipes";
+    this.customRecipesKey = "obsonare_custom_recipes";
     this.customRecipes = this.loadCustomRecipes();
   }
 

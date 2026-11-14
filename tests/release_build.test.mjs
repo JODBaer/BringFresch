@@ -24,7 +24,7 @@ try {
   check(decl.length === 1 && decl[0].includes('"9.8.7"'), `genau eine Versionszeile, mit 9.8.7 (${decl.map(l => l.trim()).join(" | ")})`);
   const changed = built.filter((l, i) => l !== src[i]);
   check(changed.length === 1, `nur diese eine Zeile verändert (${changed.length})`);
-  check(readFileSync(path.join(out, "static", "sw.js"), "utf8").includes("'bringfrisch-cache-9.8.7'"), "Cache des Service Workers heisst wie die Version");
+  check(readFileSync(path.join(out, "static", "sw.js"), "utf8").includes("'obsonare-cache-9.8.7'"), "Cache des Service Workers heisst wie die Version");
   // «Aktualisieren» (app_einstellungen.js) liest die Version per Suchmuster aus app.js – die Datei bleibt beim Bauen gleich
   const UPDATE_FILE = "app_einstellungen.js";
   const updSrc = readFileSync(path.join(root, "static", UPDATE_FILE), "utf8");

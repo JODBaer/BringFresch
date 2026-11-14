@@ -67,8 +67,8 @@ function phone(me, fakeNow, { fresh = false } = {}) {
       // festes Datum (Standard Dienstag KW 46) + fester Zufall; Date.now() läuft echt (Worker: neuerer Stand gewinnt)
       fixWindow(w, { now: fakeNow || STANDARD_NOW, realNow: true });
       if (!fresh) {
-        w.localStorage.setItem("bringfrisch_sync", JSON.stringify({ url: WORKER_URL, pin: "4711" }));
-        w.localStorage.setItem("bringfrisch_me", JSON.stringify(me));
+        w.localStorage.setItem("obsonare_sync", JSON.stringify({ url: WORKER_URL, pin: "4711" }));
+        w.localStorage.setItem("obsonare_me", JSON.stringify(me));
       }
       w.fetch = async (u, init = {}) => {
         const req = new Request(String(u), { ...init, headers: { ...(init.headers || {}), Origin: "https://jodbaer.github.io" } });
@@ -123,14 +123,14 @@ check(new Set(JSON.parse(store.get(candKey))).size === 14, "bereinigte Wochenwah
 
 // B übernimmt den Plan
 B.document.getElementById("voteApplyBtn").click();
-const planB = JSON.parse(B.localStorage.getItem("bringfrisch_current_plan"));
+const planB = JSON.parse(B.localStorage.getItem("obsonare_current_plan"));
 check(planB[2].title === titles[1], `Wunschtag Mittwoch respektiert (${planB[2].title})`);
 await wait(1800); // Plan wird nach 1.5 s an den Worker gesendet
 
 // A lädt neu -> bekommt den Plan von B
 const A2 = phone("joshua");
 await wait(400);
-const planA = JSON.parse(A2.localStorage.getItem("bringfrisch_current_plan"));
+const planA = JSON.parse(A2.localStorage.getItem("obsonare_current_plan"));
 check(planA[2].title === titles[1], "Handy A übernimmt den neueren WG-Plan");
 
 // Kalender
@@ -157,7 +157,7 @@ await wait(300);
 check(!A2.document.getElementById("dupDialog").open && bringList.length === before2, "zweites «Bring! füllen» ohne Änderung: nichts doppelt, keine Frage");
 
 // Ein zweites Rezept braucht dasselbe (mehr Gäste am Montag) -> nachfragen, Menge erhöhen
-const p2 = JSON.parse(A2.localStorage.getItem("bringfrisch_current_plan"));
+const p2 = JSON.parse(A2.localStorage.getItem("obsonare_current_plan"));
 const firstIng = p2[0].ingredients[0];
 const specBefore = JSON.stringify(bringList.map(i => [i.name, i.specification]));
 A2.document.querySelectorAll("#days .prow")[0].querySelector(".buf").value = "6";
@@ -245,7 +245,7 @@ A2.document.getElementById("stapleItemDialog").close();
 await wait(1500); // Vorrat wird nach 0.8 s an den Server geschickt
 const B2 = phone("jo");
 await wait(500);
-const stB = JSON.parse(B2.localStorage.getItem("bringfrisch_user_staples"));
+const stB = JSON.parse(B2.localStorage.getItem("obsonare_user_staples"));
 check(stB.find(x => /Olivenöl/.test(x.name)).in_stock === false && stB.find(x => /Olivenöl/.test(x.name)).qty === 0, "Handy B übernimmt den WG-Vorrat (Olivenöl leer)");
 
 // Herunterziehen: A ändert etwas und zieht -> sofort beim Server; B zieht -> hat es
@@ -265,7 +265,7 @@ await wait(300);
 await wait(600);
 pull(B3);
 await wait(800);
-check(JSON.parse(B3.localStorage.getItem("bringfrisch_current_plan"))[3].leftover_buffer === 5, "anderes Handy: Herunterziehen holt den neuen Stand");
+check(JSON.parse(B3.localStorage.getItem("obsonare_current_plan"))[3].leftover_buffer === 5, "anderes Handy: Herunterziehen holt den neuen Stand");
 check(/Synchronisiert/.test((B3.document.querySelector(".toast") || {}).textContent || ""), "Meldung «Synchronisiert ✓»");
 
 // Ab Donnerstag: Joshua plant die nächste Woche, Jo sieht sie nach dem Synchronisieren
@@ -306,7 +306,7 @@ const S2 = phone("jo");
 await wait(500);
 pull(S2);
 await wait(800);
-const s2Members = JSON.parse(S2.localStorage.getItem("bringfrisch_members") || "[]");
+const s2Members = JSON.parse(S2.localStorage.getItem("obsonare_members") || "[]");
 check(s2Members.length === 5 && s2Members.some(m => m.name === "Mia") && S2.document.getElementById("dinnerTime").value === "19:00", `Jo hat nach dem Herunterziehen 5 Mitbewohner und 19:00 (${s2Members.map(m => m.name).join(", ")})`);
 const who = S2.document.querySelector("#days .prow .who");
 check(who.classList.contains("many") && who.style.getPropertyValue("--cols") === "3" && who.querySelectorAll(".av").length === 5 && who.querySelectorAll(".av.r2").length === 2, "Plan bei 5 Personen: zwei Reihen, 3 oben + 2 unten");
@@ -324,7 +324,7 @@ const W1 = phone(null, null, { fresh: true });
 await wait(300);
 check(W1.document.getElementById("welcomeDialog").open, "neues Handy: Willkommen (WG-Name + PIN)");
 await join(W1, "Sonnenhof", "4711");
-check(/Falscher WG-Name oder PIN/.test(W1.document.getElementById("welcomeStatus").textContent) && !W1.localStorage.getItem("bringfrisch_sync"), "falscher PIN: Meldung, nichts gespeichert");
+check(/Falscher WG-Name oder PIN/.test(W1.document.getElementById("welcomeStatus").textContent) && !W1.localStorage.getItem("obsonare_sync"), "falscher PIN: Meldung, nichts gespeichert");
 await join(W1, "Sonnenhof", "135790");
 check(!W1.document.getElementById("welcomeWho").hidden && !W1.document.querySelector("#welcomeMembers [data-me]"), "leere WG: «Wer bist du?» ohne fremde Namen");
 W1.document.getElementById("welcomeName").value = "Mia";
@@ -333,7 +333,7 @@ W1.document.getElementById("welcomeAdd").dispatchEvent(new W1.Event("submit", { 
 await wait(2500);
 const shSettings = JSON.parse(store.get("w:sonnenhof:settings") || "{}").settings || {};
 check(!W1.document.getElementById("welcomeDialog").open && shSettings.members && shSettings.members.map(m => m.name).join() === "Mia", `erste Person der zweiten WG: nur Mia (${(shSettings.members || []).map(m => m.name)})`);
-check(JSON.parse(W1.localStorage.getItem("bringfrisch_sync")).wg === "Sonnenhof" && JSON.parse(W1.localStorage.getItem("bringfrisch_terms")).version, "WG-Name gemerkt, Bedingungen akzeptiert (mit Datum)");
+check(JSON.parse(W1.localStorage.getItem("obsonare_sync")).wg === "Sonnenhof" && JSON.parse(W1.localStorage.getItem("obsonare_terms")).version, "WG-Name gemerkt, Bedingungen akzeptiert (mit Datum)");
 check(store.get("settings") === mainSettingsBefore && store.get("plan") === mainPlanBefore, "erste WG unberührt (Mitbewohner, Plan)");
 const shPlan = JSON.parse(store.get("w:sonnenhof:plan") || "null");
 check(shPlan && shPlan.plan.every(d => d.empty || d.eaters.join() === shSettings.members[0].id), "Plan der zweiten WG: nur Mia isst mit");
@@ -344,7 +344,7 @@ const btns = [...W2.document.querySelectorAll("#welcomeMembers [data-me]")];
 check(btns.map(b => b.textContent).join() === "Mia", "zweites Handy der zweiten WG: «Wer bist du?» zeigt Mia");
 btns[0].click();
 await wait(300);
-check(!W2.document.getElementById("welcomeDialog").open && JSON.parse(W2.localStorage.getItem("bringfrisch_me")) === shSettings.members[0].id, "angetippt = «Ich bin» gespeichert");
+check(!W2.document.getElementById("welcomeDialog").open && JSON.parse(W2.localStorage.getItem("obsonare_me")) === shSettings.members[0].id, "angetippt = «Ich bin» gespeichert");
 
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

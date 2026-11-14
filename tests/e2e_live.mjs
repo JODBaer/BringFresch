@@ -72,7 +72,7 @@ const dom = new JSDOM(html, {
     w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
     w.HTMLDialogElement.prototype.close = function () { if (this.open) { this.open = false; this.dispatchEvent(new w.Event("close")); } };
     w.navigator.clipboard = { writeText: async () => {} };
-    w.localStorage.setItem("bringfrisch_me", JSON.stringify("joshua"));
+    w.localStorage.setItem("obsonare_me", JSON.stringify("joshua"));
     w.fetch = (u, init) => fetch(u, init); // echtes Netz
   },
 });
@@ -108,7 +108,7 @@ for (const i of [0, 1, 2]) {
 }
 await wait(1500);
 $("voteApplyBtn").click();
-const plan = JSON.parse(W.localStorage.getItem("bringfrisch_current_plan"));
+const plan = JSON.parse(W.localStorage.getItem("obsonare_current_plan"));
 check(plan.length === 7 && titles.slice(0, 3).every(t => plan.some(d => d.title === t)), "die 3 gewählten Gerichte stehen im Plan");
 log("        " + plan.map((d, i) => `${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"][i]}: ${d.title}`).join("\n        "));
 

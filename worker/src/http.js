@@ -3,6 +3,7 @@
 export const ALLOWED_ORIGINS = [
   /^https:\/\/jodbaer\.github\.io$/,
   /^https:\/\/bringfrisch-test\.bringfrisch-worker\.workers\.dev$/, // Test-Seite (tools/build_stage.mjs)
+  /^https:\/\/obsonare-test\.bringfrisch-worker\.workers\.dev$/,    // künftige Test-Seite (docs/umzug-obsonare.md)
   /^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/,
 ];
 // Rezept-Link: jede https-Seite mit Rezeptdaten (schema.org). Nur auf Knopfdruck, eine Seite, nur Fakten.
