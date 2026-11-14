@@ -588,8 +588,43 @@
   const byPopularity = (counts, month) => (a, b) =>
     ((counts[b.id] || 0) - (counts[a.id] || 0)) || (inSeason(b, month) - inSeason(a, month)) || a.title.localeCompare(b.title, "de");
 
+
+  // «Alle Rezepte»: nach Herkunft (Eigene, Swissmilk, Fooby, Betty Bossi, Migusto, andere Seiten, Klassiker, andere WGs),
+  // darin zuerst was jetzt Saison hat, Gerichte ohne Saison in diesem Monat am Schluss der Herkunft; sonst alphabetisch
+  const SOURCES = [
+    ["eigene", "Eigene Rezepte"], ["swissmilk", "Swissmilk"], ["fooby", "Fooby"], ["bettybossi", "Betty Bossi"], ["migusto", "Migusto"]
+  ];
+  function recipeSource(r) {
+    if (r.shared_from) return { key: "geteilt", label: "Andere WGs" };
+    if (r.is_custom || String(r.id).startsWith("custom-")) return { key: "eigene", label: "Eigene Rezepte" };
+    let host = "";
+    try { host = new URL(r.source_url).hostname.replace(/^www\./, ""); } catch (e) { /* ohne Link */ }
+    if (!host) return { key: "klassiker", label: "Klassiker" };
+    const known = SOURCES.find(([k]) => host.replace(/[^a-z]/g, "").includes(k));
+    return known ? { key: known[0], label: known[1] } : { key: `web:${host}`, label: host };
+  }
+  function groupBySource(recipes, month) {
+    const rank = key => {
+      const i = SOURCES.findIndex(([k]) => k === key);
+      return i >= 0 ? i : key === "klassiker" ? 90 : key === "geteilt" ? 91 : 50;
+    };
+    const groups = new Map();
+    recipes.forEach(r => {
+      const src = recipeSource(r);
+      if (!groups.has(src.key)) groups.set(src.key, { ...src, recipes: [] });
+      groups.get(src.key).recipes.push(r);
+    });
+    return [...groups.values()]
+      .sort((a, b) => rank(a.key) - rank(b.key) || a.label.localeCompare(b.label, "de"))
+      .map(g => ({
+        ...g,
+        recipes: g.recipes.sort((a, b) => (inSeason(b, month) - inSeason(a, month)) || String(a.title).localeCompare(String(b.title), "de")),
+        inSeason: g.recipes.filter(r => inSeason(r, month)).length
+      }));
+  }
+
   root.BF_CORE = {
-    swapDishes, groupByDish, groupByCategory, popularity, byPopularity,
+    swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
     effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, SEARCH_SITES, searchSite, searchHref, votersOf, ranking, assignDays,

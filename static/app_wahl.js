@@ -399,6 +399,6 @@
   $("wscrim").onclick = () => dockWahlPop();
   $("wpop").addEventListener("keydown", e => { if (e.key === "Escape") dockWahlPop(); });
 
-  Object.assign(app, { voteKey, saveVote, pullVote, pushCandidates, myId, renderVote, openVoteFor, wahlDue, markWahl,
+  Object.assign(app, { imgCache, imgState, dishEmoji, loadImg, voteKey, saveVote, pullVote, pushCandidates, myId, renderVote, openVoteFor, wahlDue, markWahl,
     openWahlPop });
 })();

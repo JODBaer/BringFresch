@@ -127,5 +127,23 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(g.map(x => x.title).join("|") === "Früchte & Gemüse|Milch & Käse|Sonstiges" && g[1].items.map(i => i.name).join() === "Butter,Rahm" && g[0].cat, "nach Kategorie: Abteilungen und Artikel alphabetisch");
 }
 
+// Alle Rezepte: nach Herkunft, darin Saison zuerst
+{
+  const rs = [
+    { id: "f1", title: "Zopf", source_url: "https://fooby.ch/x", season_months: [11] },
+    { id: "s1", title: "Spargel", source_url: "https://www.swissmilk.ch/a", season_months: [5] },
+    { id: "s2", title: "Wirz", source_url: "https://www.swissmilk.ch/b", season_months: [11] },
+    { id: "k1", title: "Rösti" },
+    { id: "custom-1", title: "Meins", is_custom: true },
+    { id: "x-wg2-1", title: "Fremd", shared_from: true },
+    { id: "b1", title: "Gratin", source_url: "https://www.bettybossi.ch/c", season_months: [1] },
+    { id: "w1", title: "Andere", source_url: "https://chefkoch.de/d" }
+  ];
+  const g = C.groupBySource(rs, 11);
+  check(g.map(x => x.key).join() === "eigene,swissmilk,fooby,bettybossi,web:chefkoch.de,klassiker,geteilt", `Herkunft-Reihenfolge (${g.map(x => x.key)})`);
+  check(g[1].recipes.map(r => r.id).join() === "s2,s1" && g[1].inSeason === 1, "in der Herkunft: Saison zuerst, sonst am Schluss");
+  check(C.recipeSource(rs[2]).label === "Swissmilk" && C.recipeSource(rs[3]).label === "Klassiker", "Herkunft aus dem Link");
+}
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

@@ -97,7 +97,7 @@
         </form>
       </div>
 
-      <p class="label">Meine Rezepte <small id="myRecipesCount"></small></p>
+      <p class="label label-act"><span>Meine Rezepte</span><button class="alllink" type="button" id="allRecipesBtn">Alle Rezepte ansehen ›</button><small id="myRecipesCount"></small></p>
       <div class="card" id="myRecipes"></div>
       <button class="btn" type="button" id="myRecipeNewBtn">+ Rezept von Hand</button>
 
@@ -307,6 +307,24 @@
     </div>
   </dialog>
 
+  <!-- Alle Rezepte: kleine Memory-Karten nach Herkunft und Saison, Karte antippen = Tag wählen -->
+  <dialog id="allDialog" class="full">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>Alle Rezepte</h2><p id="allSubtitle"></p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="all-bar">
+          <input type="search" id="allSearch" placeholder="Suchen: Titel oder Zutat" autocomplete="off" aria-label="Rezepte durchsuchen">
+          <span class="seg all-weeks" id="allWeeks" role="group" aria-label="Woche" hidden></span>
+        </div>
+        <p class="hint" style="padding:0" id="allCount"></p>
+        <div id="allList"></div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Eigenes Rezept -->
   <dialog id="recipeDialog">
     <form class="sheet" id="recipeForm">
@@ -502,6 +520,7 @@
   <script src="app_vorrat.js"></script>
   <script src="app_rezepte.js"></script>
   <script src="app_wahl.js"></script>
+  <script src="app_alle.js"></script>
   <script src="app_sync.js"></script>
   <script src="app_einstellungen.js"></script>
   <script src="app_theme.js"></script>

@@ -850,3 +850,35 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .hofrow { display: flex; align-items: center; gap: 8px; }
 .hofrow span { flex: 1 1 auto; font-weight: 600; }
 .hofrow .btn { flex: 0 0 auto; text-decoration: none; color: inherit; padding: 9px 14px; }
+
+/* Rezepte: «Alle Rezepte ansehen» in der Zeile «Meine Rezepte» */
+.label-act { align-items: center; }
+.alllink { border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; font: 700 12.5px var(--font); letter-spacing: 0; text-transform: none;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface)); color: var(--fg); }
+
+/* Alle Rezepte: kleine Memory-Karten (3 pro Zeile auf dem Handy), nach Herkunft, darin Saison zuerst */
+.all-bar { display: flex; gap: 8px; align-items: center; }
+.all-bar input { flex: 1 1 auto; min-width: 0; }
+.all-weeks { flex: 0 0 auto; grid-template-columns: repeat(2, auto); }
+.all-weeks button { padding: 6px 10px; font-size: 12.5px; white-space: nowrap; }
+.asrc { display: flex; flex-direction: column; gap: 8px; }
+.asrc + .asrc { margin-top: 10px; }
+.asrc h3 { position: sticky; top: -1px; z-index: 3; margin: 0; padding: 8px 4px; font-size: 15px; background: var(--bg); }
+.asrc h3 small { color: var(--muted); font-weight: 600; font-size: 12px; }
+.aoff { margin: 4px 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.agrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.acard { min-height: 0; aspect-ratio: 1 / 1; }
+.acard::before { display: none; }
+.acard .vfront, .acard .vback { border-radius: 12px; }
+.acard .vimg.none::after { font-size: 28px; margin-bottom: 34px; }
+.acard .vband { padding: 0 7px 7px; }
+.acard .vbt { font-size: 11px; line-height: 1.2; -webkit-line-clamp: 2; }
+.acard .vbm { font-size: 10px; }
+.acard .vwish { top: 6px; right: 6px; font-size: 10px; padding: 1px 6px; }
+.acard .vback { display: flex; flex-direction: column; gap: 4px; padding: 6px; }
+.acard .ab-t { font-size: 10.5px; font-weight: 700; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.acard .days-pick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.acard .days-pick button { padding: 4px 0; font-size: 11px; font-weight: 700; border: 0; border-radius: 7px; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--fg); cursor: pointer; }
+.acard .days-pick button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.acard .ab-go { margin-top: auto; font-size: 11px; font-weight: 700; color: var(--fg); text-decoration: none; text-align: center; }
+.agrid.off .vfront { filter: saturate(.55); }

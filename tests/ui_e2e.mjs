@@ -789,6 +789,35 @@ await step(A, "Rezepte & Saison: Monat wechseln zeigt andere Saison", async () =
   await choose(A, "#monthSelect", "11");
 });
 
+await step(A, "Alle Rezepte: Knopf bei «Meine Rezepte», Karten nach Herkunft und Saison, Tag wählen = einplanen, Rückgängig, Suche", async () => {
+  await goTab(A, "season");
+  await tap(A, "#allRecipesBtn");
+  await dialogNoHScroll(A, "allDialog");
+  const groups = await A.page.$$eval("#allList .asrc h3", l => l.map(h => h.firstChild.textContent.trim()));
+  expect(groups[0] === "Swissmilk" && groups.includes("Fooby") && groups.indexOf("Klassiker") === groups.length - 1, `Herkunft-Reihenfolge: ${groups.join(", ")}`);
+  // in jeder Herkunft: erst Saison, dann «Gerade nicht Saison» am Schluss
+  expect(await A.page.$$eval("#allList .asrc", l => l.every(s => !s.querySelector(".agrid.off") || s.lastElementChild.classList.contains("off"))), "Nicht-Saison nicht am Schluss der Herkunft");
+  const all = await A.page.$$eval("#allList .acard", l => l.length);
+  expect(all > 100, `zu wenige Rezepte: ${all}`);
+  expect(await A.page.$eval("#allList .acard", c => c.getBoundingClientRect().width < 140), "Karten nicht klein");
+  const before = await text(A, '.prow[data-i="2"] .t');
+  await A.page.evaluate(() => { document.querySelector("#allList .agrid .acard").id = "allFirst"; });
+  const title = await A.page.$eval("#allFirst .vbt", e => e.textContent);
+  await tap(A, "#allFirst .vfront");
+  await until(A, () => document.getElementById("allFirst")?.classList.contains("open"), "Karte dreht nicht um");
+  await clearToasts(A);
+  await tap(A, '#allFirst [data-day="2"]');
+  await until(A, t => document.querySelector('.prow[data-i="2"] .t').textContent === t, "nicht am Mittwoch eingeplant", title);
+  await toastIs(A, /^Mi: /);
+  expect(await A.page.$eval("#allFirst .vwish", e => e.textContent.includes("Mi")), "Karte zeigt den Tag nicht");
+  await tap(A, ".toast button");
+  await until(A, t => document.querySelector('.prow[data-i="2"] .t').textContent === t, "Rückgängig klappt nicht", before);
+  await typeInto(A, "#allSearch", "Kürbis");
+  await until(A, () => { const c = [...document.querySelectorAll("#allList .acard")]; return c.length > 0 && c.length < 40; }, "Suche filtert nicht");
+  await shot(A, "10b-alle-rezepte");
+  await closeDialog(A, "allDialog");
+});
+
 await step(A, "Saison: Bilder, Hochdeutsch; Gemüse antippen = «… Rezept» kopiert, ergänzen, Suchen-Link", async () => {
   await goTab(A, "season");
   const names = await A.page.$$eval("#fieldGrid .veg b", l => l.map(b => b.textContent));

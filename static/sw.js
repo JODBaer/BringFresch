@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'bringfrisch-cache-v68';
+﻿const CACHE_NAME = 'bringfrisch-cache-v69';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const STATIC_ASSETS = [
   './app_vorrat.js',
   './app_rezepte.js',
   './app_wahl.js',
+  './app_alle.js',
   './app_sync.js',
   './app_einstellungen.js',
   './app_theme.js',
