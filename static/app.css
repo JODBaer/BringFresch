@@ -839,3 +839,6 @@ html[data-tab="shop"] #syncBtn { display: none; }
 .shopfab b { background: var(--on-accent); color: var(--accent); border-radius: 999px; padding: 1px 8px; font-size: 13px; }
 .shopfab.undoing { background: var(--fg); color: var(--bg); }
 #tab-shop { padding-bottom: 72px; }
+
+/* Einkauf: Hinweis unten über dem Bring!-Knopf, damit er ihn nicht verdeckt */
+html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78px); }
