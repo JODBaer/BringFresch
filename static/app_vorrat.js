@@ -108,9 +108,12 @@
     return {
       count: list.length,
       html: `<section class="vsec low"><h3><span>Aus dem Vorrat – wird knapp</span><small>${list.length} · mit «Prüfen»</small></h3>
-        ${list.map(i => { const st = state.staples[i]; return `<button type="button" class="vrow low" data-vitem="${i}"><span class="l">${esc(label(st))}</span><span class="r">${esc(qtyText(st))}<small>+ ${esc(packText(st))}</small></span></button>`; }).join("")}</section>`
+        ${list.map(i => { const st = state.staples[i]; const mk = markedV.has(i); return `<button type="button" class="vrow low${mk ? " marked" : ""}" data-vitem="${i}" aria-pressed="${mk}"><span class="l">${esc(label(st))}</span><span class="r">${esc(qtyText(st))}<small>+ ${esc(packText(st))}</small></span></button>`; }).join("")}</section>`
     };
   }
+  // In «Kaufen» vorgemerkter Vorrat (Index im Grundvorrat) – wie die vorgemerkten Plan-Artikel (app.shopMarked)
+  const markedV = new Set();
+  const anyMarked = () => (app.shopMarked && app.shopMarked.size > 0) || markedV.size > 0;
   // Der eine Bring!-Knopf unten rechts: zählt, was die Gegenüberstellung vorauswählt (Plan + knapper Vorrat, noch nicht drauf)
   let undoLeft = 0, undoTimer = null, undoRun = null;
   function renderTray() {
@@ -121,7 +124,9 @@
     }
     const { plan, vor } = compareRows();
     const mk = app.shopMarked || new Set();
-    const n = (mk.size ? plan.filter(x => !x.on && mk.has(x.name)).length : plan.filter(x => !x.on).length) + vor.filter(x => x.knapp && !x.on).length;
+    // vorgemerkt? dann genau das; sonst wie bisher alles aus dem Plan und der knappe Vorrat
+    const n = anyMarked() ? plan.filter(x => !x.on && mk.has(x.name)).length + vor.filter(x => !x.on && markedV.has(x.i)).length
+      : plan.filter(x => !x.on).length + vor.filter(x => x.knapp && !x.on).length;
     fab.classList.remove("undoing");
     $("shopFabL").textContent = "Auf Bring!"; $("shopFabN").hidden = false; $("shopFabN").textContent = n;
   }
@@ -158,7 +163,12 @@
     const v = e.target.closest("[data-vleer]");
     if (v) return openItem(+v.dataset.vleer); // Zeile antippen = Blatt zum Artikel (dort Leer · Fast leer · Halb · Voll)
     const it = e.target.closest("[data-vitem]");
-    if (it) return openItem(+it.dataset.vitem);
+    if (it) { // Kaufen: knapper Vorrat antippen = für Bring! vormerken (durchgestrichen), wie die Plan-Zeilen
+      const i = +it.dataset.vitem;
+      if (markedV.has(i)) markedV.delete(i); else markedV.add(i);
+      toast(markedV.has(i) ? `${label(state.staples[i])}: vorgemerkt – mit «Auf Bring!» unten rechts senden` : `${label(state.staples[i])}: nicht mehr vorgemerkt`);
+      return app.renderShop();
+    }
   });
   $("shopList").addEventListener("toggle", e => { if (e.target.id === "vAll") allOpen = e.target.open; }, true);
   $("shopFab").onclick = async () => {
@@ -184,8 +194,9 @@
   }
   function openCompare() {
     const { plan, vor } = compareRows();
-    const mk = app.shopMarked || new Set(); // in «Kaufen» vorgemerkt? dann nur diese aus dem Plan vorwählen
-    cmp = { plan, vor, sel: new Set([...plan.filter(p => !mk.size || mk.has(p.name)), ...vor.filter(v => v.knapp)].filter(x => !x.on).map(x => x.key)) };
+    const mk = app.shopMarked || new Set(); // in «Kaufen» vorgemerkt? dann genau das vorwählen (Plan und Vorrat)
+    const pre = anyMarked() ? [...plan.filter(p => mk.has(p.name)), ...vor.filter(v => markedV.has(v.i))] : [...plan, ...vor.filter(v => v.knapp)];
+    cmp = { plan, vor, sel: new Set(pre.filter(x => !x.on).map(x => x.key)) };
     renderCompare();
     $("compareDialog").showModal();
   }
@@ -197,6 +208,8 @@
     const b = $("compareSendBtn");
     b.disabled = !n;
     b.textContent = n ? `${n} auf Bring!` : "Nichts gewählt";
+    const all = [...cmp.plan, ...cmp.vor].filter(x => !x.on);
+    $("compareAllBtn").textContent = all.length && all.every(x => cmp.sel.has(x.key)) ? "Alle abwählen" : "Alle auswählen";
   }
   $("compareCols").addEventListener("click", e => {
     const b = e.target.closest("[data-cmp]");
@@ -205,6 +218,13 @@
     if (cmp.sel.has(k)) cmp.sel.delete(k); else cmp.sel.add(k);
     renderCompare();
   });
+  // ganz unten: alle auswählen (oder, wenn schon alle gewählt, alle abwählen)
+  $("compareAllBtn").onclick = () => {
+    const all = [...cmp.plan, ...cmp.vor].filter(x => !x.on);
+    const every = all.every(x => cmp.sel.has(x.key));
+    all.forEach(x => (every ? cmp.sel.delete(x.key) : cmp.sel.add(x.key)));
+    renderCompare();
+  };
   $("compareSendBtn").onclick = async () => {
     const picked = [...cmp.plan, ...cmp.vor].filter(x => !x.on && cmp.sel.has(x.key));
     if (!picked.length) return;
@@ -228,6 +248,7 @@
       app.setBringList(await app.api("/bring/list"));
       $("compareDialog").close();
       if (app.shopMarked) items.forEach(x => app.shopMarked.delete(x.name)); // gesendet: Vormerkung erledigt
+      picked.filter(x => x.i != null).forEach(x => markedV.delete(x.i));
       refresh();
       const undo = async () => {
         sent.forEach(st => { st.sent = false; });

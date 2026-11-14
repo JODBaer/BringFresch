@@ -845,6 +845,10 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 
 /* Kaufen: vorgemerkt für Bring! = durchgestrichen, bleibt stehen bis «Auf Bring!» */
 #shopList .item.marked > span:first-child, #shopList .item.marked .amt { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); }
+/* Kaufen: vorgemerkter Vorrat ebenfalls durchgestrichen; «Alle auswählen» in der Gegenüberstellung */
+#shopList .vrow.marked .l, #shopList .vrow.marked .r { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); }
+#compareAllBtn { width: 100%; margin: 4px 0 8px; }
+
 /* Einkauf: Hofläden & Märkte (Karten-Links) */
 .hofbtn { width: 100%; margin-top: 10px; }
 .hofrow { display: flex; align-items: center; gap: 8px; }
