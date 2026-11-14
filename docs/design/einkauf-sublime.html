@@ -344,6 +344,14 @@ button { font: inherit; color: inherit; }
 
 .cell.c3.vfrom .n { color: var(--opt-bar); }
 .cell.c3 { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* Kommentar 14.11.: Farbe nur bei dem, was dazukommt; «kommt weg» und «schon drauf» neutral */
+.cell.full { background: none; box-shadow: none; }
+.cell.full.r-add { background: var(--add-bg) !important; box-shadow: inset 3px 0 var(--add-bar); }
+.cell.full.r-chg { background: var(--chg-bg) !important; box-shadow: inset 3px 0 var(--chg-bar); }
+.cell.full.r-opt { background: var(--opt-bg) !important; box-shadow: inset 3px 0 var(--opt-bar); }
+.cell.full.fdel .n { text-decoration: line-through; color: var(--muted); }
+.cell.full .w { color: var(--muted); }
 </style>
 
 <div class="wrap">
@@ -536,7 +544,28 @@ function renderCols() {
   groups(ALL).forEach(([title, items, d, t]) => {
     h += `<div class="sec">${d ? `<span class="d">${d}</span>` : ""}${t}</div>`;
     items.forEach(i => {
-      // Einmal antippen: ca. 4 Sekunden lang über die ganze Zeile, von wo nach wo es geht und was auf Bring! landet
+      // Kommentar 14.11.: Was auf Bring! steht/kommt = Zeile über die ganze Breite mit Details; Farbe nur, wenn etwas
+      // dazukommt (neu, Menge dazu, aus dem Vorrat). Sonst nur links (Kaufen) oder rechts (Vorrat), nur der Name.
+      const onB = !!(i.M || i.vpick || (i.pick && !i.ok && i.L));
+      if (onB) {
+        const c = i.del ? "del" : i.M && i.pick && !i.ok ? "chg" : i.M ? "same" : i.vpick ? "opt" : "add";
+        const what = { add: "neu", chg: "Menge dazu", opt: "aus dem Vorrat", del: "kommt weg", same: i.by ? `schon drauf · ${i.by}` : "schon drauf" }[c];
+        const amt = c === "chg" ? `${i.M} + ${i.L}` : c === "del" ? `<s>${i.M}</s>` : i.M || (i.vpick ? "1 Pack" : i.L);
+        const tint = c === "add" || c === "chg" || c === "opt" ? ` r-${c}` : "";
+        h += `<div class="cell full${tint}${c === "del" ? " fdel" : ""}" data-n="${i.n}" data-c="2" role="button" tabindex="0"><span class="n">${i.n}</span><span class="w">${what}</span><span class="g">${amt}</span></div>`;
+        return;
+      }
+      if (i.L && !i.fromV && !(i.q != null && !i.pick)) {
+        if (!i.pick && !i.ok && !i.back) return; // in «Kaufen» weggenommen = hier auch weg; aus der Mitte zurückgeschickt = links
+        h += `<div class="cell c1" data-n="${i.n}" data-c="1" role="button" tabindex="0"><span class="n">${i.n}</span></div><div class="cell c2 none"></div><div class="cell c3 none" data-n="${i.n}" data-hold="v"></div>`;
+        return;
+      }
+      if (i.q != null || i.fromV) {
+        h += `<div class="cell c1 none"></div><div class="cell c2 none"></div><div class="cell c3${i.L ? " vfrom" : ""}" data-n="${i.n}" data-c="3" role="button" tabindex="0"><span class="n">${i.n}</span></div>`;
+        return;
+      }
+      return;
+      // (alt) Einmal antippen: ca. 4 Sekunden lang über die ganze Zeile
       if (flash && flash.n === i.n) {
         const c = i.del ? "del" : i.M && i.pick && !i.ok ? "chg" : i.vpick ? "opt" : i.L && i.pick && !i.ok ? "add" : "";
         const txt = {
@@ -591,12 +620,12 @@ function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); 
 const find = n => ALL.find(i => i.n === n);
 function tap(i, col) {
   if (!i) return;
-  if (col === 1) { if (i.ok) return toast(`${i.n}: steht schon passend drauf`); i.pick = !i.pick; return toast(i.pick ? `▶ ${i.n} kommt auf Bring!` : `${i.n}: haben wir schon`); }
+  if (col === 1) { if (i.ok) return toast(`${i.n}: steht schon passend drauf`); i.pick = !i.pick; i.back = false; return toast(i.pick ? `▶ ${i.n} kommt auf Bring!` : `${i.n}: haben wir schon`); }
   if (col === 3) { if (i.zero || !i.L) { if (!i.L && !i.zero) { i.vpick = !i.vpick; return toast(i.vpick ? `◀ ${i.n} aus dem Vorrat auf Bring!` : `${i.n}: nicht auf Bring!`); } } i.zero = !i.zero; applyLevel(i); return toast(i.zero ? `${i.n}: im Vorrat leer` : `${i.n}: wieder da`); }
   // Mitte: an- und abwählen, was auf Bring! landet
   if (i.bot || i.del) { i.del = !i.del; return toast(i.del ? `${i.n}: kommt von Bring! weg` : `${i.n}: bleibt`); }
   if (i.vpick) { i.vpick = false; return toast(`${i.n}: nicht auf Bring!`); }
-  if (i.L && !i.ok && !i.M) { i.pick = !i.pick; return toast(i.pick ? `${i.n} kommt auf Bring!` : `${i.n}: nicht auf Bring!`); }
+  if (i.L && !i.ok && !i.M) { i.pick = !i.pick; i.back = !i.pick; return toast(i.pick ? `${i.n} kommt auf Bring!` : `${i.n} zurück zu «Kaufen»`); }
   if (i.M && i.L && !i.ok) { i.pick = !i.pick; return toast(i.pick ? `${i.n}: Menge kommt dazu` : `${i.n}: Menge bleibt wie sie ist`); }
   if (!i.M && i.low) { i.vpick = true; return toast(`${i.n} aus dem Vorrat auf Bring!`); }
   toast(i.by ? `${i.n}: hat ${i.by} eingetragen – bleibt` : `${i.n}: steht schon passend drauf`);
@@ -646,7 +675,7 @@ $("cols").addEventListener("click", e => {
   const i = find(c.dataset.n);
   if (c.classList.contains("vfrom")) { i.pick = true; i.fromV = false; toast(`${i.n}: doch kaufen`); render(); return; }
   tap(i, +c.dataset.c);
-  flash = { n: i.n }; clearTimeout(flashT); flashT = setTimeout(() => { flash = null; render(); }, 4000);
+  // 4-Sekunden-Einblendung aus (Kommentar 14.11.): die Details stehen jetzt direkt in der Zeile
   render();
 });
 $("cols").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.c) { e.preventDefault(); e.target.click(); } });
