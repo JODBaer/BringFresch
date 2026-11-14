@@ -601,11 +601,16 @@ await step(A, "Einkauf: Abschnitte Kaufen/Auf Bring!/Vorrat, Liste kopieren", as
   expect((await clip(A)).split("\n").length === parseInt(t, 10), "kopierte Zeilen ≠ Anzahl");
 });
 
-await step(A, "Einkauf: «Hofläden & Märkte» öffnet Blatt mit Karten-Links (Nähe, Rapperswil, Zürich)", async () => {
+await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) öffnet Blatt: Wochenmarkt Robenhausen, Nähe, Rapperswil, Zürich", async () => {
+  await tap(A, '#tab-shop .seg [data-filter="staples"]');
+  await until(A, () => document.getElementById("hofBtn").hidden, "Markt-Chip im Vorrat sichtbar");
+  await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
+  await until(A, () => !document.getElementById("hofBtn").hidden, "Markt-Chip bei Kaufen nicht sichtbar");
   await tap(A, "#hofBtn");
   await until(A, () => document.getElementById("hofDialog").open, "Blatt Hofläden nicht offen");
   const hrefs = await A.page.$$eval("#hofDialog a", as => as.map(a => a.href));
-  expect(hrefs.length === 6 && hrefs.every(h => h.startsWith("https://www.google.com/maps/search/")), "Karten-Links fehlen");
+  expect(hrefs.length === 8 && hrefs[0] === "https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon", "Robenhausen-Infos fehlen");
+  expect(hrefs.slice(1).every(h => h.startsWith("https://www.google.com/maps/search/")), "Karten-Links fehlen");
   expect(hrefs.some(h => /Rapperswil/.test(h)) && hrefs.some(h => /Z%C3%BCrich|Zürich/.test(h)), "Rapperswil/Zürich fehlt");
   await tap(A, "#hofDialog [data-close]");
   await until(A, () => !document.getElementById("hofDialog").open, "Blatt geht nicht zu");

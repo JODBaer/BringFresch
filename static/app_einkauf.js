@@ -27,6 +27,7 @@
     $("shopSummary").textContent = state.viewNext ? `Nächste Woche (KW ${isoWeek(plusWeek())})` : "";
     document.querySelectorAll("#shopSort [data-sort]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sort === sortMode())));
     $("shopTool").innerHTML = state.shopFilter === "staples" ? app.cookSwHtml() : ""; // «Woche gekocht» oben, nur im Vorrat
+    $("hofBtn").hidden = state.shopFilter === "staples"; // Hofläden & Märkte nur bei Kaufen / Auf Bring!
     document.querySelectorAll("#tab-shop .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === state.shopFilter)));
     app.renderTray();
 
@@ -118,7 +119,7 @@
     $("handoffDialog").showModal();
   }
 
-  // Hofläden & Märkte: Blatt mit Karten-Suche (in der Nähe, Rapperswil-Jona, Zürich)
+  // Hofläden & Märkte (Chip oben links): Wochenmarkt Robenhausen, Karten-Suche in der Nähe, Rapperswil-Jona, Zürich
   $("hofBtn").onclick = () => $("hofDialog").showModal();
 
   $("syncBtn").onclick = () => (app.connected() ? app.syncToBring() : openHandoff());
