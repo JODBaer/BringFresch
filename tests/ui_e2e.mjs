@@ -672,6 +672,35 @@ await step(A, "Einkauf «Vorrat»: Zeile antippen = Blatt, dort «Leer» (nichts
   await shot(A, "08b-einkauf-knapp");
 });
 
+await step(A, "Vorrat: Name antippen = für Bring! vormerken (Knopf zählt mit), Name lange drücken = Blatt, Zeile = Blatt", async () => {
+  await tap(A, '#tab-shop .seg [data-filter="staples"]');
+  await until(A, () => document.getElementById("vAll"), "Vorrat-Liste fehlt");
+  if (!(await A.page.$eval("#vAll", d => d.open))) await tap(A, "#vAll summary");
+  const i = await A.page.evaluate(() => { const r = [...document.querySelectorAll("#vAll [data-vleer]")].find(b => !b.querySelector(".vcart")); r.scrollIntoView({ block: "center" }); return r.dataset.vleer; });
+  const n0 = +(await text(A, "#shopFabN"));
+  await clearToasts(A);
+  await tap(A, `#shopList [data-vname="${i}"]`);
+  await until(A, i => document.querySelector(`#shopList [data-vleer="${i}"]`).classList.contains("marked"), "Name antippen merkt nicht vor", i);
+  await toastIs(A, /vorgemerkt/);
+  expect(!(await A.page.$eval("#stapleItemDialog", d => d.open)), "Name antippen öffnet das Blatt");
+  expect(+(await text(A, "#shopFabN")) >= 1 && +(await text(A, "#shopFabN")) <= n0 + 1, "Knopf zählt das Vorgemerkte nicht");
+  await tap(A, `#shopList [data-vname="${i}"]`);
+  await until(A, i => !document.querySelector(`#shopList [data-vleer="${i}"]`).classList.contains("marked"), "Vormerkung lässt sich nicht aufheben", i);
+  // lange drücken auf den Namen = Blatt
+  const box = await A.page.$eval(`#shopList [data-vname="${i}"]`, e => { const r = e.getBoundingClientRect(); return { x: r.left + Math.min(20, r.width / 2), y: r.top + r.height / 2 }; });
+  await A.page.mouse.move(box.x, box.y);
+  await A.page.mouse.down();
+  await sleep(700);
+  await A.page.mouse.up();
+  await until(A, () => document.getElementById("stapleItemDialog").open, "lange drücken öffnet das Blatt nicht");
+  await closeDialog(A, "stapleItemDialog");
+  expect(!(await A.page.$eval(`#shopList [data-vleer="${i}"]`, r => r.classList.contains("marked"))), "lange drücken hat auch vorgemerkt");
+  // Zeile rechts antippen = Blatt
+  await tap(A, `#shopList [data-vleer="${i}"] .r`);
+  await until(A, () => document.getElementById("stapleItemDialog").open, "Zeile antippen öffnet das Blatt nicht");
+  await closeDialog(A, "stapleItemDialog");
+});
+
 await step(A, "Schalter «Woche gekocht»: bucht ab, was der Plan braucht; zurück = rückgängig", async () => {
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   const used = await count(A, "#shopList .vsec.woche [data-vleer]");
@@ -701,6 +730,9 @@ await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wähl
   await shot(A, "08c-gegenueberstellung");
   await dialogNoHScroll(A, "compareDialog");
   // ganz unten «Alle auswählen» / «Alle abwählen»
+  // anfangs ist meist schon alles gewählt: eine Zeile abwählen, dann «Alle auswählen»
+  if ((await text(A, "#compareAllBtn")) === "Alle abwählen") await tap(A, `[data-cmp="${key}"]`);
+  await until(A, () => document.getElementById("compareAllBtn").textContent === "Alle auswählen", "Knopf zeigt nicht «Alle auswählen»");
   await tap(A, "#compareAllBtn");
   await until(A, () => document.getElementById("compareAllBtn").textContent === "Alle abwählen" && ![...document.querySelectorAll("#compareCols [data-cmp]:not([disabled])")].some(b => b.getAttribute("aria-pressed") !== "true"), "«Alle auswählen» wählt nicht alles");
   await tap(A, "#compareAllBtn");
@@ -803,22 +835,24 @@ await step(A, "Alle Rezepte: Knopf bei «Meine Rezepte», Karten nach Herkunft u
   await tap(A, "#allRecipesBtn");
   await dialogNoHScroll(A, "allDialog");
   const groups = await A.page.$$eval("#allList .asrc h3", l => l.map(h => h.firstChild.textContent.trim()));
-  expect(groups[0] === "Swissmilk" && groups.includes("Fooby") && groups.indexOf("Klassiker") === groups.length - 1, `Herkunft-Reihenfolge: ${groups.join(", ")}`);
+  const web = groups.filter(g => g !== "Eigene Rezepte" && g !== "Andere WGs");
+  expect(web[0] === "Swissmilk" && web.includes("Fooby") && web.indexOf("Klassiker") === web.length - 1 && groups.indexOf("Eigene Rezepte") <= 0, `Herkunft-Reihenfolge: ${groups.join(", ")}`);
   // in jeder Herkunft: erst Saison, dann «Gerade nicht Saison» am Schluss
   expect(await A.page.$$eval("#allList .asrc", l => l.every(s => !s.querySelector(".agrid.off") || s.lastElementChild.classList.contains("off"))), "Nicht-Saison nicht am Schluss der Herkunft");
   const all = await A.page.$$eval("#allList .acard", l => l.length);
   expect(all > 100, `zu wenige Rezepte: ${all}`);
   expect(await A.page.$eval("#allList .acard", c => c.getBoundingClientRect().width < 140), "Karten nicht klein");
   const before = await text(A, '.prow[data-i="2"] .t');
-  await A.page.evaluate(() => { document.querySelector("#allList .agrid .acard").id = "allFirst"; });
-  const title = await A.page.$eval("#allFirst .vbt", e => e.textContent);
-  await tap(A, "#allFirst .vfront");
-  await until(A, () => document.getElementById("allFirst")?.classList.contains("open"), "Karte dreht nicht um");
+  const rid = await A.page.$eval("#allList .agrid .acard", c => c.dataset.id);
+  const card = `#allList .acard[data-id="${rid}"]`;
+  const title = await A.page.$eval(`${card} .vbt`, e => e.textContent);
+  await tap(A, `${card} .vfront`);
+  await until(A, c => document.querySelector(c)?.classList.contains("open"), "Karte dreht nicht um", card);
   await clearToasts(A);
-  await tap(A, '#allFirst [data-day="2"]');
+  await tap(A, `${card} [data-day="2"]`);
   await until(A, t => document.querySelector('.prow[data-i="2"] .t').textContent === t, "nicht am Mittwoch eingeplant", title);
   await toastIs(A, /^Mi: /);
-  expect(await A.page.$eval("#allFirst .vwish", e => e.textContent.includes("Mi")), "Karte zeigt den Tag nicht");
+  expect(await A.page.$eval(`${card} .vwish`, e => e.textContent.includes("Mi")), "Karte zeigt den Tag nicht");
   await tap(A, ".toast button");
   await until(A, t => document.querySelector('.prow[data-i="2"] .t').textContent === t, "Rückgängig klappt nicht", before);
   await typeInto(A, "#allSearch", "Kürbis");
@@ -1357,7 +1391,8 @@ await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegen�
     await openFab(B);
     await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
     // nur den Vorrat senden: Plan-Artikel abwählen
-    for (const k of await B.page.$$eval('#compareCols [data-cmp^="p:"][aria-pressed="true"]:not([disabled])', l => l.map(b => b.dataset.cmp))) await tap(B, `#compareCols [data-cmp="${k}"]`);
+    // nur den eben geleerten Artikel senden: alles andere abwählen (Plan und anderer knapper Vorrat)
+    for (const k of await B.page.$$eval('#compareCols [data-cmp][aria-pressed="true"]:not([disabled])', (l, i) => l.map(b => b.dataset.cmp).filter(k => k !== `v:${i}`), idx)) await tap(B, `#compareCols [data-cmp="${k}"]`);
     expect(await B.page.$eval(`[data-cmp="v:${idx}"]`, b => b.getAttribute("aria-pressed") === "true"), "leerer Artikel nicht vorausgewählt");
     await clearToasts(B);
     await tap(B, "#compareSendBtn");

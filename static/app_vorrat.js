@@ -45,9 +45,10 @@
   function vrow(i, extra = "") {
     const st = state.staples[i], q = vQty(st), use = useOf(st);
     const cls = q === 0 ? " zero" : isKnapp(st) ? " low" : "";
-    return `<button type="button" class="vrow${cls}" data-vleer="${i}" aria-pressed="${q === 0}" aria-label="${esc(label(st))}, ${esc(qtyText(st, q, true))}. Antippen = Blatt zum Artikel">
-      <span class="l">${esc(label(st))}${onBringSt(st) ? " " + cart : ""}</span>
-      <span class="r">${q === 0 ? "leer" : esc(qtyText(st) + useText(st, use))}${extra ? `<small>${esc(extra)}</small>` : ""}</span></button>`;
+    const mk = markedV.has(i);
+    return `<div class="vrow${cls}${mk ? " marked" : ""}" role="button" tabindex="0" data-vleer="${i}" aria-pressed="${q === 0}" aria-label="${esc(label(st))}, ${esc(qtyText(st, q, true))}. Antippen = Blatt zum Artikel">
+      <span class="l" role="button" tabindex="0" data-vname="${i}" aria-pressed="${mk}" aria-label="${esc(label(st))} für Bring! vormerken">${esc(label(st))}${onBringSt(st) ? " " + cart : ""}${mk ? ` <small class="vmk">→ Bring!</small>` : ""}</span>
+      <span class="r">${q === 0 ? "leer" : esc(qtyText(st) + useText(st, use))}${extra ? `<small>${esc(extra)}</small>` : ""}</span></div>`;
   }
   // Abschnitte der Vorrat-Liste beim Einkauf
   function vorratGroups() {
@@ -98,7 +99,7 @@
     return {
       count: shown.length,
       html: html + `<details class="vall" id="vAll"${allOpen ? " open" : ""}><summary>Alles da <small>${g.rest.length}</small></summary>${g.rest.map(i => vrow(i)).join("")}</details>
-        <p class="hint vfoot">${booked ? "Woche abgebucht. " : ""}Zeile antippen = Blatt zum Artikel (Menge, Leer · Fast leer · Halb · Voll).</p>`
+        <p class="hint vfoot">${booked ? "Woche abgebucht. " : ""}Name antippen = für Bring! vormerken · Zeile antippen oder Name lange drücken = Blatt zum Artikel (Menge, Leer · Fast leer · Halb · Voll).</p>`
     };
   }
   // Kaufen: knapper Vorrat (noch nicht auf Bring!) – antippen = Blatt zum Artikel
@@ -160,8 +161,11 @@
 
   $("shopTool").addEventListener("click", e => { if (e.target.closest("#cookSw")) cookToggle(); });
   $("shopList").addEventListener("click", e => {
+    if (vHeld) { vHeld = false; return; } // lange gedrückt: Blatt ist schon offen
+    const nm = e.target.closest("[data-vname]");
+    if (nm) return markVorrat(+nm.dataset.vname); // Vorrat: Name antippen = für Bring! vormerken
     const v = e.target.closest("[data-vleer]");
-    if (v) return openItem(+v.dataset.vleer); // Zeile antippen = Blatt zum Artikel (dort Leer · Fast leer · Halb · Voll)
+    if (v) return openItem(+v.dataset.vleer); // sonst Zeile antippen = Blatt zum Artikel (dort Leer · Fast leer · Halb · Voll)
     const it = e.target.closest("[data-vitem]");
     if (it) { // Kaufen: knapper Vorrat antippen = für Bring! vormerken (durchgestrichen), wie die Plan-Zeilen
       const i = +it.dataset.vitem;
@@ -169,6 +173,28 @@
       toast(markedV.has(i) ? `${label(state.staples[i])}: vorgemerkt – mit «Auf Bring!» unten rechts senden` : `${label(state.staples[i])}: nicht mehr vorgemerkt`);
       return app.renderShop();
     }
+  });
+  function markVorrat(i) {
+    const st = state.staples[i];
+    if (!st) return;
+    if (!markedV.has(i) && onBringSt(st)) return toast(`${label(st)} steht schon auf Bring!`);
+    if (markedV.has(i)) markedV.delete(i); else markedV.add(i);
+    toast(markedV.has(i) ? `${label(st)}: vorgemerkt – mit «Auf Bring!» unten rechts senden` : `${label(st)}: nicht mehr vorgemerkt`);
+    app.renderShop();
+  }
+  // Vorrat: Name lange drücken (oder Rechtsklick) = Blatt zum Artikel; Enter/Leertaste wie antippen
+  let vHoldT = null, vHeld = false;
+  $("shopList").addEventListener("pointerdown", e => {
+    const nm = e.target.closest("[data-vname]");
+    vHeld = false;
+    clearTimeout(vHoldT);
+    if (nm) vHoldT = setTimeout(() => { vHeld = true; openItem(+nm.dataset.vname); }, 500);
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => $("shopList").addEventListener(t, () => clearTimeout(vHoldT)));
+  $("shopList").addEventListener("pointermove", e => { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 6) clearTimeout(vHoldT); });
+  $("shopList").addEventListener("contextmenu", e => { const nm = e.target.closest("[data-vname]"); if (nm) { e.preventDefault(); clearTimeout(vHoldT); vHeld = false; openItem(+nm.dataset.vname); } });
+  $("shopList").addEventListener("keydown", e => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-vname], [data-vleer]")) { e.preventDefault(); e.stopPropagation(); e.target.click(); }
   });
   $("shopList").addEventListener("toggle", e => { if (e.target.id === "vAll") allOpen = e.target.open; }, true);
   $("shopFab").onclick = async () => {
@@ -186,7 +212,7 @@
   function compareRows() {
     const plan = bringPayload(state.shopping.filter(it => !it.isStaple)).map(d => ({ key: "p:" + d.name, name: d.name, spec: d.spec, on: onBringNow(d.name) }));
     const seen = new Set();
-    const vor = state.staples.map((st, i) => ({ st, i })).filter(({ st }) => isKnapp(st) || oftLeer(st, thisWeek()))
+    const vor = state.staples.map((st, i) => ({ st, i })).filter(({ st, i }) => isKnapp(st) || oftLeer(st, thisWeek()) || markedV.has(i))
       .filter(({ st }) => { const k = stapleTarget(st).toLowerCase(); return !seen.has(k) && seen.add(k); })
       .map(({ st, i }) => ({ key: "v:" + i, i, name: stapleTarget(st), label: label(st), spec: `Vorrat · ${packText(st)}`,
         sub: `${vQty(st) ? "noch " + qtyText(st) : "leer"} · +${packText(st)}`, knapp: isKnapp(st), on: onBringSt(st) }));
