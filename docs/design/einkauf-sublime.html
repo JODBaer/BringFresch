@@ -352,6 +352,12 @@ button { font: inherit; color: inherit; }
 .cell.full.r-opt { background: var(--opt-bg) !important; box-shadow: inset 3px 0 var(--opt-bar); }
 .cell.full.fdel .n { text-decoration: line-through; color: var(--muted); }
 .cell.full .w { color: var(--muted); }
+
+/* Abstände wie Kaufen/Vorrat (Kommentar 14.11.): keine Mindesthöhe, gleiches Padding und gleiche Schrift */
+.cols .cell, .cols .cell.full, .cols .cell.c1, .cols .cell.c3 { min-height: 0 !important; padding: 9px 14px; line-height: 1.35; }
+.cols .cell .n { font-size: 15px; line-height: 1.35; }
+.cols .cell.full .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cols .cell.full .w, .cols .cell.full .g { line-height: 1.35; }
 </style>
 
 <div class="wrap">
