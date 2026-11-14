@@ -633,14 +633,15 @@ async function setLevel(P, sel, which) {
 }
 await step(A, "Einkauf «Vorrat»: Zeile antippen = Blatt, dort «Leer» (nichts geht auf Bring!), steht unter «Kaufen» als knapp, Leiste «Für Bring!»", async () => {
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
-  await until(A, () => document.getElementById("cookSw") && document.getElementById("vorratTray").hidden, "Vorrat-Liste fehlt / Leiste schon da");
+  await until(A, () => document.getElementById("cookSw"), "Vorrat-Liste fehlt");
+  const fab0 = +(await text(A, "#shopFabN"));
   await tap(A, "#vAll summary");
   await until(A, () => document.getElementById("vAll").open, "«Alles da» geht nicht auf");
   leerIdx = await A.page.$eval("#vAll [data-vleer]", b => b.dataset.vleer);
   leerName = await A.page.$eval(`#vAll [data-vleer="${leerIdx}"] .l`, e => e.textContent.trim());
   await setLevel(A, `#vAll [data-vleer="${leerIdx}"]`, "leer");
   await until(A, i => { const r = document.querySelector(`#shopList .vsec [data-vleer="${i}"]`); return r && r.getAttribute("aria-pressed") === "true" && r.classList.contains("zero"); }, "Zeile nicht leer / nicht unter «Sonst knapp»", leerIdx);
-  await until(A, n => !document.getElementById("vorratTray").hidden && document.getElementById("vorratTray").textContent.includes(n), "Leiste «Für Bring!» fehlt", leerName);
+  await until(A, n => +document.getElementById("shopFabN").textContent === n + 1, "Knopf «Auf Bring!» zählt den leeren Artikel nicht", fab0);
   expect((await ls(A, "bringfrisch_user_staples"))[+leerIdx].in_stock === false, "leer nicht gespeichert");
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await until(A, i => document.querySelector(`#shopList [data-vitem="${i}"]`), "knapper Vorrat nicht unter «Kaufen»", leerIdx);
@@ -672,7 +673,7 @@ await step(A, "Schalter «Woche gekocht»: bucht ab, was der Plan braucht; zurü
 });
 
 await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wählen, ohne WG-Server = kopieren; Zeile nochmals = wieder da", async () => {
-  await tap(A, "#trayCheckBtn");
+  await tap(A, "#shopFab");
   await until(A, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
   const key = `v:${leerIdx}`;
   expect(await A.page.$eval(`[data-cmp="${key}"]`, b => b.getAttribute("aria-pressed") === "true"), "knapper Vorrat nicht vorausgewählt");
@@ -690,7 +691,7 @@ await step(A, "«Prüfen»: Gegenüberstellung Kaufen | Vorrat, antippen = wähl
   await until(A, () => !document.getElementById("compareDialog").open, "Gegenüberstellung bleibt offen");
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   await setLevel(A, `#shopList .vsec [data-vleer="${leerIdx}"]`, "voll");
-  await until(A, () => document.getElementById("vorratTray").hidden, "nach «Voll» noch knapp");
+  await until(A, n => +document.getElementById("shopFabN").textContent === n, "nach «Voll» noch knapp", fab0);
 });
 
 await step(A, "Grundvorrat (ohne Server): Kacheln, Blatt (Menge, Leer…Voll, Einheit), lange drücken = − + und ✕ mit Rückgängig, Dringend, hinzufügen mit Vorschlag, Inventur", async () => {
@@ -1289,7 +1290,7 @@ await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegen�
   await sleep(300);
   expect(wgNames().join() === before.join(), "«leer» hat schon etwas auf Bring! gesetzt");
   const send = async () => {
-    await tap(B, "#trayCheckBtn");
+    await tap(B, "#shopFab");
     await until(B, () => document.getElementById("compareDialog").open, "Gegenüberstellung geht nicht auf");
     // nur den Vorrat senden: Plan-Artikel abwählen
     for (const k of await B.page.$$eval('#compareCols [data-cmp^="p:"][aria-pressed="true"]:not([disabled])', l => l.map(b => b.dataset.cmp))) await tap(B, `#compareCols [data-cmp="${k}"]`);
@@ -1299,6 +1300,7 @@ await step(B, "Grundvorrat verbunden: «leer» merkt nur, «Prüfen» → Gegen�
     await toastIs(B, /auf Bring! ✓/);
   };
   await send();
+  expect((await text(B, "#shopFabL")).startsWith("Rückgängig"), "Knopf zeigt nach dem Senden kein «Rückgängig · 10»");
   const added = wgNames().filter(n => !before.includes(n));
   expect(added.length === 1 && /^Vorrat · /.test(wg().find(x => x.name === added[0]).specification), `nicht genau 1 Vorrat-Artikel mit Vermerk: ${added}`);
   await tap(B, ".toast button");

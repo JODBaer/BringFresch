@@ -19,6 +19,7 @@
 
   function showTab(name) {
     ["plan", "shop", "season", "wg"].forEach(t => { $(`tab-${t}`).hidden = t !== name; });
+    document.documentElement.dataset.tab = name; // Einkauf: Bring! nur über den Knopf unten rechts (kein Chip oben)
     document.querySelectorAll("nav button").forEach(b => {
       if (b.dataset.tab === name) b.setAttribute("aria-current", "page");
       else b.removeAttribute("aria-current");

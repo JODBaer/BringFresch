@@ -54,18 +54,19 @@
     <section class="tab" id="tab-shop" hidden>
       <div class="label shophead"><span id="shopTool"></span><small id="shopSummary"></small>
         <span class="sortsw" id="shopSort" role="group" aria-label="Sortieren"><button type="button" data-sort="rezept" aria-pressed="true">Rezept</button><button type="button" data-sort="kat" aria-pressed="false">Kategorie</button></span>
-        <button type="button" class="cmpchip" id="compareBtn" aria-label="Auf Bring! setzen: Gegenüberstellung Kaufen und Vorrat"><span aria-hidden="true">🛒</span> <span id="cmpCount">0</span></button></div>
+</div>
       <div class="card seg" role="group" aria-label="Filter">
         <button type="button" data-filter="toBuy" aria-pressed="true">Kaufen <span id="cntToBuy">0</span></button>
         <button type="button" data-filter="onBring" aria-pressed="false">Auf Bring! <span id="cntOnBring">0</span></button>
         <button type="button" data-filter="staples" aria-pressed="false">Vorrat <span id="cntStaples">0</span></button>
       </div>
       <div class="card" id="shopList"></div>
-      <div class="card vtray" id="vorratTray" hidden></div>
       <div class="row">
         <button class="btn" id="openStaplesBtn" type="button">Grundvorrat verwalten</button>
         <button class="btn" id="copyListBtn" type="button">Liste kopieren</button>
       </div>
+      <!-- der eine Bring!-Knopf (Entwurf einkauf-sublime.html): öffnet die Gegenüberstellung; nach dem Senden 10 s «Rückgängig» -->
+      <button type="button" class="shopfab" id="shopFab"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42a.25.25 0 0 1-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 20 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg><span id="shopFabL">Auf Bring!</span> <b id="shopFabN">0</b></button>
     </section>
 
     <!-- 3. Saison -->
