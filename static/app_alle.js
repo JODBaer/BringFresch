@@ -150,7 +150,7 @@
       if (!off) app.countDish(recipe.id);
       savePlan();
       refresh();
-      open = null;
+      open = String(recipe.id); // Karte bleibt offen: weitere Tage wählen oder gleich wieder abwählen
       render();
       const plan = state.plan;
       toast(off ? `${DAYS[idx].slice(0, 2)}: ${recipe.title} abgewählt – Tag ist offen` : `${DAYS[idx].slice(0, 2)}: ${recipe.title}`, {
