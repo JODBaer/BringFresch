@@ -37,6 +37,9 @@ Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand i
 - Neue Funktionen = neuer Schritt in `tests/ui_e2e.mjs`. Joshua und andere Chats schreiben parallel auf `main`: vor dem Push `git fetch` + merge und danach nochmals testen.
 
 ## Offen / bekannt
-- Speicher-Umzug `bringfrisch_*` → `obsonare_*` und neue Adressen: erst nach Entscheid (Chat «Obsonare»). Cache-Präfix `bringfrisch-cache-*` bleibt bis dahin.
+- Speicher-Umzug `bringfrisch_*` → `obsonare_*` und neue Adressen: liegt auf dem Zweig `ccr-315f8b43-5aq49r` (siehe unten), noch nicht auf main.
 - Der Schriftzug oben in der App zeigt noch «BringFrisch» (`static/index.html`, `.brand`). Ändern oder bewusst lassen? Joshua fragen.
-- Die alten Zweige `ccr-c75d431f-nkpfcv` (Hofläden), `ccr-315f8b43-5aq49r` (Obsonare), `ccr-7c4789c0-pz6wnw` (Swissmilk) und `ccr-eb9048a0-ea245d` (dieser Chat) sind auf `main` und können auf GitHub gelöscht werden.
+- Zweige `ccr-7c4789c0-pz6wnw` (Swissmilk) und `ccr-eb9048a0-ea245d` (dieser Chat) sind auf `main` und können auf GitHub gelöscht werden.
+- **Noch NICHT auf main, Arbeit anderer Chats (Stand 15.11.):**
+  - `ccr-315f8b43-5aq49r` (Chat «Obsonare»): 2d250a0 «Speicher und Cache umbenannt, Umzug der Adressen vorbereitet», 55 Dateien. Das ist der offene Speicher-Umzug. Vor v2.0.0 mit Joshua klären, ob er mit hinein soll. Danach zusammenführen und `npm run ci`.
+  - `ccr-c75d431f-nkpfcv` (Chat «Hofläden»): OSM-Karte, Liste mit Öffnungszeiten (`core.js`), Import-Skript `tools/update_hoflaeden.mjs`. Der erste Commit ist als «WIP» markiert. Erst übernehmen, wenn jener Chat sagt, dass er fertig und getestet ist.
