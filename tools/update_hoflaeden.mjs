@@ -11,13 +11,15 @@ const query = `[out:json][timeout:100];
   nwr["shop"="greengrocer"]["organic"~"yes|only"](${BBOX});
   nwr["amenity"="marketplace"](${BBOX});
   nwr["amenity"="vending_machine"]["vending"~"milk|eggs|fruit|vegetables|cheese|meat|potatoes|food|farm"](${BBOX});
+  node["place"]["name"~"^(Robenhausen)$"](${BBOX});
 );
 out center tags;`;
 
 // Von Hand ergänzt (fehlt in OpenStreetMap oder hat dort keine Zeiten). Quelle jeweils dabei.
+// match: Name in OSM (dann werden nur fehlende Angaben ergänzt); place: sonst an diesem Ort (OSM place-Punkt) neu anlegen.
 const EXTRA = [
-  // https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon
-  { n: "Wochenmarkt Robenhausen", k: "markt", ort: "Wetzikon", lat: 47.3215, lon: 8.7856, oh: "", web: "https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon" }
+  // https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon (Zeiten: oh eintragen, sobald bekannt)
+  { match: /Robenhausen/i, place: "Robenhausen", n: "Wochenmarkt Robenhausen", k: "markt", ort: "Wetzikon", oh: "", web: "https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon" }
 ];
 
 const res = await fetch("https://overpass-api.de/api/interpreter", {
@@ -32,8 +34,10 @@ const r5 = x => Math.round(x * 1e5) / 1e5;
 const kindOf = t => (t.amenity === "marketplace" ? "markt" : t.amenity === "vending_machine" ? "automat" : "hof");
 const VEND = { milk: "Milch", eggs: "Eier", fruit: "Obst", vegetables: "Gemüse", cheese: "Käse", meat: "Fleisch", potatoes: "Kartoffeln" };
 const items = [];
+const places = {};
 for (const e of elements) {
   const t = e.tags || {};
+  if (t.place) { places[t.name] = { lat: e.lat, lon: e.lon }; continue; }
   const k = kindOf(t);
   const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
   if (lat == null) continue;
@@ -50,10 +54,13 @@ for (const e of elements) {
   if (t.organic === "only" || t.organic === "yes") it.bio = 1;
   items.push(it);
 }
-for (const x of EXTRA) {
-  const dup = items.find(i => i.n === x.n || (Math.abs(i.lat - x.lat) < 0.002 && Math.abs(i.lon - x.lon) < 0.002 && i.k === x.k));
-  if (dup) Object.assign(dup, Object.fromEntries(Object.entries(x).filter(([key, v]) => v && !dup[key])));
-  else items.push(Object.fromEntries(Object.entries(x).filter(([, v]) => v !== "")));
+for (const { match, place, ...x } of EXTRA) {
+  const fill = Object.fromEntries(Object.entries(x).filter(([, v]) => v !== ""));
+  const dup = items.find(i => i.k === x.k && match.test(i.n));
+  if (dup) { for (const [key, v] of Object.entries(fill)) if (!dup[key] || key === "web") dup[key] = v; continue; }
+  const at = places[place];
+  if (!at) { console.warn(`EXTRA ${x.n}: Ort ${place} nicht gefunden – übersprungen`); continue; }
+  items.push({ ...fill, lat: r5(at.lat), lon: r5(at.lon) });
 }
 items.sort((a, b) => a.k.localeCompare(b.k) || a.n.localeCompare(b.n, "de"));
 
