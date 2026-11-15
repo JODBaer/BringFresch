@@ -59,7 +59,7 @@
       return `<div class="hofit${h.sel === it.n + it.lat ? " sel" : ""}" data-hi="${i}">
         <a class="nm" href="${esc(osm)}" target="_blank" rel="noopener">${esc(it.n)}</a>
         <span class="st${it.state && it.state.open ? " open" : ""}">${esc(it.state ? it.state.text : "")}</span>
-        <small>${esc(KIND[it.k] || "")}${it.bio ? " · Bio" : ""}${it.ort ? ` · ${esc(it.ort)}` : ""} · ${kmText(it.km)}</small>
+        <small>${esc(KIND[it.k] || "")}${it.bio ? " · Bio" : ""}${it.adr || it.ort ? ` · ${esc([it.adr, it.ort].filter(Boolean).join(", "))}` : ""} · ${kmText(it.km)}</small>
         <small>${esc(zeiten)}${it.web ? ` · <a href="${esc(it.web)}" target="_blank" rel="noopener">Webseite</a>` : ""}</small>
       </div>`;
     }).join("") || `<div class="empty">${h.openOnly ? "Gerade hat nichts offen." : "Keine Orte gefunden."}</div>`;
