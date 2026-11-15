@@ -1,4 +1,4 @@
-# Obsonare v2.0.0 – Neuigkeiten und Release (Stand 15.11.2026)
+# Obsonare v2.0.0 – Neuigkeiten und Release (Stand 15.11.2026, letzter Commit 9a56156)
 
 Alles liegt auf `main`. **Der Tag ist noch nicht gesetzt:** Joshua testet zuerst auf der Test-Version, die sich bei jedem Push auf `main` neu baut.
 Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand ist nichts zu ändern.
@@ -8,7 +8,7 @@ Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand i
 **Obsonare** – BringFrisch heisst jetzt Obsonare. Eure Daten, die Verbindung zum WG-Server und das Kalender-Abo laufen einfach weiter.
 
 **Rezepte**
-- **Alle Rezepte**: In der Zeile «Meine Rezepte» öffnet ein Knopf alle Rezepte als kleine Kacheln zum Durchscrollen. Sie sind nach Herkunft geordnet (Swissmilk, Fooby, Betty Bossi, Migusto, Klassiker …), und was jetzt Saison hat, steht zuerst. Kachel antippen, dann einen Tag wählen = eingeplant. Den gewählten Tag nochmals antippen = wieder abwählen. Mit «Rückgängig» und Suche, ab Donnerstag auch für die nächste Woche.
+- **Alle Rezepte**: In der Zeile «Meine Rezepte» öffnet ein Knopf alle Rezepte als kleine Kacheln zum Durchscrollen. Sie sind nach Herkunft geordnet (Swissmilk, Fooby, Betty Bossi, Migusto, Klassiker …), und was jetzt Saison hat, steht zuerst. Kachel antippen, dann einen Tag wählen = eingeplant. Die Karte bleibt offen: weitere Tage wählen oder den gewählten Tag nochmals antippen = wieder abwählen. Mit «Rückgängig» und Suche, ab Donnerstag auch für die nächste Woche.
 - 29 neue Klassiker mit Swissmilk-Links. «Rezept suchen auf» Swissmilk, Fooby oder Google. In der Wochenwahl kommt nie dasselbe Gericht zweimal vor.
 
 **Einkauf**
@@ -29,7 +29,14 @@ Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand i
 2. `git tag v2.0.0 && git push origin v2.0.0`. Nummer 2.0.0 ist entschieden, damit die Handys mit 1.10.0 «Neue Version verfügbar» sehen.
 3. Lauf von `deploy-pages.yml` prüfen (test → worker → deploy). Danach den Text oben an die WG schicken.
 
+## Für den nächsten Chat
+- Zuerst lesen: `CLAUDE.md` und diese Datei. Code: «Alle Rezepte» = `static/app_alle.js` + `CORE.groupBySource` (`static/core.js`); Vorrat antippen/lange drücken = `static/app_vorrat.js` (`markVorrat`, `data-vname`).
+- Stand: `npm run ci` grün auf 9a56156. SW-Cache `bringfrisch-cache-v74` (bei Asset-Änderungen hochzählen).
+- Joshua testet auf der Test-Version und will **vor v2.0.0 noch weitere Features**. Erst taggen, wenn er «Release» sagt.
+- Nachfragen bei Joshua: Meinte er mit dem «Memory-Kachel-Bug» (14./15.11.) nur «Alle Rezepte» (behoben: Karte bleibt offen, nochmals antippen = abwählen) oder auch die **Wochenwahl**? Dort nimmt das nochmalige Antippen eines Tages nur den Wunschtag weg; das Gericht selbst wählt man mit «Doch nicht» ab.
+- Neue Funktionen = neuer Schritt in `tests/ui_e2e.mjs`. Joshua und andere Chats schreiben parallel auf `main`: vor dem Push `git fetch` + merge und danach nochmals testen.
+
 ## Offen / bekannt
 - Speicher-Umzug `bringfrisch_*` → `obsonare_*` und neue Adressen: erst nach Entscheid (Chat «Obsonare»). Cache-Präfix `bringfrisch-cache-*` bleibt bis dahin.
 - Der Schriftzug oben in der App zeigt noch «BringFrisch» (`static/index.html`, `.brand`). Ändern oder bewusst lassen? Joshua fragen.
-- Die alten Zweige `ccr-c75d431f-nkpfcv` (Hofläden) und `ccr-315f8b43-5aq49r` (Obsonare) sind auf `main` und können gelöscht werden.
+- Die alten Zweige `ccr-c75d431f-nkpfcv` (Hofläden), `ccr-315f8b43-5aq49r` (Obsonare), `ccr-7c4789c0-pz6wnw` (Swissmilk) und `ccr-eb9048a0-ea245d` (dieser Chat) sind auf `main` und können auf GitHub gelöscht werden.
