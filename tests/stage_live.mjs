@@ -64,6 +64,7 @@ try {
   check(s1.ok && s1.pushed === 2, "2 Test-Artikel an Bring! gesendet");
   check(s1.mode === "batch", `Bring! nimmt die Batch-Schnittstelle an (Modus «${s1.mode}»; «single» = Rückfall, Batch abgelehnt)`);
   let l = await api("/bring/list");
+  for (let i = 0; i < 5 && !(l.items.includes(A) && l.items.includes(B) && l.mine.includes(A)); i++) { await wait(1500); l = await api("/bring/list"); } // Bring! liest kurz nach dem Schreiben manchmal noch alt
   check(l.items.includes(A) && l.items.includes(B) && l.mine.includes(A), `beide stehen auf «${LIST}» und gehören dem Bot`);
   const s2 = await api("/bring/sync", { method: "POST", body: { items: [{ name: A, spec: "3 Stk" }] } });
   // nur zur Info: Bring! liefert kurz nach dem Schreiben manchmal noch den alten Stand, dann schickt der Server einzeln nach («mixed»)
@@ -73,6 +74,33 @@ try {
   const rm = await api("/bring/remove", { method: "POST", body: { names: [A, B] } });
   l = await api("/bring/list");
   check(rm.removed === 2 && !l.items.includes(A) && !l.items.includes(B), "beide wieder weg");
+
+  // 2b. Live-Beweis Batch: mehr als 45 Artikel in einem Durchgang (Einzelversand schafft höchstens 45)
+  const BIG = Array.from({ length: 60 }, (_, i) => ({ name: `Obsonare Batch ${RUN} ${String(i + 1).padStart(2, "0")}`, spec: `${i + 1} Stk` }));
+  const s3 = await api("/bring/sync", { method: "POST", body: { items: BIG } });
+  l = await api("/bring/list");
+  const onList = BIG.filter(it => l.items.includes(it.name)).length;
+  check(s3.ok && s3.pushed === BIG.length && onList === BIG.length, `Batch: ${BIG.length} Artikel in einem Durchgang gesetzt (gesendet ${s3.pushed}, auf der Liste ${onList}, Modus «${s3.mode}»)`);
+  check(s3.mode !== "single", `Batch: Bring! nimmt Sammelaufruf mit über 45 Artikeln an (Modus «${s3.mode}»)`);
+  // Mengen im Batch ändern: «batch» = wirkt allein, «mixed» = beim Nachsehen noch alt, einzeln nachgeschickt (kein Fehler, nur Info)
+  const CH = BIG.slice(0, 10).map(it => ({ name: it.name, spec: `${parseInt(it.spec, 10) + 100} Stk` }));
+  const s4 = await api("/bring/sync", { method: "POST", body: { items: CH } });
+  l = await api("/bring/list");
+  const changed = CH.filter(it => (l.details.find(d => d.name === it.name) || {}).spec === it.spec).length;
+  console.log(`INFO  Batch-Mengen: ${s4.mode === "batch" ? "wirkt allein" : s4.mode === "mixed" ? "braucht Nachschicken" : "Batch abgelehnt (Einzelversand)"} (Modus «${s4.mode}»)`);
+  check(s4.ok && changed === CH.length, `Batch: Menge von ${CH.length} Artikeln geändert, Endergebnis stimmt (${changed}/${CH.length})`);
+  // Wegnehmen: Bring! liest nach dem Schreiben manchmal noch alt; dann nimmt der Server einzeln (höchstens 45 pro Aufruf) und der Rest geht beim nächsten Aufruf weg
+  const bigNames = BIG.map(it => it.name);
+  const rm2 = await api("/bring/remove", { method: "POST", body: { names: bigNames } });
+  console.log(`INFO  Batch-Wegnehmen: im ersten Aufruf ${rm2.removed} von ${BIG.length} entfernt`);
+  let rmTotal = rm2.removed;
+  for (let i = 0; i < 3 && rmTotal < BIG.length; i++) {
+    await wait(2000);
+    const r = await api("/bring/remove", { method: "POST", body: { names: bigNames } });
+    rmTotal += r.removed;
+  }
+  l = await api("/bring/list");
+  check(!BIG.some(it => l.items.includes(it.name)), `Batch: ${BIG.length} Artikel wieder weg (entfernt ${rmTotal}, noch drauf ${BIG.filter(it => l.items.includes(it.name)).length})`);
 
   // 3. Die Test-App wie auf dem Handy: verbinden und «Bring! füllen»
   const b = spawnSync(process.execPath, [path.join(here, "..", "tools", "build_stage.mjs")], { encoding: "utf8" });
