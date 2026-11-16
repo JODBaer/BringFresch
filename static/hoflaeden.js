@@ -2,6 +2,7 @@
 // Hofläden (hof), Märkte (markt), Hofautomaten (automat) – Daten © OpenStreetMap-Mitwirkende, ODbL.
 window.BF_HOF = { stand: "2026-11-16", items: [
   {"n":"Alpomat Hofprodukte","k":"automat","lat":47.38191,"lon":8.49639,"oh":"24/7","web":"https://www.alpomat.ch"},
+  {"n":"Alpomat Hofprodukte","k":"automat","lat":47.38632,"lon":8.51991,"oh":"24/7","web":"https://www.alpomat.ch"},
   {"n":"Alpomat Hofprodukte","k":"automat","lat":47.41413,"lon":8.56012,"oh":"24/7","web":"https://www.alpomat.ch"},
   {"n":"Alpomat Hofprodukte","k":"automat","lat":47.39096,"lon":8.54064,"oh":"24/7","web":"https://www.alpomat.ch"},
   {"n":"Alpomat Hofprodukte","k":"automat","lat":47.36091,"lon":8.50693,"web":"https://www.alpomat.ch","bio":1},
@@ -294,7 +295,6 @@ window.BF_HOF = { stand: "2026-11-16", items: [
   {"n":"Hofladen","k":"hof","lat":47.41132,"lon":8.64536,"oh":"24/7"},
   {"n":"Hofladen","k":"hof","lat":47.32362,"lon":8.73666},
   {"n":"Hofladen","k":"hof","lat":47.34309,"lon":8.61875},
-  {"n":"Hofladen","k":"hof","lat":47.25193,"lon":8.86398},
   {"n":"Hofladen","k":"hof","lat":47.3777,"lon":8.86371,"oh":"24/7"},
   {"n":"Hofladen - Hitz","k":"hof","lat":47.23494,"lon":8.6529,"ort":"Wädenswil"},
   {"n":"Hofladen Allegra","k":"hof","lat":47.29572,"lon":8.76692,"ort":"Gossau","adr":"Breitistrasse 30","oh":"Tu,Fr 14:00-19:00","web":"https://www.hoflädeli-allegra.ch"},
@@ -378,7 +378,6 @@ window.BF_HOF = { stand: "2026-11-16", items: [
   {"n":"Obstgartenkeller","k":"hof","lat":47.37075,"lon":8.4519,"ort":"Uitikon Waldegg","adr":"Zürcherstrasse 75a","oh":"Fr 15:30-18:30; Sa 07:00-12:00","web":"https://www.obstgartenkeller.ch/"},
   {"n":"ortoloco","k":"hof","lat":47.41438,"lon":8.56052,"web":"https://www.ortoloco.ch/","bio":1},
   {"n":"Pichler, Obst- und Weinbau","k":"hof","lat":47.2688,"lon":8.66481},
-  {"n":"Pilger-Stübli","k":"hof","lat":47.2531,"lon":8.87357},
   {"n":"Plattelädeli","k":"hof","lat":47.27454,"lon":8.75811,"oh":"08:00-20:00"},
   {"n":"Priskas Hoflädeli","k":"hof","lat":47.38416,"lon":8.71706,"ort":"Gutenswil","adr":"Alte Schulhausstrasse 1"},
   {"n":"Puurähof Vorderstoss","k":"hof","lat":47.18617,"lon":8.72928,"ort":"Feusisberg","adr":"Pfäffikonerstrasse 80","oh":"Mo-Su 08:00-18:30","web":"https://www.vorderstoss.ch/"},
