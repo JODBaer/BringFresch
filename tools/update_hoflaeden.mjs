@@ -11,7 +11,7 @@ const query = `[out:json][timeout:100];
   nwr["shop"="greengrocer"]["organic"~"yes|only"](${BBOX});
   nwr["amenity"="marketplace"](${BBOX});
   nwr["amenity"="vending_machine"]["vending"~"milk|eggs|fruit|vegetables|cheese|meat|potatoes|food|farm"](${BBOX});
-  nwr["place"]["name"~"Robenhausen"](${BBOX});
+  nwr["name"~"Robenhausen"](${BBOX});
 );
 out center tags;`;
 
@@ -138,7 +138,7 @@ function mergeDiscover(osm, disc) {
 const places = {};
 for (const e of elements) {
   const t = e.tags || {};
-  if (t.place) { places[t.name] = { lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon }; continue; }
+  if (t.place || (!t.shop && !t.amenity && /Robenhausen/.test(t.name || ""))) { places[t.name] = { lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon }; continue; }
   const k = kindOf(t);
   const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
   if (lat == null) continue;
