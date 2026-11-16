@@ -620,7 +620,7 @@ await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte
   await A.page.evaluate(() => { window.__kml = null; const o = URL.createObjectURL; URL.createObjectURL = f => { f.text().then(t => { window.__kml = t; }); return o.call(URL, f); }; });
   await tap(A, "#hofKml");
   await until(A, () => window.__kml && window.__kml.includes("<kml") && window.__kml.includes("Zibelemärit") && /<coordinates>\d+\.\d+,\d+\.\d+,0<\/coordinates>/.test(window.__kml), "KML-Export fehlt oder ist leer");
-  await A.page.evaluate(() => { localStorage.setItem("bringfrisch_markets_map_url", "https://www.google.com/maps/d/viewer?mid=test123"); window.BF_APP.renderHof(); });
+  await A.page.evaluate(() => { localStorage.setItem("bringfrisch_markets_map_url", JSON.stringify("https://www.google.com/maps/d/viewer?mid=test123")); window.BF_APP.renderHof(); });
   await until(A, () => document.querySelector("#hofAll a.btn")?.href === "https://www.google.com/maps/d/viewer?mid=test123", "«Alle in Google Maps» fehlt trotz Link");
   await A.page.evaluate(() => { localStorage.removeItem("bringfrisch_markets_map_url"); window.BF_APP.renderHof(); });
   expect(await A.page.$$eval("#hofWeek .hofit", r => r.some(x => /\d:\d\d–\d/.test(x.textContent))), "keine Zeiten in der Woche");

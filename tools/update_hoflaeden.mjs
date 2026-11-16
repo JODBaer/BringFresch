@@ -21,6 +21,18 @@ const EXTRA = [
   // https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon (von Hand abgelesen 15.11.2026:
   // «Von März bis November, jeden Samstag von 08.00 bis 11.00 Uhr», Dorfstrasse 15, 8620 Wetzikon)
   { match: /Robenhausen/i, place: "Robenhausen", n: "Wochenmarkt Robenhausen", k: "markt", ort: "Wetzikon", adr: "Dorfstrasse 15", oh: "Mar-Nov Sa 08:00-11:00", web: "https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon" }
+  ,
+  // Von Hand übernommen am 16.11.2026 von https://zuercher-maerkte.ch/ (Vereinigung Zürcher Märkte, amtliche Zeiten; robots.txt erlaubt).
+  // Nur Zeiten; Koordinaten/Link kommen aus OSM, falls der Markt dort steht. Etwa einmal im Jahr von Hand nachprüfen.
+  { match: /Altstetten/i, k: "markt", oh: "Sa 06:00-12:00" },
+  { match: /B[üu]rkli/i, k: "markt", oh: "Tu,Fr 06:00-11:00" },
+  { match: /Helvetiaplatz/i, k: "markt", oh: "Tu,Fr 06:00-11:00" },
+  { match: /Milchbuck/i, k: "markt", oh: "Tu,Fr 06:00-11:00" },
+  { match: /Oerlikon/i, k: "markt", oh: "We 06:00-11:00; Sa 06:00-12:00" },
+  { match: /Rathausbr/i, k: "markt", oh: "Sa 07:00-12:30" },
+  // Von Hand übernommen am 16.11.2026 von zuerich.com (Zürich Tourismus; robots.txt erlaubt), Koordinaten aus den Angaben der Seite:
+  { match: /Freitagsmarkt/i, lat: 47.226698, lon: 8.816421, n: "Rapperswiler Freitagsmarkt", k: "markt", ort: "Rapperswil-Jona", adr: "Hauptplatz", oh: "Mar-Nov Fr 07:30-11:00", web: "https://www.zuerich.com/de/besuchen/shopping/rapperswiler-freitagsmarkt" }, // Mitte März bis Ende November, in der Woche vor Ostern am Gründonnerstag
+  { match: /Markthalle im Viadukt/i, lat: 47.387604, lon: 8.526029, n: "Markthalle im Viadukt", k: "markt", ort: "Zürich", adr: "Limmatstrasse 231", oh: "Mo-Sa 09:00-20:00", web: "https://www.zuerich.com/de/besuchen/shopping/markthalle-im-viadukt" }
 ];
 
 // Mehrere öffentliche Overpass-Server der Reihe nach (GitHub-Server werden vom ersten manchmal abgewiesen); ein Aufruf pro Server.
@@ -98,7 +110,7 @@ for (const { match, place, ...x } of EXTRA) {
     for (const [key, v] of Object.entries(fill)) if (!dup[key] || key === "web" || key === "oh") dup[key] = v;
     continue;
   }
-  const at = Object.entries(places).find(([nm]) => nm.includes(place))?.[1];
+  const at = x.lat != null ? { lat: x.lat, lon: x.lon } : Object.entries(places).find(([nm]) => nm.includes(place))?.[1];
   if (!at) { console.warn(`EXTRA ${x.n}: Ort ${place} nicht gefunden – übersprungen`); continue; }
   items.push({ ...fill, lat: r5(at.lat), lon: r5(at.lon) });
 }
