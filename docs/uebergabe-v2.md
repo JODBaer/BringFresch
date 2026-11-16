@@ -3,6 +3,13 @@
 Alles liegt auf `main`. **Der Tag ist noch nicht gesetzt:** Joshua testet zuerst auf der Test-Version, die sich bei jedem Push auf `main` neu baut.
 Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand ist nichts zu ändern.
 
+## Entscheide Joshua (16.11.2026) – gehen allem unten vor
+- **Zuerst v1.11.0** mit dem heutigen Stand von `main` (alles unter «Neu seit v1.10.0»), damit v2.0.0 nicht zu viel auf einmal ändert. Der Text für die WG unten gilt für v1.11.0.
+- **v2.0.0 erst danach**, mit: Hofläden-Karte (Zweig `ccr-c75d431f-nkpfcv`) und Speicher-Umzug `obsonare_*` (Zweig `ccr-315f8b43-5aq49r`).
+- **Hofläden-Daten: Weg B (Workflow)**: `.github/workflows/hoflaeden.yml` mit `workflow_dispatch` (optional monatlich), führt `tools/update_hoflaeden.mjs` aus und committet auf einen Zweig, nie direkt auf `main`. Siehe `docs/plan/hoflaeden-uebersicht.md` auf dem Zweig.
+- **«Memory-Kachel-Bug»** meinte nur «Alle Rezepte» (behoben). Die Wochenwahl bleibt, wie sie ist.
+- **Schriftzug oben**: Das Design von «BringFrisch» gefällt Joshua, aber das Wort «Obsonare» muss hinein. Die genaue Gestaltung entscheidet er später (als HTML-Entwurf zeigen).
+
 ## Neu seit v1.10.0 (Text für die WG)
 
 **Obsonare** – BringFrisch heisst jetzt Obsonare. Eure Daten, die Verbindung zum WG-Server und das Kalender-Abo laufen einfach weiter.
@@ -38,7 +45,7 @@ Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand i
 
 ## Offen / bekannt
 - Speicher-Umzug `bringfrisch_*` → `obsonare_*` und neue Adressen: liegt auf dem Zweig `ccr-315f8b43-5aq49r` (siehe unten), noch nicht auf main.
-- Der Schriftzug oben in der App zeigt noch «BringFrisch» (`static/index.html`, `.brand`). Ändern oder bewusst lassen? Joshua fragen.
+- Der Schriftzug oben in der App zeigt noch «BringFrisch» (`static/index.html`, `.brand`). Entschieden 16.11.: «Obsonare» kommt hinein, Gestaltung später (siehe oben).
 - Zweige `ccr-7c4789c0-pz6wnw` (Swissmilk) und `ccr-eb9048a0-ea245d` (dieser Chat) sind auf `main` und können auf GitHub gelöscht werden.
 - **Noch NICHT auf main, Arbeit anderer Chats (Stand 15.11.):**
   - `ccr-315f8b43-5aq49r` (Chat «Obsonare»): 2d250a0 «Speicher und Cache umbenannt, Umzug der Adressen vorbereitet», 55 Dateien. Das ist der offene Speicher-Umzug. Vor v2.0.0 mit Joshua klären, ob er mit hinein soll. Danach zusammenführen und `npm run ci`.
