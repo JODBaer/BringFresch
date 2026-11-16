@@ -74,6 +74,24 @@ try {
   l = await api("/bring/list");
   check(rm.removed === 2 && !l.items.includes(A) && !l.items.includes(B), "beide wieder weg");
 
+  // 2b. Live-Beweis Batch: mehr als 45 Artikel in einem Durchgang (Einzelversand schafft höchstens 45)
+  const BIG = Array.from({ length: 60 }, (_, i) => ({ name: `Obsonare Batch ${RUN} ${String(i + 1).padStart(2, "0")}`, spec: `${i + 1} Stk` }));
+  const s3 = await api("/bring/sync", { method: "POST", body: { items: BIG } });
+  l = await api("/bring/list");
+  const onList = BIG.filter(it => l.items.includes(it.name)).length;
+  check(s3.ok && s3.pushed === BIG.length && onList === BIG.length, `Batch: ${BIG.length} Artikel in einem Durchgang gesetzt (gesendet ${s3.pushed}, auf der Liste ${onList}, Modus «${s3.mode}»)`);
+  check(s3.mode !== "single", `Batch: Bring! nimmt Sammelaufruf mit über 45 Artikeln an (Modus «${s3.mode}»)`);
+  // Mengen im Batch ändern: «batch» = wirkt allein, «mixed» = beim Nachsehen noch alt, einzeln nachgeschickt (kein Fehler, nur Info)
+  const CH = BIG.slice(0, 10).map(it => ({ name: it.name, spec: `${parseInt(it.spec, 10) + 100} Stk` }));
+  const s4 = await api("/bring/sync", { method: "POST", body: { items: CH } });
+  l = await api("/bring/list");
+  const changed = CH.filter(it => (l.details.find(d => d.name === it.name) || {}).spec === it.spec).length;
+  console.log(`INFO  Batch-Mengen: ${s4.mode === "batch" ? "wirkt allein" : s4.mode === "mixed" ? "braucht Nachschicken" : "Batch abgelehnt (Einzelversand)"} (Modus «${s4.mode}»)`);
+  check(s4.ok && changed === CH.length, `Batch: Menge von ${CH.length} Artikeln geändert, Endergebnis stimmt (${changed}/${CH.length})`);
+  const rm2 = await api("/bring/remove", { method: "POST", body: { names: BIG.map(it => it.name) } });
+  l = await api("/bring/list");
+  check(rm2.removed === BIG.length && !BIG.some(it => l.items.includes(it.name)), `Batch: ${BIG.length} Artikel wieder weg (entfernt ${rm2.removed})`);
+
   // 3. Die Test-App wie auf dem Handy: verbinden und «Bring! füllen»
   const b = spawnSync(process.execPath, [path.join(here, "..", "tools", "build_stage.mjs")], { encoding: "utf8" });
   if (!check(b.status === 0, "Test-App gebaut (dist-stage)")) { console.log(b.stderr); finish(); }
