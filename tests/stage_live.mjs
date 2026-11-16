@@ -64,6 +64,7 @@ try {
   check(s1.ok && s1.pushed === 2, "2 Test-Artikel an Bring! gesendet");
   check(s1.mode === "batch", `Bring! nimmt die Batch-Schnittstelle an (Modus «${s1.mode}»; «single» = Rückfall, Batch abgelehnt)`);
   let l = await api("/bring/list");
+  for (let i = 0; i < 5 && !(l.items.includes(A) && l.items.includes(B) && l.mine.includes(A)); i++) { await wait(1500); l = await api("/bring/list"); } // Bring! liest kurz nach dem Schreiben manchmal noch alt
   check(l.items.includes(A) && l.items.includes(B) && l.mine.includes(A), `beide stehen auf «${LIST}» und gehören dem Bot`);
   const s2 = await api("/bring/sync", { method: "POST", body: { items: [{ name: A, spec: "3 Stk" }] } });
   // nur zur Info: Bring! liefert kurz nach dem Schreiben manchmal noch den alten Stand, dann schickt der Server einzeln nach («mixed»)
@@ -88,9 +89,18 @@ try {
   const changed = CH.filter(it => (l.details.find(d => d.name === it.name) || {}).spec === it.spec).length;
   console.log(`INFO  Batch-Mengen: ${s4.mode === "batch" ? "wirkt allein" : s4.mode === "mixed" ? "braucht Nachschicken" : "Batch abgelehnt (Einzelversand)"} (Modus «${s4.mode}»)`);
   check(s4.ok && changed === CH.length, `Batch: Menge von ${CH.length} Artikeln geändert, Endergebnis stimmt (${changed}/${CH.length})`);
-  const rm2 = await api("/bring/remove", { method: "POST", body: { names: BIG.map(it => it.name) } });
+  // Wegnehmen: Bring! liest nach dem Schreiben manchmal noch alt; dann nimmt der Server einzeln (höchstens 45 pro Aufruf) und der Rest geht beim nächsten Aufruf weg
+  const bigNames = BIG.map(it => it.name);
+  const rm2 = await api("/bring/remove", { method: "POST", body: { names: bigNames } });
+  console.log(`INFO  Batch-Wegnehmen: im ersten Aufruf ${rm2.removed} von ${BIG.length} entfernt`);
+  let rmTotal = rm2.removed;
+  for (let i = 0; i < 3 && rmTotal < BIG.length; i++) {
+    await wait(2000);
+    const r = await api("/bring/remove", { method: "POST", body: { names: bigNames } });
+    rmTotal += r.removed;
+  }
   l = await api("/bring/list");
-  check(rm2.removed === BIG.length && !BIG.some(it => l.items.includes(it.name)), `Batch: ${BIG.length} Artikel wieder weg (entfernt ${rm2.removed})`);
+  check(!BIG.some(it => l.items.includes(it.name)), `Batch: ${BIG.length} Artikel wieder weg (entfernt ${rmTotal}, noch drauf ${BIG.filter(it => l.items.includes(it.name)).length})`);
 
   // 3. Die Test-App wie auf dem Handy: verbinden und «Bring! füllen»
   const b = spawnSync(process.execPath, [path.join(here, "..", "tools", "build_stage.mjs")], { encoding: "utf8" });
