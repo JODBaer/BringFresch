@@ -26,6 +26,8 @@ const EXTRA = [
 // Mehrere öffentliche Overpass-Server der Reihe nach (GitHub-Server werden vom ersten manchmal abgewiesen); ein Aufruf pro Server.
 const SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 let res;
+for (let round = 0; round < 2 && !res; round++) {
+  if (round) await new Promise(r => setTimeout(r, 30000)); // Overpass ist oft ausgelastet: nach einer Pause nochmals die Reihe durch
 for (const url of SERVERS) {
   try {
     res = await fetch(url, {
@@ -39,6 +41,7 @@ for (const url of SERVERS) {
   } catch (e) { console.warn(`${url}: ${e.cause?.code || e.message}`); }
   res = null;
 }
+}
 if (!res) throw new Error("Kein Overpass-Server erreichbar");
 const { elements } = await res.json();
 
@@ -46,6 +49,25 @@ const r5 = x => Math.round(x * 1e5) / 1e5;
 const kindOf = t => (t.amenity === "marketplace" ? "markt" : t.amenity === "vending_machine" ? "automat" : "hof");
 const VEND = { milk: "Milch", eggs: "Eier", fruit: "Obst", vegetables: "Gemüse", cheese: "Käse", meat: "Fleisch", potatoes: "Kartoffeln" };
 const items = [];
+// discover.swiss (offizielle Tourismusdaten, braucht Schlüssel «Infocenter OpenData»): nur mit Secret DISCOVER_SWISS_KEY.
+// Ohne Schlüssel wird der Teil übersprungen (OSM + Handliste laufen weiter). Der Abruf ist noch nicht gebaut: Felder (Öffnungszeiten,
+// Typen) erst mit Schlüssel an der Doku prüfen. Was zurückkommt, gilt vor OSM, wenn Name ähnlich und < 150 m (siehe mergeDiscover).
+async function discoverItems() {
+  if (!process.env.DISCOVER_SWISS_KEY) { console.log("discover.swiss: kein Schlüssel – übersprungen"); return []; }
+  console.warn("discover.swiss: Schlüssel vorhanden, Import noch nicht umgesetzt – übersprungen");
+  return [];
+}
+const normN = n => String(n).toLowerCase().replace(/[^a-zäöüéèà0-9]/g, "");
+function mergeDiscover(osm, disc) {
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dist = (a, b) => 2 * R * Math.asin(Math.sqrt(Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lon - a.lon) / 2) ** 2));
+  const out = osm.slice();
+  for (const d of disc) {
+    const i = out.findIndex(o => dist(o, d) < 0.15 && (normN(o.n).includes(normN(d.n)) || normN(d.n).includes(normN(o.n))));
+    if (i >= 0) out[i] = { ...out[i], ...d }; else out.push(d);
+  }
+  return out;
+}
 const places = {};
 for (const e of elements) {
   const t = e.tags || {};
@@ -80,6 +102,7 @@ for (const { match, place, ...x } of EXTRA) {
   if (!at) { console.warn(`EXTRA ${x.n}: Ort ${place} nicht gefunden – übersprungen`); continue; }
   items.push({ ...fill, lat: r5(at.lat), lon: r5(at.lon) });
 }
+items.splice(0, items.length, ...mergeDiscover(items, await discoverItems()));
 items.sort((a, b) => a.k.localeCompare(b.k) || a.n.localeCompare(b.n, "de"));
 
 const stand = new Date().toISOString().slice(0, 10);

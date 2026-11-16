@@ -171,6 +171,10 @@
           <label for="dinnerTime">Znacht um<small>Für den Kalender</small></label>
           <input type="time" id="dinnerTime" value="18:30">
         </div>
+        <div class="set-row set-line">
+          <label for="marketsMapUrl">Karte «Märkte»<small>Link deiner Google-«Meine Karten»-Karte, für alle in der WG</small></label>
+          <input type="url" id="marketsMapUrl" placeholder="https://www.google.com/maps/d/…" autocomplete="off" autocapitalize="none" spellcheck="false">
+        </div>
         <div class="set-row">
           <span class="set-sub">Kalender <small>nur die Abende, an denen du mitisst</small></span>
           <div class="cal-btns">
@@ -486,10 +490,11 @@
       </div>
       <div class="sheet-body">
         <div id="hofGeo" class="hofgeo"><button type="button" class="btn" id="hofLocate">📍 Standort verwenden</button><small>Nur auf diesem Handy, wird nicht gesendet oder gespeichert.</small></div>
+        <div id="hofAll" class="hofgeo"></div>
         <div id="hofCards" class="hofcards"></div>
         <div id="hofSpecial"></div>
         <div id="hofWeek"></div>
-        <p class="hint hofnote">Öffnungszeiten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL) – können veraltet sein. Fehlt etwas? <a href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen" target="_blank" rel="noopener">In Google Maps suchen</a></p>
+        <p class="hint hofnote">Öffnungszeiten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL) – können veraltet sein. Die besonderen Märkte pflegen wir von Hand.</p>
       </div>
     </div>
   </dialog>

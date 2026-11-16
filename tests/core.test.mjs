@@ -173,7 +173,13 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(C.nearestFarm(items, rap, di10).n === "Nah" && C.nearestFarm([items[2]], rap, di10) === null, "am nächsten: mit Zeiten");
   check(C.favFarm(items, [C.farmKey(items[0]), C.farmKey(items[1])], rap, di10).n === "Weit", "Lieblinge: der offene zuerst");
   check(C.favFarm(items, [], rap, di10) === null, "kein Liebling");
-  check(C.routeUrl(items[0], true).startsWith("https://maps.apple.com/") && C.routeUrl(items[0], false).includes("google.com/maps/dir") && C.routeUrl(items[0], false).endsWith("47.37,8.54"), "Route: Apple Karten / Google Maps");
+  check(C.routeUrl(items[0], true) === "https://maps.apple.com/?ll=47.37,8.54&q=Weit" && C.routeUrl(items[0], false) === "https://www.google.com/maps/search/?api=1&query=47.37,8.54", "Ort öffnen: über Koordinaten (Apple Karten mit Name / Google Maps), nie Textsuche");
+  // KML für Google «Meine Karten»
+  const kml = C.kmlExport([{ n: "Hof «Müller» & Söhne <1>", k: "hof", lat: 47.3, lon: 8.8, oh: "Mo-Fr 08:00-12:00", adr: "Dorfstr. 1", ort: "Wetzikon", web: "https://x.ch/?a=1&b=2" }, items[1]], [{ n: "Zibelemärit", ort: "Bern", lat: 46.9467, lon: 7.444, rule: { m: 11, nth: 4, wd: 0 }, zeit: "6–18 Uhr", pruefen: true }], di10);
+  check(kml.startsWith('<?xml version="1.0" encoding="UTF-8"?>') && kml.includes("<name>Hof «Müller» &amp; Söhne &lt;1&gt;</name>") && kml.includes("a=1&amp;b=2") && !/&(?!amp;|lt;|gt;|quot;)/.test(kml), "KML: Sonderzeichen escaped («» bleiben, & < >)");
+  check(kml.includes("<coordinates>8.8,47.3,0</coordinates>") && kml.includes("<Folder><name>Märkte</name>") && kml.includes("4. Montag im November") && kml.includes("Datum prüfen") && kml.includes("Mo–Fr 8:00–12:00"), "KML: Koordinaten (lon,lat), Ordner, Datumsregel, Zeiten");
+  check((kml.match(/<Placemark>/g) || []).length === 3 && (kml.match(/<Placemark>/g) || []).length === (kml.match(/<\/Placemark>/g) || []).length && !/<\/?(Folder|Document|kml)>[^<]*&(?!amp;)/.test(kml), "KML: 3 Orte, Tags gepaart");
+  check(C.specialWhen({ ranges: [["2026-12-03", "2026-12-20"]], days: [3, 4, 5, 6] }) === "3.12.2026–20.12.2026, Do/Fr/Sa/So" && C.specialWhen({ dates: ["2026-11-14"] }) === "14.11.2026", "Datumstext von Spezialmärkten");
   // Spezialmärkte
   const d = x => C.nthWeekday(...x).getDate();
   check(d([2026, 11, 4, 0]) === 23 && d([2026, 11, 1, 2]) === 4 && d([2027, 11, 1, 2]) === 3, "4. Montag Nov 2026 = 23.; 1. Mittwoch Nov 2026 = 4., 2027 = 3.");

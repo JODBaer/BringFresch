@@ -42,6 +42,10 @@
     const stand = window.BF_HOF && window.BF_HOF.stand ? ` · Stand ${window.BF_HOF.stand.split("-").reverse().join(".")}` : "";
     $("hofSub").textContent = `Entfernung ${state.hof.ref ? "ab deinem Standort" : "ab Rapperswil-Jona"}${stand}`;
     $("hofGeo").hidden = !!state.hof.ref;
+    const mapUrl = load(STORE.KEYS.MAPS_URL_KEY, "");
+    $("hofAll").innerHTML = (mapUrl ? `<a class="btn" href="${esc(mapUrl)}" target="_blank" rel="noopener">Alle in Google Maps</a>`
+      : `<details><summary>Alle Märkte in Google Maps?</summary><ol class="hint"><li>«Für Google Maps exportieren» antippen und die Datei speichern.</li><li>Auf google.com/maps/d (Meine Karten) eine neue Karte anlegen und die Datei importieren.</li><li>Den Link der Karte in den Einstellungen bei «Karte Märkte» eintragen – dann steht hier «Alle in Google Maps».</li></ol></details>`)
+      + `<button type="button" class="hofroute" id="hofKml">Für Google Maps exportieren</button>`;
     $("hofCards").innerHTML = card("Am nächsten", CORE.nearestFarm(items, r, now), "Keine Orte mit Öffnungszeiten.", fav, now)
       + card("Lieblings", CORE.favFarm(items, fav, r, now), "Tippe bei einem Ort auf ☆, dann steht er hier.", fav, now);
     const sp = CORE.specialUpcoming(SPECIAL(), { ref: r, now });
@@ -79,6 +83,23 @@
 
   $("hofBtn").onclick = openHof;
   $("hofLocate").onclick = () => locate(renderHof);
+  // KML für Google «Meine Karten»: teilen (Handy) oder herunterladen
+  async function exportKml() {
+    const kml = CORE.kmlExport(DATA(), SPECIAL(), new Date());
+    const file = new File([kml], "hoflaeden-maerkte.kml", { type: "application/vnd.google-earth.kml+xml" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Hofläden und Märkte" }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast("KML gespeichert");
+  }
+  $("hofDialog").addEventListener("click", e => { if (e.target.closest("#hofKml")) exportKml(); });
   $("hofDialog").addEventListener("click", e => {
     const b = e.target.closest("[data-fav]");
     if (!b) return;

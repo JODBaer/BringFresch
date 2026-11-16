@@ -12,6 +12,7 @@
     DINNER_KEY: "bringfrisch_dinner_time",         // Znacht-Zeit
     SITES_KEY: "bringfrisch_recipe_sites",         // Rezept-Webseiten zum Stöbern
     FAV_KEY: "bringfrisch_fav_markets",            // Lieblings-Hofläden/-Märkte (Schlüssel «Name@lat,lon»), pro WG gemeinsam (/settings: favMarkets)
+    MAPS_URL_KEY: "bringfrisch_markets_map_url",   // Link der Google-«Meine Karten»-Karte mit allen Märkten (/settings: marketsMapUrl)
     CUSTOM_RECIPES_KEY: "bringfrisch_custom_recipes" // eigene Rezepte (recipe_importer.js)
   };
   // Abgleich: eigener Stempel pro Dokument (≠ gemerkter Server-Stand = hier geändert), siehe «Abgleich» in app.js

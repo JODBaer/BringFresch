@@ -758,9 +758,32 @@
     const f = farmPlaces(items, ref, now).filter(p => favs.includes(p.key));
     return f.find(p => p.state && p.state.open) || f[0] || null;
   }
-  // Route: iPhone = Apple Karten, sonst Google Maps
+  // Ort öffnen: immer über Koordinaten (nie Textsuche). iPhone = Apple Karten (mit Name), sonst Google Maps
   function routeUrl(it, ios) {
-    return ios ? `https://maps.apple.com/?daddr=${it.lat},${it.lon}&dirflg=d` : `https://www.google.com/maps/dir/?api=1&destination=${it.lat},${it.lon}`;
+    return ios ? `https://maps.apple.com/?ll=${it.lat},${it.lon}&q=${encodeURIComponent(it.n)}` : `https://www.google.com/maps/search/?api=1&query=${it.lat},${it.lon}`;
+  }
+  const xmlEsc = t => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const OH_LONG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  const OH_MONTH = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const ohDate = x => { const [y, m, d] = x.split("-").map(Number); return `${d}.${m}.${y}`; };
+  // Wann ein Spezialmarkt stattfindet, als Text («4. Montag im November», «14.11.2026», «3.12.2026–20.12.2026, Do/Fr/Sa/So»)
+  function specialWhen(ev) {
+    const out = [];
+    if (ev.rule) out.push(`${ev.rule.nth < 0 ? "letzter" : ev.rule.nth + "."} ${OH_LONG[ev.rule.wd]} im ${OH_MONTH[ev.rule.m - 1]}`);
+    (ev.dates || []).forEach(x => out.push(ohDate(x)));
+    (ev.ranges || []).forEach(([x, y]) => out.push(`${ohDate(x)}–${ohDate(y)}${ev.days ? ", " + ev.days.map(d => OH_DE[d]).join("/") : ""}`));
+    return out.join("; ");
+  }
+  // KML für Google «Meine Karten» (Import einmal von Hand): alle Orte + besondere Märkte, gleiche Daten wie die Liste
+  function kmlExport(items, specials, now) {
+    const pm = (name, desc, it) => `<Placemark><name>${xmlEsc(name)}</name><description>${xmlEsc(desc)}</description><Point><coordinates>${it.lon},${it.lat},0</coordinates></Point></Placemark>`;
+    const folder = (name, rows) => rows.length ? `<Folder><name>${xmlEsc(name)}</name>${rows.join("")}</Folder>` : "";
+    const KIND_DE = { hof: "Hofläden", markt: "Märkte", automat: "Hofautomaten" };
+    const body = ["hof", "markt", "automat"].map(k => folder(KIND_DE[k], items.filter(i => i.k === k).map(i =>
+      pm(i.n, [i.oh ? hoursText(i.oh, now) : "Öffnungszeiten unbekannt", [i.adr, i.ort].filter(Boolean).join(", "), i.bio ? "Bio" : "", i.web || ""].filter(Boolean).join("\n"), i))));
+    const sp = folder("Besondere Märkte", (specials || []).map(e =>
+      pm(e.n, [specialWhen(e), e.zeit || "", e.ort || "", e.pruefen ? "Datum prüfen" : "", e.web || ""].filter(Boolean).join("\n"), e)));
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Hofläden und Märkte (Obsonare)</name>${body.join("")}${sp}</Document></kml>\n`;
   }
   // n-ter Wochentag eines Monats (month 1–12, wd Mo=0, n 1–5); n = -1: der letzte
   function nthWeekday(year, month, n, wd) {
@@ -796,7 +819,7 @@
   }
 
   root.BF_CORE = {
-    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, nthWeekday, specialDays, specialUpcoming,
+    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, kmlExport, specialWhen, nthWeekday, specialDays, specialUpcoming,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,

@@ -613,7 +613,16 @@ await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte
   await until(A, () => document.getElementById("hofDialog").open && document.querySelectorAll("#hofWeek .hofday").length === 7, "Blatt mit 7 Tagen nicht offen");
   expect(await A.page.$eval("#hofSub", e => /ab Rapperswil-Jona/.test(e.textContent)), "ohne Standort muss «ab Rapperswil-Jona» stehen");
   expect(await A.page.$$eval("#hofCards .hofcard", c => c.length === 2 && /Am nächsten/.test(c[0].textContent) && /Lieblings/.test(c[1].textContent)), "zwei Karten «Am nächsten» / «Lieblings»");
-  expect(await A.page.$$eval("#hofCards .hofcard:first-child .hofroute", a => a.length > 0 && a[0].href.startsWith("https://www.google.com/maps/dir/")), "Route (Android-Stil) öffnet Google Maps");
+  expect(await A.page.$$eval("#hofCards .hofcard:first-child .hofroute", a => a.length > 0 && /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=47\.\d+,8\.\d+$/.test(a[0].href)), "Route (Android-Stil): Google Maps über Koordinaten, keine Textsuche");
+  expect(await A.page.$$eval("#hofDialog a[href]", a => a.every(x => !/query=Hofladen|query=Wochenmarkt/.test(x.href))), "freie Textsuche in Google Maps darf nicht vorkommen");
+  // Google «Meine Karten»: ohne Link Anleitung + Export; mit Link in den WG-Einstellungen «Alle in Google Maps»
+  expect(await A.page.$eval("#hofAll", e => !!e.querySelector("details") && !!e.querySelector("#hofKml") && !e.querySelector("a.btn")), "ohne Link: Anleitung und Export-Knopf, kein «Alle in Google Maps»");
+  await A.page.evaluate(() => { window.__kml = null; const o = URL.createObjectURL; URL.createObjectURL = f => { f.text().then(t => { window.__kml = t; }); return o.call(URL, f); }; });
+  await tap(A, "#hofKml");
+  await until(A, () => window.__kml && window.__kml.includes("<kml") && window.__kml.includes("Zibelemärit") && /<coordinates>\d+\.\d+,\d+\.\d+,0<\/coordinates>/.test(window.__kml), "KML-Export fehlt oder ist leer");
+  await A.page.evaluate(() => { localStorage.setItem("bringfrisch_markets_map_url", "https://www.google.com/maps/d/viewer?mid=test123"); window.BF_APP.renderHof(); });
+  await until(A, () => document.querySelector("#hofAll a.btn")?.href === "https://www.google.com/maps/d/viewer?mid=test123", "«Alle in Google Maps» fehlt trotz Link");
+  await A.page.evaluate(() => { localStorage.removeItem("bringfrisch_markets_map_url"); window.BF_APP.renderHof(); });
   expect(await A.page.$$eval("#hofWeek .hofit", r => r.some(x => /\d:\d\d–\d/.test(x.textContent))), "keine Zeiten in der Woche");
   expect(await A.page.$$eval("#hofSpecial .hofsp", r => r.some(x => /Zibelemärit/.test(x.textContent) && /23\.11\./.test(x.textContent))), "Zibelemärit (23.11.) fehlt bei den besonderen Märkten");
   expect(await A.page.$$eval("#hofSpecial .hofsp", r => r.some(x => /Datum prüfen/.test(x.textContent))), "«Datum prüfen» fehlt");
