@@ -36,6 +36,32 @@ const EXTRA = [
 ];
 
 // Mehrere öffentliche Overpass-Server der Reihe nach (GitHub-Server werden vom ersten manchmal abgewiesen); ein Aufruf pro Server.
+
+const DISCOVER = "https://api.discover.swiss/info/v2/";
+async function dget(path) {
+  const res = await fetch(DISCOVER + path, {
+    headers: { "Ocp-Apim-Subscription-Key": process.env.DISCOVER_SWISS_KEY, Accept: "application/json", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; monatlicher Abruf)" },
+    signal: AbortSignal.timeout(30000)
+  });
+  const text = await res.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch { /* keine JSON-Antwort */ }
+  return { status: res.status, json, text };
+}
+const shape = (v, d = 0) => (Array.isArray(v) ? `[${v.length}:${v.length ? shape(v[0], d + 1) : ""}]` : v && typeof v === "object" ? (d > 2 ? "{…}" : "{" + Object.entries(v).slice(0, 25).map(([k, x]) => `${k}:${shape(x, d + 1)}`).join(",") + "}") : typeof v);
+async function discoverItems() {
+  if (!process.env.DISCOVER_SWISS_KEY) { console.log("discover.swiss: kein Schlüssel – übersprungen"); return []; }
+  // Erster Lauf: nur erkunden (Felder und Typen ins Log, nie der Schlüssel). Die Zuordnung folgt, sobald die Felder bekannt sind.
+  for (const path of ["places?limit=2", "localbusinesses?limit=2", "events?limit=2", "touristattractions?limit=2"]) {
+    try {
+      const r = await dget(path);
+      console.log(`discover.swiss ${path}: HTTP ${r.status}`);
+      if (r.json) console.log("  Form: " + shape(r.json).slice(0, 1800)); else console.log("  Antwort: " + r.text.slice(0, 200).replace(/\s+/g, " "));
+    } catch (e) { console.log(`discover.swiss ${path}: ${e.cause?.code || e.message}`); }
+    await new Promise(r => setTimeout(r, 1500)); // weit unter 60 Aufrufen pro Minute
+  }
+  return [];
+}
 const discovered = await discoverItems();
 const SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 let res;
@@ -65,31 +91,6 @@ const items = [];
 // discover.swiss (offizielle Tourismusdaten, braucht Schlüssel «Infocenter OpenData»): nur mit Secret DISCOVER_SWISS_KEY.
 // Ohne Schlüssel wird der Teil übersprungen (OSM + Handliste laufen weiter). Der Abruf ist noch nicht gebaut: Felder (Öffnungszeiten,
 // Typen) erst mit Schlüssel an der Doku prüfen. Was zurückkommt, gilt vor OSM, wenn Name ähnlich und < 150 m (siehe mergeDiscover).
-const DISCOVER = "https://api.discover.swiss/info/v2/";
-async function dget(path) {
-  const res = await fetch(DISCOVER + path, {
-    headers: { "Ocp-Apim-Subscription-Key": process.env.DISCOVER_SWISS_KEY, Accept: "application/json", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; monatlicher Abruf)" },
-    signal: AbortSignal.timeout(30000)
-  });
-  const text = await res.text();
-  let json = null;
-  try { json = JSON.parse(text); } catch { /* keine JSON-Antwort */ }
-  return { status: res.status, json, text };
-}
-const shape = (v, d = 0) => (Array.isArray(v) ? `[${v.length}:${v.length ? shape(v[0], d + 1) : ""}]` : v && typeof v === "object" ? (d > 2 ? "{…}" : "{" + Object.entries(v).slice(0, 25).map(([k, x]) => `${k}:${shape(x, d + 1)}`).join(",") + "}") : typeof v);
-async function discoverItems() {
-  if (!process.env.DISCOVER_SWISS_KEY) { console.log("discover.swiss: kein Schlüssel – übersprungen"); return []; }
-  // Erster Lauf: nur erkunden (Felder und Typen ins Log, nie der Schlüssel). Die Zuordnung folgt, sobald die Felder bekannt sind.
-  for (const path of ["places?limit=2", "localbusinesses?limit=2", "events?limit=2", "touristattractions?limit=2"]) {
-    try {
-      const r = await dget(path);
-      console.log(`discover.swiss ${path}: HTTP ${r.status}`);
-      if (r.json) console.log("  Form: " + shape(r.json).slice(0, 1800)); else console.log("  Antwort: " + r.text.slice(0, 200).replace(/\s+/g, " "));
-    } catch (e) { console.log(`discover.swiss ${path}: ${e.cause?.code || e.message}`); }
-    await new Promise(r => setTimeout(r, 1500)); // weit unter 60 Aufrufen pro Minute
-  }
-  return [];
-}
 const normN = n => String(n).toLowerCase().replace(/[^a-zäöüéèà0-9]/g, "");
 function mergeDiscover(osm, disc) {
   const R = 6371, rad = x => x * Math.PI / 180;
