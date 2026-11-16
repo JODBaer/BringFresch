@@ -25,7 +25,8 @@ const EXTRA = [
 
 const res = await fetch("https://overpass-api.de/api/interpreter", {
   method: "POST",
-  headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "BringFrisch-WG/1.0 (einmaliger Import)" },
+  headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; monatlicher Abruf)" },
+  signal: AbortSignal.timeout(120000),
   body: "data=" + encodeURIComponent(query)
 });
 if (!res.ok) throw new Error(`HTTP ${res.status}`);
