@@ -46,6 +46,8 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – Obsonare baut 
 
 ## Als Nächstes
 
+- [ ] **Markt-Ansicht übersichtlicher** (Joshua 17.11., nach v1.12.0): nach **Art** gruppieren (Hofläden, Bio-Läden, Wochenmärkte, Spezialmärkte, Automaten), pro Ort Link + «Route»; **Radius vergrössern**; Öffnungszeiten **klein pro Ort** (Mo–So in einer Zeile) statt Liste pro Wochentag – heute steht z.B. ein 24-h-Hofladen 7× da, das ist unübersichtlich.
+
 - [ ] **Redesign Plan-Ansicht – prüfen**: `node tests/layout_check.mjs --shots` (390×844, 375×667, 390×600; iPhone/Android, hell/dunkel) und auf dem echten iPhone/Android ansehen
 - [ ] Redesign für Einkauf, Rezepte & Saison, Einstellungen (folgt separat, gleiche Vorgabe)
 - [x] **Ab Donnerstag die nächste Woche planen**: Chip «KW 47 →» in der Abschnittszeile (oder seitlich wischen), Tage zuerst «noch offen», Wochenwahl/Bring!/Kalender für die angezeigte Woche, am Montag wird sie zur laufenden
