@@ -138,7 +138,10 @@ function mergeDiscover(osm, disc) {
 const places = {};
 for (const e of elements) {
   const t = e.tags || {};
-  if (t.place || (!t.shop && !t.amenity && /Robenhausen/.test(t.name || ""))) { places[t.name] = { lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon }; continue; }
+  if (!(t.shop === "farm" || t.shop === "greengrocer" || t.amenity === "marketplace" || t.amenity === "vending_machine")) { // nur Orte zum Nachschlagen (Robenhausen), keine Läden
+    if (t.name && /Robenhausen/.test(t.name)) places[t.name] = { lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon };
+    continue;
+  }
   const k = kindOf(t);
   const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
   if (lat == null) continue;
@@ -165,7 +168,7 @@ for (const { match, place, ...x } of EXTRA) {
     for (const [key, v] of Object.entries(fill)) if (!dup[key] || key === "web" || key === "oh") dup[key] = v;
     continue;
   }
-  const at = x.lat != null ? { lat: x.lat, lon: x.lon } : Object.entries(places).find(([nm]) => nm.includes(place))?.[1];
+  const at = x.lat != null ? { lat: x.lat, lon: x.lon } : (places[place] || Object.entries(places).find(([nm]) => nm.includes(place))?.[1]);
   if (!at) { console.warn(`EXTRA ${x.n}: Ort ${place} nicht gefunden – übersprungen`); continue; }
   items.push({ ...fill, lat: r5(at.lat), lon: r5(at.lon) });
 }
