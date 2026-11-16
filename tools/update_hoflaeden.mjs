@@ -23,13 +23,23 @@ const EXTRA = [
   { match: /Robenhausen/i, place: "Robenhausen", n: "Wochenmarkt Robenhausen", k: "markt", ort: "Wetzikon", adr: "Dorfstrasse 15", oh: "Mar-Nov Sa 08:00-11:00", web: "https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon" }
 ];
 
-const res = await fetch("https://overpass-api.de/api/interpreter", {
-  method: "POST",
-  headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; monatlicher Abruf)" },
-  signal: AbortSignal.timeout(120000),
-  body: "data=" + encodeURIComponent(query)
-});
-if (!res.ok) throw new Error(`HTTP ${res.status}`);
+// Mehrere öffentliche Overpass-Server der Reihe nach (GitHub-Server werden vom ersten manchmal abgewiesen); ein Aufruf pro Server.
+const SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+let res;
+for (const url of SERVERS) {
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; monatlicher Abruf)" },
+      body: "data=" + encodeURIComponent(query),
+      signal: AbortSignal.timeout(120000)
+    });
+    if (res.ok) break;
+    console.warn(`${url}: HTTP ${res.status}`);
+  } catch (e) { console.warn(`${url}: ${e.cause?.code || e.message}`); }
+  res = null;
+}
+if (!res) throw new Error("Kein Overpass-Server erreichbar");
 const { elements } = await res.json();
 
 const r5 = x => Math.round(x * 1e5) / 1e5;
