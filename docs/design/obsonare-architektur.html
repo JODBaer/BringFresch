@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obsonare – Interaktive System-, Datenfluss- &amp; Datenbank-Übersicht</title>
+  <style>
+    :root {
+      --bg: #f4f8f1;
+      --card: #ffffff;
+      --surface: #edf4e8;
+      --border: #d5e3cc;
+      --text: #1b2818;
+      --muted: #55684f;
+      --primary: #2f6f28;
+      --primary-fg: #ffffff;
+      --accent: #93c572;
+      --code: #1f4f1a;
+      --warn: #b45309;
+      --ok: #15803d;
+      --shadow: 0 2px 10px rgba(27, 40, 24, 0.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111810;
+        --card: #1a2318;
+        --surface: #222e20;
+        --border: #2f402c;
+        --text: #e9f2e6;
+        --muted: #9cb096;
+        --primary: #8ce07c;
+        --primary-fg: #10220d;
+        --accent: #93c572;
+        --code: #a7f397;
+        --warn: #fbbf24;
+        --ok: #4ade80;
+        --shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+    header {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 14px 18px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; box-shadow: var(--shadow);
+    }
+    h1 { margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    button, select {
+      font: inherit; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); padding: 6px 12px; cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    button:hover { border-color: var(--primary); }
+    button.active {
+      background: var(--primary); color: var(--primary-fg); border-color: var(--primary); font-weight: 600;
+    }
+    .panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 16px; box-shadow: var(--shadow);
+    }
+    .hidden { display: none !important; }
+    .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .grid-phone { display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: start; }
+    @media (max-width: 960px) {
+      .grid-5, .grid-4, .grid-3, .grid-phone { grid-template-columns: 1fr; }
+    }
+    .stage-card {
+      border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px;
+      background: var(--surface); cursor: pointer; transition: all 0.18s ease;
+    }
+    .stage-card.active-stage {
+      border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); background: var(--card);
+    }
+    .stage-card.done-stage { border-color: var(--ok); }
+    .stage-card.idle-stage { opacity: 0.45; }
+    .badge {
+      display: inline-block; font-family: ui-monospace, monospace; font-size: 0.75rem;
+      padding: 2px 7px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border);
+      color: var(--code);
+    }
+    .box {
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface);
+    }
+    .box h4 { margin: 0 0 6px 0; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    pre {
+      margin: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 0.8rem; white-space: pre-wrap; color: var(--code); line-height: 1.45;
+    }
+    .canvas-container { position: relative; padding: 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+    #wires-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+    .canvas-cols { position: relative; z-index: 2; }
+    .node-btn {
+      display: block; width: 100%; text-align: left; margin-bottom: 6px; padding: 7px 10px;
+      border-radius: 8px; background: var(--card); border: 1.5px solid var(--border); font-size: 0.82rem;
+    }
+    .node-btn.active-node { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); font-weight: 600; }
+    .node-btn.linked-node { border-color: var(--ok); }
+    .node-btn.dimmed { opacity: 0.25; }
+    .phone-frame {
+      border: 2px solid var(--border); border-radius: 22px; padding: 14px; background: var(--surface);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .hot { cursor: pointer; border-radius: 6px; transition: outline 0.12s; }
+    .hot:hover { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .muted { color: var(--muted); font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>🥬 Obsonare – Architektur, Verarbeitungs-Orte &amp; Datenbank</h1>
+        <div class="muted">Interaktive Übersicht aller Reiter, Dialoge, JS-Module, Worker-Endpunkte und des <code>node:sqlite</code>-Plans</div>
+      </div>
+      <div class="tabs">
+        <button id="tbtn-sim" class="active" onclick="showTab('sim')">▶️ 1. Wo wird was verarbeitet? (Simulator)</button>
+        <button id="tbtn-canvas" onclick="showTab('canvas')">🕸️ 2. Figma-Verknüpfungen (Alle Knoten)</button>
+        <button id="tbtn-phone" onclick="showTab('phone')">📱 3. Handy-Inspektor (Alle Reiter)</button>
+        <button id="tbtn-db" onclick="showTab('db')">🗄️ 4. KV ↔ node:sqlite ↔ SQL-Schema</button>
+      </div>
+    </header>
+
+    <!-- 1. SIMULATOR: WO WIRD WAS VERARBEITET -->
+    <section id="tab-sim" class="panel">
+      <div class="toolbar">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:260px">
+          <strong>Ablauf wählen:</strong>
+          <select id="flow-select" onchange="selectFlow(this.value)" style="flex:1;max-width:520px">
+            <option value="plan">1. 🍲 Plan ändern (Gericht, Esser-Kreise, +2 Reste-Puffer)</option>
+            <option value="bring">2. 🛒 Einkauf berechnen &amp; per Batch an Bring! senden</option>
+            <option value="vote">3. 🃏 Wochenwahl abstimmen &amp; Top 7 in den Plan übernehmen</option>
+            <option value="vorrat">4. 📦 Vorrat «Woche gekocht» &amp; Auto-Nachfüllen über Bring!</option>
+            <option value="recipe">5. 🔗 Rezept-Link importieren &amp; mit anderen WGs teilen</option>
+            <option value="conflict">6. ⚡ 2 Handys gleichzeitig: HTTP 409 &amp; 3-Wege-Merge</option>
+            <option value="cal">7. 📆 Kalender-Abo (.ics) &amp; täglicher 03:00-Uhr-Backup-Cron</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="prevStep()">◀ Zurück</button>
+          <button id="play-btn" class="active" onclick="togglePlay()">▶ Abspielen</button>
+          <button onclick="nextStep()">Weiter ▶</button>
+          <span id="step-counter" class="badge">Schritt 1 / 5</span>
+        </div>
+      </div>
+
+      <!-- 5 Processing Stations -->
+      <div class="grid-5" style="margin-bottom:12px">
+        <div id="loc-ui" class="stage-card" onclick="jumpToLocation('ui')">
+          <div style="display:flex;justify-content:space-between;font-weight:600"><span>📱 1. Handy-UI</span><span class="badge">DOM</span></div>
+          <div class="muted">index.html · app_*.js</div>
+          <div id="summary-ui" style="margin-top:6px;font-size:0.83rem;font-weight:500"></div>
+        </div>
+        <div id="loc-core" class="stage-card" onclick="jumpToLocation('core')">
+          <div style="display:flex;justify-content:space-between;font-weight:600"><span>🧠 2. Rechenkern</span><span class="badge">Offline</span></div>
+          <div class="muted">static/core.js (BF_CORE)</div>
+          <div id="summary-core" style="margin-top:6px;font-size:0.83rem;font-weight:500"></div>
+        </div>
+        <div id="loc-store" class="stage-card" onclick="jumpToLocation('store')">
+          <div style="display:flex;justify-content:space-between;font-weight:600"><span>💾 3. Handy-Store</span><span class="badge">Lokal</span></div>
+          <div class="muted">store.js · app_sync.js</div>
+          <div id="summary-store" style="margin-top:6px;font-size:0.83rem;font-weight:500"></div>
+        </div>
+        <div id="loc-worker" class="stage-card" onclick="jumpToLocation('worker')">
+          <div style="display:flex;justify-content:space-between;font-weight:600"><span>☁️ 4. WG-Server</span><span class="badge">Worker</span></div>
+          <div class="muted">worker/src/*.js</div>
+          <div id="summary-worker" style="margin-top:6px;font-size:0.83rem;font-weight:500"></div>
+        </div>
+        <div id="loc-db" class="stage-card" onclick="jumpToLocation('db')">
+          <div style="display:flex;justify-content:space-between;font-weight:600"><span>🗄️ 5. DB &amp; Extern</span><span class="badge">KV/SQL</span></div>
+          <div class="muted">KV · node:sqlite · Bring!</div>
+          <div id="summary-db" style="margin-top:6px;font-size:0.83rem;font-weight:500"></div>
+        </div>
+      </div>
+
+      <div id="step-dots" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+
+      <div class="box" style="background:var(--card)">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--border)">
+          <div>
+            <span id="detail-where" class="badge" style="background:var(--primary);color:var(--primary-fg)"></span>
+            <strong id="detail-title" style="margin-left:8px;font-size:1rem"></strong>
+          </div>
+          <span id="detail-file" class="badge"></span>
+        </div>
+        <div class="grid-3">
+          <div class="box">
+            <h4>📥 1. Eingabe (Input)</h4>
+            <pre id="detail-in"></pre>
+          </div>
+          <div class="box">
+            <h4>⚙️ 2. Verarbeitung (Was passiert genau?)</h4>
+            <div id="detail-proc" style="font-size:0.88rem"></div>
+          </div>
+          <div class="box">
+            <h4>📤 3. Ergebnis (Output / Weiterleitung)</h4>
+            <pre id="detail-out"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. FIGMA FLOW CANVAS -->
+    <section id="tab-canvas" class="panel hidden">
+      <div class="toolbar">
+        <strong>🕸️ Figma-Verknüpfungs-Landkarte</strong>
+        <span class="muted">Klicke einen beliebigen Knoten in einer der 4 Spalten an, um alle direkten Verbindungen hervorzuheben</span>
+      </div>
+      <div id="canvas-wrap" class="canvas-container">
+        <svg id="wires-svg"></svg>
+        <div class="grid-4 canvas-cols">
+          <div>
+            <div class="muted" style="font-weight:600;margin-bottom:8px">1. App-Seiten (index.html)</div>
+            <div id="col-screens"></div>
+          </div>
+          <div>
+            <div class="muted" style="font-weight:600;margin-bottom:8px">2. Blätter &amp; Dialoge</div>
+            <div id="col-dialogs"></div>
+          </div>
+          <div>
+            <div class="muted" style="font-weight:600;margin-bottom:8px">3. Logik &amp; Handy-Speicher</div>
+            <div id="col-modules"></div>
+          </div>
+          <div>
+            <div class="muted" style="font-weight:600;margin-bottom:8px">4. Worker-API &amp; DB</div>
+            <div id="col-backend"></div>
+          </div>
+        </div>
+      </div>
+      <div class="box" style="margin-top:12px;background:var(--card)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <strong id="insp-title"></strong>
+          <span id="insp-files" class="badge"></span>
+        </div>
+        <div id="insp-desc" class="muted" style="font-size:0.9rem;color:var(--text)"></div>
+      </div>
+    </section>
+
+    <!-- 3. PHONE INSPECTOR -->
+    <section id="tab-phone" class="panel hidden">
+      <div class="grid-phone">
+        <div class="phone-frame">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <div class="hot" onclick="inspectUi('ptr')" style="padding:2px 6px">
+              <strong>Bring<span style="color:var(--primary)">Frisch</span></strong> <span class="muted">KW 46 ⇣</span>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="hot" onclick="inspectUi('voteBtn')">🃏 Wahl</button>
+              <button class="hot active" onclick="inspectUi('syncChip')">🛒 12</button>
+            </div>
+          </div>
+          <div id="phone-screen-body" style="min-height:240px;display:flex;flex-direction:column;gap:8px"></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-top:8px;border-top:1px solid var(--border)">
+            <button id="ptab-plan" class="active" onclick="setPhoneTab('plan')">📅 Plan</button>
+            <button id="ptab-shop" onclick="setPhoneTab('shop')">🛒 Einkauf</button>
+            <button id="ptab-season" onclick="setPhoneTab('season')">🥬 Rezepte</button>
+            <button id="ptab-wg" onclick="setPhoneTab('wg')">⚙️ WG</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong id="ui-title" style="font-size:1.05rem"></strong>
+            <span id="ui-badge" class="badge"></span>
+          </div>
+          <div class="box"><h4>1. Benutzer-Aktion (UI)</h4><div id="ui-step1"></div></div>
+          <div class="box"><h4>2. Berechnung &amp; Fachregel (BF_CORE / BF_APP)</h4><pre id="ui-step2"></pre></div>
+          <div class="box"><h4>3. Handy-Speicher (BF_STORE) &amp; Worker-Sync</h4><pre id="ui-step3"></pre></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. DB COMPARISON -->
+    <section id="tab-db" class="panel hidden">
+      <div class="toolbar">
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <button id="db-btn-plan" class="active" onclick="selectDbEntity('plan')">📅 Wochenplan</button>
+          <button id="db-btn-vote" onclick="selectDbEntity('vote')">🃏 Wochenwahl &amp; Beliebtheit</button>
+          <button id="db-btn-vorrat" onclick="selectDbEntity('vorrat')">📦 Grundvorrat</button>
+          <button id="db-btn-settings" onclick="selectDbEntity('settings')">⚙️ WG &amp; Eigene Rezepte</button>
+          <button id="db-btn-bring" onclick="selectDbEntity('bring')">🛒 Bring!-Bot &amp; Listen</button>
+          <button id="db-btn-multi" onclick="selectDbEntity('multi')">🏠 Mehrere WGs &amp; Backup</button>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="box">
+          <h4>Heute: Cloudflare KV (<code>env.WG</code>)</h4>
+          <pre id="db-col-kv"></pre>
+        </div>
+        <div class="box">
+          <h4>Plan Stufe A: <code>node:sqlite</code> KV-Brücke (0 Änderungen)</h4>
+          <pre id="db-col-nodekv"></pre>
+        </div>
+        <div class="box">
+          <h4>Plan Stufe B: SQL-Tabellen (<code>worker/schema.sql</code>)</h4>
+          <pre id="db-col-sql"></pre>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const LOC_LABELS = {
+      ui: '📱 1. Handy-UI',
+      core: '🧠 2. Rechenkern (core.js)',
+      store: '💾 3. Handy-Speicher',
+      worker: '☁️ 4. WG-Server (Worker)',
+      db: '🗄️ 5. DB & Aussenwelt'
+    };
+
+    const FLOWS = {
+      plan: [
+        { loc: 'ui', short: 'Tag/Esser/Puffer antippen', title: 'Benutzer ändert Tag im Wochenplan', file: 'static/app_plan.js · static/app.js (state.plan)', input: 'Klick auf Esser-Kreis «Jo», Puffer «+2» oder Gericht in #msheet', proc: 'Aktualisiert den Tag im zentralen Objekt state.plan[dayIdx] und ruft refresh() → app.notify() auf.', output: 'UI zeichnet sofort um (ohne aufs Internet zu warten)' },
+        { loc: 'core', short: 'Portionen & Extras rechnen', title: 'Portionen & «Alles für alle» berechnen', file: 'static/core.js (BF_CORE.scaleIngredients)', input: 'eaters: ["joshua","lukas","jo"], buffer: 2, recipe.servings: 4', proc: 'Rechnet Zutaten × (5 / 4). Fügt bei Vegi-Gericht automatisch +150g Fleisch pro Fleischesser (Joshua, Lukas) + 100g Grillkäse für Jo + 50g Salat/Portion hinzu.', output: 'Fertige Zutatenliste für den aufgeklappten Tag & Reiter «Einkauf»' },
+        { loc: 'store', short: 'localStorage + Push-Timer', title: 'Lokal auf dem Handy sichern & Sync planen', file: 'static/store.js (BF_STORE) · static/app_sync.js', input: 'Geändertes Plan-Dokument { week, plan, members, dinnerTime }', proc: 'Speichert sofort in localStorage («bringfrisch_plan»). Startet einen kurzen Debounce-Timer schedulePush("plan"), damit rasche Klicks gebündelt werden.', output: 'PUT /plan mit Header X-WG + X-WG-PIN und base-Zeitstempel' },
+        { loc: 'worker', short: 'PIN-Prüfung & putDoc()', title: 'Worker prüft WG-PIN und Konflikte (putDoc)', file: 'worker/src/auth.js (requireWg) · worker/src/speicher.js (putDoc)', input: 'PUT /plan { week, plan, base: 1763310000000 }', proc: '1. requireWg() prüft PIN & setzt WG-Präfix (scoped).\n2. putDoc() liest aktuellen Stand aus DB: Ist cur.updated > base? Wenn nein → neuer Stempel updated = Date.now().', output: 'JSON { ok: true, updated: 1763310050000 } (oder 409 bei Konflikt)' },
+        { loc: 'db', short: 'KV «plan» speichern', title: 'Dauerhaft in KV / node:sqlite speichern', file: 'env.WG.put("plan") bzw. "w:<slug>:plan"', input: 'Schlüssel "plan" (oder "plan:2026-W47" ab Donnerstag)', proc: 'Schreibt das JSON-Dokument in Cloudflare KV (bzw. in die Tabelle kv von node:sqlite). Handy speichert neuen Stand als «bringfrisch_base_plan».', output: 'Alle anderen Handys & das Kalender-Abo (/cal/:token.ics) haben den neuen Plan' }
+      ],
+      bring: [
+        { loc: 'core', short: 'Einkaufsliste & Katalog-Map', title: 'Zutaten aller 7 Tage bündeln & auf Bring!-Katalog abbilden', file: 'static/core.js · static/bring_catalog.js', input: 'state.plan (7 Tage) + state.staples (Grundvorrat)', proc: 'Fasst gleiche Zutaten zusammen (groupByDish). Bildet Namen auf Bring!-Bilder ab (z.B. «Butternuss-Kürbis» → Name: «Kürbis», Spec: «1 kg, Butternuss-Kürbis»). Zieht Vorrat ab.', output: 'Kaufen-Liste + Hinweis auf knappe Vorratsartikel (isKnapp)' },
+        { loc: 'ui', short: 'Vormerken & #compareDialog', title: 'Gegenüberstellung prüfen & Duplikate abfangen', file: 'static/app_einkauf.js (#shopFab → #compareDialog → #dupDialog)', input: 'Klick auf #shopFab («Auf Bring!») unten rechts', proc: 'Zeigt links «Kaufen (Plan)», rechts «Vorrat». Prüft gegen die aktuelle Bring!-Liste: Steht ein Artikel schon drauf? Wenn vom Bot → vorausgewählt; wenn von Hand → nicht vorausgewählt (#dupDialog).', output: 'Ausgewählte Artikel [{ name: "Kürbis", spec: "1 kg, Butternuss" }, …]' },
+        { loc: 'store', short: 'POST /bring/sync + 10s Undo', title: 'An Worker senden & 10-Sekunden-Rückgängig aktivieren', file: 'static/app_sync.js · static/app_einkauf.js', input: 'Bestätigte Artikelliste aus #compareDialog / #dupDialog', proc: 'Merkt sich den vorherigen Zustand für «Rückgängig» (10 s direkt im Knopf #shopFab) und schickt POST /bring/sync an den Worker.', output: 'HTTP POST /bring/sync mit Header X-WG-PIN' },
+        { loc: 'worker', short: 'Bring!-Login & Batch-Put', title: 'Worker meldet Bot an & sendet Batch an Bring!', file: 'worker/src/bring.js (bringAuth · bringSync · bringBatch)', input: 'POST /bring/sync { items: [{ name, spec }] }', proc: '1. Nutzt gecachtes Login-Token («bringtoken»).\n2. Holt aktuelle UUIDs der Bring!-Liste.\n3. Schickt alle Artikel in EINEM Batch-Request (PUT /bringlists/:uuid/items). Prüft danach, ob alles ankam.', output: 'Aktualisiert eigenes Bot-Gedächtnis «bot:<listUuid>» (seen: true)' },
+        { loc: 'db', short: 'Bring!-App & bot:<uuid>', title: 'Bring!-App zeigt Artikel + KV speichert Bot-Eigentum', file: 'api.getbring.com + KV «bot:<listUuid>»', input: 'Batch-Änderung TO_PURCHASE + Speichern von own[name]', proc: 'Bring! zeigt die Artikel sofort auf allen WG-Handys. In KV steht unter «bot:<listUuid>», welche Artikel der Bot gesetzt hat – er löscht nie handgeschriebene WG-Artikel.', output: '{ ok: true, pushed: N, mode: "batch" }' }
+      ],
+      vote: [
+        { loc: 'core', short: '14 Kandidaten ziehen', title: '14 Saison-Gerichte ohne Duplikate zusammenstellen', file: 'static/core.js (pickCandidates · cleanCandidates · sameDish)', input: '82 Saisonrezepte + 10 Klassiker + 13 Schnelle/Reste + Eigene + Geteilte', proc: 'Filtert auf aktuellen Monat (Saison), wählt 6 Vegi + 6 Fleisch + 2 Schnelle/Reste. Verhindert doppelte IDs, gleiche Titel oder gleiche Links.', output: 'Array mit 14 Rezept-IDs für die Wochenwahl' },
+        { loc: 'ui', short: 'Karten & Wunschtag tippen', title: 'Mitbewohner tippen Favoriten & Wunschtag an', file: 'static/app_wahl.js (#voteDialog)', input: 'Antippen einer Rezeptkarte + optional Wochentag (Mo–So)', proc: 'Hebt gewählte Karten hervor, berechnet live das WG-Ranking (#voteRank) nach Stimmenzahl und zeigt, wer schon abgestimmt hat.', output: '{ likes: ["r1","r5",...], days: { "r1": 2 } }' },
+        { loc: 'worker', short: 'Stimme + Beliebtheit zählen', title: 'Worker speichert Stimme & aktualisiert WG-Beliebtheit', file: 'worker/src/speicher.js (countWeek · getWeek)', input: 'PUT /week/2026-W46/vote/joshua', proc: 'Speichert die Stimme der Person und summiert anschliessend in countWeek() alle Stimmen dieser Woche in das Langzeit-Dokument «pop» (letzte 52 Wochen).', output: 'KV «week:2026-W46:vote:joshua» (21d) + KV «pop» (dauerhaft)' },
+        { loc: 'core', short: 'Top 7 auf Wochentage verteilen', title: '«7 Gerichte in den Plan übernehmen» (optimale Zuteilung)', file: 'static/core.js (buildPlanFromVotes)', input: 'Stimmen aller Mitbewohner + Wunschtage + Anwesenheit pro Tag', proc: 'Nimmt die Top 7 Gerichte und verteilt sie auf Mo–So so, dass jedes Gericht an einem Tag landet, an dem seine Fans zuhause sind (Wunschtag hat Vorrang).', output: 'Fertiger 7-Tage-Wochenplan in state.plan' },
+        { loc: 'db', short: 'Wochenplan speichern', title: 'Neuer Wochenplan wird an alle verteilt', file: 'PUT /plan → KV «plan»', input: '7-Tage-Plan aus der Wochenwahl', proc: 'Speichert den Plan lokal in «bringfrisch_plan» und im Worker unter «plan».', output: 'Ganze WG sieht den fertig abgestimmten Wochenplan' }
+      ],
+      vorrat: [
+        { loc: 'ui', short: 'Schalter «Woche gekocht»', title: 'In Einkauf → Vorrat auf «Woche gekocht» tippen', file: 'static/app_vorrat.js · static/app_einkauf.js', input: 'Klick auf «Woche gekocht»', proc: 'Prüft, welche Vorratsartikel (z.B. Olivenöl, Reis, Bouillon) in den Rezepten dieser Woche vorkommen.', output: 'Aufruf von CORE.bookWeek(staples, plan, week)' },
+        { loc: 'core', short: 'bookWeek() & isKnapp()', title: 'Verbrauch abbuchen & knappe Vorräte markieren', file: 'static/core.js (bookWeek · isKnapp · boughtStaple)', input: 'staples[] mit qty, unit (Znacht/Stk), pack, booked', proc: 'Zieht pro benutztem Vorratsartikel 1 Einheit ab (booked = "2026-W46"). Prüft mit isKnapp(): Ist qty ≤ 2 (bzw. unter 1 Packung)?', output: 'Knappe Artikel erscheinen unter «Aus dem Vorrat – wird knapp»' },
+        { loc: 'store', short: 'Vorrat-Abgleich (PUT /vorrat)', title: 'Grundvorrat lokal & auf dem WG-Server sichern', file: 'static/store.js · static/app_sync.js', input: 'Aktualisiertes staples-Array (max. 300 Artikel)', proc: 'Speichert in «bringfrisch_staples» und sendet PUT /vorrat mit base-Stempel an den Worker.', output: 'KV «vorrat» ist auf allen WG-Handys synchron' },
+        { loc: 'worker', short: 'Bring!-Abgleich erkennt Kauf', title: 'Worker merkt beim Listen-Abruf, was im Laden gekauft wurde', file: 'worker/src/bring.js (bringList)', input: 'GET /bring/list (Handy fragt aktuellen Stand ab)', proc: 'Vergleicht «bot:<listUuid>» mit der echten Bring!-Liste: Fehlt ein Artikel, den der Bot gesetzt und schon gesehen hatte (seen: true)? Dann wurde er im Laden gekauft!', output: 'Artikel verschwindet aus mine[] (vom Bot gesetzte offene Artikel)' },
+        { loc: 'db', short: 'Automatisch +1 Packung', title: 'App bucht gekauften Vorratsartikel automatisch +1 Packung', file: 'static/core.js (boughtStaple) → PUT /vorrat', input: 'Vom Bot mit «Vorrat · Packung» gesetzter Artikel ist auf Bring! erledigt', proc: 'boughtStaple() erhöht qty um 1 Packungsgrösse (pack) und setzt in_stock = true. Speichert den aufgefüllten Vorrat wieder in KV «vorrat».', output: 'Vorrat ist ohne manuelles Nachtragen wieder voll' }
+      ],
+      recipe: [
+        { loc: 'ui', short: 'Rezept-Link einfügen', title: 'Link von Fooby, Betty Bossi, Migusto oder Blog einfügen', file: 'static/app_rezepte.js (#quickLink → #recipeDialog)', input: 'URL z.B. https://fooby.ch/de/rezepte/...', proc: 'Sendet GET /recipe?url=… an den Worker (oder parst bei eingefügtem Text direkt lokal mit recipe_importer.js).', output: 'Anfrage an Worker-Endpunkt /recipe' },
+        { loc: 'worker', short: 'schema.org JSON-LD lesen', title: 'Worker holt Webseite & extrahiert nur Rezept-Fakten', file: 'worker/src/rezept.js (importRecipe)', input: 'HTML der externen Rezept-Webseite', proc: 'Sucht nach <script type="application/ld+json"> (@type: Recipe). Extrahiert nur Fakten: Titel, Portionen, Dauer und Zutaten – kopiert keinen fremden Anleitungstext.', output: '{ title, servings, minutes, ingredients[] }' },
+        { loc: 'core', short: 'Prüfen & Teilen-Schalter', title: 'Im Rezept-Dialog prüfen & «Mit allen WGs teilen»', file: 'static/app_rezepte.js (#recipeForm)', input: 'Vorausgefülltes Formular in #recipeDialog (shared = true)', proc: 'Benutzer kann Personenzahl, Ernährung und eigene Notizen anpassen. Standardmässig ist «Mit allen WGs teilen» aktiv.', output: 'Neuer Eintrag in settings.customRecipes[]' },
+        { loc: 'store', short: 'PUT /settings senden', title: 'Einstellungen inkl. eigene Rezepte synchronisieren', file: 'static/store.js · static/app_sync.js', input: 'settings-Objekt (Mitbewohner, Znacht-Zeit, Webseiten, customRecipes)', proc: 'Speichert lokal in «bringfrisch_settings» und sendet PUT /settings an den Worker.', output: 'PUT /settings mit base-Zeitstempel' },
+        { loc: 'db', short: 'shared:<wg> veröffentlichen', title: 'Worker teilt freigegebene Rezepte für alle anderen WGs', file: 'worker/src/geteilt.js (publishShared · getShared)', input: 'settings.customRecipes mit shared !== false', proc: 'Speichert die WG-Einstellungen in «settings» UND legt die teilbaren Rezepte unter «shared:<slug>» (plus «shared:index») ab. Andere WGs laden sie über GET /recipes/shared.', output: 'Alle WGs sehen das Rezept unter «Andere WGs» (neutral als «geteilt»)' }
+      ],
+      conflict: [
+        { loc: 'ui', short: '2 Handys ändern gleichzeitig', title: 'Handy A ändert Montag, Handy B ändert Dienstag', file: 'Handy A & Handy B starten beide auf Stand base = 100', input: 'Handy A: Mo = Lauchgratin · Handy B: Di = Kürbis-Curry', proc: 'Beide Handys speichern ihre Änderung sofort lokal und schicken unabhängig voneinander PUT /plan mit base: 100 an den Worker.', output: 'Zwei konkurrierende PUT /plan-Anfragen mit gleichem base = 100' },
+        { loc: 'worker', short: 'Erstes gewinnt, zweites -> 409', title: 'Worker nimmt Handy A an (101) und meldet Handy B «409 Conflict»', file: 'worker/src/speicher.js (putDoc)', input: 'Handy B sendet base: 100, aber in DB steht schon updated: 101', proc: 'putDoc() erkennt: cur.updated (101) > base (100)! Es wird NICHTS überschrieben. Der Worker schickt Status 409 samt dem aktuellen Server-Dokument (Stand 101) an Handy B zurück.', output: 'HTTP 409 { conflict: true, updated: 101, plan: [Mo=Lauchgratin, ...] }' },
+        { loc: 'store', short: '3-Wege-Merge auf Handy B', title: 'Handy B vergleicht: Basis (100) vs. Eigenes vs. Server (101)', file: 'static/app_sync.js (mergePlan / mergeStaples / mergeSettings)', input: 'base_plan (100), eigener Plan (Di geändert), Server-Plan (Mo geändert)', proc: 'Prüft Tag für Tag (Mo–So): Wo weicht der Server von base_plan (100) ab? → Montag (Lauchgratin übernehmen). Wo weicht Handy B von base_plan ab? → Dienstag (Kürbis-Curry behalten).', output: 'Vereinigter Plan: Mo = Lauchgratin UND Di = Kürbis-Curry' },
+        { loc: 'worker', short: 'Zweites PUT mit base = 101', title: 'Handy B sendet den zusammengeführten Plan mit base = 101', file: 'worker/src/speicher.js (putDoc)', input: 'PUT /plan { base: 101, plan: [Mo=Lauchgratin, Di=Kürbis-Curry, ...] }', proc: 'Jetzt passt base (101) zu cur.updated (101). Der Worker speichert den vereinigten Plan mit neuem Stempel updated = 102.', output: 'HTTP 200 OK { ok: true, updated: 102 }' },
+        { loc: 'db', short: 'Kein Datenverlust', title: 'Beide Änderungen sind ohne Überschreiben in der DB', file: 'tests/sync_merge.test.mjs prüft genau diesen Ablauf', input: 'Stand 102 in KV / node:sqlite', proc: 'Auch wenn KV kurz nach dem Schreiben veraltet liest (älterer Stempel als base), erkennt putDoc() das und verwirft die Änderung nicht.', output: '100% konsistenter Wochenplan auf allen Handys' }
+      ],
+      cal: [
+        { loc: 'ui', short: 'Kalender abonnieren (.ics)', title: 'Mitbewohner tippt auf «Kalender → Abonnieren»', file: 'static/app_einstellungen.js (#calendarBtn)', input: 'Ausgewählte Person («Ich bin: Joshua») + Knopf «Abonnieren»', proc: 'Fragt beim Worker GET /cal-link ab und hängt ?me=joshua an. Öffnet webcal://<worker>/cal/<token>.ics?me=joshua im Handy-Kalender.', output: 'Kalender-App abonniert die persönliche iCal-URL' },
+        { loc: 'worker', short: 'iCal-Feed live generieren', title: 'Worker erzeugt bei jedem Kalender-Abruf den .ics-Feed', file: 'worker/src/kalender.js (calendar)', input: 'GET /cal/:token.ics?me=joshua (geschützt durch Geheim-Token)', proc: 'Prüft, zu welcher WG der calToken gehört. Liest «plan» (diese Woche) und «plan:<nächsteWoche>». Filtert auf Tage, an denen «joshua» mitisst.', output: 'BEGIN:VCALENDAR mit VEVENT pro Znacht (Uhrzeit + Rezept + Esser)' },
+        { loc: 'db', short: 'Täglicher Cronjob 03:00 UTC', title: 'Jede Nacht um 03:00 Uhr: Gesamtsicherung aller WG-Daten', file: 'worker/src/speicher.js (backup) · wrangler.toml [triggers]', input: 'Cron-Trigger "0 3 * * *" (oder Timer in node_server.mjs)', proc: 'Liest alle Schlüssel im Speicher (ausser backup:*, fail:*, lock:*, img:*, bringtoken) und bündelt sie in einen einzigen Tages-Eintrag.', output: 'KV «backup:2026-11-16» (läuft nach 30 Tagen automatisch ab)' }
+      ]
+    };
+
+    const NODES = {
+      screens: [
+        { id: 's-plan', label: '📅 Plan (#tab-plan)', files: 'static/app_plan.js · index.html', desc: 'Hauptansicht mit allen 7 Tagen (Mo–So), Esser-Kreisen, Reste-Puffer (+0…+6), Aufklappen für Zutaten & Uhrzeit, sowie «KW 47 →» ab Donnerstag.', links: ['d-msheet', 'd-vote', 'd-welcome', 'm-core', 'm-store', 'm-sync', 'b-plan', 'b-cal'] },
+        { id: 's-shop', label: '🛒 Einkauf (#tab-shop)', files: 'static/app_einkauf.js · app_vorrat.js', desc: '3 Reiter: «Kaufen» (aus Plan), «Auf Bring!» (live vom Bot), «Vorrat» (Grundvorrat mit «Woche gekocht»). Unten rechts #shopFab («Auf Bring!») mit 10s Rückgängig.', links: ['d-compare', 'd-staples', 'd-dup', 'd-hof', 'd-handoff', 'm-core', 'm-store', 'm-sync', 'b-bring', 'b-vorrat'] },
+        { id: 's-season', label: '🥬 Rezepte (#tab-season)', files: 'static/app_rezepte.js · app_alle.js', desc: 'Web-Suche, Rezept-Link-Import (#quickLink), «Meine Rezepte», Knopf «Alle Rezepte ansehen ›» und Schweizer Saison-Kalender.', links: ['d-all', 'd-recipe', 'd-catalog', 'm-core', 'm-data', 'm-store', 'b-recipe', 'b-settings'] },
+        { id: 's-wg', label: '⚙️ Einstellungen (#tab-wg)', files: 'static/app_einstellungen.js · app_theme.js', desc: 'Bring!-Liste der WG wählen, Mitbewohner & Ernährung, «Ich bin», und unter «Mehr»: WG-Name/PIN, Kalender-Abo, Anwesenheitstabelle, Glas/M3-Stil & Farben.', links: ['d-vote', 'd-welcome', 'm-store', 'm-sync', 'b-settings', 'b-bring', 'b-cal'] }
+      ],
+      dialogs: [
+        { id: 'd-msheet', label: '🔄 Menü wechseln (#msheet)', files: 'static/app_plan.js', desc: 'Bottom-Sheet beim Antippen eines Gerichts: Suche, «Tauschen mit» anderem Wochentag (swapDishes), «Beliebt bei euch» oben, oder freier Text.', links: ['s-plan', 'd-catalog', 'd-recipe', 'm-core', 'b-plan', 'b-vote'] },
+        { id: 'd-vote', label: '🃏 Wochenwahl (#voteDialog)', files: 'static/app_wahl.js · core.js', desc: '14 Karten (12 Saison ½ Vegi / ½ Fleisch + 2 Schnell/Reste). Favoriten + Wunschtag wählen, «Neu mischeln», Live-WG-Ranking, «7 Gerichte in Plan übernehmen».', links: ['s-plan', 's-wg', 'm-core', 'm-sync', 'b-vote', 'b-plan'] },
+        { id: 'd-compare', label: '⚖️ Gegenüberstellung (#compareDialog)', files: 'static/app_einkauf.js', desc: 'Öffnet sich über #shopFab: Links «Kaufen (Plan)», rechts «Vorrat (knapp/vorgemerkt)». Erst mit «Senden» geht der Batch an Bring!.', links: ['s-shop', 'd-dup', 'm-core', 'm-sync', 'b-bring', 'b-vorrat'] },
+        { id: 'd-staples', label: '📦 Grundvorrat (#staplesDialog)', files: 'static/app_vorrat.js · core.js', desc: 'Kacheln (3 pro Zeile, Abteilung/Dringend), Antippen = −/+ und ✕, lange drücken = #stapleItemDialog (Packung, Einheit), unten Jahres-Inventur (#invDialog).', links: ['s-shop', 'm-core', 'm-store', 'm-sync', 'b-vorrat'] },
+        { id: 'd-all', label: '🗂️ Alle Rezepte (#allDialog)', files: 'static/app_alle.js · core.js', desc: 'Memory-Karten (3 pro Zeile) gruppiert nach Herkunft. Antippen = umdrehen & Tag Mo–So wählen.', links: ['s-season', 'm-core', 'm-data', 'b-plan', 'b-settings'] },
+        { id: 'd-recipe', label: '✍️ Eigenes Rezept (#recipeDialog)', files: 'static/recipe_importer.js · app_rezepte.js', desc: 'Rezept per URL über den Worker importieren (JSON-LD) oder Freitext einfügen. Schalter «Mit allen WGs teilen» (standardmässig an).', links: ['s-season', 'd-msheet', 'm-store', 'b-recipe', 'b-settings'] },
+        { id: 'd-dup', label: '⚠️ Schon auf Bring! (#dupDialog)', files: 'static/app_sync.js · app_einkauf.js', desc: 'Fragt nach, wenn ein Artikel schon auf der Bring!-Liste steht: Bot-Artikel sind vorausgewählt (neue Menge), fremde Artikel nicht.', links: ['s-shop', 'd-compare', 'm-sync', 'b-bring'] },
+        { id: 'd-welcome', label: '👋 Willkommen (#welcomeDialog)', files: 'static/app_einstellungen.js', desc: 'Erster Start: WG-Name + PIN eingeben → «Wer bist du?» auswählen oder neu eintragen.', links: ['s-plan', 's-wg', 'm-store', 'm-sync', 'b-settings'] }
+      ],
+      modules: [
+        { id: 'm-core', label: '🧠 BF_CORE (core.js)', files: 'static/core.js (App + Worker)', desc: 'Reine Fachregeln ohne DOM: Portionen, Alles-für-alle (+150g Fleisch/+100g Käse/+50g Salat), Bring!-Katalog-Mapping, groupByDish, isKnapp, Wochenwahl-Verteilung.', links: ['s-plan', 's-shop', 's-season', 'd-msheet', 'd-vote', 'd-compare', 'd-staples', 'd-all'] },
+        { id: 'm-store', label: '💾 BF_STORE (store.js)', files: 'static/store.js (localStorage)', desc: 'Verwaltet alle Schlüssel auf dem Handy: Gemeinsam (plan, next_plan, staples, settings), Sync-Basen (base_plan, base_staples, base_settings) und Handy-lokal.', links: ['s-plan', 's-shop', 's-season', 's-wg', 'd-staples', 'd-recipe', 'd-welcome', 'm-sync'] },
+        { id: 'm-sync', label: '🔄 Sync & Merge (app_sync.js)', files: 'static/app_sync.js', desc: 'Schickt Änderungen mit base-Zeitstempel an den Worker. Bei 409 Conflict führt 3-Wege-Merge Tag für Tag / Artikel für Artikel zusammen.', links: ['s-plan', 's-shop', 's-wg', 'd-vote', 'd-compare', 'd-staples', 'd-dup', 'm-store', 'b-plan', 'b-vorrat', 'b-settings', 'b-bring', 'b-vote'] },
+        { id: 'm-data', label: '📚 Katalog & Offline (sw.js)', files: 'standalone_data.js · recipes_imported.js · bring_catalog.js · sw.js', desc: '82 Saisonrezepte + 10 Klassiker + 13 Schnelle/Reste + VSGP-Saisontabelle + Bring!-Artikelkatalog. Service Worker liefert nach 2.5s Timeout alles offline.', links: ['s-season', 'd-all', 'm-core'] }
+      ],
+      backend: [
+        { id: 'b-plan', label: '☁️ /plan & /plan/:week', files: 'worker/src/index.js · speicher.js', desc: 'Speichert den aktuellen Wochenplan (Key «plan») und ab Donnerstag die Vorplanung («plan:2026-W47», TTL 35 Tage) mit 409-Konflikterkennung.', links: ['s-plan', 'd-msheet', 'd-vote', 'd-all', 'm-sync', 'b-cal'] },
+        { id: 'b-vote', label: '🗳️ /week/:w & /popular', files: 'worker/src/speicher.js', desc: 'Speichert Kandidaten und Stimmen pro Mitglied (TTL 21 Tage) und zählt nach jeder Stimme die Langzeit-Beliebtheit in «pop» (52 Wochen).', links: ['d-vote', 'd-msheet', 'm-sync'] },
+        { id: 'b-vorrat', label: '🥫 /vorrat (KV: vorrat)', files: 'worker/src/index.js · speicher.js', desc: 'Gemeinsamer Grundvorrat der WG (staples-Array mit qty, unit, pack, booked, checked).', links: ['s-shop', 'd-compare', 'd-staples', 'm-sync'] },
+        { id: 'b-bring', label: '🤖 /bring/* (Bot & Listen)', files: 'worker/src/bring.js', desc: 'Meldet Bot bei Bring! an (Token in «bringtoken»), liest/schreibt Artikel per Batch-API und merkt sich in «bot:<listUuid>», welche Artikel vom Bot stammen.', links: ['s-shop', 's-wg', 'd-compare', 'd-dup', 'm-sync'] },
+        { id: 'b-settings', label: '🏠 /settings & /recipes/shared', files: 'worker/src/geteilt.js · auth.js', desc: 'Speichert Mitbewohner, Znacht-Zeit & eigene Rezepte in «settings», teilt freigegebene Rezepte in «shared:<wg>» für andere WGs.', links: ['s-season', 's-wg', 'd-all', 'd-recipe', 'd-welcome', 'm-sync'] },
+        { id: 'b-recipe', label: '🔗 /recipe & /img', files: 'worker/src/rezept.js', desc: 'Liest schema.org/Recipe (JSON-LD) von externen Rezeptseiten und cached Vorschaubilder für die Wochenwahl in «img:<sha1>».', links: ['s-season', 'd-recipe'] },
+        { id: 'b-cal', label: '📆 /cal/:token.ics & /backup', files: 'worker/src/kalender.js · speicher.js', desc: 'Erzeugt das Live-iCal-Abo aus «plan» + «plan:<next>». Täglicher Cronjob (03:00 UTC) sichert alles in «backup:<YYYY-MM-DD>».', links: ['s-plan', 's-wg', 'b-plan'] }
+      ]
+    };
+
+    const UI_INSPECT = {
+      ptr: { title: '⇣ Herunterziehen (Pull-to-Refresh)', badge: 'app_sync.js · syncNow()', s1: 'Oben im Plan nach unten ziehen (oder in Einstellungen «Jetzt abgleichen»).', s2: 'Prüft ungesendete lokale Änderungen (Plan, nächste Woche, Vorrat, Einstellungen).', s3: 'PUT /plan, /vorrat, /settings (mit base-Stempel) → danach GET aller Stände + GET /bring/list.' },
+      voteBtn: { title: '🃏 Wochenwahl-Knopf (#openVoteBtn)', badge: 'app_wahl.js · #voteDialog', s1: 'Öffnet den Vollbild-Dialog «Wochenwahl» (roter Punkt, solange du diese Woche noch nicht abgestimmt hast).', s2: 'CORE.pickCandidates() wählt 12 Saison-Rezepte (½ Vegi, ½ Fleisch) + 2 Schnelle/Reste ohne Duplikate.', s3: 'GET /week/2026-W46 → beim Antippen PUT /week/:w/vote/:member → Worker aktualisiert auch «pop».' },
+      syncChip: { title: '🛒 Bring!-Chip oben rechts (#syncBtn)', badge: 'app_einkauf.js · app_sync.js', s1: 'Zeigt die Anzahl offener Einkaufsartikel und springt zum Einkauf / öffnet die Bring!-Übergabe.', s2: 'CORE.computeShoppingList(plan, staples) berechnet Basis + Fleisch/Käse-Extras + Salat abzüglich Vorrat.', s3: 'POST /bring/sync sendet Artikel per Batch-API an Bring! und merkt sie in KV unter «bot:<listUuid>».' },
+      wkChip: { title: '📅 Wochen-Umschalter «KW 47 →» (#weekChip)', badge: 'app_plan.js · state.viewNext', s1: 'Ab Donnerstag sichtbar (oder per Wischen nach links/rechts im Plan): schaltet zwischen dieser und nächster Woche um.', s2: 'state.plan zeigt immer auf die gewählte Woche; offene Tage (empty: true) erzeugen keine Einkäufe.', s3: 'Speichert lokal in «bringfrisch_next_plan» und im Worker unter PUT /plan/2026-W47 (TTL 35 Tage).' },
+      dayCircle: { title: '🔵 Tag-Kreis links (Mo–So)', badge: 'app_plan.js · toggleDay()', s1: 'Klappt den jeweiligen Wochentag auf oder zu (alle 7 Tage bleiben dank Dichte d1–d3 im Bild).', s2: 'Rechnet Rezeptmengen von recipe.servings auf (Esser + Gäste + Reste-Puffer) um + Alles-für-alle-Zusätze.', s3: 'Kein Netzwerk nötig; Zeitänderung im offenen Tag speichert über schedulePush("plan") → PUT /plan.' },
+      dishTitle: { title: '🍲 Gericht-Zeile im Tag', badge: 'app_plan.js · #msheet', s1: 'Öffnet das untere Blatt «Menü wechseln» (#msheet) mit Suche, Tag-Tausch (Mo–So) und Katalog.', s2: 'CORE.swapDishes(plan, d1, d2) tauscht nur das Gericht (Esser, Gäste & Puffer bleiben am Wochentag!).', s3: 'Speichert in BF_STORE.savePlan() → nach kurzem Debounce PUT /plan mit base-Zeitstempel.' },
+      eaters: { title: '👥 Esser-Kreise (J · L · Le · Jo)', badge: 'app_plan.js · core.js', s1: 'Kreis antippen schaltet Mitbewohner für diesen Abend an/ab (umrandet = du selbst; durchgestrichen = abwesend).', s2: 'Passt sofort Portionen und Fleisch-/Vegi-Beilagen an (z.B. Jo = Vegi → 100g Grillkäse / vegi_swap).', s3: 'Aktualisiert Plan + persönliches Kalender-Abo (/cal/:token.ics?me=joshua enthält nur deine Abende).' },
+      buffer: { title: '➕ Reste-Puffer (+2 Portionen)', badge: 'app_plan.js · leftover_buffer', s1: 'Zahl rechts antippen erhöht den Puffer (+0 bis +6 fürs Zmittag am nächsten Tag).', s2: 'Gesamtportionen = Anwesende + Gäste + Puffer. Wenn 0 Personen zuhause sind → kein Kochen.', s3: 'Wird pro Tag im Plan gespeichert und fliesst sofort in die Einkaufsmenge (#tab-shop) ein.' },
+      shopFilter: { title: '🗂️ Reiter «Kaufen | Auf Bring! | Vorrat»', badge: 'app_einkauf.js · app_vorrat.js', s1: 'Wechselt zwischen Plan-Zutaten, der echten Bring!-Liste und dem WG-Grundvorrat (auch per Wischen).', s2: 'Umschalter «Rezept / Kategorie» oben sortiert wahlweise nach Gericht (groupByDish) oder Supermarkt-Abteilung.', s3: '«Auf Bring!» liest live GET /bring/list; gekaufte Bot-Artikel buchen im Vorrat automatisch +1 Packung.' },
+      shopRow: { title: '✏️ Einkaufszeile antippen (Vormerken)', badge: 'app_einkauf.js', s1: 'Zeile antippen streicht sie durch / merkt sie für Bring! vor (sendet noch NICHT sofort).', s2: 'Bündelt Änderungen, damit man in Ruhe auswählen kann; erst der Knopf unten rechts (#shopFab) öffnet den Abgleich.', s3: 'Verhindert unnötige Einzel-Requests an Bring! und schont das 1000-Schreibzugriffe-Limit von KV.' },
+      shopFab: { title: '🛒 Schwebender Bring!-Knopf (#shopFab)', badge: 'app_einkauf.js · #compareDialog', s1: 'Öffnet «Auf Bring! setzen» (#compareDialog): Gegenüberstellung Kaufen (links) | Vorrat (rechts).', s2: 'Prüft auf Duplikate (#dupDialog). Nach dem Senden verwandelt sich der Knopf für 10 s in «Rückgängig».', s3: 'POST /bring/sync (beim Rückgängig: POST /bring/remove + Wiederherstellen vorheriger Bot-Mengen).' },
+      vorratCooked: { title: '🍳 Schalter «Woche gekocht» & Vorrat-Zeile', badge: 'app_vorrat.js · core.js (bookWeek)', s1: 'Bucht für die geplante Woche je 1 Einheit bei benutzten Vorratsartikeln ab. Name antippen = «→ Bring!» vormerken.', s2: 'CORE.isKnapp() meldet Artikel mit ≤ 2 Einheiten unter «Aus dem Vorrat – wird knapp».', s3: 'Speichert in BF_STORE («bringfrisch_staples») und synchronisiert per PUT /vorrat an alle Handys.' },
+      allRecipes: { title: '🃏 «Alle Rezepte ansehen ›» (#allDialog)', badge: 'static/app_alle.js', s1: 'Öffnet Vollbild-Seite mit Memory-Karten (3 pro Zeile) nach Herkunft, zuerst Saison-Gerichte.', s2: 'Karte antippen dreht sie um (Zutaten + Link); Tippen auf Mo–So plant das Gericht direkt am Wochentag ein.', s3: 'Kombiniert Katalog + eigene Rezepte (/settings) + geteilte Rezepte anderer WGs (/recipes/shared).' },
+      linkImport: { title: '🔗 Rezept-Link holen (#quickLinkBtn)', badge: 'worker/src/rezept.js · recipe_importer.js', s1: 'URL von Fooby, Betty Bossi, Migusto, Swissmilk oder Blogs einfügen und «Holen» tippen.', s2: 'Worker liest schema.org/Recipe (nur Fakten: Titel, Portionen, Minuten, Zutaten – kein fremder Fliesstext).', s3: 'GET /recipe?url=… → öffnet #recipeDialog zum Prüfen → speichert in /settings & /recipes/shared.' },
+      wgSettings: { title: '🏠 WG-Einstellungen & Bring!-Ziel', badge: 'app_einstellungen.js · worker/src/bring.js', s1: 'WG-Einkaufsliste aus dem Bot-Konto wählen, Mitbewohner verwalten, Kalender abonnieren, Design anpassen.', s2: 'Trennt strikt: WG-weite Daten (Mitbewohner, Znacht-Zeit, Rezepte) vs. Handy-lokal (Ich bin, Stil, Farbe).', s3: 'PUT /bring/target setzt «bringList» + «listowner:<uuid>»; PUT /settings aktualisiert «settings» & «shared:<wg>».' }
+    };
+
+    const DB_ENTITIES = {
+      plan: {
+        kv: `Key: "plan" (bzw. "w:sonnenhof:plan")\nKey: "plan:2026-W47" (TTL: 35 Tage)\nValue (JSON):\n{\n  "week": "2026-W46",\n  "dinnerTime": "18:30",\n  "members": [...],\n  "plan": [ /* 7 Tage Mo..So */ ],\n  "updated": 1763310000000\n}`,
+        nodekv: `Tabelle: kv (in obsonare.sqlite)\nkey = 'plan' | 'plan:2026-W47'\nvalue = JSON-String (wie links)\nexp = NULL bzw. unixepoch() + 3024000\n\n-> putDoc() prüft cur.updated > base\n   exakt wie auf Cloudflare!`,
+        sql: `Tabelle: plan_day (worker/schema.sql)\nPRIMARY KEY (wg_id, week, day)\n- wg_id: 1\n- week: '2026-W46'\n- day: 0..6 (Mo..So einzeln!)\n- recipe_id, title, ingredients\n- eaters: '["joshua","jo"]'\n- extra_guests, leftover_buffer`
+      },
+      vote: {
+        kv: `Key: "week:2026-W46:candidates" (21d)\nKey: "week:2026-W46:vote:joshua" (21d)\nValue: { "likes": ["r1"], "days": {"r1":2} }\n\nKey: "pop" (dauerhaft, 52 Wochen)\nValue: { "weeks": { "2026-W46": {"r1":3} } }`,
+        nodekv: `Tabelle: kv (node:sqlite)\nkey = 'week:2026-W46:vote:joshua'\nexp = unixepoch() + 1814400 (21 Tage)\n\nKein 1000-List-Limit pro Tag wie im\nCloudflare Free-Tarif!`,
+        sql: `Tabellen: vote_candidate & vote_like\n- vote_candidate(wg_id, week, recipe_id, pos)\n- vote_like(wg_id, week, member_id, recipe_id, wish_day)\n- wg_recipe.times_used (Beliebtheit)`
+      },
+      vorrat: {
+        kv: `Key: "vorrat" (bzw. "w:<slug>:vorrat")\nValue (JSON):\n{\n  "staples": [\n    { "id": "olivenoel", "qty": 3,\n      "unit": "Znacht", "pack": 8,\n      "booked": "2026-W46" }\n  ],\n  "updated": 1763310500000\n}`,
+        nodekv: `Tabelle: kv (node:sqlite)\nkey = 'vorrat'\nvalue = JSON-Blob mit staples[]\nexp = NULL\n\n1:1 kompatibel mit /vorrat und\nputDoc()-Konflikterkennung (409).`,
+        sql: `Tabelle: staple (worker/schema.sql)\nPRIMARY KEY (wg_id, id)\n- wg_id, id, name, aisle\n- in_stock, sent, updated\n(Einzelne Zeilen pro Vorratsartikel\nstatt Komplett-Array)`
+      },
+      settings: {
+        kv: `Key: "settings" (pro WG)\nValue: { members, dinnerTime,\n         recipeSites, customRecipes }\n\nKey: "shared:index" -> ["allmen", ...]\nKey: "shared:allmen" -> { recipes: [...] }`,
+        nodekv: `Tabelle: kv (node:sqlite)\nSpeichert 'settings', 'shared:index'\nund 'shared:<slug>' lokal in einer\neinzigen SQLite-Datei (WAL-Modus).`,
+        sql: `Tabellen: wg, member, recipe, recipe_site\n- recipe.visibility IN ('catalog','wg','shared')\n- wg_recipe (Favorit, eigene Portionen)\nKein Duplizieren in shared:<slug> nötig!`
+      },
+      bring: {
+        kv: `Key: "bringtoken" (TTL = expires_in)\nKey: "bringList" -> UUID der WG-Liste\nKey: "listowner:<uuid>" -> WG-Slug\nKey: "bot:<listUuid>" ->\n  { "rahm": { "name":"Rahm", "spec":"4 dl",\n              "seen":true, "t":1763... } }`,
+        nodekv: `Tabelle: kv (node:sqlite)\nToken-Cache + bot:<listUuid> +\nlistowner:<uuid> laufen identisch\nüber sqliteKv().`,
+        sql: `Tabellen: wg.bring_list & bot_item\nPRIMARY KEY (wg_id, list_uuid, name_lc)\n- name, spec\nSaubere Fremdschlüssel pro WG.`
+      },
+      multi: {
+        kv: `Key: "wgs:<slug>" -> { name, salt,\n     pinHash (SHA-256), calToken }\nKey: "fail:<wg>:<ip>" (TTL 15 Min)\nKey: "backup:2026-11-16" (TTL 30 Tage,\n     täglicher Snapshot aller Keys)`,
+        nodekv: `Tabelle: kv + Dateisystem-Backup:\nNeben 'backup:<Tag>' kann die Datei\nobsonare.sqlite einfach direkt kopiert\noder per SQLite VACUUM INTO gesichert werden.`,
+        sql: `Tabelle: wg (worker/schema.sql)\n- slug, name, pin_hash, pin_salt\n- cal_token, failed_pins, locked_until\nAlle Tabellen trennen per WHERE wg_id = ?`
+      }
+    };
+
+    let curFlowKey = 'plan';
+    let curStepIdx = 0;
+    let playTimer = null;
+    let selectedNodeId = 's-plan';
+
+    function showTab(tab) {
+      stopPlay();
+      ['sim', 'canvas', 'phone', 'db'].forEach(t => {
+        document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+        document.getElementById('tbtn-' + t).classList.toggle('active', t === tab);
+      });
+      if (tab === 'canvas') setTimeout(() => selectNode(selectedNodeId), 20);
+      if (tab === 'phone') setPhoneTab('plan');
+      if (tab === 'db') selectDbEntity('plan');
+    }
+
+    function selectFlow(key) {
+      stopPlay();
+      curFlowKey = key;
+      curStepIdx = 0;
+      renderSim();
+    }
+
+    function renderSim() {
+      const steps = FLOWS[curFlowKey];
+      const step = steps[curStepIdx];
+      ['ui', 'core', 'store', 'worker', 'db'].forEach(l => {
+        const card = document.getElementById('loc-' + l);
+        const sum = document.getElementById('summary-' + l);
+        const matching = steps.filter(s => s.loc === l);
+        sum.textContent = matching.length ? matching[matching.length - 1].short : '— (nicht beteiligt)';
+        card.classList.remove('active-stage', 'done-stage', 'idle-stage');
+        const firstIdx = steps.findIndex(s => s.loc === l);
+        if (step.loc === l) card.classList.add('active-stage');
+        else if (firstIdx !== -1 && firstIdx < curStepIdx) card.classList.add('done-stage');
+        else card.classList.add('idle-stage');
+      });
+
+      document.getElementById('step-dots').innerHTML = steps.map((s, idx) => `
+        <button class="${idx === curStepIdx ? 'active' : ''}" onclick="goStep(${idx})">${idx + 1}. ${s.short}</button>
+      `).join('');
+      document.getElementById('step-counter').textContent = `Schritt ${curStepIdx + 1} / ${steps.length}`;
+      document.getElementById('detail-where').textContent = LOC_LABELS[step.loc];
+      document.getElementById('detail-title').textContent = step.title;
+      document.getElementById('detail-file').textContent = step.file;
+      document.getElementById('detail-in').textContent = step.input;
+      document.getElementById('detail-proc').textContent = step.proc;
+      document.getElementById('detail-out').textContent = step.output;
+    }
+
+    function goStep(idx) { stopPlay(); curStepIdx = idx; renderSim(); }
+    function nextStep() { const s = FLOWS[curFlowKey]; curStepIdx = (curStepIdx + 1) % s.length; renderSim(); }
+    function prevStep() { stopPlay(); const s = FLOWS[curFlowKey]; curStepIdx = (curStepIdx - 1 + s.length) % s.length; renderSim(); }
+    function jumpToLocation(loc) { stopPlay(); const idx = FLOWS[curFlowKey].findIndex(s => s.loc === loc); if (idx >= 0) { curStepIdx = idx; renderSim(); } }
+    function togglePlay() {
+      if (playTimer) { stopPlay(); return; }
+      document.getElementById('play-btn').textContent = '⏸ Pause';
+      playTimer = setInterval(() => {
+        const s = FLOWS[curFlowKey];
+        if (curStepIdx < s.length - 1) { curStepIdx++; renderSim(); } else stopPlay();
+      }, 2200);
+    }
+    function stopPlay() {
+      if (playTimer) { clearInterval(playTimer); playTimer = null; }
+      const b = document.getElementById('play-btn');
+      if (b) b.textContent = '▶ Abspielen';
+    }
+
+    function renderCanvasNodes() {
+      const mapCol = (arr, id) => {
+        document.getElementById(id).innerHTML = arr.map(n => `<button id="node-${n.id}" class="node-btn" onclick="selectNode('${n.id}')">${n.label}</button>`).join('');
+      };
+      mapCol(NODES.screens, 'col-screens');
+      mapCol(NODES.dialogs, 'col-dialogs');
+      mapCol(NODES.modules, 'col-modules');
+      mapCol(NODES.backend, 'col-backend');
+    }
+
+    function findNode(id) {
+      for (const k of Object.keys(NODES)) {
+        const hit = NODES[k].find(n => n.id === id);
+        if (hit) return hit;
+      }
+      return null;
+    }
+
+    function selectNode(id) {
+      selectedNodeId = id;
+      const node = findNode(id);
+      if (!node) return;
+      const linked = new Set(node.links || []);
+      for (const k of Object.keys(NODES)) {
+        for (const n of NODES[k]) if ((n.links || []).includes(id)) linked.add(n.id);
+      }
+      for (const k of Object.keys(NODES)) {
+        for (const n of NODES[k]) {
+          const btn = document.getElementById('node-' + n.id);
+          if (!btn) continue;
+          btn.classList.remove('active-node', 'linked-node', 'dimmed');
+          if (n.id === id) btn.classList.add('active-node');
+          else if (linked.has(n.id)) btn.classList.add('linked-node');
+          else btn.classList.add('dimmed');
+        }
+      }
+      document.getElementById('insp-title').textContent = node.label;
+      document.getElementById('insp-files').textContent = node.files;
+      document.getElementById('insp-desc').textContent = node.desc;
+      drawWires(id, [...linked]);
+    }
+
+    function drawWires(sourceId, targetIds) {
+      const svg = document.getElementById('wires-svg');
+      const wrap = document.getElementById('canvas-wrap');
+      const wrapRect = wrap.getBoundingClientRect();
+      const srcEl = document.getElementById('node-' + sourceId);
+      if (!srcEl) return;
+      const sRect = srcEl.getBoundingClientRect();
+      let paths = '';
+      for (const tid of targetIds) {
+        const tEl = document.getElementById('node-' + tid);
+        if (!tEl) continue;
+        const tRect = tEl.getBoundingClientRect();
+        const y1 = sRect.top + sRect.height / 2 - wrapRect.top;
+        const y2 = tRect.top + tRect.height / 2 - wrapRect.top;
+        const sameCol = Math.abs(sRect.left - tRect.left) < 20;
+        if (sameCol) {
+          const x = sRect.right - wrapRect.left - 6;
+          paths += `<path d="M ${x} ${y1} C ${x+20} ${y1}, ${x+20} ${y2}, ${x} ${y2}" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-dasharray="3,2"/>`;
+        } else {
+          const l2r = sRect.left < tRect.left;
+          const x1 = (l2r ? sRect.right : sRect.left) - wrapRect.left;
+          const x2 = (l2r ? tRect.left : tRect.right) - wrapRect.left;
+          const cx = (x1 + x2) / 2;
+          paths += `<path d="M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-opacity="0.75"/>`;
+        }
+      }
+      svg.innerHTML = paths;
+    }
+
+    function setPhoneTab(tab) {
+      ['plan', 'shop', 'season', 'wg'].forEach(t => document.getElementById('ptab-' + t).classList.toggle('active', t === tab));
+      const body = document.getElementById('phone-screen-body');
+      if (tab === 'plan') {
+        body.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong>Wochenplan</strong>
+            <button class="hot" onclick="inspectUi('wkChip')">KW 47 →</button>
+          </div>
+          <div class="box" style="display:flex;justify-content:space-between;align-items:center;background:var(--card)">
+            <button class="hot active" onclick="inspectUi('dayCircle')">Mo</button>
+            <span class="hot" onclick="inspectUi('dishTitle')" style="flex:1;margin:0 8px;font-weight:500">Lauchgratin 🥕</span>
+            <span class="hot badge" onclick="inspectUi('eaters')">J L Le Jo</span>
+            <span class="hot badge" onclick="inspectUi('buffer')" style="margin-left:4px">+2</span>
+          </div>
+          <div class="box" style="display:flex;justify-content:space-between;align-items:center;background:var(--card)">
+            <button class="hot" onclick="inspectUi('dayCircle')">Di</button>
+            <span class="hot" onclick="inspectUi('dishTitle')" style="flex:1;margin:0 8px;font-weight:500">Kürbis-Risotto</span>
+            <span class="hot badge" onclick="inspectUi('eaters')">J L Jo</span>
+            <span class="hot badge" onclick="inspectUi('buffer')" style="margin-left:4px">+2</span>
+          </div>
+          <div class="muted" style="text-align:center">👆 Tippe auf «Mo», «Lauchgratin», «J L Le Jo», «+2» oder «KW 47 →»</div>
+        `;
+        inspectUi('dayCircle');
+      } else if (tab === 'shop') {
+        body.innerHTML = `
+          <div class="hot box" onclick="inspectUi('shopFilter')" style="display:grid;grid-template-columns:repeat(3,1fr);text-align:center;background:var(--card)">
+            <strong>Kaufen 8</strong><span class="muted">Auf Bring! 4</span><span class="muted">Vorrat 32</span>
+          </div>
+          <div class="hot box" onclick="inspectUi('shopRow')" style="display:flex;justify-content:space-between;background:var(--card)">
+            <span>✓ <strong>Lauch</strong> · 600 g (vormerken)</span><span class="muted">Lauchgratin</span>
+          </div>
+          <div class="hot box" onclick="inspectUi('vorratCooked')" style="display:flex;justify-content:space-between;background:var(--card)">
+            <span>📦 <strong>Olivenöl</strong> (knapp: 1 Znacht)</span><span class="badge">Woche gekocht</span>
+          </div>
+          <div style="text-align:right"><button class="hot active" onclick="inspectUi('shopFab')">🛒 Auf Bring! 4</button></div>
+        `;
+        inspectUi('shopFab');
+      } else if (tab === 'season') {
+        body.innerHTML = `
+          <div class="hot box" onclick="inspectUi('linkImport')" style="display:flex;justify-content:space-between;align-items:center;background:var(--card)">
+            <span class="muted">https://fooby.ch/rezept…</span><button class="active">Holen</button>
+          </div>
+          <div class="hot box" onclick="inspectUi('allRecipes')" style="display:flex;justify-content:space-between;align-items:center;background:var(--card)">
+            <strong>Meine Rezepte (6)</strong><span style="color:var(--primary);font-weight:600">Alle Rezepte ansehen ›</span>
+          </div>
+        `;
+        inspectUi('allRecipes');
+      } else {
+        body.innerHTML = `
+          <div class="hot box" onclick="inspectUi('wgSettings')" style="background:var(--card)">
+            <div><strong>Bring!-Liste:</strong> WG Allmen ✓</div>
+            <div><strong>Mitbewohner:</strong> Joshua, Lukas, Leonie, Jo</div>
+            <div class="muted" style="margin-top:6px">Mehr: WG-Name &amp; PIN · Kalender-Abo (.ics) · Stil · Farben</div>
+          </div>
+        `;
+        inspectUi('wgSettings');
+      }
+    }
+
+    function inspectUi(key) {
+      const item = UI_INSPECT[key];
+      if (!item) return;
+      document.getElementById('ui-title').textContent = item.title;
+      document.getElementById('ui-badge').textContent = item.badge;
+      document.getElementById('ui-step1').textContent = item.s1;
+      document.getElementById('ui-step2').textContent = item.s2;
+      document.getElementById('ui-step3').textContent = item.s3;
+    }
+
+    function selectDbEntity(id) {
+      ['plan', 'vote', 'vorrat', 'settings', 'bring', 'multi'].forEach(k => document.getElementById('db-btn-' + k).classList.toggle('active', k === id));
+      const d = DB_ENTITIES[id];
+      document.getElementById('db-col-kv').textContent = d.kv;
+      document.getElementById('db-col-nodekv').textContent = d.nodekv;
+      document.getElementById('db-col-sql').textContent = d.sql;
+    }
+
+    window.addEventListener('resize', () => {
+      if (!document.getElementById('tab-canvas').classList.contains('hidden')) selectNode(selectedNodeId);
+    });
+
+    renderCanvasNodes();
+    renderSim();
+  </script>
+</body>
+</html>
