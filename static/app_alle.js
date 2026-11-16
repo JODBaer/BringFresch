@@ -47,7 +47,7 @@
   }
 
   function render() {
-    $("allSubtitle").textContent = `${weekText()} · Karte antippen, dann Tag wählen`;
+    $("allSubtitle").textContent = `${weekText()} · Karte antippen, dann Tag wählen (nochmals = abwählen)`;
     const weeks = $("allWeeks");
     weeks.hidden = !canPlanNext();
     if (!weeks.hidden) {
@@ -142,14 +142,18 @@
       const recipe = allRecipes().find(r => String(r.id) === btn.dataset.plan);
       if (!recipe) return;
       const previous = state.plan[idx];
-      state.plan[idx] = makeDay(recipe, idx, previous);
-      app.countDish(recipe.id);
+      // schon an diesem Tag? nochmals antippen = wieder abwählen (Tag wird offen, Esser/Gäste/Puffer bleiben)
+      const off = !!previous && !previous.empty && String(previous.id) === String(recipe.id);
+      state.plan[idx] = off
+        ? { ...app.emptyDay(idx), eaters: [...(previous.eaters || [])], leftover_buffer: previous.leftover_buffer, extra_guests: previous.extra_guests || 0 }
+        : makeDay(recipe, idx, previous);
+      if (!off) app.countDish(recipe.id);
       savePlan();
       refresh();
-      open = null;
+      open = String(recipe.id); // Karte bleibt offen: weitere Tage wählen oder gleich wieder abwählen
       render();
       const plan = state.plan;
-      toast(`${DAYS[idx].slice(0, 2)}: ${recipe.title}`, {
+      toast(off ? `${DAYS[idx].slice(0, 2)}: ${recipe.title} abgewählt – Tag ist offen` : `${DAYS[idx].slice(0, 2)}: ${recipe.title}`, {
         label: "Rückgängig",
         run: () => {
           if (state.plan !== plan) return toast("Woche gewechselt – nichts geändert");
