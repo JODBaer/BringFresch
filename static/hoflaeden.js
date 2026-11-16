@@ -173,6 +173,7 @@ window.BF_HOF = { stand: "2026-11-16", items: [
   {"n":"Biohof Püntacher","k":"hof","lat":47.24999,"lon":8.7195,"ort":"Stäfa","adr":"Vordere Püntacherstrasse 5","oh":"24/7","bio":1},
   {"n":"Biohof Zug","k":"hof","lat":47.15363,"lon":8.51156,"adr":"Artherstrasse 59","oh":"Mo-Fr 09:00-17:00; Sa 09:00-14:00","web":"https://biohofzug.ch/","bio":1},
   {"n":"Biohofladen Hintersennweid","k":"hof","lat":47.20835,"lon":8.59534,"ort":"Neuheim","adr":"Hintersennweid 2","oh":"Mo-Su 08:00-20:00","web":"https://www.biohof-hintersennweid.ch/","bio":1},
+  {"n":"Bootshaus Robenhausen","k":"hof","lat":47.33281,"lon":8.78819},
   {"n":"Bosshard's BioHof","k":"hof","lat":47.2745,"lon":8.73916,"ort":"Oetwil am See","adr":"4","oh":"24/7","web":"https://www.biohofbosshard.com/","bio":1},
   {"n":"Brändli Obst- und Weinbau","k":"hof","lat":47.2414,"lon":8.6558},
   {"n":"Brennnessel Lindau","k":"hof","lat":47.44353,"lon":8.67754,"ort":"Lindau","oh":"\"Öffnungszeiten und Angaben zu Markt folgen in Kürze.\"","web":"https://brennnessel-lindau.ch/","bio":1},
@@ -353,6 +354,8 @@ window.BF_HOF = { stand: "2026-11-16", items: [
   {"n":"Hüttenhof","k":"hof","lat":47.34582,"lon":8.80749,"ort":"Auslikon","adr":"Hüttenstrasse 4","oh":"Mo-Su 08:00-20:00","web":"https://hüttenhof.ch/"},
   {"n":"Irene Reinhard","k":"hof","lat":47.41232,"lon":8.74377,"oh":"10:00-20:00","bio":1},
   {"n":"Iten Letzi Zug","k":"hof","lat":47.18056,"lon":8.50146,"oh":"Mo-Fr 08:00-12:00,13:30-18:30; Sa 08:00-13:00","web":"https://www.iten-letzi-zug.ch/"},
+  {"n":"Kindergarten Robenhausen 1+2","k":"hof","lat":47.33052,"lon":8.78413,"ort":"Wetzikon","adr":"Schulhausstrasse 41"},
+  {"n":"Kindergarten Robenhausen 3","k":"hof","lat":47.33074,"lon":8.78463,"ort":"Wetzikon","adr":"Schulhausstrasse 37"},
   {"n":"Kleintierzüchterverein Pfannenstiel","k":"hof","lat":47.26367,"lon":8.69098},
   {"n":"Korrodihof","k":"hof","lat":47.26444,"lon":8.76224,"ort":"Hombrechtikon","adr":"Herrgass 12","web":"https://www.korrodihof.ch/"},
   {"n":"Kreatives Hoflädeli","k":"hof","lat":47.44266,"lon":8.72698,"oh":"09:00-20:00"},
@@ -396,6 +399,7 @@ window.BF_HOF = { stand: "2026-11-16", items: [
   {"n":"Schluechthof","k":"hof","lat":47.18694,"lon":8.46435,"adr":"Bergackerstrasse 42","oh":"Mo-Su 06:00-19:00","web":"https://www.zg.ch/behoerden/volkswirtschaftsdirektion/lbbz/betrieb/landwirtschaftsbetrieb/hofladen-1"},
   {"n":"Schuler","k":"hof","lat":47.31478,"lon":8.82041,"ort":"Hinwil","adr":"Erlosenstrasse","oh":"Mo-Sa 08:30-19:00; Su 10:00-18:00"},
   {"n":"Schuler's Hofladen","k":"hof","lat":47.19423,"lon":8.96457,"oh":"Mo-Fr 08:00-11:30,13:30-18:00; Sa 08:00-11:30","web":"https://ludihof.ch/"},
+  {"n":"Schulhaus Robenhausen","k":"hof","lat":47.3303,"lon":8.78501,"ort":"Wetzikon","adr":"Schulhausstrasse 39"},
   {"n":"SennHofladen","k":"hof","lat":47.39099,"lon":8.78633,"web":"http://sennhofladen.ch/"},
   {"n":"Sihlhalden Beef-Farm","k":"hof","lat":47.29111,"lon":8.5468,"web":"http://www.sihlhalden-beef-farm.ch/raeumlichkeiten/direktverkauf.html"},
   {"n":"Solawi Halde","k":"hof","lat":47.18648,"lon":8.83745,"ort":"Altendorf","adr":"Haldenstrasse 11","oh":"Mo-Fr 09:00-17:00","web":"https://solawi-halde.ch/pages/hofladen","bio":1},
@@ -446,5 +450,6 @@ window.BF_HOF = { stand: "2026-11-16", items: [
   {"lat":47.2267,"lon":8.81642,"n":"Rapperswiler Freitagsmarkt","k":"markt","ort":"Rapperswil-Jona","adr":"Hauptplatz","oh":"Mar-Nov Fr 07:30-11:00","web":"https://www.zuerich.com/de/besuchen/shopping/rapperswiler-freitagsmarkt"},
   {"n":"Rathausbrücke","k":"markt","lat":47.37188,"lon":8.54211,"oh":"Sa 07:00-12:30","web":"https://www.zuercher-maerkte.ch/zusatz.php?Lang=de&SeiteID=Maerkte&SeiteIDNr=7"},
   {"n":"stauberhof.ch","k":"markt","lat":47.24698,"lon":8.85958,"ort":"Rueti","adr":"Unter Moos 1","oh":"Mo-Su 08:00-20:00","web":"https://www.stauberhof.ch/"},
-  {"n":"Wetziker Wuchemärt","k":"markt","lat":47.32664,"lon":8.79945,"oh":"Mar-Nov: Fr 08:30-12:30"}
+  {"n":"Wetziker Wuchemärt","k":"markt","lat":47.32664,"lon":8.79945,"oh":"Mar-Nov: Fr 08:30-12:30"},
+  {"n":"Wochenmarkt Robenhausen","k":"markt","ort":"Wetzikon","adr":"Dorfstrasse 15","oh":"Mar-Nov Sa 08:00-11:00","web":"https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon","lat":47.32932,"lon":8.78538}
 ] };
