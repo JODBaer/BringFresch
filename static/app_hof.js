@@ -44,9 +44,12 @@
     $("hofGeo").hidden = !!state.hof.ref;
     $("hofNote").textContent = "Öffnungszeiten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL)" + (items.some(i => i.src === "discover") ? " und discover.swiss (CC BY-SA, Tourismus-Partner)" : "") + " – können veraltet sein. Die besonderen Märkte pflegen wir von Hand.";
     const mapUrl = load(STORE.KEYS.MAPS_URL_KEY, "");
-    $("hofAll").innerHTML = (mapUrl ? `<a class="btn" href="${esc(mapUrl)}" target="_blank" rel="noopener">Alle in Google Maps</a>`
-      : `<details><summary>Alle Märkte in Google Maps?</summary><ol class="hint"><li>«Für Google Maps exportieren» antippen und die Datei speichern.</li><li>Auf google.com/maps/d (Meine Karten) eine neue Karte anlegen und die Datei importieren.</li><li>Den Link der Karte in den Einstellungen bei «Karte Märkte» eintragen – dann steht hier «Alle in Google Maps».</li></ol></details>`)
-      + `<button type="button" class="hofroute" id="hofKml">Für Google Maps exportieren</button>`;
+    const layers = CORE.kmlLayers(DATA(), SPECIAL(), now);
+    $("hofAll").innerHTML = (mapUrl ? `<a class="btn" href="${esc(mapUrl)}" target="_blank" rel="noopener">Alle in Google Maps</a>` : "")
+      + `<details><summary>${mapUrl ? "Karte in Google «Meine Karten» erneuern" : "Alle Märkte in Google Maps?"}</summary>
+        <ol class="hint"><li>Unten je Art «Exportieren» (oder «Alle») und die Dateien speichern.</li><li>In «Meine Karten» (google.com/maps/d): Ebene hinzufügen → Importieren, je Datei eine Ebene (jede hat ein Häkchen).</li><li>Den Link der Karte in den Einstellungen bei «Karte Märkte» eintragen.</li></ol>
+        ${layers.map(l => `<div class="hofrow"><span>${esc(l.name)} <small>${l.count} Orte</small></span><button type="button" class="hofroute" data-kml="${l.key}">Exportieren</button></div>`).join("")}
+        <div class="hofrow"><span>Alle zusammen</span><button type="button" class="hofroute" id="hofKml">Alle exportieren</button></div></details>`;
     $("hofCards").innerHTML = card("Am nächsten", CORE.nearestFarm(items, r, now), "Keine Orte mit Öffnungszeiten.", fav, now)
       + card("Lieblings", CORE.favFarm(items, fav, r, now), "Tippe bei einem Ort auf ☆, dann steht er hier.", fav, now);
     // Saisongemüse des Monats (gleiche Daten wie «Rezepte & Saison»); was ein einzelner Hofladen verkauft, wissen wir nicht
@@ -89,22 +92,28 @@
   $("hofBtn").onclick = openHof;
   $("hofLocate").onclick = () => locate(renderHof);
   // KML für Google «Meine Karten»: teilen (Handy) oder herunterladen
-  async function exportKml() {
-    const kml = CORE.kmlExport(DATA(), SPECIAL(), new Date());
-    const file = new File([kml], "hoflaeden-maerkte.kml", { type: "application/vnd.google-earth.kml+xml" });
+  async function exportKml(key) {
+    const layers = CORE.kmlLayers(DATA(), SPECIAL(), new Date()).filter(l => !key || l.key === key);
+    const files = layers.map(l => new File([l.kml], l.file, { type: "application/vnd.google-earth.kml+xml" }));
     try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Hofläden und Märkte" }); return; }
+      if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files, title: "Hofläden und Märkte" }); return; }
     } catch (e) { if (e && e.name === "AbortError") return; }
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(file);
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast("KML gespeichert");
+    files.forEach((file, i) => setTimeout(() => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(file);
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }, i * 400));
+    toast(files.length > 1 ? `${files.length} KML-Dateien gespeichert` : "KML gespeichert");
   }
-  $("hofDialog").addEventListener("click", e => { if (e.target.closest("#hofKml")) exportKml(); });
+  $("hofDialog").addEventListener("click", e => {
+    const one = e.target.closest("[data-kml]");
+    if (one) exportKml(one.dataset.kml);
+    else if (e.target.closest("#hofKml")) exportKml();
+  });
   $("hofDialog").addEventListener("click", e => {
     const b = e.target.closest("[data-fav]");
     if (!b) return;

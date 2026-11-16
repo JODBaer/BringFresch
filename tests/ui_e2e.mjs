@@ -617,9 +617,13 @@ await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte
   expect(await A.page.$$eval("#hofDialog a[href]", a => a.every(x => !/query=Hofladen|query=Wochenmarkt/.test(x.href))), "freie Textsuche in Google Maps darf nicht vorkommen");
   // Google «Meine Karten»: ohne Link Anleitung + Export; mit Link in den WG-Einstellungen «Alle in Google Maps»
   expect(await A.page.$eval("#hofAll", e => !!e.querySelector("details") && !!e.querySelector("#hofKml") && !e.querySelector("a.btn")), "ohne Link: Anleitung und Export-Knopf, kein «Alle in Google Maps»");
-  await A.page.evaluate(() => { window.__kml = null; const o = URL.createObjectURL; URL.createObjectURL = f => { f.text().then(t => { window.__kml = t; }); return o.call(URL, f); }; });
+  await tap(A, "#hofAll summary");
+  expect(await A.page.$$eval("#hofAll [data-kml]", b => b.length >= 4 && b.length < 10), "Export: je Art eine Zeile (4–9 Ebenen)");
+  await A.page.evaluate(() => { window.__kml = []; navigator.canShare = () => false; const o = URL.createObjectURL; URL.createObjectURL = f => { f.text().then(t => { window.__kml.push([f.name, t]); }); return o.call(URL, f); }; });
+  await tap(A, '#hofAll [data-kml="markt"]');
+  await until(A, () => window.__kml.length === 1 && window.__kml[0][0] === "Obsonare – Wochenmärkte.kml" && window.__kml[0][1].includes("Rapperswiler Freitagsmarkt"), "Export einer Art fehlt");
   await tap(A, "#hofKml");
-  await until(A, () => window.__kml && window.__kml.includes("<kml") && window.__kml.includes("Zibelemärit") && /<coordinates>\d+\.\d+,\d+\.\d+,0<\/coordinates>/.test(window.__kml), "KML-Export fehlt oder ist leer");
+  await until(A, () => window.__kml.length >= 5 && window.__kml.some(k => k[0] === "Obsonare – Spezialmärkte.kml" && k[1].includes("Zibelemärit") && /<coordinates>\d+\.\d+,\d+\.\d+,0<\/coordinates>/.test(k[1])), "Export aller Arten fehlt oder ist leer");
   await A.page.evaluate(() => { localStorage.setItem("bringfrisch_markets_map_url", JSON.stringify("https://www.google.com/maps/d/viewer?mid=test123")); window.BF_APP.renderHof(); });
   await until(A, () => document.querySelector("#hofAll a.btn")?.href === "https://www.google.com/maps/d/viewer?mid=test123", "«Alle in Google Maps» fehlt trotz Link");
   await A.page.evaluate(() => { localStorage.removeItem("bringfrisch_markets_map_url"); window.BF_APP.renderHof(); });

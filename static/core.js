@@ -784,6 +784,24 @@
     (ev.ranges || []).forEach(([x, y]) => out.push(`${ohDate(x)}–${ohDate(y)}${ev.days ? ", " + ev.days.map(d => OH_DE[d]).join("/") : ""}`));
     return out.join("; ");
   }
+  const kmlPm = (name, desc, it, style) => `<Placemark><name>${xmlEsc(name)}</name><description>${xmlEsc(desc)}</description>${style ? `<styleUrl>#${style}</styleUrl>` : ""}<Point><coordinates>${it.lon},${it.lat},0</coordinates></Point></Placemark>`;
+  const placeDesc = (i, now) => [i.oh ? hoursText(i.oh, now) : "Öffnungszeiten unbekannt", [i.adr, i.ort].filter(Boolean).join(", "), i.bio ? "Bio" : "", i.web || ""].filter(Boolean).join("\n");
+  const specialDesc = e => [specialWhen(e), e.zeit || "", e.ort || "", e.pruefen ? "Datum prüfen" : "", e.web || ""].filter(Boolean).join("\n");
+  // Eine KML-Datei pro Art (Ebenen in Google «Meine Karten», je mit Häkchen): Hofläden, Bio-Läden, Wochenmärkte, Spezialmärkte, Hofautomaten.
+  // Eigene Farbe je Ebene (Symbole von Google). Leere Arten fehlen. [{ key, name, count, file, kml }]
+  function kmlLayers(items, specials, now) {
+    const defs = [
+      { key: "hof", name: "Hofläden", icon: "grn-circle", list: items.filter(i => i.k === "hof" && !i.bio), desc: i => placeDesc(i, now) },
+      { key: "bio", name: "Bio-Läden", icon: "ltblu-circle", list: items.filter(i => i.k === "hof" && i.bio), desc: i => placeDesc(i, now) },
+      { key: "markt", name: "Wochenmärkte", icon: "orange-circle", list: items.filter(i => i.k === "markt"), desc: i => placeDesc(i, now) },
+      { key: "spezial", name: "Spezialmärkte", icon: "purple-circle", list: specials || [], desc: specialDesc },
+      { key: "automat", name: "Hofautomaten", icon: "blu-circle", list: items.filter(i => i.k === "automat"), desc: i => placeDesc(i, now) }
+    ];
+    return defs.filter(d => d.list.length).map(d => ({
+      key: d.key, name: d.name, count: d.list.length, file: `Obsonare – ${d.name}.kml`,
+      kml: `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xmlEsc("Obsonare – " + d.name)}</name><Style id="s"><IconStyle><scale>1.1</scale><Icon><href>https://maps.google.com/mapfiles/kml/paddle/${d.icon}.png</href></Icon></IconStyle></Style>${d.list.map(i => kmlPm(i.n, d.desc(i), i, "s")).join("")}</Document></kml>\n`
+    }));
+  }
   // KML für Google «Meine Karten» (Import einmal von Hand): alle Orte + besondere Märkte, gleiche Daten wie die Liste
   function kmlExport(items, specials, now) {
     const pm = (name, desc, it) => `<Placemark><name>${xmlEsc(name)}</name><description>${xmlEsc(desc)}</description><Point><coordinates>${it.lon},${it.lat},0</coordinates></Point></Placemark>`;
@@ -829,7 +847,7 @@
   }
 
   root.BF_CORE = {
-    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, seasonVeg, kmlExport, specialWhen, nthWeekday, specialDays, specialUpcoming,
+    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, seasonVeg, kmlExport, kmlLayers, specialWhen, nthWeekday, specialDays, specialUpcoming,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,

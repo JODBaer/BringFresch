@@ -5,6 +5,8 @@ const root = process.argv[2] || path.join(path.dirname(new URL(import.meta.url).
 globalThis.window = globalThis; // bring_catalog.js legt den Katalog wie im Browser unter window ab
 await import("file:///" + path.join(root, "bring_catalog.js").replace(/\\/g, "/"));
 await import("file:///" + path.join(root, "core.js").replace(/\\/g, "/"));
+await import("file:///" + path.join(root, "hoflaeden.js").replace(/\\/g, "/"));
+await import("file:///" + path.join(root, "maerkte_spezial.js").replace(/\\/g, "/"));
 const C = globalThis.BF_CORE;
 let fails = 0;
 const check = (c, m) => { console.log(`${c ? "PASS" : "FAIL"}  ${m}`); if (!c) fails++; };
@@ -180,6 +182,17 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(kml.includes("<coordinates>8.8,47.3,0</coordinates>") && kml.includes("<Folder><name>Märkte</name>") && kml.includes("4. Montag im November") && kml.includes("Datum prüfen") && kml.includes("Mo–Fr 8:00–12:00"), "KML: Koordinaten (lon,lat), Ordner, Datumsregel, Zeiten");
   check((kml.match(/<Placemark>/g) || []).length === 3 && (kml.match(/<Placemark>/g) || []).length === (kml.match(/<\/Placemark>/g) || []).length && !/<\/?(Folder|Document|kml)>[^<]*&(?!amp;)/.test(kml), "KML: 3 Orte, Tags gepaart");
   check(C.specialWhen({ ranges: [["2026-12-03", "2026-12-20"]], days: [3, 4, 5, 6] }) === "3.12.2026–20.12.2026, Do/Fr/Sa/So" && C.specialWhen({ dates: ["2026-11-14"] }) === "14.11.2026", "Datumstext von Spezialmärkten");
+  // Echte Daten: alle Orte kommen in die KML (auch von Hand gepflegte, Märkte ausserhalb der Saison, Spezialmärkte)
+  const allItems = globalThis.BF_HOF.items, allSpec = globalThis.BF_SPECIAL.items;
+  const kmlAll = C.kmlExport(allItems, allSpec, new Date(2026, 10, 10, 10, 0));
+  check((kmlAll.match(/<Placemark>/g) || []).length === allItems.length + allSpec.length, `KML enthält alle ${allItems.length} Orte + ${allSpec.length} Spezialmärkte`);
+  check(kmlAll.includes("<name>Rapperswiler Freitagsmarkt</name>") && kmlAll.includes("<name>Wochenmarkt Robenhausen</name>") && kmlAll.includes("<name>Zibelemärit</name>"), "KML: Freitagsmarkt, Robenhausen (von Hand gepflegt, Saison Mär–Nov) und Zibelemärit stehen drin");
+  const lay = C.kmlLayers(allItems, allSpec, new Date(2026, 10, 10, 10, 0));
+  check(["hof,bio,markt,spezial,automat", "hof,markt,spezial,automat"].includes(lay.map(l => l.key).join()), `Ebenen nach Art: ${lay.map(l => l.key + ":" + l.count)}`);
+  check(lay.reduce((a, l) => a + l.count, 0) === allItems.length + allSpec.length && lay.length < 10, "jeder Ort in genau einer Ebene, unter 10 Ebenen");
+  check(lay.every(l => l.file.startsWith("Obsonare – ") && l.file.endsWith(".kml") && l.kml.startsWith("<?xml") && l.kml.trim().endsWith("</kml>") && (l.kml.match(/<Placemark>/g) || []).length === l.count && (l.kml.match(/<\/Placemark>/g) || []).length === l.count && !/&(?!amp;|lt;|gt;|quot;)/.test(l.kml) && l.kml.includes("<styleUrl>#s</styleUrl>")), "jede Ebene: gültiges KML, Anzahl stimmt, Stil gesetzt");
+  check(new Set(lay.map(l => /paddle\/([a-z-]+)\.png/.exec(l.kml)[1])).size === lay.length, "jede Ebene hat ihre eigene Farbe");
+  check(lay.find(l => l.key === "markt").kml.includes("Rapperswiler Freitagsmarkt") && lay.find(l => l.key === "spezial").kml.includes("Zibelemärit") && !lay.find(l => l.key === "hof").kml.includes("Rapperswiler Freitagsmarkt"), "Freitagsmarkt in Wochenmärkte, Zibelemärit in Spezialmärkte, nicht doppelt");
   const sv = C.seasonVeg([{ name: "A", field_months: [11] }, { name: "B", field_months: [], storage_months: [11] }, { name: "C", field_months: [5] }, { name: "A2", field_months: [11] }], 11, it => it.name.replace("2", ""));
   check(sv.join() === "A,B", `Saisongemüse: Freiland zuerst, Lagerware danach, ohne Doppelte (${sv})`);
   // Spezialmärkte
