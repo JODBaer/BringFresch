@@ -626,6 +626,7 @@ await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte
   expect(await A.page.$$eval("#hofWeek .hofit", r => r.some(x => /\d:\d\d–\d/.test(x.textContent))), "keine Zeiten in der Woche");
   expect(await A.page.$$eval("#hofSpecial .hofsp", r => r.some(x => /Zibelemärit/.test(x.textContent) && /23\.11\./.test(x.textContent))), "Zibelemärit (23.11.) fehlt bei den besonderen Märkten");
   expect(await A.page.$$eval("#hofSpecial .hofsp", r => r.some(x => /Datum prüfen/.test(x.textContent))), "«Datum prüfen» fehlt");
+  expect(await A.page.$eval("#hofSeason", e => /Jetzt Saison:/.test(e.textContent) && /Lauch|Kürbis|Rosenkohl|Wirsing|Karotten|Kartoffeln/.test(e.textContent) && /kann abweichen/.test(e.textContent) && !!e.querySelector('a[href="https://www.gemuese.ch/"]')), "Saison-Zeile (November) mit Quelle gemuese.ch fehlt");
   // Lieblingsstern: Karte «Lieblings» zeigt den Ort, Stern wird mit den WG-Einstellungen gespeichert
   const name = await A.page.$eval("#hofWeek .hofit b", e => e.textContent);
   await tap(A, "#hofWeek .hofit .hofstar");

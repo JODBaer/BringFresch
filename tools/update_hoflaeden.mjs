@@ -38,9 +38,9 @@ const EXTRA = [
 // Mehrere öffentliche Overpass-Server der Reihe nach (GitHub-Server werden vom ersten manchmal abgewiesen); ein Aufruf pro Server.
 
 const DISCOVER = "https://api.discover.swiss/info/v2/";
-async function dget(path) {
+async function dget(path) { // Kategorien in der neuen Fassung («sui»)
   const res = await fetch(DISCOVER + path, {
-    headers: { "Ocp-Apim-Subscription-Key": process.env.DISCOVER_SWISS_KEY, Accept: "application/json", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; monatlicher Abruf)" },
+    headers: { "Ocp-Apim-Subscription-Key": process.env.DISCOVER_SWISS_KEY, Accept: "application/json", categoryVersion: "sui", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; monatlicher Abruf)" },
     signal: AbortSignal.timeout(30000)
   });
   const text = await res.text();
@@ -55,13 +55,31 @@ async function discoverItems() {
   const show = (path, fn) => dget(path).then(r => { console.log(`discover.swiss ${path}: HTTP ${r.status}`); if (r.json) fn(r.json); else console.log("  Antwort: " + r.text.slice(0, 200).replace(/\s+/g, " ")); }).catch(e => console.log(`discover.swiss ${path}: ${e.cause?.code || e.message}`));
   const pause = () => new Promise(r => setTimeout(r, 1500)); // weit unter 60 Aufrufen pro Minute
   const cut = (v, n) => JSON.stringify(v).slice(0, n);
-  const cats = j => (j.data || []).map(c => `${String(c["@id"]).split("/").pop()}=${c.name}`).join(" | ");
-  await show("categories?rootObjectsOnly=true", j => console.log("  Wurzeln: " + cut(Object.keys(j), 200) + " " + cats(j).slice(0, 1500)));
-  await pause();
-  for (const parent of ["sui_root", "sui_05", "sui_04", "sui_03"]) {
-    await show(`categories?parentCategory=${parent}`, j => console.log(`  Kinder von ${parent}: ` + cats(j).slice(0, 1800)));
-    await pause();
+  const inBox = o => o.geo && o.geo.latitude >= 47.15 && o.geo.latitude <= 47.45 && o.geo.longitude >= 8.45 && o.geo.longitude <= 9.0;
+  const calls = { n: 0 };
+  async function scan(cat, maxPages) {
+    const found = []; let token = "", pages = 0, total = 0;
+    for (; pages < maxPages; pages++) {
+      const r = await dget(`localbusinesses?category=${cat}${token ? "&continuationToken=" + encodeURIComponent(token) : ""}`);
+      calls.n++;
+      if (!r.json || r.status !== 200) { console.log(`  ${cat}: Seite ${pages} HTTP ${r.status} ${r.text.slice(0, 120).replace(/\s+/g, " ")}`); break; }
+      for (const o of r.json.data || []) { total++; if (inBox(o)) found.push(o); }
+      if (!r.json.hasNextPage || !r.json.nextPageToken) { pages++; token = ""; break; }
+      token = r.json.nextPageToken;
+      await new Promise(res => setTimeout(res, 1100)); // unter 60 Aufrufen pro Minute
+    }
+    console.log(`  ${cat}: ${pages} Seiten, ${total} Objekte, ${found.length} im Gebiet, weitere Seiten: ${token ? "ja" : "nein"}`);
+    return found;
   }
+  for (const cat of ["sui_0506", "sui_0507"]) {
+    const found = await scan(cat, 120);
+    const keys = {}, types = {}, lic = {};
+    for (const o of found) { Object.keys(o).forEach(k => { keys[k] = (keys[k] || 0) + 1; }); types[o.additionalType] = (types[o.additionalType] || 0) + 1; lic[o.license] = (lic[o.license] || 0) + 1; }
+    console.log(`  ${cat} Schlüssel: ${cut(keys, 900)}`);
+    console.log(`  ${cat} Typen: ${cut(types, 300)} Lizenzen: ${cut(lic, 200)}`);
+    found.slice(0, 4).forEach(o => console.log("  Beispiel: " + cut({ name: o.name, t: o.additionalType, geo: o.geo, loc: o.address && o.address.addressLocality, str: o.address && o.address.streetAddress, od: o.openingDays, osp: o.openingHoursSpecification, sosp: o.specialOpeningHoursSpecification, lic: o.license, cat: (o.category || []).map(c => c.name) }, 700)));
+  }
+  console.log(`discover.swiss: ${calls.n} Abrufe`);
   return [];
 }
 const discovered = await discoverItems();

@@ -411,5 +411,5 @@
     }
   }
 
-  Object.assign(app, { setupSeason, openCatalog, openRecipeForm, linkIn, renderSites, renderMyRecipes, renderCatalog });
+  Object.assign(app, { vegLook, setupSeason, openCatalog, openRecipeForm, linkIn, renderSites, renderMyRecipes, renderCatalog });
 })();

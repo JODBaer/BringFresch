@@ -758,6 +758,16 @@
     const f = farmPlaces(items, ref, now).filter(p => favs.includes(p.key));
     return f.find(p => p.state && p.state.open) || f[0] || null;
   }
+  // Saisongemüse des Monats (VSGP-Daten season_items): Freiland zuerst, dann Lagerware; nameOf macht den einfachen Namen; ohne Doppelte
+  function seasonVeg(items, month, nameOf = it => it.name) {
+    const has = (it, k) => (it[k] || []).includes(month);
+    const out = [];
+    for (const it of [...items.filter(i => has(i, "field_months")), ...items.filter(i => !has(i, "field_months") && has(i, "storage_months"))]) {
+      const nm = nameOf(it);
+      if (nm && !out.includes(nm)) out.push(nm);
+    }
+    return out;
+  }
   // Ort öffnen: immer über Koordinaten (nie Textsuche). iPhone = Apple Karten (mit Name), sonst Google Maps
   function routeUrl(it, ios) {
     return ios ? `https://maps.apple.com/?ll=${it.lat},${it.lon}&q=${encodeURIComponent(it.n)}` : `https://www.google.com/maps/search/?api=1&query=${it.lat},${it.lon}`;
@@ -819,7 +829,7 @@
   }
 
   root.BF_CORE = {
-    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, kmlExport, specialWhen, nthWeekday, specialDays, specialUpcoming,
+    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, seasonVeg, kmlExport, specialWhen, nthWeekday, specialDays, specialUpcoming,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,

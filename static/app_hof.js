@@ -48,6 +48,10 @@
       + `<button type="button" class="hofroute" id="hofKml">Für Google Maps exportieren</button>`;
     $("hofCards").innerHTML = card("Am nächsten", CORE.nearestFarm(items, r, now), "Keine Orte mit Öffnungszeiten.", fav, now)
       + card("Lieblings", CORE.favFarm(items, fav, r, now), "Tippe bei einem Ort auf ☆, dann steht er hier.", fav, now);
+    // Saisongemüse des Monats (gleiche Daten wie «Rezepte & Saison»); was ein einzelner Hofladen verkauft, wissen wir nicht
+    const veg = CORE.seasonVeg((app.DATA && app.DATA.season_items) || [], now.getMonth() + 1, it => app.vegLook(it)[0]);
+    $("hofSeason").innerHTML = veg.length ? `<div class="hofvegs"><b>Jetzt Saison:</b> ${esc(veg.slice(0, 6).join(" · "))}${veg.length > 6 ? ` <details><summary>mehr</summary>${esc(veg.slice(6).join(" · "))}</details>` : ""}</div>
+      <small>Was es auf dem Markt gibt, kann abweichen · <a href="https://www.gemuese.ch/" target="_blank" rel="noopener">Saisonkalender: gemuese.ch</a></small>` : "";
     const sp = CORE.specialUpcoming(SPECIAL(), { ref: r, now });
     $("hofSpecial").innerHTML = sp.length ? `<h3>Bald: besondere Märkte</h3>` + sp.map(e => `<div class="hofsp">
         <div class="hofrow"><b>${esc(e.n)}</b><span class="st${e.today ? " open" : ""}">${esc(dayText(e.first, now))}${e.count > 1 ? ` bis ${e.last.getDate()}.${e.last.getMonth() + 1}.` : ""}</span></div>

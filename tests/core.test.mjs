@@ -180,6 +180,8 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(kml.includes("<coordinates>8.8,47.3,0</coordinates>") && kml.includes("<Folder><name>Märkte</name>") && kml.includes("4. Montag im November") && kml.includes("Datum prüfen") && kml.includes("Mo–Fr 8:00–12:00"), "KML: Koordinaten (lon,lat), Ordner, Datumsregel, Zeiten");
   check((kml.match(/<Placemark>/g) || []).length === 3 && (kml.match(/<Placemark>/g) || []).length === (kml.match(/<\/Placemark>/g) || []).length && !/<\/?(Folder|Document|kml)>[^<]*&(?!amp;)/.test(kml), "KML: 3 Orte, Tags gepaart");
   check(C.specialWhen({ ranges: [["2026-12-03", "2026-12-20"]], days: [3, 4, 5, 6] }) === "3.12.2026–20.12.2026, Do/Fr/Sa/So" && C.specialWhen({ dates: ["2026-11-14"] }) === "14.11.2026", "Datumstext von Spezialmärkten");
+  const sv = C.seasonVeg([{ name: "A", field_months: [11] }, { name: "B", field_months: [], storage_months: [11] }, { name: "C", field_months: [5] }, { name: "A2", field_months: [11] }], 11, it => it.name.replace("2", ""));
+  check(sv.join() === "A,B", `Saisongemüse: Freiland zuerst, Lagerware danach, ohne Doppelte (${sv})`);
   // Spezialmärkte
   const d = x => C.nthWeekday(...x).getDate();
   check(d([2026, 11, 4, 0]) === 23 && d([2026, 11, 1, 2]) === 4 && d([2027, 11, 1, 2]) === 3, "4. Montag Nov 2026 = 23.; 1. Mittwoch Nov 2026 = 4., 2027 = 3.");
