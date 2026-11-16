@@ -1,4 +1,6 @@
-# Plan: Hofläden & Märkte – Übersicht (Übergabe an einen frischen Chat)
+# Plan: Hofläden & Märkte – Übersicht
+
+> **Stand 16.11.2026: gebaut mit Entscheid Joshua** – Ansicht nach Wochentagen, keine Karte, Daten per Workflow, KML-Export. Die Abschnitte unten zur OSM-Karte, zum Blockieren und zum Design-Entwurf sind überholt. Aktuell und zum Neuholen der Daten: `docs/uebergabe-v2.md` (Abschnitt «Hofläden & Märkte»).
 
 Stand 15.11.2026. Wunsch von Joshua: Beim Einkaufen ein Knopf zu Hofläden und Märkten in der Nähe (bis Zürich und Rapperswil), mit Öffnungszeiten, als OpenStreetMap-Übersicht. Reihenfolge laut Joshua: **zuerst dieser Plan, dann ein Design-Entwurf (live als HTML zeigen), erst danach fertig bauen.**
 
