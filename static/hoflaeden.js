@@ -439,8 +439,6 @@ window.BF_HOF = { stand: "2026-11-16", items: [
   {"n":"Märtplatz","k":"markt","lat":47.42795,"lon":8.68582,"oh":"Sa 07:00-13:00; Jun-Aug: We 07:00-13:00"},
   {"n":"Milchbuck","k":"markt","lat":47.39517,"lon":8.54038,"oh":"Tu,Fr 06:00-11:00","web":"https://www.zuercher-maerkte.ch/zusatz.php?Lang=de&SeiteID=Maerkte&SeiteIDNr=5"},
   {"n":"Rathausbrücke","k":"markt","lat":47.37188,"lon":8.54211,"oh":"Sa 07:00-12:30","web":"https://www.zuercher-maerkte.ch/zusatz.php?Lang=de&SeiteID=Maerkte&SeiteIDNr=7"},
-  {"n":"Roter Platz","k":"markt","lat":47.43262,"lon":8.56481,"oh":"Mo-Su,PH 00:00-24:00"},
-  {"n":"Stadthausplatz","k":"markt","lat":47.34861,"lon":8.7187,"oh":"24/7"},
   {"n":"stauberhof.ch","k":"markt","lat":47.24698,"lon":8.85958,"ort":"Rueti","adr":"Unter Moos 1","oh":"Mo-Su 08:00-20:00","web":"https://www.stauberhof.ch/"},
   {"n":"Wetziker Wuchemärt","k":"markt","lat":47.32664,"lon":8.79945,"oh":"Mar-Nov: Fr 08:30-12:30"}
 ] };
