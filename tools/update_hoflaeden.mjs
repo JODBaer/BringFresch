@@ -48,39 +48,53 @@ async function dget(path) { // Kategorien in der neuen Fassung («sui»)
   try { json = JSON.parse(text); } catch { /* keine JSON-Antwort */ }
   return { status: res.status, json, text };
 }
-const shape = (v, d = 0) => (Array.isArray(v) ? `[${v.length}:${v.length ? shape(v[0], d + 1) : ""}]` : v && typeof v === "object" ? (d > 2 ? "{…}" : "{" + Object.entries(v).slice(0, 25).map(([k, x]) => `${k}:${shape(x, d + 1)}`).join(",") + "}") : typeof v);
+const r5 = x => Math.round(x * 1e5) / 1e5;
+const DAY_OH = { Monday: "Mo", Tuesday: "Tu", Wednesday: "We", Thursday: "Th", Friday: "Fr", Saturday: "Sa", Sunday: "Su" };
+// openingHoursSpecification [{ dayOfWeek, opens, closes }] -> OSM-Format «Mo 09:00-12:00,14:00-18:30; Tu …» (nur das lesen wir; sonst keine Zeiten)
+function ohFrom(spec) {
+  const days = {};
+  for (const x of spec || []) {
+    const d = DAY_OH[x.dayOfWeek];
+    if (d && x.opens && x.closes) (days[d] = days[d] || []).push(`${x.opens.slice(0, 5)}-${x.closes.slice(0, 5)}`);
+  }
+  return ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].filter(d => days[d]).map(d => `${d} ${days[d].sort().join(",")}`).join("; ");
+}
+const inBox = o => o.geo && o.geo.latitude >= 47.15 && o.geo.latitude <= 47.45 && o.geo.longitude >= 8.45 && o.geo.longitude <= 9.0;
+// discover.swiss «Infocenter OpenData»: Kategorien Regionalprodukte (sui_0506) und Produzent (sui_0507); nur Objekte mit offener Lizenz (CC …),
+// höchstens 10 Seiten je Kategorie, ~1 Abruf pro Sekunde (Grenze: 60 pro Minute). Im Log nur Anzahlen, nie der Schlüssel.
 async function discoverItems() {
   if (!process.env.DISCOVER_SWISS_KEY) { console.log("discover.swiss: kein Schlüssel – übersprungen"); return []; }
-  // Erster Lauf: nur erkunden (Felder und Typen ins Log, nie der Schlüssel). Die Zuordnung folgt, sobald die Felder bekannt sind.
-  const show = (path, fn) => dget(path).then(r => { console.log(`discover.swiss ${path}: HTTP ${r.status}`); if (r.json) fn(r.json); else console.log("  Antwort: " + r.text.slice(0, 200).replace(/\s+/g, " ")); }).catch(e => console.log(`discover.swiss ${path}: ${e.cause?.code || e.message}`));
-  const pause = () => new Promise(r => setTimeout(r, 1500)); // weit unter 60 Aufrufen pro Minute
-  const cut = (v, n) => JSON.stringify(v).slice(0, n);
-  const inBox = o => o.geo && o.geo.latitude >= 47.15 && o.geo.latitude <= 47.45 && o.geo.longitude >= 8.45 && o.geo.longitude <= 9.0;
-  const calls = { n: 0 };
-  async function scan(cat, maxPages) {
-    const found = []; let token = "", pages = 0, total = 0;
-    for (; pages < maxPages; pages++) {
-      const r = await dget(`localbusinesses?category=${cat}${token ? "&continuationToken=" + encodeURIComponent(token) : ""}`);
-      calls.n++;
-      if (!r.json || r.status !== 200) { console.log(`  ${cat}: Seite ${pages} HTTP ${r.status} ${r.text.slice(0, 120).replace(/\s+/g, " ")}`); break; }
-      for (const o of r.json.data || []) { total++; if (inBox(o)) found.push(o); }
-      if (!r.json.hasNextPage || !r.json.nextPageToken) { pages++; token = ""; break; }
-      token = r.json.nextPageToken;
-      await new Promise(res => setTimeout(res, 1100)); // unter 60 Aufrufen pro Minute
+  const out = [], seen = new Set(); let calls = 0, total = 0, closed = 0;
+  try {
+    for (const cat of ["sui_0506", "sui_0507"]) {
+      let token = "";
+      for (let page = 0; page < 10; page++) {
+        const r = await dget(`localbusinesses?category=${cat}${token ? "&continuationToken=" + encodeURIComponent(token) : ""}`);
+        calls++;
+        if (r.status !== 200 || !r.json) throw new Error(`HTTP ${r.status}`);
+        for (const o of r.json.data || []) {
+          total++;
+          if (!inBox(o) || o.removed || seen.has(o["@id"])) continue;
+          if (!/^CC/.test(o.license || "") || /All-Rights/i.test(o.license)) { closed++; continue; } // nur offene Lizenz
+          seen.add(o["@id"]);
+          const a = o.address || {};
+          const it = { n: o.name, k: "hof", lat: r5(o.geo.latitude), lon: r5(o.geo.longitude), src: "discover" };
+          if (a.addressLocality) it.ort = a.addressLocality.trim();
+          if (a.streetAddress) it.adr = a.streetAddress.trim();
+          const oh = ohFrom(o.openingHoursSpecification);
+          if (oh) it.oh = oh;
+          const web = a.url || o.url;
+          if (web && /^https?:\/\//.test(web)) it.web = web;
+          out.push(it);
+        }
+        if (!r.json.hasNextPage || !r.json.nextPageToken) break;
+        token = r.json.nextPageToken;
+        await new Promise(res => setTimeout(res, 1100));
+      }
     }
-    console.log(`  ${cat}: ${pages} Seiten, ${total} Objekte, ${found.length} im Gebiet, weitere Seiten: ${token ? "ja" : "nein"}`);
-    return found;
-  }
-  for (const cat of ["sui_0506", "sui_0507"]) {
-    const found = await scan(cat, 120);
-    const keys = {}, types = {}, lic = {};
-    for (const o of found) { Object.keys(o).forEach(k => { keys[k] = (keys[k] || 0) + 1; }); types[o.additionalType] = (types[o.additionalType] || 0) + 1; lic[o.license] = (lic[o.license] || 0) + 1; }
-    console.log(`  ${cat} Schlüssel: ${cut(keys, 900)}`);
-    console.log(`  ${cat} Typen: ${cut(types, 300)} Lizenzen: ${cut(lic, 200)}`);
-    found.slice(0, 4).forEach(o => console.log("  Beispiel: " + cut({ name: o.name, t: o.additionalType, geo: o.geo, loc: o.address && o.address.addressLocality, str: o.address && o.address.streetAddress, od: o.openingDays, osp: o.openingHoursSpecification, sosp: o.specialOpeningHoursSpecification, lic: o.license, cat: (o.category || []).map(c => c.name) }, 700)));
-  }
-  console.log(`discover.swiss: ${calls.n} Abrufe`);
-  return [];
+  } catch (e) { console.warn(`discover.swiss: Abbruch (${e.cause?.code || e.message}) – OSM und Handliste laufen weiter`); return []; }
+  console.log(`discover.swiss: ${calls} Abrufe, ${total} Objekte, ${out.length} im Gebiet mit offener Lizenz (${closed} ohne offene Lizenz ausgelassen)`);
+  return out;
 }
 const discovered = await discoverItems();
 const SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
@@ -104,7 +118,6 @@ for (const url of SERVERS) {
 if (!res) throw new Error("Kein Overpass-Server erreichbar");
 const { elements } = await res.json();
 
-const r5 = x => Math.round(x * 1e5) / 1e5;
 const kindOf = t => (t.amenity === "marketplace" ? "markt" : t.amenity === "vending_machine" ? "automat" : "hof");
 const VEND = { milk: "Milch", eggs: "Eier", fruit: "Obst", vegetables: "Gemüse", cheese: "Käse", meat: "Fleisch", potatoes: "Kartoffeln" };
 const items = [];

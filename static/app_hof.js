@@ -42,6 +42,7 @@
     const stand = window.BF_HOF && window.BF_HOF.stand ? ` · Stand ${window.BF_HOF.stand.split("-").reverse().join(".")}` : "";
     $("hofSub").textContent = `Entfernung ${state.hof.ref ? "ab deinem Standort" : "ab Rapperswil-Jona"}${stand}`;
     $("hofGeo").hidden = !!state.hof.ref;
+    $("hofNote").textContent = "Öffnungszeiten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL)" + (items.some(i => i.src === "discover") ? " und discover.swiss (CC BY-SA, Tourismus-Partner)" : "") + " – können veraltet sein. Die besonderen Märkte pflegen wir von Hand.";
     const mapUrl = load(STORE.KEYS.MAPS_URL_KEY, "");
     $("hofAll").innerHTML = (mapUrl ? `<a class="btn" href="${esc(mapUrl)}" target="_blank" rel="noopener">Alle in Google Maps</a>`
       : `<details><summary>Alle Märkte in Google Maps?</summary><ol class="hint"><li>«Für Google Maps exportieren» antippen und die Datei speichern.</li><li>Auf google.com/maps/d (Meine Karten) eine neue Karte anlegen und die Datei importieren.</li><li>Den Link der Karte in den Einstellungen bei «Karte Märkte» eintragen – dann steht hier «Alle in Google Maps».</li></ol></details>`)
