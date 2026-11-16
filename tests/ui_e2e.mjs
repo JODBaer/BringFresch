@@ -613,7 +613,7 @@ await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte
   await until(A, () => document.getElementById("hofDialog").open && document.querySelectorAll("#hofWeek .hofday").length === 7, "Blatt mit 7 Tagen nicht offen");
   expect(await A.page.$eval("#hofSub", e => /ab Rapperswil-Jona/.test(e.textContent)), "ohne Standort muss «ab Rapperswil-Jona» stehen");
   expect(await A.page.$$eval("#hofCards .hofcard", c => c.length === 2 && /Am nächsten/.test(c[0].textContent) && /Lieblings/.test(c[1].textContent)), "zwei Karten «Am nächsten» / «Lieblings»");
-  expect(await A.page.$$eval("#hofCards .hofcard:first-child .hofroute", a => a.length > 0 && /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=47\.\d+,8\.\d+$/.test(a[0].href)), "Route (Android-Stil): Google Maps über Koordinaten, keine Textsuche");
+  expect(await A.page.$$eval("#hofCards .hofcard:first-child .hofroute", a => { const ios = document.documentElement.classList.contains("glass"); return a.length > 0 && (ios ? /^https:\/\/maps\.apple\.com\/\?ll=47\.\d+,8\.\d+&q=/ : /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=47\.\d+,8\.\d+$/).test(a[0].href); }), "Route: Apple Karten (iPhone) bzw. Google Maps (Android) über Koordinaten, keine Textsuche");
   expect(await A.page.$$eval("#hofDialog a[href]", a => a.every(x => !/query=Hofladen|query=Wochenmarkt/.test(x.href))), "freie Textsuche in Google Maps darf nicht vorkommen");
   // Google «Meine Karten»: ohne Link Anleitung + Export; mit Link in den WG-Einstellungen «Alle in Google Maps»
   expect(await A.page.$eval("#hofAll", e => !!e.querySelector("details") && !!e.querySelector("#hofKml") && !e.querySelector("a.btn")), "ohne Link: Anleitung und Export-Knopf, kein «Alle in Google Maps»");
