@@ -485,18 +485,11 @@
         <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
       <div class="sheet-body">
-        <!-- Karte: Kartenbilder von OpenStreetMap, erst beim Öffnen geladen; Punkte = Orte aus static/hoflaeden.js -->
-        <div class="hofmap" id="hofMap" aria-label="Karte"><div class="hoftiles" id="hofTiles"></div>
-          <div class="hofzoom"><button type="button" data-z="1" aria-label="Näher">+</button><button type="button" data-z="-1" aria-label="Weiter weg">−</button></div>
-          <a class="hofattr" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a></div>
-        <div class="hoftools">
-          <span class="sortsw" id="hofKind" role="group" aria-label="Art"><button type="button" data-hk="alle" aria-pressed="true">Alle</button><button type="button" data-hk="hof" aria-pressed="false">Hofläden</button><button type="button" data-hk="markt" aria-pressed="false">Märkte</button><button type="button" data-hk="automat" aria-pressed="false">Automaten</button></span>
-          <button type="button" class="hofchip" id="hofOpen" aria-pressed="false">Jetzt offen</button>
-          <button type="button" class="hofchip" id="hofLocate">📍 Mein Standort</button>
-        </div>
-        <div id="hofList" class="hoflist"></div>
-        <button type="button" class="btn" id="hofMore" hidden>Mehr zeigen</button>
-        <p class="hint hofnote">Öffnungszeiten aus OpenStreetMap – können veraltet sein. Fehlt etwas? <a href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen" target="_blank" rel="noopener">In Google Maps suchen</a></p>
+        <div id="hofGeo" class="hofgeo"><button type="button" class="btn" id="hofLocate">📍 Standort verwenden</button><small>Nur auf diesem Handy, wird nicht gesendet oder gespeichert.</small></div>
+        <div id="hofCards" class="hofcards"></div>
+        <div id="hofSpecial"></div>
+        <div id="hofWeek"></div>
+        <p class="hint hofnote">Öffnungszeiten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL) – können veraltet sein. Fehlt etwas? <a href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen" target="_blank" rel="noopener">In Google Maps suchen</a></p>
       </div>
     </div>
   </dialog>
@@ -528,6 +521,7 @@
   <script src="app_einkauf.js"></script>
   <script src="app_vorrat.js"></script>
   <script src="hoflaeden.js"></script>
+  <script src="maerkte_spezial.js"></script>
   <script src="app_hof.js"></script>
   <script src="app_rezepte.js"></script>
   <script src="app_wahl.js"></script>

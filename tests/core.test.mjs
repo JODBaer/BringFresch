@@ -162,8 +162,31 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   const items = [{ n: "Weit", k: "hof", lat: 47.37, lon: 8.54, oh: hof }, { n: "Nah", k: "markt", lat: 47.227, lon: 8.82, oh: "Sa 07:00-11:00" }, { n: "Ohne", k: "hof", lat: 47.3, lon: 8.8 }];
   const rap = { lat: 47.2267, lon: 8.8184 };
   check(Math.abs(C.distKm(rap, { lat: 47.3769, lon: 8.5417 }) - 26.9) < 1, "Rapperswil–Zürich ≈ 27 km");
-  check(C.farmList(items, { ref: rap, now: di10 }).map(i => i.n).join() === "Nah,Ohne,Weit", "nach Entfernung sortiert");
-  check(C.farmList(items, { ref: rap, now: di10, kind: "hof", openOnly: true }).map(i => i.n).join() === "Weit", "nur Hofläden, jetzt offen");
+  const wk = C.farmWeek(items, { ref: rap, now: di10 });
+  check(wk.length === 7 && wk[0].wd === 1, "7 Tage ab heute (Di)");
+  check(wk[0].rows.map(r => r.n).join() === "Weit", "Di: nur der Hofladen mit Zeiten (Nah/Ohne haben nichts)");
+  check(wk[0].rows[0].text === "8:00–12:00, 14:00–18:30" && wk[0].rows[0].now, "Di 10 Uhr: Zeiten des Tages, jetzt offen");
+  check(wk[4].wd === 5 && wk[4].rows.map(r => r.n).join() === "Nah,Weit", "Sa: Markt zuerst (näher), dann Hofladen");
+  const late = C.farmWeek(items, { ref: rap, now: di19 });
+  check(late[0].rows.length === 0, "abends: heute nichts mehr");
+  check(C.farmWeek(items, { ref: rap, now: di10, favs: [C.farmKey(items[0])], maxKm: 5 })[0].rows.length === 1 && C.farmWeek(items, { ref: rap, now: di10, maxKm: 5 })[0].rows.length === 0, "Lieblinge auch ausserhalb der Reichweite");
+  check(C.nearestFarm(items, rap, di10).n === "Nah" && C.nearestFarm([items[2]], rap, di10) === null, "am nächsten: mit Zeiten");
+  check(C.favFarm(items, [C.farmKey(items[0]), C.farmKey(items[1])], rap, di10).n === "Weit", "Lieblinge: der offene zuerst");
+  check(C.favFarm(items, [], rap, di10) === null, "kein Liebling");
+  check(C.routeUrl(items[0], true).startsWith("https://maps.apple.com/") && C.routeUrl(items[0], false).includes("google.com/maps/dir") && C.routeUrl(items[0], false).endsWith("47.37,8.54"), "Route: Apple Karten / Google Maps");
+  // Spezialmärkte
+  const d = x => C.nthWeekday(...x).getDate();
+  check(d([2026, 11, 4, 0]) === 23 && d([2026, 11, 1, 2]) === 4 && d([2027, 11, 1, 2]) === 3, "4. Montag Nov 2026 = 23.; 1. Mittwoch Nov 2026 = 4., 2027 = 3.");
+  check(d([2026, 11, -1, 0]) === 30 && C.nthWeekday(2026, 2, 5, 0) === null, "letzter Montag; 5. Montag im Feb fehlt");
+  const sp = [
+    { n: "Zibele", lat: 46.95, lon: 7.44, rule: { m: 11, nth: 4, wd: 0 } },
+    { n: "Rüebli", lat: 47.39, lon: 8.04, rule: { m: 11, nth: 1, wd: 2 } },
+    { n: "Chrischtchindli", lat: 47.23, lon: 8.82, ranges: [["2026-12-03", "2026-12-20"]], days: [3, 4, 5, 6] },
+    { n: "Räbe", lat: 47.2, lon: 8.7, dates: ["2026-11-14"] }
+  ];
+  const up = C.specialUpcoming(sp, { ref: rap, now: di10 });
+  check(up.map(e => e.n).join() === "Räbe,Zibele,Chrischtchindli", `nächste 6 Wochen: ${up.map(e => e.n)}`);
+  check(up[1].first.getDate() === 23 && up[2].first.getDate() === 3 && up[2].count === 12 && up[2].last.getDate() === 20, "Termine: 14.11., 23.11.; Chrischtchindli Do–So ab 3.12. bis 20.12. (12 Tage)");
 }
 
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");

@@ -718,17 +718,85 @@
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
     return 2 * R * Math.asin(Math.sqrt(h));
   }
-  // Liste für die Anzeige: Art filtern, «jetzt offen», nach Entfernung sortiert
-  function farmList(items, { kind = "alle", openOnly = false, ref, now }) {
-    return items
-      .filter(it => kind === "alle" || it.k === kind)
-      .map(it => ({ ...it, km: distKm(ref, it), state: openState(it.oh, now) }))
-      .filter(it => !openOnly || (it.state && it.state.open))
+  // ---- Hofläden & Märkte: Woche nach Tagen, nächster Ort, Lieblinge, Spezialmärkte ----
+  const farmKey = it => `${it.n}@${it.lat},${it.lon}`;
+  const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const addDays = (d, n) => { const x = dayStart(d); x.setDate(x.getDate() + n); return x; };
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // Orte mit bekannten Zeiten, nach Entfernung; Hofautomaten bleiben aussen vor (immer offen)
+  function farmPlaces(items, ref, now) {
+    return items.filter(it => it.k !== "automat").map(it => ({ ...it, key: farmKey(it), km: distKm(ref, it), state: openState(it.oh, now) }))
       .sort((a, b) => a.km - b.km);
+  }
+  // Pro Tag ab heute: was offen ist (Zeiten des Tages), nach Entfernung. Heute: nur was noch nicht zu ist.
+  // Orte ohne bekannte Zeiten erscheinen nicht (und nie als «offen»). favs = Schlüssel der Lieblinge (immer mit dabei).
+  function farmWeek(items, { ref, now, days = 7, favs = [], maxKm = 40, perDay = 8 }) {
+    const places = farmPlaces(items, ref, now).map(p => ({ ...p, rules: parseHours(p.oh) })).filter(p => p.rules);
+    const min = now.getHours() * 60 + now.getMinutes();
+    return Array.from({ length: days }, (_, i) => {
+      const date = addDays(now, i);
+      const rows = [];
+      for (const p of places) {
+        let spans = ohSpansOn(p.rules, date);
+        if (i === 0) spans = spans.filter(([, b]) => b > min);
+        if (!spans.length) continue;
+        const fav = favs.includes(p.key);
+        if (!fav && p.km > maxKm) continue;
+        const from = spans[0][0], to = spans[spans.length - 1][1];
+        rows.push({ ...p, fav, spans, text: spans.map(([a, b]) => `${ohClock(a)}–${b >= 1440 ? "24:00" : ohClock(b)}`).join(", "), from, to, now: i === 0 && spans.some(([a, b]) => min >= a && min < b) });
+      }
+      const keep = rows.filter(r => r.fav), rest = rows.filter(r => !r.fav).slice(0, perDay);
+      return { date, wd: ohWeekday(date), rows: [...keep, ...rest].sort((a, b) => a.km - b.km) };
+    });
+  }
+  // Karte «Am nächsten»: der nächste Hofladen/Markt mit bekannten Zeiten (offen oder nicht)
+  function nearestFarm(items, ref, now) {
+    return farmPlaces(items, ref, now).find(p => p.state) || null;
+  }
+  // Karte «Lieblings»: von den Lieblingen der, der jetzt offen ist (der nächste), sonst der nächste
+  function favFarm(items, favs, ref, now) {
+    const f = farmPlaces(items, ref, now).filter(p => favs.includes(p.key));
+    return f.find(p => p.state && p.state.open) || f[0] || null;
+  }
+  // Route: iPhone = Apple Karten, sonst Google Maps
+  function routeUrl(it, ios) {
+    return ios ? `https://maps.apple.com/?daddr=${it.lat},${it.lon}&dirflg=d` : `https://www.google.com/maps/dir/?api=1&destination=${it.lat},${it.lon}`;
+  }
+  // n-ter Wochentag eines Monats (month 1–12, wd Mo=0, n 1–5); n = -1: der letzte
+  function nthWeekday(year, month, n, wd) {
+    if (n > 0) {
+      const first = new Date(year, month - 1, 1), d = 1 + ((wd - ohWeekday(first) + 7) % 7) + (n - 1) * 7;
+      const r = new Date(year, month - 1, d);
+      return r.getMonth() === month - 1 ? r : null;
+    }
+    const last = new Date(year, month, 0);
+    return new Date(year, month - 1, last.getDate() - ((ohWeekday(last) - wd + 7) % 7));
+  }
+  // Tage eines Spezialmarkts zwischen from und to (einschliesslich). Eintrag: { rule:{m,nth,wd} } oder { ranges:[["2026-12-03","2026-12-20"]], days:[3,4,5,6] } oder { dates:["2026-11-14"] }
+  function specialDays(ev, from, to) {
+    const out = [], a = dayStart(from), b = dayStart(to);
+    if (ev.rule) {
+      for (let y = a.getFullYear(); y <= b.getFullYear(); y++) { const d = nthWeekday(y, ev.rule.m, ev.rule.nth, ev.rule.wd); if (d && d >= a && d <= b) out.push(d); }
+    }
+    for (const x of ev.dates || []) { const d = dayStart(new Date(x + "T00:00:00")); if (d >= a && d <= b) out.push(d); }
+    for (const [x, y] of ev.ranges || []) {
+      for (let d = dayStart(new Date(x + "T00:00:00")), e = dayStart(new Date(y + "T00:00:00")); d <= e; d = addDays(d, 1)) {
+        if (d >= a && d <= b && (!ev.days || ev.days.includes(ohWeekday(d)))) out.push(d);
+      }
+    }
+    return out.sort((p, q) => p - q);
+  }
+  // Spezialmärkte der nächsten «days» Tage (Standard 6 Wochen): Name, erster und letzter Tag in diesem Fenster, Entfernung; nach Datum
+  function specialUpcoming(list, { ref, now, days = 42 }) {
+    const end = addDays(now, days);
+    return list.map(ev => {
+      const ds = specialDays(ev, now, end);
+      return ds.length ? { ...ev, first: ds[0], last: ds[ds.length - 1], count: ds.length, today: ds[0].getTime() === dayStart(now).getTime(), km: distKm(ref, ev) } : null;
+    }).filter(Boolean).sort((a, b) => a.first - b.first || a.km - b.km);
   }
 
   root.BF_CORE = {
-    parseHours, openState, hoursText, distKm, farmList,
+    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, nthWeekday, specialDays, specialUpcoming,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,

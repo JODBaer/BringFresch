@@ -11,7 +11,7 @@ const query = `[out:json][timeout:100];
   nwr["shop"="greengrocer"]["organic"~"yes|only"](${BBOX});
   nwr["amenity"="marketplace"](${BBOX});
   nwr["amenity"="vending_machine"]["vending"~"milk|eggs|fruit|vegetables|cheese|meat|potatoes|food|farm"](${BBOX});
-  node["place"]["name"~"^(Robenhausen)$"](${BBOX});
+  nwr["place"]["name"~"Robenhausen"](${BBOX});
 );
 out center tags;`;
 
@@ -49,12 +49,13 @@ const items = [];
 const places = {};
 for (const e of elements) {
   const t = e.tags || {};
-  if (t.place) { places[t.name] = { lat: e.lat, lon: e.lon }; continue; }
+  if (t.place) { places[t.name] = { lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon }; continue; }
   const k = kindOf(t);
   const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
   if (lat == null) continue;
   if (k === "markt" && !t.name) continue; // namenlose Plätze sind meist keine Wochenmärkte
   if (k === "markt" && /parkplatz|parking/i.test(t.name)) continue;
+  if (k === "markt" && /^(24\/7|Mo-Su,? ?(PH )?00:00-24:00)/.test(t.opening_hours || "")) continue; // rund um die Uhr offen = kein Wochenmarkt (Plätze)
   const was = (t.vending || "").split(";").map(v => VEND[v.trim()]).filter(Boolean).join(", ");
   const name = t.name || (k === "automat" ? `Hofautomat${was ? ` (${was})` : ""}` : t.operator || "Hofladen");
   const it = { n: name, k, lat: r5(lat), lon: r5(lon) };
@@ -75,7 +76,7 @@ for (const { match, place, ...x } of EXTRA) {
     for (const [key, v] of Object.entries(fill)) if (!dup[key] || key === "web" || key === "oh") dup[key] = v;
     continue;
   }
-  const at = places[place];
+  const at = Object.entries(places).find(([nm]) => nm.includes(place))?.[1];
   if (!at) { console.warn(`EXTRA ${x.n}: Ort ${place} nicht gefunden – übersprungen`); continue; }
   items.push({ ...fill, lat: r5(at.lat), lon: r5(at.lon) });
 }

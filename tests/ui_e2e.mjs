@@ -604,27 +604,30 @@ await step(A, "Einkauf: Abschnitte Kaufen/Auf Bring!/Vorrat, Liste kopieren", as
   expect((await clip(A)).split("\n").length === parseInt(t, 10), "kopierte Zeilen ≠ Anzahl");
 });
 
-await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte: Karte, Liste nach Entfernung mit Öffnungszeiten, Filter", async () => {
+await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte nach Wochentagen: Karten, Spezialmärkte, Route, Lieblingsstern, Standort", async () => {
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   await until(A, () => document.getElementById("hofBtn").hidden, "Markt-Chip im Vorrat sichtbar");
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await until(A, () => !document.getElementById("hofBtn").hidden, "Markt-Chip bei Kaufen nicht sichtbar");
   await tap(A, "#hofBtn");
-  await until(A, () => document.getElementById("hofDialog").open && document.querySelectorAll("#hofList .hofit").length > 5, "Blatt mit Orten nicht offen");
-  await until(A, () => document.querySelectorAll("#hofTiles img").length > 0 && document.querySelectorAll("#hofTiles .hofpin").length > 0, "Karte ohne Bilder/Punkte");
-  expect(A.tiles > 0, "keine Kartenbilder angefragt");
-  const km = await A.page.$$eval("#hofList .hofit small:first-of-type", s => s.map(x => parseFloat((x.textContent.match(/([\d.]+) (k?m)$/) || [])[1]) * (/ m$/.test(x.textContent) ? 0.001 : 1)));
-  expect(km.every((v, i) => i === 0 || v >= km[i - 1] - 0.05), `nicht nach Entfernung: ${km.slice(0, 6)}`);
-  expect(await A.page.$$eval("#hofList .hofit", r => r.some(x => /\d:\d\d/.test(x.textContent))), "keine Öffnungszeiten in der Liste");
-  await tap(A, '#hofKind [data-hk="markt"]');
-  await until(A, () => [...document.querySelectorAll("#hofList .hofit small:first-of-type")].every(s => /^Markt/.test(s.textContent)), "Filter Märkte");
-  await tap(A, "#hofOpen");
-  await until(A, () => document.getElementById("hofOpen").getAttribute("aria-pressed") === "true" && [...document.querySelectorAll("#hofList .hofit .st")].every(s => s.classList.contains("open")), "Filter «Jetzt offen»");
-  await tap(A, "#hofOpen");
-  await tap(A, '#hofKind [data-hk="alle"]');
-  await tap(A, '#hofMap [data-z="1"]');
-  await tap(A, "#hofList .hofit small");
-  await until(A, () => document.querySelector("#hofList .hofit.sel") && document.querySelector("#hofTiles .hofpin.sel"), "Ort antippen zeigt ihn nicht auf der Karte");
+  await until(A, () => document.getElementById("hofDialog").open && document.querySelectorAll("#hofWeek .hofday").length === 7, "Blatt mit 7 Tagen nicht offen");
+  expect(await A.page.$eval("#hofSub", e => /ab Rapperswil-Jona/.test(e.textContent)), "ohne Standort muss «ab Rapperswil-Jona» stehen");
+  expect(await A.page.$$eval("#hofCards .hofcard", c => c.length === 2 && /Am nächsten/.test(c[0].textContent) && /Lieblings/.test(c[1].textContent)), "zwei Karten «Am nächsten» / «Lieblings»");
+  expect(await A.page.$$eval("#hofCards .hofcard:first-child .hofroute", a => a.length > 0 && a[0].href.startsWith("https://www.google.com/maps/dir/")), "Route (Android-Stil) öffnet Google Maps");
+  expect(await A.page.$$eval("#hofWeek .hofit", r => r.some(x => /\d:\d\d–\d/.test(x.textContent))), "keine Zeiten in der Woche");
+  expect(await A.page.$$eval("#hofSpecial .hofsp", r => r.some(x => /Zibelemärit/.test(x.textContent) && /23\.11\./.test(x.textContent))), "Zibelemärit (23.11.) fehlt bei den besonderen Märkten");
+  expect(await A.page.$$eval("#hofSpecial .hofsp", r => r.some(x => /Datum prüfen/.test(x.textContent))), "«Datum prüfen» fehlt");
+  // Lieblingsstern: Karte «Lieblings» zeigt den Ort, Stern wird mit den WG-Einstellungen gespeichert
+  const name = await A.page.$eval("#hofWeek .hofit b", e => e.textContent);
+  await tap(A, "#hofWeek .hofit .hofstar");
+  await until(A, (n) => document.querySelector("#hofCards .hofcard:nth-child(2) b")?.textContent === n, "Lieblings-Karte zeigt den Favoriten nicht", name);
+  expect(await A.page.$eval("#hofCards .hofcard:nth-child(2) .hofstar", b => b.getAttribute("aria-pressed") === "true"), "Stern nicht gesetzt");
+  expect(await A.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_fav_markets") || "[]").length === 1), "Favorit nicht gespeichert");
+  // Standort: nur nach Knopfdruck (Attrappe: Zürich HB)
+  await A.page.evaluate(() => { navigator.geolocation.getCurrentPosition = ok => ok({ coords: { latitude: 47.3779, longitude: 8.5403 } }); });
+  await tap(A, "#hofLocate");
+  await until(A, () => /ab deinem Standort/.test(document.getElementById("hofSub").textContent) && document.getElementById("hofGeo").hidden, "Standort nicht übernommen");
+  expect(await A.page.evaluate(() => !Object.values(localStorage).some(v => /47\.3779/.test(v))), "Standort darf nicht gespeichert werden");
   await shot(A, "08b-hoflaeden");
   await noHScroll(A, "Hofläden");
   await tap(A, "#hofDialog [data-close]");

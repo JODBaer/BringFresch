@@ -1,147 +1,93 @@
-// BringFrisch – Hofläden & Märkte: Blatt mit OpenStreetMap-Karte und Liste (Öffnungszeiten, Entfernung).
-// Daten: static/hoflaeden.js (tools/update_hoflaeden.mjs). Kartenbilder kommen erst beim Öffnen von tile.openstreetmap.org.
-// Der Standort wird nur auf Knopfdruck gefragt und nie gespeichert. Regeln (Zeiten, Entfernung): core.js.
-// Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
+// Obsonare – Hofläden & Märkte: Blatt nach Wochentagen (keine Karte). Oben «Am nächsten» und «Lieblings», dann Spezialmärkte
+// der nächsten Wochen, dann die Woche ab heute: pro Tag, was offen ist. «Route» öffnet Apple Karten (iPhone) bzw. Google Maps.
+// Daten: static/hoflaeden.js (OpenStreetMap, tools/update_hoflaeden.mjs) und static/maerkte_spezial.js (von Hand). Regeln: core.js.
+// Standort: nur nach Knopfdruck «Standort verwenden»; bleibt im Speicher, wird nie gesendet oder gespeichert (nur ja/nein pro Handy).
+// Lieblinge: pro WG gemeinsam in den WG-Einstellungen (favMarkets). Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
 (() => {
   "use strict";
   const app = window.BF_APP;
   if (!app) return;
-  const { state, $, esc, toast, CORE } = app;
-  const DATA = () => (window.BF_HOF && window.BF_HOF.items) || [];
+  const { state, $, esc, toast, CORE, load, save, STORE } = app;
   const RAPPERSWIL = { lat: 47.2267, lon: 8.8184 }; // ohne Standort: von hier aus gemessen
-  const KIND = { hof: "Hofladen", markt: "Markt", automat: "Hofautomat" };
-  const TILE = 256, ZMIN = 9, ZMAX = 16;
-  const H = () => state.hof;
-
-  // Web-Mercator: Grad <-> Pixel der ganzen Welt bei Zoom z
-  const toPx = (lat, lon, z) => {
-    const n = TILE * 2 ** z, r = lat * Math.PI / 180;
-    return { x: (lon + 180) / 360 * n, y: (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n };
+  const WD = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+  const KIND = { hof: "Hofladen", markt: "Markt" };
+  const DATA = () => (window.BF_HOF && window.BF_HOF.items) || [];
+  const SPECIAL = () => (window.BF_SPECIAL && window.BF_SPECIAL.items) || [];
+  const ref = () => state.hof.ref || RAPPERSWIL;
+  const favs = () => load(STORE.KEYS.FAV_KEY, []) || [];
+  const ios = () => document.documentElement.classList.contains("glass");
+  const kmText = km => (km < 1 ? `${Math.round(km * 1000 / 50) * 50} m` : `${km < 10 ? km.toFixed(1).replace(".", ",") : Math.round(km)} km`);
+  const dayText = (d, now) => {
+    const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const k = Math.round((d - t) / 864e5);
+    return `${WD[(d.getDay() + 6) % 7]} ${d.getDate()}.${d.getMonth() + 1}.${k === 0 ? " · heute" : k === 1 ? " · morgen" : ""}`;
   };
-  const toDeg = (x, y, z) => {
-    const n = TILE * 2 ** z;
-    return { lon: x / n * 360 - 180, lat: Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI };
-  };
-  const ref = () => H().ref || RAPPERSWIL;
-  const kmText = km => (km < 1 ? `${Math.round(km * 1000 / 50) * 50} m` : `${km < 10 ? km.toFixed(1) : Math.round(km)} km`);
-  const list = () => CORE.farmList(DATA(), { kind: H().kind, openOnly: H().openOnly, ref: ref(), now: new Date() });
 
-  function renderMap(items) {
-    const box = $("hofMap"), W = box.clientWidth || 340, Hh = box.clientHeight || 240, z = H().z;
-    const c = H().center || ref();
-    const mid = toPx(c.lat, c.lon, z), x0 = mid.x - W / 2, y0 = mid.y - Hh / 2;
-    const max = 2 ** z, html = [];
-    for (let tx = Math.floor(x0 / TILE); tx * TILE < x0 + W; tx++) {
-      for (let ty = Math.floor(y0 / TILE); ty * TILE < y0 + Hh; ty++) {
-        if (ty < 0 || ty >= max) continue;
-        html.push(`<img alt="" loading="lazy" src="https://tile.openstreetmap.org/${z}/${((tx % max) + max) % max}/${ty}.png" style="left:${Math.round(tx * TILE - x0)}px;top:${Math.round(ty * TILE - y0)}px">`);
-      }
-    }
-    items.forEach((it, i) => {
-      const p = toPx(it.lat, it.lon, z), x = p.x - x0, y = p.y - y0;
-      if (x < -10 || y < -10 || x > W + 10 || y > Hh + 10) return;
-      html.push(`<button type="button" class="hofpin ${it.k}${it.state && !it.state.open ? " closed" : ""}${H().sel === it.n + it.lat ? " sel" : ""}" data-hi="${i}" style="left:${Math.round(x)}px;top:${Math.round(y)}px" aria-label="${esc(it.n)}"></button>`);
-    });
-    if (H().ref) { const p = toPx(H().ref.lat, H().ref.lon, z); html.push(`<span class="hofpin me" style="left:${Math.round(p.x - x0)}px;top:${Math.round(p.y - y0)}px"></span>`); }
-    $("hofTiles").innerHTML = html.join("");
+  const star = (key, on) => `<button type="button" class="hofstar" data-fav="${esc(key)}" aria-pressed="${on}" aria-label="${on ? "Lieblingsort entfernen" : "Als Lieblingsort merken"}">${on ? "★" : "☆"}</button>`;
+  const route = it => `<a class="hofroute" href="${esc(CORE.routeUrl(it, ios()))}" target="_blank" rel="noopener">Route</a>`;
+  const stText = it => (it.state ? (it.state.open || /^öffnet \d/.test(it.state.text) ? it.state.text : `heute zu · ${it.state.text}`) : "Zeiten unbekannt");
+
+  function card(label, it, empty, fav, now) {
+    if (!it) return `<div class="hofcard"><small>${label}</small><p class="hint">${empty}</p></div>`;
+    return `<div class="hofcard"><small>${label}</small>
+      <div class="hofrow"><b>${esc(it.n)}</b>${star(it.key, fav.includes(it.key))}</div>
+      <span class="st${it.state && it.state.open ? " open" : ""}">${esc(stText(it))}</span>
+      <small>${esc(CORE.hoursText(it.oh, now))}</small>
+      <small>${esc(KIND[it.k] || "")}${it.ort ? ` · ${esc(it.ort)}` : ""} · ${kmText(it.km)}</small>
+      <div class="hofact">${route(it)}${it.web ? `<a class="hofroute" href="${esc(it.web)}" target="_blank" rel="noopener">Webseite</a>` : ""}</div></div>`;
   }
 
   function renderHof() {
-    const all = DATA(), items = list(), h = H();
+    const now = new Date(), r = ref(), fav = favs(), items = DATA();
     const stand = window.BF_HOF && window.BF_HOF.stand ? ` · Stand ${window.BF_HOF.stand.split("-").reverse().join(".")}` : "";
-    $("hofSub").textContent = `${all.length} Orte aus OpenStreetMap${stand} · ${h.ref ? "ab deinem Standort" : "ab Rapperswil"}`;
-    document.querySelectorAll("#hofKind [data-hk]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.hk === h.kind)));
-    $("hofOpen").setAttribute("aria-pressed", String(h.openOnly));
-    const now = new Date();
-    $("hofList").innerHTML = items.slice(0, h.n).map((it, i) => {
-      const osm = `https://www.openstreetmap.org/?mlat=${it.lat}&mlon=${it.lon}#map=17/${it.lat}/${it.lon}`;
-      const zeiten = it.oh ? CORE.hoursText(it.oh, now) : "Öffnungszeiten unbekannt";
-      return `<div class="hofit${h.sel === it.n + it.lat ? " sel" : ""}" data-hi="${i}">
-        <a class="nm" href="${esc(osm)}" target="_blank" rel="noopener">${esc(it.n)}</a>
-        <span class="st${it.state && it.state.open ? " open" : ""}">${esc(it.state ? it.state.text : "")}</span>
-        <small>${esc(KIND[it.k] || "")}${it.bio ? " · Bio" : ""}${it.adr || it.ort ? ` · ${esc([it.adr, it.ort].filter(Boolean).join(", "))}` : ""} · ${kmText(it.km)}</small>
-        <small>${esc(zeiten)}${it.web ? ` · <a href="${esc(it.web)}" target="_blank" rel="noopener">Webseite</a>` : ""}</small>
-      </div>`;
-    }).join("") || `<div class="empty">${h.openOnly ? "Gerade hat nichts offen." : "Keine Orte gefunden."}</div>`;
-    $("hofMore").hidden = items.length <= h.n;
-    renderMap(items);
+    $("hofSub").textContent = `Entfernung ${state.hof.ref ? "ab deinem Standort" : "ab Rapperswil-Jona"}${stand}`;
+    $("hofGeo").hidden = !!state.hof.ref;
+    $("hofCards").innerHTML = card("Am nächsten", CORE.nearestFarm(items, r, now), "Keine Orte mit Öffnungszeiten.", fav, now)
+      + card("Lieblings", CORE.favFarm(items, fav, r, now), "Tippe bei einem Ort auf ☆, dann steht er hier.", fav, now);
+    const sp = CORE.specialUpcoming(SPECIAL(), { ref: r, now });
+    $("hofSpecial").innerHTML = sp.length ? `<h3>Bald: besondere Märkte</h3>` + sp.map(e => `<div class="hofsp">
+        <div class="hofrow"><b>${esc(e.n)}</b><span class="st${e.today ? " open" : ""}">${esc(dayText(e.first, now))}${e.count > 1 ? ` bis ${e.last.getDate()}.${e.last.getMonth() + 1}.` : ""}</span></div>
+        <small>${esc(e.ort)} · ${esc(e.zeit || "")} · ${kmText(e.km)}${e.pruefen ? " · <b>Datum prüfen</b>" : ""}</small>
+        <div class="hofact">${route(e)}${e.web ? `<a class="hofroute" href="${esc(e.web)}" target="_blank" rel="noopener">Webseite</a>` : ""}</div></div>`).join("") : "";
+    const week = CORE.farmWeek(items, { ref: r, now, favs: fav });
+    $("hofWeek").innerHTML = week.map((d, i) => `<section class="hofday"><h3>${esc(dayText(d.date, now))}</h3>${d.rows.map(it => `<div class="hofit">
+        <div class="hofrow"><b>${esc(it.n)}</b>${star(it.key, it.fav)}</div>
+        <small><span class="${it.now ? "st open" : ""}">${esc(it.text)}</span> · ${esc(KIND[it.k] || "")}${it.ort ? ` · ${esc(it.ort)}` : ""} · ${kmText(it.km)}</small>
+        <div class="hofact">${route(it)}</div></div>`).join("") || `<p class="hint">${i === 0 ? "Heute hat nichts mehr offen." : "Nichts in der Nähe."}</p>`}</section>`).join("");
   }
 
+  // Standort: nur nach Knopfdruck (Zustimmung ja/nein pro Handy), dann bei jedem Öffnen frisch. Nie senden oder speichern.
+  function locate(then) {
+    if (!navigator.geolocation) { toast("Standort nicht verfügbar – Entfernung ab Rapperswil-Jona"); return then && then(); }
+    navigator.geolocation.getCurrentPosition(pos => {
+      state.hof.ref = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      save(STORE.KEYS.HOF_GEO_KEY, true);
+      then && then();
+    }, () => {
+      state.hof.ref = null;
+      save(STORE.KEYS.HOF_GEO_KEY, false);
+      toast("Standort nicht erlaubt – Entfernung ab Rapperswil-Jona");
+      then && then();
+    }, { timeout: 10000, maximumAge: 60000 });
+  }
   function openHof() {
-    Object.assign(H(), { center: null, n: 30, sel: null });
+    state.hof.ref = null;
     $("hofDialog").showModal();
     renderHof();
+    if (load(STORE.KEYS.HOF_GEO_KEY, false) === true) locate(renderHof);
   }
 
-  // Bedienung
   $("hofBtn").onclick = openHof;
-  $("hofKind").addEventListener("click", e => {
-    const b = e.target.closest("[data-hk]");
+  $("hofLocate").onclick = () => locate(renderHof);
+  $("hofDialog").addEventListener("click", e => {
+    const b = e.target.closest("[data-fav]");
     if (!b) return;
-    Object.assign(H(), { kind: b.dataset.hk, n: 30 });
+    const key = b.dataset.fav, list = favs(), i = list.indexOf(key);
+    if (i < 0) list.push(key); else list.splice(i, 1);
+    save(STORE.KEYS.FAV_KEY, list);
+    app.settingsChanged();
     renderHof();
   });
-  $("hofOpen").onclick = () => { H().openOnly = !H().openOnly; H().n = 30; renderHof(); };
-  $("hofMore").onclick = () => { H().n += 30; renderHof(); };
-  $("hofLocate").onclick = () => {
-    if (!navigator.geolocation) return toast("Standort nicht verfügbar");
-    $("hofLocate").disabled = true;
-    navigator.geolocation.getCurrentPosition(pos => {
-      $("hofLocate").disabled = false;
-      Object.assign(H(), { ref: { lat: pos.coords.latitude, lon: pos.coords.longitude }, center: null, z: 12 });
-      renderHof();
-    }, () => { $("hofLocate").disabled = false; toast("Standort nicht erlaubt – Entfernung ab Rapperswil"); }, { timeout: 10000, maximumAge: 300000 });
-  };
-  document.querySelector("#hofMap .hofzoom").addEventListener("click", e => {
-    const b = e.target.closest("[data-z]");
-    if (!b) return;
-    H().z = Math.max(ZMIN, Math.min(ZMAX, H().z + Number(b.dataset.z)));
-    renderMap(list());
-  });
-  // Punkt antippen = Ort in der Liste zeigen; Ort antippen (nicht den Link) = auf der Karte zeigen
-  function select(it) {
-    H().sel = it.n + it.lat;
-    const idx = list().findIndex(x => x.n + x.lat === H().sel);
-    if (idx >= H().n) H().n = idx + 1;
-    renderHof();
-    const row = document.querySelector(`#hofList .hofit[data-hi="${idx}"]`);
-    if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }
-  $("hofTiles").addEventListener("click", e => {
-    const b = e.target.closest(".hofpin[data-hi]");
-    if (b) select(list()[+b.dataset.hi]);
-  });
-  $("hofList").addEventListener("click", e => {
-    if (e.target.closest("a")) return;
-    const row = e.target.closest(".hofit");
-    if (!row) return;
-    const it = list()[+row.dataset.hi];
-    Object.assign(H(), { center: { lat: it.lat, lon: it.lon }, z: Math.max(H().z, 13) });
-    select(it);
-  });
-  // Karte verschieben (Finger/Maus ziehen)
-  let drag = null;
-  $("hofMap").addEventListener("pointerdown", e => {
-    if (e.target.closest("button, a")) return;
-    const c = H().center || ref(), p = toPx(c.lat, c.lon, H().z);
-    drag = { x: e.clientX, y: e.clientY, px: p.x, py: p.y, moved: false };
-    $("hofMap").setPointerCapture(e.pointerId);
-  });
-  $("hofMap").addEventListener("pointermove", e => {
-    if (!drag) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
-    $("hofTiles").style.transform = `translate(${dx}px, ${dy}px)`;
-  });
-  const endDrag = e => {
-    if (!drag) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    $("hofTiles").style.transform = "";
-    if (drag.moved) { H().center = toDeg(drag.px - dx, drag.py - dy, H().z); renderMap(list()); }
-    drag = null;
-  };
-  $("hofMap").addEventListener("pointerup", endDrag);
-  $("hofMap").addEventListener("pointercancel", endDrag);
 
   Object.assign(app, { renderHof, openHof });
 })();
