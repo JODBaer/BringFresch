@@ -55,18 +55,13 @@ async function discoverItems() {
   const show = (path, fn) => dget(path).then(r => { console.log(`discover.swiss ${path}: HTTP ${r.status}`); if (r.json) fn(r.json); else console.log("  Antwort: " + r.text.slice(0, 200).replace(/\s+/g, " ")); }).catch(e => console.log(`discover.swiss ${path}: ${e.cause?.code || e.message}`));
   const pause = () => new Promise(r => setTimeout(r, 1500)); // weit unter 60 Aufrufen pro Minute
   const cut = (v, n) => JSON.stringify(v).slice(0, n);
-  await show("categories?rootObjectsOnly=true", j => console.log("  Wurzeln: " + cut((j.data || j).map?.(c => [c["@id"] || c.identifier, c.name]), 1500)));
+  const cats = j => (j.data || []).map(c => `${String(c["@id"]).split("/").pop()}=${c.name}`).join(" | ");
+  await show("categories?rootObjectsOnly=true", j => console.log("  Wurzeln: " + cut(Object.keys(j), 200) + " " + cats(j).slice(0, 1500)));
   await pause();
-  await show("localbusinesses", j => {
-    const d = j.data || [];
-    console.log("  Anzahl Seite: " + d.length + ", Weiter: " + j.hasNextPage);
-    d.slice(0, 3).forEach(o => console.log("  Objekt: " + cut({ name: o.name, additionalType: o.additionalType, category: (o.category || []).map(c => [c["@id"], c.name]), geo: o.geo, address: o.address, openingDays: o.openingDays, license: o.license, copyright: o.copyright, gov: o.dataGovernance, containedInPlace: (o.containedInPlace || []).map(c => [c["@id"], c.name]).slice(0, 6) }, 1400)));
-    console.log("  Alle Schlüssel: " + Object.keys(d[0] || {}).join(","));
-  });
-  await pause();
-  await show("events", j => (j.data || []).slice(0, 2).forEach(o => console.log("  Event: " + cut({ name: o.name, additionalType: o.additionalType, startDate: o.startDate, endDate: o.endDate, eventSchedule: o.eventSchedule, location: o.location, license: o.license, category: (o.category || []).map(c => [c["@id"], c.name]), url: o.url }, 1400))));
-  await pause();
-  await show("places", j => (j.data || []).slice(0, 2).forEach(o => console.log("  Ort: " + cut({ name: o.name, additionalType: o.additionalType, id: o["@id"], contained: (o.containedInPlace || []).map(c => [c["@id"], c.name, c.additionalType]) }, 900))));
+  for (const parent of ["sui_root", "sui_05", "sui_04", "sui_03"]) {
+    await show(`categories?parentCategory=${parent}`, j => console.log(`  Kinder von ${parent}: ` + cats(j).slice(0, 1800)));
+    await pause();
+  }
   return [];
 }
 const discovered = await discoverItems();
