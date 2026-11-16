@@ -30,7 +30,7 @@ Befehle einzeln ausführen (PowerShell kennt kein `&&`). Der Cloud-Chat kann kei
 | 3 Speicher / Zustand | erledigt (Speicher + ein Zustand `state` mit `subscribe`/`notify`, `STORE.migrate`) | `static/store.js` (`BF_STORE`): alle localStorage-Schlüssel |
 | 4 Abgleich mit Versionen | erledigt (+ Korrektur, siehe 1) | `app_sync.js`: `syncCase`, `merge3`, `push…Now`; `worker/src/speicher.js`: `putDoc` |
 | 5 Ansichten / CSS | erledigt (12.11., klassische Skripte mit Namensraum `BF_APP`); **Variante 4 offen** | `static/app.css`; `static/app.js` (Grundlage) + `app_plan`, `app_einkauf`, `app_vorrat`, `app_rezepte`, `app_wahl`, `app_sync`, `app_einstellungen`, `app_theme`, `app_start` (Einzelheiten: `docs/refactoring-plan.md`, Schritt 5) |
-| 6 Worker | Anmeldung gemerkt, Datei aufgeteilt; Batch gebaut, Live-Beweis in `tests/stage_live.mjs` eingebaut (60 Artikel in einem Durchgang, Mengen per Batch, aufräumen; Ergebnis steht im Log von `stage.yml`) | `worker/src/`: `index`, `auth`, `speicher`, `bring`, `kalender`, `rezept`, `http` |
+| 6 Worker | Anmeldung gemerkt, Datei aufgeteilt; Batch gebaut, Live-Beweis in `tests/stage_live.mjs` eingebaut (60 Artikel in einem Durchgang, Mengen per Batch, aufräumen; Ergebnis 16.11.: 60 Artikel ok; Mengen per Batch brauchen Nachschicken; Wegnehmen von 60 in 2 Aufrufen) | `worker/src/`: `index`, `auth`, `speicher`, `bring`, `kalender`, `rezept`, `http` |
 | 7 Start | erledigt, **Schrift offen** | `sw.js`: höchstens 2.5 s aufs Netz warten; Cache-Name im Release = Version |
 | 8 D1 | bewusst nicht | nur für geteilte Rezepte zwischen WGs nötig |
 
