@@ -52,14 +52,21 @@ const shape = (v, d = 0) => (Array.isArray(v) ? `[${v.length}:${v.length ? shape
 async function discoverItems() {
   if (!process.env.DISCOVER_SWISS_KEY) { console.log("discover.swiss: kein Schlüssel – übersprungen"); return []; }
   // Erster Lauf: nur erkunden (Felder und Typen ins Log, nie der Schlüssel). Die Zuordnung folgt, sobald die Felder bekannt sind.
-  for (const path of ["places?limit=2", "localbusinesses?limit=2", "events?limit=2", "touristattractions?limit=2"]) {
-    try {
-      const r = await dget(path);
-      console.log(`discover.swiss ${path}: HTTP ${r.status}`);
-      if (r.json) console.log("  Form: " + shape(r.json).slice(0, 1800)); else console.log("  Antwort: " + r.text.slice(0, 200).replace(/\s+/g, " "));
-    } catch (e) { console.log(`discover.swiss ${path}: ${e.cause?.code || e.message}`); }
-    await new Promise(r => setTimeout(r, 1500)); // weit unter 60 Aufrufen pro Minute
-  }
+  const show = (path, fn) => dget(path).then(r => { console.log(`discover.swiss ${path}: HTTP ${r.status}`); if (r.json) fn(r.json); else console.log("  Antwort: " + r.text.slice(0, 200).replace(/\s+/g, " ")); }).catch(e => console.log(`discover.swiss ${path}: ${e.cause?.code || e.message}`));
+  const pause = () => new Promise(r => setTimeout(r, 1500)); // weit unter 60 Aufrufen pro Minute
+  const cut = (v, n) => JSON.stringify(v).slice(0, n);
+  await show("categories?rootObjectsOnly=true", j => console.log("  Wurzeln: " + cut((j.data || j).map?.(c => [c["@id"] || c.identifier, c.name]), 1500)));
+  await pause();
+  await show("localbusinesses", j => {
+    const d = j.data || [];
+    console.log("  Anzahl Seite: " + d.length + ", Weiter: " + j.hasNextPage);
+    d.slice(0, 3).forEach(o => console.log("  Objekt: " + cut({ name: o.name, additionalType: o.additionalType, category: (o.category || []).map(c => [c["@id"], c.name]), geo: o.geo, address: o.address, openingDays: o.openingDays, license: o.license, copyright: o.copyright, gov: o.dataGovernance, containedInPlace: (o.containedInPlace || []).map(c => [c["@id"], c.name]).slice(0, 6) }, 1400)));
+    console.log("  Alle Schlüssel: " + Object.keys(d[0] || {}).join(","));
+  });
+  await pause();
+  await show("events", j => (j.data || []).slice(0, 2).forEach(o => console.log("  Event: " + cut({ name: o.name, additionalType: o.additionalType, startDate: o.startDate, endDate: o.endDate, eventSchedule: o.eventSchedule, location: o.location, license: o.license, category: (o.category || []).map(c => [c["@id"], c.name]), url: o.url }, 1400))));
+  await pause();
+  await show("places", j => (j.data || []).slice(0, 2).forEach(o => console.log("  Ort: " + cut({ name: o.name, additionalType: o.additionalType, id: o["@id"], contained: (o.containedInPlace || []).map(c => [c["@id"], c.name, c.additionalType]) }, 900))));
   return [];
 }
 const discovered = await discoverItems();
