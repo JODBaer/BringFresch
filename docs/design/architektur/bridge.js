@@ -17,7 +17,9 @@
 
   // Expose helper to switch screens/dialogs from the outer architecture navigator
   window.__ARCH_NAV = function(target) {
-    // Close any open dialogs or sheets first
+    // Close any open dialogs or sheets first («Schon auf Bring!» über «Abbrechen», sonst bleibt der Bring!-Chip gesperrt)
+    const dup = document.getElementById("dupDialog");
+    if (dup && dup.open) document.getElementById("dupCancelBtn").click();
     document.querySelectorAll("dialog[open]").forEach(d => d.close());
     const ms = document.getElementById("msheet");
     const msc = document.getElementById("mscrim");
@@ -97,6 +99,34 @@
         const wd = document.getElementById("welcomeDialog");
         if (wd && wd.showModal) wd.showModal();
       }
+    } else if (target === "hof") {
+      clickTab("shop");
+      setTimeout(() => { const hb = document.getElementById("hofBtn"); if (hb) hb.click(); }, 60);
+    } else if (target === "dup") {
+      // Bring!-Chip oben: steht schon etwas auf Bring! (Demo: Kürbis vom Bot, Milch von Hand), fragt «Schon auf Bring!» nach
+      // Demo: einen Artikel aus dem Plan «von Hand» auf die nachgebaute Bring!-Liste setzen, damit die Rückfrage kommt
+      clickTab("plan");
+      setTimeout(() => {
+        const app = window.BF_APP, list = window.__ARCH_BRING;
+        if (app && app.setWeekView) app.setWeekView(false); // laufende Woche (die Wochenwahl ab Do zeigt die nächste, noch leere)
+        const first = app && app.bringDiff ? app.bringDiff().missing[0] : null;
+        if (first && list && !list.some(x => x.name.toLowerCase() === first.name.toLowerCase())) {
+          list.push({ name: first.name, specification: "1 (von Hand eingetragen)", uuid: "u-demo-" + list.length });
+        }
+        const sb = document.getElementById("syncBtn");
+        if (sb && !sb.disabled) sb.click();
+      }, 60);
+    } else if (target === "sync") {
+      clickTab("plan");
+      setTimeout(() => { if (window.BF_APP && window.BF_APP.runPullSync) window.BF_APP.runPullSync(); }, 60);
+    } else if (target === "catalog") {
+      clickTab("plan");
+      setTimeout(() => {
+        if (!window.BF_APP || !window.BF_APP.openCatalog) return;
+        window.BF_APP.openCatalog(0);
+        const f = document.querySelector('#catalogFilters [data-filter="shared"]');
+        if (f) f.click();
+      }, 60);
     }
   };
 
@@ -118,6 +148,16 @@
     if (t.closest("#openVoteBtn") || t.closest("#setVoteBtn") || t.closest("#wgo")) { screen = "vote"; elKey = "vote-card"; }
     else if (t.closest("#voteDialog")) { screen = "vote"; elKey = "vote-card"; }
     else if (t.closest("#msheet")) { screen = "msheet"; elKey = "msheet-swap"; }
+    else if (t.closest("#hofLocate")) { screen = "hof"; elKey = "hof-locate"; }
+    else if (t.closest("#hofCards")) { screen = "hof"; elKey = "hof-fav"; }
+    else if (t.closest("#hofDialog") || t.closest("#hofBtn")) { screen = "hof"; elKey = "hof-week"; }
+    else if (t.closest("#dupSendBtn")) { screen = "dup"; elKey = "dup-send"; }
+    else if (t.closest("#dupDialog")) { screen = "dup"; elKey = "dup-list"; }
+    else if (t.closest("#catalogFilters")) { screen = "catalog"; elKey = "catalog-shared"; }
+    else if (t.closest("#catalogDialog")) { screen = "catalog"; elKey = "catalog-copy"; }
+    else if (t.closest("#welcomeWho")) { screen = "welcome"; elKey = "welcome-who"; }
+    else if (t.closest("#shopTool")) { screen = "shop"; elKey = "shop-cook"; }
+    else if (t.closest("#syncNowBtn")) { screen = "sync"; elKey = "sync-pull"; }
     else if (t.closest("#compareDialog")) { screen = "compare"; elKey = "compare-send"; }
     else if (t.closest("#stapleItemDialog")) { screen = "stapleItem"; elKey = "staple-item-qty"; }
     else if (t.closest("#staplesDialog")) { screen = "staples"; elKey = "staples-tile"; }
