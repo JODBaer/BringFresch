@@ -4,7 +4,7 @@
 
 ## Nachtrag 18.11.2026 (Joshua)
 
-**Regel: Tourismus-Seiten über discover.swiss.** zuerich.com und rapperswil-zuerichsee.ch antworten Programmen mit «403 Bot not allowed». Die Sperre nicht umgehen. Die Daten **immer über die discover.swiss-API** holen: Schlüssel = Secret `DISCOVER_SWISS_KEY`, Workflow `hoflaeden.yml`, Zürich Tourismus = Quelle `ZHT-CMS`, nur offene Lizenz (CC). Was dort fehlt, kommt von Joshua oder von der offiziellen Seite des Vereins bzw. der Gemeinde, immer mit Quelle. Die Punkte in Abschnitt 2 zu discover.swiss und Rapperswil sind damit überholt.
+**Regel: Tourismus-Seiten über discover.swiss.** zuerich.com und rapperswil-zuerichsee.ch antworten Programmen mit «403 Bot not allowed». Die Sperre nicht umgehen. Die Daten **immer über die discover.swiss-API** holen: Schlüssel = Secret `DISCOVER_SWISS_KEY`, Workflow `hoflaeden.yml`, Zürich Tourismus = Quelle `ZHT-CMS`, nur offene Lizenz (CC). Was dort fehlt: zuerst mit einer kurzen Websuche die offizielle Seite des Vereins bzw. der Gemeinde suchen und dort einzeln nachlesen (so fand sich wuchemaert-meilen.ch). Erst wenn das nichts bringt, Joshua fragen. Immer mit Quelle. Die Punkte in Abschnitt 2 zu discover.swiss und Rapperswil sind damit überholt.
 
 **Saisonzeiten und Pausen** aus discover.swiss tagesgenau übernehmen (bisher nur monatsgenau, «Mar-Nov»). Vermutung: `ohFrom()` verwirft reine «geschlossen»-Einträge ohne `opens`/`closes`. In der Pause gilt ein Markt nicht als offen, die App zeigt «Winterpause bis …».
 
