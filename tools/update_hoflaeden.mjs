@@ -50,50 +50,95 @@ async function dget(path) { // Kategorien in der neuen Fassung («sui»)
 }
 const r5 = x => Math.round(x * 1e5) / 1e5;
 const DAY_OH = { Monday: "Mo", Tuesday: "Tu", Wednesday: "We", Thursday: "Th", Friday: "Fr", Saturday: "Sa", Sunday: "Su" };
-// openingHoursSpecification [{ dayOfWeek, opens, closes }] -> OSM-Format «Mo 09:00-12:00,14:00-18:30; Tu …» (nur das lesen wir; sonst keine Zeiten)
+// openingHoursSpecification [{ dayOfWeek, opens, closes, validFrom?, validThrough? }] -> OSM-Format
+// «Mar-Nov Sa 08:00-11:00; Mo 09:00-12:00,14:00-18:30 …». dayOfWeek kann Text, Liste oder schema.org-URL sein.
+// Saison: gilt eine Angabe nur für einen Teil des Jahres (validFrom/validThrough), steht der Monatsbereich davor.
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function ohFrom(spec) {
-  const days = {};
+  const groups = {}; // Saison -> Tag -> Zeiten
   for (const x of spec || []) {
-    const d = DAY_OH[x.dayOfWeek];
-    if (d && x.opens && x.closes) (days[d] = days[d] || []).push(`${x.opens.slice(0, 5)}-${x.closes.slice(0, 5)}`);
+    if (!x.opens || !x.closes) continue;
+    let season = "";
+    if (x.validFrom && x.validThrough) {
+      const f = new Date(x.validFrom), t = new Date(x.validThrough);
+      if (!isNaN(f) && !isNaN(t) && t - f < 330 * 864e5 && t > f) season = `${MON[f.getUTCMonth()]}-${MON[t.getUTCMonth()]}`;
+    }
+    for (const dRaw of [].concat(x.dayOfWeek || [])) {
+      const d = DAY_OH[String(dRaw).replace(/^.*\//, "")];
+      if (!d) continue;
+      const g = (groups[season] = groups[season] || {});
+      const span = `${x.opens.slice(0, 5)}-${x.closes.slice(0, 5)}`;
+      if (!(g[d] = g[d] || []).includes(span)) g[d].push(span);
+    }
   }
-  return ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].filter(d => days[d]).map(d => `${d} ${days[d].sort().join(",")}`).join("; ");
+  return Object.entries(groups).map(([season, days]) => {
+    const rule = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].filter(d => days[d]).map(d => `${d} ${days[d].sort().join(",")}`).join("; ");
+    return season ? rule.split("; ").map(r => `${season} ${r}`).join("; ") : rule;
+  }).filter(Boolean).join("; ");
 }
 const inBox = o => o.geo && o.geo.latitude >= 47.15 && o.geo.latitude <= 47.45 && o.geo.longitude >= 8.45 && o.geo.longitude <= 9.0;
-// discover.swiss «Infocenter OpenData»: Kategorien Regionalprodukte (sui_0506) und Produzent (sui_0507); nur Objekte mit offener Lizenz (CC …),
-// höchstens 10 Seiten je Kategorie, ~1 Abruf pro Sekunde (Grenze: 60 pro Minute). Im Log nur Anzahlen, nie der Schlüssel.
+// discover.swiss «Infocenter OpenData» (Schlüssel als Secret DISCOVER_SWISS_KEY, kein Partner-Projekt → keine /search).
+// Die Listen holen wir ganz (Filter additionalType/source wirken dort nicht, Ort-Filter «coming soon») und wählen selbst:
+//   civicstructures: Typ Market (Wochenmärkte, v.a. von Zürich Tourismus) – ohne Floh-/Weihnachts-/Saisonmärkte (die stehen in
+//                    maerkte_spezial.js); Typ Farm = Hof.
+//   localbusinesses: Typ FarmShop, oder Laden mit «Hofladen» im Namen, dazu Kategorien Regionalprodukte/Produzent (sui_0506/0507).
+//   places:          «Hofladen» im Namen.
+// Nur im Gebiet, nur offene Lizenz (CC …). ~1 Abruf pro Sekunde (Grenze 60/Min, 50 000/Monat); im Log nur Anzahlen und Namen.
+const SPECIAL = /floh|weihnacht|advent|christkind|wintermarkt|herbstmarkt|frühlingsmarkt|sternenmarkt|weihnachtsallee|chlaus/i;
+async function dall(path, max = 40) {
+  const all = []; let token = "";
+  for (let page = 0; page < max; page++) {
+    const r = await dget(`${path}${path.includes("?") ? "&" : "?"}top=100${token ? "&continuationToken=" + encodeURIComponent(token) : ""}`);
+    if (r.status !== 200 || !r.json) throw new Error(`${path}: HTTP ${r.status}`);
+    all.push(...(r.json.data || []));
+    if (!r.json.hasNextPage || !r.json.nextPageToken) break;
+    token = r.json.nextPageToken;
+    await new Promise(res => setTimeout(res, 1100));
+  }
+  return all;
+}
+function kindFromDiscover(o, from) {
+  const t = String(o.additionalType || "").replace(/^.*\//, ""), n = o.name || "";
+  if (from === "civic") {
+    if (t === "Market") return SPECIAL.test(n) ? null : /markt|märt|market|marché/i.test(n) ? "markt" : "hof"; // z.B. Juckerhof = Hof
+    if (t === "Farm") return "hof";
+    return null;
+  }
+  if (from === "local") return t === "FarmShop" || /hofl[aä]d/i.test(n) ? "hof" : null;
+  if (from === "place") return /hofl[aä]d/i.test(n) ? "hof" : null;
+  return from === "cat" ? "hof" : null;
+}
 async function discoverItems() {
   if (!process.env.DISCOVER_SWISS_KEY) { console.log("discover.swiss: kein Schlüssel – übersprungen"); return []; }
-  const out = [], seen = new Set(); let calls = 0, total = 0, closed = 0;
+  const out = [], seen = new Set(); let total = 0, closed = 0;
   try {
-    for (const cat of ["sui_0506", "sui_0507"]) {
-      let token = "";
-      for (let page = 0; page < 10; page++) {
-        const r = await dget(`localbusinesses?category=${cat}${token ? "&continuationToken=" + encodeURIComponent(token) : ""}`);
-        calls++;
-        if (r.status !== 200 || !r.json) throw new Error(`HTTP ${r.status}`);
-        for (const o of r.json.data || []) {
-          total++;
-          if (!inBox(o) || o.removed || seen.has(o["@id"])) continue;
-          if (!/^CC/.test(o.license || "") || /All-Rights/i.test(o.license)) { closed++; continue; } // nur offene Lizenz
-          seen.add(o["@id"]);
-          const a = o.address || {};
-          const it = { n: o.name, k: "hof", lat: r5(o.geo.latitude), lon: r5(o.geo.longitude), src: "discover" };
-          if (a.addressLocality) it.ort = a.addressLocality.trim();
-          if (a.streetAddress) it.adr = a.streetAddress.trim();
-          const oh = ohFrom(o.openingHoursSpecification);
-          if (oh) it.oh = oh;
-          const web = a.url || o.url;
-          if (web && /^https?:\/\//.test(web)) it.web = web;
-          out.push(it);
-        }
-        if (!r.json.hasNextPage || !r.json.nextPageToken) break;
-        token = r.json.nextPageToken;
-        await new Promise(res => setTimeout(res, 1100));
-      }
+    const sets = [
+      ["civic", await dall("civicstructures")],
+      ["local", await dall("localbusinesses")],
+      ["place", await dall("places")],
+      ["cat", [...await dall("localbusinesses?category=sui_0506", 10), ...await dall("localbusinesses?category=sui_0507", 10)]]
+    ];
+    for (const [from, list] of sets) for (const o of list) {
+      total++;
+      if (!inBox(o) || o.removed || seen.has(o["@id"])) continue;
+      const k = kindFromDiscover(o, from);
+      if (!k) continue;
+      if (!/^CC/.test(o.license || "") || /All-Rights/i.test(o.license)) { closed++; continue; } // nur offene Lizenz
+      seen.add(o["@id"]);
+      const a = o.address || {};
+      const it = { n: String(o.name).replace(/\s+[–-]\s+.*$/, "").trim(), k, lat: r5(o.geo.latitude), lon: r5(o.geo.longitude), src: "discover" };
+      if (a.addressLocality) it.ort = a.addressLocality.trim();
+      if (a.streetAddress) it.adr = a.streetAddress.trim();
+      const oh = ohFrom(o.openingHoursSpecification);
+      if (oh) it.oh = oh;
+      const web = a.url || o.url;
+      if (web && /^https?:\/\//.test(web)) it.web = web;
+      out.push(it);
     }
   } catch (e) { console.warn(`discover.swiss: Abbruch (${e.cause?.code || e.message}) – OSM und Handliste laufen weiter`); return []; }
-  console.log(`discover.swiss: ${calls} Abrufe, ${total} Objekte, ${out.length} im Gebiet mit offener Lizenz (${closed} ohne offene Lizenz ausgelassen)`);
+  const n = k => out.filter(i => i.k === k).length;
+  console.log(`discover.swiss: ${total} Objekte gelesen, im Gebiet übernommen: ${n("markt")} Märkte, ${n("hof")} Hofläden (${closed} ohne offene Lizenz ausgelassen)`);
+  for (const i of out) console.log(`  + ${i.k} ${i.n} | ${i.adr || ""}, ${i.ort || ""} | ${i.oh || "ohne Zeiten"}`);
   return out;
 }
 // Erkundung (nur mit DISCOVER_EXPLORE=1, Workflow-Schalter «explore»; ändert keine Daten): Der OpenData-Schlüssel hat kein
@@ -180,8 +225,12 @@ function mergeDiscover(osm, disc) {
   const dist = (a, b) => 2 * R * Math.asin(Math.sqrt(Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lon - a.lon) / 2) ** 2));
   const out = osm.slice();
   for (const d of disc) {
-    const i = out.findIndex(o => dist(o, d) < 0.15 && (normN(o.n).includes(normN(d.n)) || normN(d.n).includes(normN(o.n))));
-    if (i >= 0) out[i] = { ...out[i], ...d }; else out.push(d);
+    // gleicher Ort: Name ähnlich und < 150 m, oder zwei Märkte < 150 m (OSM «Bürkliplatz» = «Wochenmarkt Bürkliplatz»)
+    const i = out.findIndex(o => dist(o, d) < 0.15 && ((o.k === "markt" && d.k === "markt") || normN(o.n).includes(normN(d.n)) || normN(d.n).includes(normN(o.n))));
+    if (i < 0) { out.push(d); continue; }
+    const keep = out[i]._hand ? { oh: out[i].oh, n: out[i].n } : {}; // Zeiten von Hand (amtlich) bleiben
+    out[i] = { ...out[i], ...d, ...(d.oh ? {} : { oh: out[i].oh }), ...keep };
+    if (!out[i].oh) delete out[i].oh;
   }
   return out;
 }
@@ -216,13 +265,15 @@ for (const { match, place, ...x } of EXTRA) {
   const dup = items.find(i => i.k === x.k && match.test(i.n));
   if (dup) { // Angaben von Hand (Zeiten, Link) sind neuer als OSM
     for (const [key, v] of Object.entries(fill)) if (!dup[key] || key === "web" || key === "oh") dup[key] = v;
+    if (fill.oh) dup._hand = 1; // amtliche Zeiten von Hand: gelten auch vor discover.swiss
     continue;
   }
   const at = x.lat != null ? { lat: x.lat, lon: x.lon } : (places[place] || Object.entries(places).find(([nm]) => nm.includes(place))?.[1]);
   if (!at) { console.warn(`EXTRA ${x.n}: Ort ${place} nicht gefunden – übersprungen`); continue; }
-  items.push({ ...fill, lat: r5(at.lat), lon: r5(at.lon) });
+  items.push({ ...fill, lat: r5(at.lat), lon: r5(at.lon), ...(fill.oh ? { _hand: 1 } : {}) });
 }
 items.splice(0, items.length, ...mergeDiscover(items, discovered));
+items.forEach(i => delete i._hand);
 items.sort((a, b) => a.k.localeCompare(b.k) || a.n.localeCompare(b.n, "de"));
 
 const stand = new Date().toISOString().slice(0, 10);
