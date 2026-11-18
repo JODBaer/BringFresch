@@ -288,6 +288,15 @@ for (const { match, place, ...x } of EXTRA) {
 }
 items.splice(0, items.length, ...mergeDiscover(items, discovered));
 items.forEach(i => delete i._hand);
+// Gleich benannte Orte gleicher Art < 50 m (z.B. Milch- und Eier-Automat nebeneinander) = einer; der mit mehr Angaben bleibt
+{
+  const near = (a, b) => Math.abs(a.lat - b.lat) < 0.00045 && Math.abs(a.lon - b.lon) < 0.00066;
+  const info = i => Object.keys(i).length;
+  for (let i = items.length - 1; i >= 0; i--) {
+    const j = items.findIndex((b, k) => k !== i && b.k === items[i].k && b.n === items[i].n && near(b, items[i]));
+    if (j >= 0) { if (info(items[i]) > info(items[j])) items[j] = items[i]; items.splice(i, 1); }
+  }
+}
 items.sort((a, b) => a.k.localeCompare(b.k) || a.n.localeCompare(b.n, "de"));
 
 const stand = new Date().toISOString().slice(0, 10);
