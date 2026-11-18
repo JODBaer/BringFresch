@@ -339,7 +339,7 @@
   // «Rezept suchen auf …» – wie die Suchmaschine im Browser, pro Handy umschaltbar (Standard Swissmilk).
   // Auf den Rezeptseiten ohne das Wort «Rezept» suchen (dort ist alles ein Rezept), bei Google mit.
   const SEARCH_SITES = {
-    swissmilk: { name: "Swissmilk", url: q => `https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=${encodeURIComponent(q)}` },
+    swissmilk: { name: "Swissmilk", url: q => `https://www.swissmilk.ch/de/suche/?query=${encodeURIComponent(q)}` },
     fooby: { name: "Fooby", url: q => `https://fooby.ch/de/suche.html?query=${encodeURIComponent(q)}` },
     google: { name: "Google", url: q => `https://www.google.com/search?q=${encodeURIComponent(q + " Rezept")}` },
     // Weitere Quellen (Joshua 18.11.): Suche über Google mit «site:», damit keine Such-Adresse der Seite erraten werden muss

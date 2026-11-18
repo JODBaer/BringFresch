@@ -941,7 +941,7 @@ await step(A, "Saison: Bilder, Hochdeutsch; Gemüse antippen = «… Rezept» ko
   expect((await A.page.$eval("#recipeSearchQ", e => e.value)) === "Spinat Rezept ", "Suchfeld nicht gefüllt");
   await A.page.keyboard.type("Risotto");
   // Standard: Suche auf Swissmilk (ohne das Wort «Rezept»), umschaltbar wie die Suchmaschine im Browser
-  await until(A, () => document.getElementById("recipeSearchGo").href === "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=Spinat%20Risotto", "Suchen-Link nicht ergänzt (Swissmilk)");
+  await until(A, () => document.getElementById("recipeSearchGo").href === "https://www.swissmilk.ch/de/suche/?query=Spinat%20Risotto", "Suchen-Link nicht ergänzt (Swissmilk)");
   expect(await A.page.$eval("#recipeSearchGo", a => a.target === "_blank"), "Suche öffnet nicht in neuem Tab");
   expect((await A.page.$eval("#searchSite", s => s.value)) === "swissmilk", "Standard ist nicht Swissmilk");
   await A.page.evaluate(v => { const s = document.getElementById("searchSite"); s.value = v; s.dispatchEvent(new Event("change")); }, "google");
