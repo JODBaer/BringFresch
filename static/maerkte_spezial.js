@@ -4,7 +4,7 @@
 //   pruefen: true = Datum/Zeiten nicht auf einer offiziellen Seite bestätigt → in der App «Datum prüfen»
 // Koordinaten: ungefähr der Marktplatz bzw. das Zentrum des Orts.
 // Neue Einträge nur von der offiziellen Seite der Stadt / des Veranstalters (jede Seite einzeln, kein Massen-Abruf).
-window.BF_SPECIAL = { stand: "2026-11-16", items: [
+window.BF_SPECIAL = { stand: "2026-11-18", items: [
   // Stand 16.11.2026. Quelle: Stadt Bern («immer am vierten Montag im November», 6–18 Uhr)
   { id: "zibelemaerit", n: "Zibelemärit", ort: "Bern", lat: 46.9467, lon: 7.444, rule: { m: 11, nth: 4, wd: 0 }, zeit: "6–18 Uhr", web: "https://www.bern.ch/themen/freizeit-und-sport/markte/zibelemaerit" },
   // Quelle: Verein Rüeblimärt Aarau («immer am ersten Mittwoch im November», 7:30–18 Uhr)
@@ -14,5 +14,9 @@ window.BF_SPECIAL = { stand: "2026-11-16", items: [
   // Quelle: Reiseportale (zuerich.com): 3.–20. Dezember 2026, Do–So; offizielle Seite nicht geprüft
   { id: "christkindlimaert", n: "Christkindlimärt", ort: "Rapperswil-Jona", lat: 47.2267, lon: 8.8184, ranges: [["2026-12-03", "2026-12-20"]], days: [3, 4, 5, 6], zeit: "Do–So, Zeiten prüfen", pruefen: true, web: "https://www.zuerich.com/de/besuchen/shopping/christkindlimaert-rapperswil-jona" },
   // Quelle: Reiseportal (swissasap.com): 19. November bis 23./24. Dezember 2026; offizielle Seite nicht gefunden
-  { id: "bellevue-noel", n: "Bellevue Noël (Weihnachtsmarkt)", ort: "Zürich", lat: 47.3667, lon: 8.5453, ranges: [["2026-11-19", "2026-12-23"]], zeit: "Zeiten prüfen", pruefen: true, web: "https://www.zuerich.com/de/sightseeing-aktivitaeten/shopping/weihnachtsmaerkte" }
+  { id: "bellevue-noel", n: "Bellevue Noël (Weihnachtsmarkt)", ort: "Zürich", lat: 47.3667, lon: 8.5453, ranges: [["2026-11-19", "2026-12-23"]], zeit: "Zeiten prüfen", pruefen: true, web: "https://www.zuerich.com/de/sightseeing-aktivitaeten/shopping/weihnachtsmaerkte" },
+  // Quelle: https://wuchemaert-meilen.ch/ (Verein Wuchemärt Meilen) und Joshua 18.11.2026. Uhrzeiten nicht angegeben → prüfen.
+  // Herbstmärt 2026 ist vorbei; Daten jedes Jahr neu eintragen. Der Weihnachtsmarkt liegt in der Winterpause des Freitagsmarkts (kein Widerspruch).
+  { id: "meilen-herbstmaert", n: "Herbstmärt Meilen", ort: "Meilen", lat: 47.27043, lon: 8.64123, dates: ["2026-09-04"], zeit: "Zeiten prüfen", pruefen: true, web: "https://wuchemaert-meilen.ch/" },
+  { id: "meilen-weihnachtsmarkt", n: "Weihnachtsmarkt Meilen", ort: "Meilen", lat: 47.27043, lon: 8.64123, dates: ["2026-11-29"], zeit: "Zeiten prüfen", pruefen: true, web: "https://wuchemaert-meilen.ch/" }
 ] };

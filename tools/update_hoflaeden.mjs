@@ -32,6 +32,10 @@ const EXTRA = [
   { match: /Rathausbr/i, k: "markt", oh: "Sa 07:00-12:30" },
   // Von Hand übernommen am 16.11.2026 von zuerich.com (Zürich Tourismus; robots.txt erlaubt), Koordinaten aus den Angaben der Seite:
   { match: /Freitagsmarkt/i, lat: 47.226698, lon: 8.816421, n: "Rapperswiler Freitagsmarkt", k: "markt", ort: "Rapperswil-Jona", adr: "Hauptplatz", oh: "Mar-Nov Fr 07:30-11:00", web: "https://www.zuerich.com/de/besuchen/shopping/rapperswiler-freitagsmarkt" }, // Mitte März bis Ende November, in der Woche vor Ostern am Gründonnerstag
+  // Quelle: https://wuchemaert-meilen.ch/ (Verein Wuchemärt Meilen, abgerufen 18.11.2026) und Joshua 18.11.2026:
+  // «Jeden Freitag von 7.30 bis 11 Uhr», direkt beim Bahnhof; Saison 2026: 27.3.–30.10., Winterpause bis Saisonstart Fr 26.3.2027.
+  // Ausfalltage (Feiertage, 2026: 1.5., 5.6., 18.9.; Gründonnerstag statt Karfreitag) jedes Jahr auf wuchemaert-meilen.ch prüfen.
+  { match: /Wochenmarkt Meilen/i, k: "markt", oh: "Fr 07:30-11:00; 2026 Oct 31-2027 Mar 25 off", web: "https://wuchemaert-meilen.ch/" },
   { match: /Markthalle im Viadukt/i, lat: 47.387604, lon: 8.526029, n: "Markthalle im Viadukt", k: "markt", ort: "Zürich", adr: "Limmatstrasse 231", oh: "Mo-Sa 09:00-20:00", web: "https://www.zuerich.com/de/besuchen/shopping/markthalle-im-viadukt" }
 ];
 
@@ -287,6 +291,13 @@ for (const { match, place, ...x } of EXTRA) {
   items.push({ ...fill, lat: r5(at.lat), lon: r5(at.lon), ...(fill.oh ? { _hand: 1 } : {}) });
 }
 items.splice(0, items.length, ...mergeDiscover(items, discovered));
+// Angaben von Hand gelten auch für Orte, die nur discover.swiss kennt (z.B. Wochenmarkt Meilen): Zeiten und Link nochmals drüber
+for (const { match, place, lat, lon, ...x } of EXTRA) {
+  const it = items.find(i => i.k === x.k && match.test(i.n));
+  if (!it) continue;
+  if (x.oh) it.oh = x.oh;
+  if (x.web) it.web = x.web;
+}
 items.forEach(i => delete i._hand);
 // Gleich benannte Orte gleicher Art < 50 m (z.B. Milch- und Eier-Automat nebeneinander) = einer; der mit mehr Angaben bleibt
 {

@@ -650,7 +650,17 @@
     const rules = [];
     const DAY = "(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)";
     const parts = s.replace(new RegExp(`(\\d)\\s*,\\s*(?=${DAY}\\b)`, "g"), "$1; ").split(/\s*(?:;|\|\|)\s*/).filter(Boolean);
-    for (const part of parts) {
+    const MONS = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec";
+    for (let part of parts) {
+      // Tagesgenauer Zeitraum vorne: «2026 Oct 31-2027 Mar 25 off» (mit Jahr = einmalig, z.B. Winterpause) oder «Mar 28 - Oct 24 Sa …» (jedes Jahr)
+      let range = null;
+      const dr = part.match(new RegExp(`^(?:(\\d{4})\\s+)?(${MONS})\\s+(\\d{1,2})\\s*-\\s*(?:(\\d{4})\\s+)?(${MONS})\\s+(\\d{1,2})\\s*:?\\s*(.*)$`));
+      if (dr) {
+        range = { a: { y: dr[1] ? +dr[1] : null, m: OH_MON.indexOf(dr[2]), d: +dr[3] }, b: { y: dr[4] ? +dr[4] : dr[1] ? +dr[1] : null, m: OH_MON.indexOf(dr[5]), d: +dr[6] } };
+        if (range.a.y && range.b.y && (range.b.y < range.a.y || (range.b.y === range.a.y && range.b.m < range.a.m))) range.b.y = range.a.y + 1;
+        part = dr[7] || "";
+        if (!part) return null;
+      }
       const m = part.match(/^(?:((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\w,\s-]*?)\s*:?\s+)?(?:((?:Mo|Tu|We|Th|Fr|Sa|Su|PH)[\w,\s-]*?)\s+)?(off|closed|(?:\d{1,2}:\d\d\s*-\s*\d{1,2}:\d\d\+?(?:\s*,\s*\d{1,2}:\d\d\s*-\s*\d{1,2}:\d\d\+?)*))$/);
       if (!m) return null;
       const months = m[1] ? ohSel(m[1].replace(/\s+/g, ""), OH_MON) : null;
@@ -666,7 +676,7 @@
         const [a, b] = t.replace(/\+/g, "").split("-").map(x => ohMin(x.trim()));
         return [a, b > a ? b : 1440];
       });
-      rules.push({ months, days, spans });
+      rules.push({ months, days, spans, range });
     }
     return rules.length ? rules : null;
   }
@@ -674,9 +684,22 @@
   function ohSpansOn(rules, date) {
     const wd = ohWeekday(date), mon = date.getMonth();
     let spans = [];
-    for (const r of rules) if (r.days.has(wd) && (!r.months || r.months.has(mon))) spans = r.spans;
+    for (const r of rules) if (r.days.has(wd) && (!r.months || r.months.has(mon)) && (!r.range || inRange(r.range, date))) spans = r.spans;
     return spans;
   }
+  // Tag im Zeitraum? Mit Jahr: genau; ohne Jahr: jedes Jahr (auch über Neujahr, z.B. Nov 1 - Mar 15)
+  function inRange(r, date) {
+    const v = (y, m, d) => y * 10000 + m * 100 + d, md = (m, d) => m * 100 + d;
+    if (r.a.y) return v(r.a.y, r.a.m, r.a.d) <= v(date.getFullYear(), date.getMonth(), date.getDate()) && v(date.getFullYear(), date.getMonth(), date.getDate()) <= v(r.b.y, r.b.m, r.b.d);
+    const x = md(date.getMonth(), date.getDate()), a = md(r.a.m, r.a.d), b = md(r.b.m, r.b.d);
+    return a <= b ? a <= x && x <= b : x >= a || x <= b;
+  }
+  // Nächster Tag mit Öffnungszeiten ab morgen (bis gut ein Jahr voraus), sonst null – für «Saisonpause bis …»
+  function nextOpenDay(rules, now) {
+    for (let k = 1; k <= 400; k++) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k); if (ohSpansOn(rules, d).length) return d; }
+    return null;
+  }
+  const dmy = d => `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
   const ohClock = min => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`;
   // Jetzt offen? → { open, text } («offen bis 18:30», «öffnet 14:00», «öffnet Sa 8:00», «geschlossen»); null = unbekannt
   function openState(oh, now) {
@@ -693,12 +716,22 @@
       const sp = ohSpansOn(rules, d);
       if (sp.length) return { open: false, text: `öffnet ${k === 1 ? "morgen" : OH_DE[ohWeekday(d)]} ${ohClock(sp[0][0])}` };
     }
-    return { open: false, text: "Saisonpause" };
+    const next = nextOpenDay(rules, now);
+    if (!next) return { open: false, text: "Saisonpause" };
+    const last = new Date(next); last.setDate(next.getDate() - 1);
+    return { open: false, text: `Saisonpause bis ${dmy(last)}`, until: last };
   }
   // Öffnungszeiten der Woche (im Monat von «now») kurz auf Deutsch: «Mo–Fr 8:00–18:30 · Sa 8:00–12:00»; unbekannt = Text roh
+  // In der Saisonpause: die Zeiten der Woche, in der es wieder losgeht.
   function hoursText(oh, now) {
     const rules = parseHours(oh);
     if (!rules) return String(oh || "").trim();
+    const txt = weekText(rules, now);
+    if (txt) return txt;
+    const next = nextOpenDay(rules, now);
+    return (next && weekText(rules, next)) || "Saisonpause";
+  }
+  function weekText(rules, now) {
     const monday = new Date(now); monday.setDate(now.getDate() - ohWeekday(now));
     const week = OH_DAYS.map((_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return ohSpansOn(rules, d); });
     const key = sp => sp.map(([a, b]) => `${ohClock(a)}–${b >= 1440 ? "24:00" : ohClock(b)}`).join(", ");
@@ -709,7 +742,7 @@
       if (week[i].length) out.push(`${i === 0 && j === 6 ? "täglich" : i === j ? OH_DE[i] : `${OH_DE[i]}${j === i + 1 ? "," : "–"}${OH_DE[j]}`} ${key(week[i])}`);
       i = j + 1;
     }
-    return out.length ? (key(week[0]) === "0:00–24:00" && out.length === 1 ? "immer offen" : out.join(" · ")) : "Saisonpause";
+    return out.length ? (key(week[0]) === "0:00–24:00" && out.length === 1 ? "immer offen" : out.join(" · ")) : "";
   }
   // Entfernung in km (Luftlinie)
   function distKm(a, b) {

@@ -156,10 +156,17 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(C.openState(hof, di19).text === "öffnet morgen 8:00", "abends: öffnet morgen");
   check(C.hoursText(hof, di10) === "Mo–Fr 8:00–12:00, 14:00–18:30 · Sa 8:00–12:00", `Wochentext: ${C.hoursText(hof, di10)}`);
   check(C.openState("Sa 07:00-11:00", di10).text === "öffnet Sa 7:00", "Samstagsmarkt: öffnet Sa 7:00");
-  check(C.openState("Apr-Oct: Sa 08:00-12:00", di10).text === "Saisonpause" && C.hoursText("Apr-Oct: Sa 08:00-12:00", di10) === "Saisonpause", "nur im Sommer: im November Saisonpause");
+  check(C.openState("Apr-Oct: Sa 08:00-12:00", di10).text === "Saisonpause bis 2.4.2027" && C.hoursText("Apr-Oct: Sa 08:00-12:00", di10) === "Sa 8:00–12:00", "nur im Sommer: im November «Saisonpause bis …», Zeiten der nächsten Saison");
   check(C.openState("Mo 08:00-12:00, We 08:00-12:00", di10).text === "öffnet morgen 8:00", "Komma statt Strichpunkt zwischen Regeln");
   check(C.hoursText("Mo-Fr 08:00-18:00; We off", di10) === "Mo,Di 8:00–18:00 · Do,Fr 8:00–18:00", "spätere Regel ersetzt frühere (Mi zu)");
   check(C.hoursText("Mo-Su 07:00-21:00", di10) === "täglich 7:00–21:00" && C.openState("24/7", di10).text === "immer offen", "täglich / 24/7");
+  // Saisonpause mit Datum (Wochenmarkt Meilen, Quelle Joshua / wuchemaert-meilen.ch 18.11.2026): Fr 7:30–11, Pause 31.10.2026–25.3.2027
+  const meilen = "Fr 07:30-11:00; 2026 Oct 31-2027 Mar 25 off";
+  check(C.openState(meilen, di10).text === "Saisonpause bis 25.3.2027" && !C.openState(meilen, di10).open, `Meilen Di 10.11.: ${C.openState(meilen, di10).text}`);
+  check(!C.openState(meilen, new Date(2026, 10, 13, 9)).open && C.openState(meilen, new Date(2027, 2, 26, 9)).open && C.openState(meilen, new Date(2027, 3, 2, 9)).open && C.openState(meilen, new Date(2026, 9, 30, 9)).open, "Meilen: Fr 13.11.2026 zu, Fr 30.10.2026 / 26.3.2027 / 2.4.2027 offen");
+  check(C.hoursText(meilen, di10) === "Fr 7:30–11:00", "in der Pause: Zeiten der Woche, in der es wieder losgeht");
+  check(C.openState("Mar 28 - Oct 24 Sa 09:00-11:30", di10).text === "Saisonpause bis 2.4.2027" && C.openState("Mar 28 - Oct 24 Sa 09:00-11:30", new Date(2027, 3, 3, 10)).open, "tagesgenaue Saison jedes Jahr (Dorfmärt Cham)");
+  check(C.openState("Nov 1 - Mar 15 Sa 10:00-12:00", new Date(2027, 0, 9, 11)).open && !C.openState("Nov 1 - Mar 15 Sa 10:00-12:00", new Date(2027, 4, 8, 11)).open, "Zeitraum über Neujahr");
   check(C.openState("sunrise-sunset", di10) === null && C.hoursText("sunrise-sunset", di10) === "sunrise-sunset", "Unbekanntes: null, Text roh");
   const items = [{ n: "Weit", k: "hof", lat: 47.37, lon: 8.54, oh: hof }, { n: "Nah", k: "markt", lat: 47.227, lon: 8.82, oh: "Sa 07:00-11:00" }, { n: "Ohne", k: "hof", lat: 47.3, lon: 8.8 }];
   const rap = { lat: 47.2267, lon: 8.8184 };

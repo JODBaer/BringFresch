@@ -26,7 +26,7 @@
 
   const star = (key, on) => `<button type="button" class="hofstar" data-fav="${esc(key)}" aria-pressed="${on}" aria-label="${on ? "Lieblingsort entfernen" : "Als Lieblingsort merken"}">${on ? "★" : "☆"}</button>`;
   const route = it => `<a class="hofroute" href="${esc(CORE.routeUrl(it, ios()))}" target="_blank" rel="noopener">Route</a>`;
-  const stText = it => (it.state ? (it.state.open || /^öffnet \d/.test(it.state.text) ? it.state.text : `heute zu · ${it.state.text}`) : "Zeiten unbekannt");
+  const stText = it => (it.state ? (it.state.open || /^(öffnet \d|Saisonpause)/.test(it.state.text) ? it.state.text : `heute zu · ${it.state.text}`) : "Zeiten unbekannt");
 
   function card(label, it, empty, fav, now) {
     if (!it) return `<div class="hofcard"><small>${label}</small><p class="hint">${empty}</p></div>`;
