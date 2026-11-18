@@ -96,6 +96,53 @@ async function discoverItems() {
   console.log(`discover.swiss: ${calls} Abrufe, ${total} Objekte, ${out.length} im Gebiet mit offener Lizenz (${closed} ohne offene Lizenz ausgelassen)`);
   return out;
 }
+// Erkundung der Suche (/search, Doku: docs.discover.swiss → Search service): nur mit DISCOVER_EXPLORE=1 (Workflow-Schalter «explore»).
+// Schreibt ins Log, was es zu Märkten/Hofläden im Umkreis gibt (nur öffentliche Angaben, nie den Schlüssel); ändert keine Daten.
+async function discoverExplore() {
+  if (!process.env.DISCOVER_SWISS_KEY || process.env.DISCOVER_EXPLORE !== "1") return;
+  const GEO = "geo.distance(geo, geography'POINT(8.68 47.30)') le 35"; // Zürich – Rapperswil – Wetzikon
+  const Q = [
+    ["Typ Markt", { filters: [`additionalType eq 'Market'`, GEO] }],
+    ["Typ Hofladen", { filters: [`additionalType eq 'FarmShop'`, GEO] }],
+    ["Typ Bauernhof", { filters: [`additionalType eq 'Farm'`, GEO] }],
+    ["Typ Strassenmarkt (Anlass)", { filters: [`additionalType eq 'StreetMarketEvent'`, GEO] }],
+    ["Tags Märkte", { allTag: ["farmers-market", "street-market", "christmas-market", "buy"], filters: [GEO] }],
+    ["Kategorie Markt sui_0220", { category: ["sui_0220"], filters: [GEO] }],
+    ["Kategorie Lebensmittel sui_0502", { category: ["sui_0502"], filters: [GEO] }],
+    ["Kategorie Regional/Produzent", { category: ["sui_0506", "sui_0507"], filters: [GEO] }],
+    ["Text Wochenmarkt", { searchText: "Wochenmarkt", filters: [GEO] }],
+    ["Text Markt (nur Zürich Tourismus)", { searchText: "markt*", datasource: ["ZHT-CMS"] }],
+    ["Text Hofladen", { searchText: "Hofladen Hofladen* Bauernmarkt", filters: [GEO] }],
+    ["Typ Markt ganze Schweiz", { filters: [`additionalType eq 'Market'`] }]
+  ];
+  let shown = false;
+  for (const [label, body] of Q) {
+    try {
+      const res = await fetch(DISCOVER + "search", {
+        method: "POST",
+        headers: { "Ocp-Apim-Subscription-Key": process.env.DISCOVER_SWISS_KEY, "Content-Type": "application/json", Accept: "application/json", "Accept-Language": "de", categoryVersion: "sui", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; Erkundung)" },
+        body: JSON.stringify({ resultsPerPage: 50, currentPage: 1, ...body }),
+        signal: AbortSignal.timeout(30000)
+      });
+      const text = await res.text();
+      let j = null; try { j = JSON.parse(text); } catch { /* */ }
+      if (res.status !== 200 || !j) { console.log(`ERKUNDEN ${label}: HTTP ${res.status} ${text.slice(0, 300)}`); continue; }
+      if (!shown) { console.log(`ERKUNDEN Antwort-Felder: ${Object.keys(j).join(", ")}`); shown = true; }
+      const list = j.values || j.data || j.results || j.value || [];
+      const total = j.count ?? j.totalCount ?? j.total ?? list.length;
+      console.log(`ERKUNDEN ${label}: ${total} Treffer`);
+      for (const o of list.slice(0, 40)) {
+        const a = o.address || {};
+        const ds = [].concat(o.datasource || o.dataGovernance?.source?.acronym || []).join("/");
+        const oh = (o.openingHoursSpecification || []).length ? `Zeiten(${o.openingHoursSpecification.length})` : o.openingHours ? "openingHours" : (o.schedule || []).length ? `Termine(${o.schedule.length})` : "ohne Zeiten";
+        console.log(`  - ${o.name} | ${o.type || ""}/${o.additionalType || ""} | ${a.addressLocality || ""} | ${ds} | ${o.license || "?"} | ${oh}${o.geo ? "" : " | ohne geo"}`);
+      }
+      if (list[0] && label === "Typ Markt") console.log(`ERKUNDEN Felder eines Markts: ${Object.keys(list[0]).join(", ")}`);
+    } catch (e) { console.log(`ERKUNDEN ${label}: Fehler ${e.cause?.code || e.message}`); }
+    await new Promise(r => setTimeout(r, 1100));
+  }
+}
+await discoverExplore();
 const discovered = await discoverItems();
 const SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 let res;
