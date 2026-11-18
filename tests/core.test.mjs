@@ -55,6 +55,21 @@ twin.find(r => r.id === "v0").title = "Gericht v0";
 check(!C.cleanCandidates(twin, ["v0", "custom-1"], 11, 2, 0).includes("custom-1"), "eigenes Rezept mit gleichem Titel wie ein Katalog-Gericht = dasselbe Gericht");
 check(Array.from({ length: 30 }, () => C.pickCandidates(twin, 11, 14, 2)).every(c => !(c.includes("v0") && c.includes("custom-1"))), "Wochenwahl zieht nie zweimal dasselbe Gericht (gleicher Titel)");
 check(C.searchHref(undefined, "Spinat Rezept") === "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=Spinat" && /google\.com\/search\?q=Riz%20Casimir%20Rezept$/.test(C.searchHref("google", "Riz Casimir")) && /fooby/.test(C.searchHref("fooby", "x")), "Rezept suchen: Standard Swissmilk, umschaltbar auf Fooby / Google");
+{
+  const ws = C.webSearchLinks("Kürbis Risotto Rezept", "fooby", [{ name: "Annemarie", url: "https://www.wildeisen.ch/rezepte" }]);
+  check(ws.length === 3 && ws[0].fav && ws[0].name === "Fooby" && ws[1].name === "Google" && /google\.com\/search\?q=site%3Awildeisen\.ch%20K%C3%BCrbis%20Risotto$/.test(ws[2].url), `Im Web suchen: Lieblingsseite, Google, eigene Webseite per site: (${ws.map(x => x.name)})`);
+  // Gleicher Link = gleiches Rezept (Joshua 18.11.)
+  check(C.canonicalUrl("https://www.Fooby.ch/de/rezepte/123/kuerbis/?utm_source=app&fbclid=x#top") === "fooby.ch/de/rezepte/123/kuerbis" && C.sameLink("http://fooby.ch/de/rezepte/123/kuerbis", "fooby.ch/de/rezepte/123/kuerbis/") && !C.sameLink("https://fooby.ch/a", "https://fooby.ch/b") && C.canonicalUrl("https://x.ch/r?id=5&utm_medium=y") === "x.ch/r?id=5", "Link vereinheitlicht (www, Protokoll, /, utm, #)");
+  const dup = C.uniqueRecipes([
+    { id: "fooby-kuerbis", title: "Kürbis", source_url: "https://fooby.ch/de/rezepte/123/kuerbis" },
+    { id: "custom-1", is_custom: true, title: "Kürbis (meins)", source_url: "https://www.fooby.ch/de/rezepte/123/kuerbis/?utm_source=x" },
+    { id: "custom-2", is_custom: true, title: "Omas Suppe" }, { id: "custom-3", is_custom: true, title: "omas suppe" },
+    { id: "a", title: "Gleicher Titel, anderer Link", source_url: "https://a.ch/1" }, { id: "b", title: "Gleicher Titel, anderer Link", source_url: "https://b.ch/1" }]);
+  check(dup.map(r => r.id).join() === "custom-1,custom-3,a,b", `ohne Doppelte: eigenes vor Katalog, eigene ohne Link nach Titel, gleicher Titel mit anderem Link bleibt (${dup.map(r => r.id)})`);
+  const rr = { title: "Kürbis-Risotto", ingredients: [{ name: "Crème fraîche" }, { name: "Parmesan" }] };
+  check(C.recipeMatches(rr, "risotto kurbis") && C.recipeMatches(rr, "CREME") && C.recipeMatches(rr, "") && !C.recipeMatches(rr, "risotto lauch") && C.recipeMatches(rr, "vegi", "Vegi · 30 Min."), "eine Suchregel: alle Wörter, Titel+Zutaten+Zusatz, ohne Akzente/Gross-klein");
+  check(C.webSearchLinks("  ", "google").length === 0 && C.webSearchLinks("Rösti", "google").length === 1 && /site%3Akartoffel\.ch/.test(C.searchHref("kartoffel", "Rösti")), "leer = nichts; Google als Liebling nicht doppelt; neue Quellen über site:");
+}
 const votes = { a: { likes: ["x", "y"], days: { y: 2 } }, b: { likes: ["y"], days: {} }, c: { likes: [], days: {} } };
 check(C.ranking(["x", "y", "z"], ms, votes).map(r => r.id).join() === "y,x,z", "Rangliste: 2 Stimmen vor 1 vor 0");
 const week = Array.from({ length: 7 }, () => ({ eaters: ["a", "b", "c"] }));
@@ -145,6 +160,7 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(g.map(x => x.key).join() === "eigene,swissmilk,fooby,bettybossi,web:chefkoch.de,klassiker,geteilt", `Herkunft-Reihenfolge (${g.map(x => x.key)})`);
   check(g[1].recipes.map(r => r.id).join() === "s2,s1" && g[1].inSeason === 1, "in der Herkunft: Saison zuerst, sonst am Schluss");
   check(C.recipeSource(rs[2]).label === "Swissmilk" && C.recipeSource(rs[3]).label === "Klassiker", "Herkunft aus dem Link");
+  check(C.recipeSource({ source_url: "https://www.gemuese.ch/rezepte/x" }).label === "gemuese.ch" && C.recipeSource({ source_url: "https://schweizerfleisch.ch/rezepte/x" }).label === "Schweizer Fleisch" && C.recipeSource({ source_url: "https://www.kartoffel.ch/de/rezepte/hauptgang/x.html" }).key === "kartoffel", "neue Quellen mit Namen");
 }
 
 // Hofläden & Märkte: Öffnungszeiten aus OpenStreetMap (Di 10.11.2026)

@@ -442,7 +442,8 @@ await step(A, "Menü wechseln: Blatt öffnen, suchen, Gericht wählen, «Rückg�
   const target = await A.page.$eval("#mlist .opt[data-id]:nth-of-type(3) .n", e => e.textContent);
   const word = target.split(/\s+/).find(w => w.length >= 4) || target;
   await typeInto(A, "#msearch", word);
-  await until(A, w => [...document.querySelectorAll("#mlist .opt[data-id] .n")].every(n => n.textContent.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) && document.querySelector("#mlist [data-new]"), `Suche «${word}» filtert nicht`, word);
+  // gleiche Suchregel wie Katalog/«Alle Rezepte»: Titel oder Zutaten → mindestens ein Titel passt, die Liste wird kürzer
+  await until(A, w => { const n = [...document.querySelectorAll("#mlist .opt[data-id] .n")]; const f = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); return n.length > 0 && n.length < 60 && n.some(x => f(x.textContent).includes(f(w))) && document.querySelector("#mlist [data-new]"); }, `Suche «${word}» filtert nicht`, word);
   const opt = await A.page.evaluateHandle(t => [...document.querySelectorAll("#mlist .opt[data-id]")].find(o => o.querySelector(".n").textContent === t), target);
   await tap(A, opt);
   await until(A, ([t]) => document.querySelector('.prow[data-i="2"] .t').textContent === t && !document.getElementById("msheet").classList.contains("show"), "Gericht nicht übernommen", [target]);
@@ -499,6 +500,7 @@ await step(A, "Rezept-Katalog: über das Blatt öffnen, Filter Alle/Vegi/Fleisch
   await tap(A, '#catalogFilters [data-filter="all"]');
   await typeInto(A, "#catalogSearch", "kartoffel");
   await until(A, n => { const k = document.querySelectorAll("#catalogList .recipe").length; return k > 0 && k < n; }, "Suche «kartoffel» filtert nicht", allCount);
+  await until(A, () => { const a = [...document.querySelectorAll('.websearch[data-ws="catalogSearch"] a')]; return a.length >= 2 && /swissmilk.*qt=kartoffel/.test(a[0].href) && a[0].classList.contains("fav") && /google\.com\/search\?q=kartoffel%20Rezept/.test(a[1].href); }, "«Im Web suchen» unter der Katalog-Suche fehlt (Lieblingsseite + Google)");
   await shot(A, "05-katalog");
   await dialogNoHScroll(A, "catalogDialog");
 });
@@ -918,6 +920,7 @@ await step(A, "Alle Rezepte: Knopf bei «Meine Rezepte», Karten nach Herkunft u
   await until(A, c => document.querySelector(`${c} .vwish`)?.textContent.includes("Do"), "Rückgängig nach Abwählen klappt nicht", card);
   await typeInto(A, "#allSearch", "Kürbis");
   await until(A, () => { const c = [...document.querySelectorAll("#allList .acard")]; return c.length > 0 && c.length < 40; }, "Suche filtert nicht");
+  expect(await A.page.$$eval('.websearch[data-ws="allSearch"] a', a => a.length >= 2 && a.some(x => /google\.com/.test(x.href))), "«Im Web suchen» bei Alle Rezepte fehlt");
   await shot(A, "10b-alle-rezepte");
   await closeDialog(A, "allDialog");
 });
@@ -1555,13 +1558,13 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   await closeDialog(B, "recipeDialog");
   // Link direkt ins Suchfeld des Menüs einfügen (wie aus dem Teilen-Menü: Text + Link) -> «Rezept von diesem Link holen»
   await tap(B, '.prow[data-i="6"] .t');
-  await typeInto(B, "#msearch", `Schau mal: ${RECIPE_URL} 😋`);
+  await typeInto(B, "#msearch", `Schau mal: ${RECIPE_URL}?utm_source=whatsapp 😋`); // gleicher Link als Variante (Teilen aus einer App)
   await until(B, () => !!document.querySelector("#mlist [data-link]"), "Link-Option in der Menü-Suche fehlt");
   await clearToasts(B);
   await tap(B, "#mlist [data-link]");
   await until(B, () => document.getElementById("recipeDialog").open, "Formular geht nach Link nicht auf");
   await toastIs(B, /3 Zutaten übernommen/);
-  expect((await B.page.$eval("#recipeUrl", e => e.value)) === RECIPE_URL, "Link nicht aus dem Text gelöst");
+  expect((await B.page.$eval("#recipeUrl", e => e.value)).startsWith(RECIPE_URL), "Link nicht aus dem Text gelöst");
   await tap(B, '#recipeForm button[type="submit"]');
   await until(B, () => document.querySelector('.prow[data-i="6"] .t').textContent === "Kürbis-Lasagne", "Link-Rezept nicht am Sonntag eingeplant");
   await tap(B, '.prow[data-i="4"] .t');
@@ -1570,7 +1573,7 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   await tap(B, '#catalogFilters [data-filter="custom"]');
   // eigene Rezepte reisen jetzt mit den WG-Einstellungen: es können auch die von Handy A dabei sein
   const lasagne = () => [...document.querySelectorAll("#catalogList .recipe")].filter(c => c.querySelector("b").textContent === "Kürbis-Lasagne");
-  await until(B, () => [...document.querySelectorAll("#catalogList .recipe")].filter(c => c.querySelector("b").textContent === "Kürbis-Lasagne").length === 1, "eigenes Rezept fehlt (oder doppelt)");
+  await until(B, () => [...document.querySelectorAll("#catalogList .recipe")].filter(c => c.querySelector("b").textContent === "Kürbis-Lasagne").length === 1, "eigenes Rezept fehlt oder doppelt (gleicher Link, auch mit ?utm_source, = ein Rezept)");
   await B.page.evaluate(() => { const c = [...document.querySelectorAll("#catalogList .recipe")].find(c => c.querySelector("b").textContent === "Kürbis-Lasagne"); c.querySelector("[data-delete]").id = "delLasagne"; });
   await tap(B, "#delLasagne");
   await tap(B, "#delLasagne");

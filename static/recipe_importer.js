@@ -8,6 +8,17 @@ class RecipeImporter {
     this.customRecipes = this.loadCustomRecipes();
   }
 
+  // Doppelte eigene Rezepte zusammenfassen (gleicher Link / ohne Link gleicher Titel; das zuletzt gespeicherte bleibt). Gibt true zurück, wenn etwas wegfiel.
+  dedupe() {
+    const C = window.BF_CORE;
+    if (!C) return false;
+    const before = this.customRecipes.length;
+    this.customRecipes = C.uniqueRecipes(this.customRecipes);
+    if (this.customRecipes.length === before) return false;
+    this.saveCustomRecipes();
+    return true;
+  }
+
   loadCustomRecipes() {
     try {
       const raw = localStorage.getItem(this.customRecipesKey);
@@ -88,8 +99,10 @@ class RecipeImporter {
     };
     if (shared === false) recipe.shared = false;
     if (cleanUrl) recipe.source_url = cleanUrl;
-    // gleicher Link nochmals geholt -> bestehendes Rezept aktualisieren statt doppelt
-    const same = cleanUrl && this.customRecipes.find(r => r.source_url === cleanUrl);
+    // gleicher Link (auch als Variante: www, Schrägstrich, utm_…) oder – ohne Link – gleicher Titel: bestehendes Rezept aktualisieren statt doppelt
+    const C = window.BF_CORE;
+    const same = C ? this.customRecipes.find(r => (cleanUrl && C.sameLink(r.source_url, cleanUrl)) || (!cleanUrl && !r.source_url && C.dishKey(r) && C.dishKey(r) === C.dishKey(recipe)))
+      : cleanUrl && this.customRecipes.find(r => r.source_url === cleanUrl);
     if (same) return this.updateCustomRecipe(same.id, { title, url: cleanUrl, diet, servings, ingredientsText, instructions, shared });
     this.customRecipes.push(recipe);
     this.saveCustomRecipes();

@@ -9,6 +9,27 @@
     KEYS, state, savePlan, saveMembers, $, toast, normalizePlan, refresh, isOpenWeek } = app;
 
   // ---------------------------------------------------------------------------
+  // Tastatur (Joshua 18.11.: Knöpfe waren von Leiste/Tastatur verdeckt): bei offener Tastatur Leiste unten und Bring!-Knopf weg
+  // (html.kbd); Blätter rücken über die Tastatur (--kb = Höhe der Tastatur aus visualViewport); aktives Feld in die Mitte.
+  // ---------------------------------------------------------------------------
+  // Nur wenn wirklich eine Tastatur offen ist (sichtbarer Bereich > 120 px kleiner) – am PC bleibt die Leiste
+  const isField = el => el && (el.tagName === "TEXTAREA" || el.tagName === "SELECT" || (el.tagName === "INPUT" && !/^(checkbox|radio|button|submit|range|color|file)$/.test(el.type)));
+  document.addEventListener("focusin", e => {
+    if (isField(e.target)) setTimeout(() => { if (document.activeElement === e.target && e.target.scrollIntoView) e.target.scrollIntoView({ block: "center", behavior: "smooth" }); }, 350);
+  });
+  const vv = window.visualViewport;
+  if (vv) {
+    const kb = () => {
+      const h = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      document.documentElement.style.setProperty("--kb", `${h}px`);
+      document.documentElement.classList.toggle("kbd", h > 120);
+    };
+    vv.addEventListener("resize", kb);
+    vv.addEventListener("scroll", kb);
+    kb();
+  }
+
+  // ---------------------------------------------------------------------------
   // Dialoge & Navigation
   // ---------------------------------------------------------------------------
   document.querySelectorAll("dialog").forEach(d => {

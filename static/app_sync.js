@@ -298,7 +298,7 @@
     if (Array.isArray(st.recipeSites)) { state.mySites = st.recipeSites; save(SITES_KEY, state.mySites); app.renderSites(); }
     if (Array.isArray(st.favMarkets)) { save(STORE.KEYS.FAV_KEY, st.favMarkets); if (app.renderHof && $("hofDialog").open) app.renderHof(); }
     if (typeof st.marketsMapUrl === "string") { save(STORE.KEYS.MAPS_URL_KEY, st.marketsMapUrl); $("marketsMapUrl").value = st.marketsMapUrl; if (app.renderHof && $("hofDialog").open) app.renderHof(); }
-    if (Array.isArray(st.customRecipes)) { importer.customRecipes = st.customRecipes; importer.saveCustomRecipes(); app.renderMyRecipes(); }
+    if (Array.isArray(st.customRecipes)) { importer.customRecipes = st.customRecipes; importer.saveCustomRecipes(); if (importer.dedupe()) app.settingsChanged(); app.renderMyRecipes(); } // Doppelte (gleicher Link) gleich aufräumen
     app.renderMembers();
   }
   // Erster Start mit dieser Version: wer die WG schon angepasst hat (z.B. 5 Mitbewohner), dessen Stand gilt

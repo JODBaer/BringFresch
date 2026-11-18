@@ -328,8 +328,37 @@
   const SEARCH_SITES = {
     swissmilk: { name: "Swissmilk", url: q => `https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=${encodeURIComponent(q)}` },
     fooby: { name: "Fooby", url: q => `https://fooby.ch/de/suche.html?query=${encodeURIComponent(q)}` },
-    google: { name: "Google", url: q => `https://www.google.com/search?q=${encodeURIComponent(q + " Rezept")}` }
+    google: { name: "Google", url: q => `https://www.google.com/search?q=${encodeURIComponent(q + " Rezept")}` },
+    // Weitere Quellen (Joshua 18.11.): Suche über Google mit «site:», damit keine Such-Adresse der Seite erraten werden muss
+    bettybossi: { name: "Betty Bossi", url: q => siteSearch("bettybossi.ch", q) },
+    migusto: { name: "Migusto", url: q => siteSearch("migusto.migros.ch", q) },
+    gemuese: { name: "gemuese.ch", url: q => siteSearch("gemuese.ch/rezepte", q) },
+    kartoffel: { name: "kartoffel.ch", url: q => siteSearch("kartoffel.ch", q) },
+    schweizerfleisch: { name: "Schweizer Fleisch", url: q => siteSearch("schweizerfleisch.ch/rezepte", q) }
   };
+  // EINE Suchregel für alle Rezept-Suchfelder (Menü-Blatt, Katalog, Alle Rezepte; Joshua 18.11.): jedes Wort muss in Titel,
+  // Zutaten oder Zusatztext vorkommen (Reihenfolge egal), ohne Gross/Klein und Akzente (ü = u, é = e)
+  const foldText = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  function recipeMatches(r, query, extra = "") {
+    const words = foldText(query).split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    const hay = foldText([r.title, ...(r.ingredients || []).map(i => i.name || i), extra].join(" "));
+    return words.every(w => hay.includes(w));
+  }
+  function siteSearch(site, q) { return `https://www.google.com/search?q=${encodeURIComponent(`site:${site} ${q}`.trim())}`; }
+  // «Im Web suchen» unter jedem Rezept-Suchfeld: Lieblingsseite zuerst, dann Google, dann die eigenen Rezept-Webseiten der WG
+  function webSearchLinks(query, favKey, mySites = []) {
+    const q = String(query || "").replace(/\brezepte?\b/gi, " ").replace(/\s+/g, " ").trim();
+    if (!q) return [];
+    const fav = searchSite(favKey), out = [{ name: SEARCH_SITES[fav].name, url: SEARCH_SITES[fav].url(q), fav: true }];
+    if (fav !== "google") out.push({ name: "Google", url: SEARCH_SITES.google.url(q) });
+    for (const x of mySites || []) {
+      let host = "";
+      try { host = new URL(x.url).hostname.replace(/^www\./, ""); } catch (e) { continue; }
+      if (host && !out.some(o => o.name === x.name)) out.push({ name: x.name, url: siteSearch(host, q) });
+    }
+    return out;
+  }
   const searchSite = key => SEARCH_SITES[key] ? key : "swissmilk";
   function searchHref(key, query) {
     const q = String(query || "").replace(/\brezepte?\b/gi, " ").replace(/\s+/g, " ").trim();
@@ -338,7 +367,33 @@
   // Gleiches Gericht = gleicher Titel (ohne Gross/Klein, Satzzeichen) oder gleicher Rezept-Link,
   // z.B. ein eigenes Rezept, das es im Katalog schon gibt
   const dishKey = r => String((r && r.title) || "").toLowerCase().replace(/[^a-z0-9äöüéèàç]+/g, " ").trim();
-  const sameDish = (a, b) => String(a.id) === String(b.id) || (!!dishKey(a) && dishKey(a) === dishKey(b)) || (!!a.source_url && a.source_url === b.source_url);
+  // Gleicher Link = gleiches Rezept (Joshua 18.11.). Link vereinheitlicht: ohne Protokoll, «www.», «#…», Tracking-Zusätze
+  // (utm_*, fbclid, gclid, …) und Schrägstrich am Ende; Gross/Klein nur im Hostnamen egal.
+  function canonicalUrl(u) {
+    const raw = String(u || "").trim();
+    if (!raw) return "";
+    try {
+      const x = new URL(/^[a-z]+:\/\//i.test(raw) ? raw : "https://" + raw);
+      const params = [...x.searchParams].filter(([k]) => !/^(utm_.*|fbclid|gclid|mc_[a-z]+|igshid|ref|share|si|s|_ga)$/i.test(k));
+      const q = params.length ? "?" + params.map(([k, v]) => `${k}=${v}`).join("&") : "";
+      return x.hostname.toLowerCase().replace(/^www\./, "") + x.pathname.replace(/\/+$/, "") + q;
+    } catch (e) { return raw.toLowerCase().replace(/^https?:\/\/(www\.)?/, "").replace(/[#?].*$/, "").replace(/\/+$/, ""); }
+  }
+  const sameLink = (a, b) => !!a && !!b && canonicalUrl(a) === canonicalUrl(b);
+  const sameDish = (a, b) => String(a.id) === String(b.id) || (!!dishKey(a) && dishKey(a) === dishKey(b)) || sameLink(a.source_url, b.source_url);
+  // Rezeptliste ohne Doppelte: gleicher Link = ein Rezept; eigene Rezepte (is_custom) gehen vor (evtl. angepasst);
+  // eigene ohne Link mit gleichem Titel = ein Rezept (das zuletzt gespeicherte). Reihenfolge bleibt.
+  function uniqueRecipes(list) {
+    const isCustom = r => r.is_custom || String(r.id).startsWith("custom-");
+    const winner = new Map(); // Schlüssel -> Rezept
+    const keyOf = r => (r.source_url ? "u:" + canonicalUrl(r.source_url) : isCustom(r) && dishKey(r) ? "t:" + dishKey(r) : "id:" + r.id);
+    for (const r of list) {
+      const k = keyOf(r), w = winner.get(k);
+      if (!w || (isCustom(r) && !isCustom(w)) || (isCustom(r) && isCustom(w) && String(r.id) > String(w.id))) winner.set(k, r);
+    }
+    const keep = new Set(winner.values());
+    return list.filter(r => keep.has(r));
+  }
   function backupRecipe(all, group, excludeIds, quick, month) {
     const taken = all.filter(r => excludeIds.includes(String(r.id)));
     const free = all.filter(r => !excludeIds.includes(String(r.id)) && !taken.some(t => sameDish(t, r)) && !!r.quick === !!quick);
@@ -592,7 +647,8 @@
   // «Alle Rezepte»: nach Herkunft (Eigene, Swissmilk, Fooby, Betty Bossi, Migusto, andere Seiten, Klassiker, andere WGs),
   // darin zuerst was jetzt Saison hat, Gerichte ohne Saison in diesem Monat am Schluss der Herkunft; sonst alphabetisch
   const SOURCES = [
-    ["eigene", "Eigene Rezepte"], ["swissmilk", "Swissmilk"], ["fooby", "Fooby"], ["bettybossi", "Betty Bossi"], ["migusto", "Migusto"]
+    ["eigene", "Eigene Rezepte"], ["swissmilk", "Swissmilk"], ["fooby", "Fooby"], ["bettybossi", "Betty Bossi"], ["migusto", "Migusto"],
+    ["gemuese", "gemuese.ch"], ["kartoffel", "kartoffel.ch"], ["schweizerfleisch", "Schweizer Fleisch"] // Joshua 18.11.
   ];
   function recipeSource(r) {
     if (r.shared_from) return { key: "geteilt", label: "Andere WGs" };
@@ -893,7 +949,7 @@
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
-    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, SEARCH_SITES, searchSite, searchHref, votersOf, ranking, assignDays,
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList
   };

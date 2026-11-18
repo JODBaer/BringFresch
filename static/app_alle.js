@@ -54,8 +54,8 @@
       weeks.innerHTML = [false, true].map(next =>
         `<button type="button" data-next="${next}" aria-pressed="${state.viewNext === next}">KW ${isoWeek(next ? plusWeek() : new Date())}</button>`).join("");
     }
-    const q = query.toLowerCase().trim();
-    const list = allRecipes().filter(r => !q || [r.title, ...(r.ingredients || []).map(i => i.name)].join(" ").toLowerCase().includes(q));
+    const q = query.trim();
+    const list = allRecipes().filter(r => CORE.recipeMatches(r, q)); // gleiche Suchregel wie Menü-Blatt und Katalog
     const month = currentMonth();
     const groups = CORE.groupBySource(list, month);
     $("allCount").textContent = `${list.length} Rezepte`;

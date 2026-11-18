@@ -238,10 +238,17 @@
   // ---------------------------------------------------------------------------
   // Rezepte & Wochenplan
   // ---------------------------------------------------------------------------
-  function allRecipes() {
-    // gleicher Bestand für alle WGs: Katalog + eigene + geteilte der anderen WGs (Stimmen bleiben pro WG)
+  // gleicher Bestand für alle WGs: Katalog + eigene + geteilte der anderen WGs (Stimmen bleiben pro WG)
+  function allRecipesFull() {
     return [...(DATA.recipes || []), ...(window.OBSONARE_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
   }
+  // Für Listen, Suche, Wochenwahl: ohne Doppelte (gleicher Link = ein Rezept, CORE.uniqueRecipes). Nach ID suchen: recipeById (volle Liste).
+  function allRecipes() {
+    return CORE.uniqueRecipes(allRecipesFull());
+  }
+  // Rezept mit diesem Link schon da (Katalog, eigene, geteilte)? → das bestehende verwenden statt eine Kopie anzulegen
+  const recipeByLink = url => (url ? allRecipes().find(r => CORE.sameLink(r.source_url, url)) : null);
+  if (importer && importer.dedupe) importer.dedupe(); // alte Doppelte auf diesem Handy aufräumen
   // Beliebtheit: Stimmen der Wochenwahl dieser WG (vom WG-Server); ohne Server: wie oft auf diesem Handy gewählt
   function popularCounts() {
     const wg = CORE.popularity((load(STORE.KEYS.POPULAR_KEY, null) || {}).weeks);
@@ -301,7 +308,7 @@
       if (day.leftover_buffer === undefined) day.leftover_buffer = DEFAULT_BUFFER;
       if (!day.extra_guests) day.extra_guests = 0;
       // Rezeptdaten aus der aktuellen Datenbank nachziehen (Korrekturen an Zutaten wirken auch auf gespeicherte Pläne)
-      const fresh = day.id != null && allRecipes().find(r => String(r.id) === String(day.id));
+      const fresh = day.id != null && allRecipesFull().find(r => String(r.id) === String(day.id));
       if (fresh) {
         const { eaters, leftover_buffer, extra_guests, time, time_by } = day;
         plan[idx] = { ...fresh, day: DAYS[idx], eaters, leftover_buffer, extra_guests, ...(time ? { time, time_by } : {}) };
@@ -333,7 +340,7 @@
     notify();
   }
 
-  const recipeById = id => allRecipes().find(r => String(r.id) === String(id));
+  const recipeById = id => allRecipesFull().find(r => String(r.id) === String(id));
   const { dietGroup } = CORE;
 
   const nextWeekKey = () => weekKey(plusWeek());
@@ -361,7 +368,7 @@
     VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, PLAN_WEEK_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY, VOTE_KEY, ME_KEY,
     WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY, SEARCH_SITE_KEY, KEYS, state, currentPlan, otherPlan, savePlan,
     saveMembers, saveStaples, $, searchKey, searchName, recipeLinkLabel, recipeHref, guessMeat, esc, currentMonth, todayIndex, initialsMap,
-    toast, copyText, allRecipes, popularCounts, effectiveDiet, fitsDiet, inSeason, pickRecipe, makeDay, generateWeek, normalizePlan,
+    toast, copyText, allRecipes, allRecipesFull, recipeByLink, popularCounts, effectiveDiet, fitsDiet, inSeason, pickRecipe, makeDay, generateWeek, normalizePlan,
     normalizeWeek, subscribe, notify, toBuyItems, listLine, DIET_LABEL, refresh, recipeById, dietGroup, nextWeekKey, canPlanNext,
     shownWeek, isOpenWeek, nextPlan, setCurrentPlan });
 })();

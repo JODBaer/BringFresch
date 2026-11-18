@@ -66,6 +66,17 @@
   }
   renderSearchSite();
   setRecipeSearch("");
+  // «Im Web suchen» unter jedem Rezept-Suchfeld (Menü-Blatt, Katalog, Alle Rezepte): Lieblingsseite, Google, eigene Webseiten (Joshua 18.11.)
+  function renderWebSearch(input) {
+    const box = document.querySelector(`.websearch[data-ws="${input.id}"]`);
+    if (!box) return;
+    const links = CORE.webSearchLinks(input.value, searchKey(), state.mySites);
+    box.hidden = !links.length;
+    box.innerHTML = links.length ? `<small>Im Web suchen:</small> ${links.map(l => `<a class="hofroute${l.fav ? " fav" : ""}" href="${esc(l.url)}" target="_blank" rel="noopener">${l.fav ? "★ " : ""}${esc(l.name)} ↗</a>`).join("")}` : "";
+  }
+  document.addEventListener("input", e => { if (e.target && e.target.id && document.querySelector(`.websearch[data-ws="${e.target.id}"]`)) renderWebSearch(e.target); });
+  // leeres Feld beim Öffnen = Zeile weg (die Felder werden von den Ansichten geleert)
+  for (const id of ["msearch", "catalogSearch", "allSearch"]) { const el = $(id); if (el) el.addEventListener("focus", () => renderWebSearch(el)); }
   $("searchSite").onchange = () => {
     save(SEARCH_SITE_KEY, CORE.searchSite($("searchSite").value));
     setRecipeSearch($("recipeSearchQ").value);
@@ -122,7 +133,7 @@
   }
 
   function renderCatalog() {
-    const q = $("catalogSearch").value.toLowerCase().trim();
+    const q = $("catalogSearch").value.trim();
     const f = state.catalogFilter;
     document.querySelectorAll("#catalogFilters button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === f)));
     const list = allRecipes().filter(r => {
@@ -131,11 +142,7 @@
       if (f === "season" && !inSeason(r)) return false;
       if (f === "custom" && !r.is_custom && !String(r.id).startsWith("custom-")) return false;
       if (f === "shared" && !r.shared_from) return false;
-      if (q) {
-        const hay = [r.title, ...(r.ingredients || []).map(i => i.name)].join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
+      return CORE.recipeMatches(r, q); // gleiche Suchregel wie Menü-Blatt und «Alle Rezepte»
     });
     // nach Beliebtheit (Stimmen eurer Wochenwahlen), dann Saison, dann Titel
     const pop = popularCounts();
@@ -243,10 +250,12 @@
   // ---------------------------------------------------------------------------
   // edit: eigenes Rezept bearbeiten · copyOf: Katalog-Rezept als eigene Kopie anpassen (z.B. Personen)
   let editingId = null;
+  let copying = false; // «Anpassen» eines Katalog-Rezepts: bewusst eine eigene Kopie, auch bei gleichem Link
   function openRecipeForm(link, { edit = null, copyOf = null } = {}) {
     $("recipeForm").reset();
     lastFetched = "";
     editingId = edit ? edit.id : null;
+    copying = !!copyOf;
     const base = edit || copyOf;
     $("recipeFormTitle").textContent = edit ? "Rezept bearbeiten" : copyOf ? "Rezept anpassen (eigene Kopie)" : "Eigenes Rezept";
     $("recipeSubmitBtn").textContent = state.catalogMode === "save" ? "Speichern" : "Speichern & einplanen";
@@ -305,6 +314,16 @@
       instructions: $("recipeInstructions").value,
       shared: $("recipeShared").checked
     };
+    // Gleicher Link schon im Katalog (Swissmilk, Fooby … oder geteilt)? Dann das bestehende Rezept nehmen, keine Kopie (Joshua 18.11.)
+    const known = !editingId && !copying && app.recipeByLink(fields.url);
+    if (known && !known.is_custom && !String(known.id).startsWith("custom-")) {
+      const mode0 = state.catalogMode;
+      state.catalogMode = "day";
+      $("recipeDialog").close();
+      toast(`Schon da: ${known.title}`);
+      if (mode0 === "save") return;
+      return useRecipe(known, mode0);
+    }
     const recipe = editingId ? importer.updateCustomRecipe(editingId, fields) : importer.createCustomRecipe(fields);
     const mode = state.catalogMode;
     state.catalogMode = "day";
@@ -330,6 +349,9 @@
     ["Fooby", "https://fooby.ch/de/rezepte.html"],
     ["Migusto", "https://migusto.migros.ch/de/rezepte"],
     ["Chefkoch", "https://www.chefkoch.de/"],
+    ["gemuese.ch", "https://www.gemuese.ch/rezepte"],
+    ["kartoffel.ch", "https://www.kartoffel.ch/de/rezepte.html"],
+    ["Schweizer Fleisch", "https://schweizerfleisch.ch/rezepte"],
   ];
   state.mySites = load(SITES_KEY, []) || [];
   function renderSites() {

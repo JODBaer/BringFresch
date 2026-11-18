@@ -519,6 +519,10 @@ html.d3 .who .plus { display: none; } html.d3 .inner { padding-bottom: 6px; } ht
 
 /* ---------- Navigation ---------- */
 .bnav { position: fixed; z-index: 20; display: flex; }
+/* Tastatur offen (app_start.js): Leiste unten und Bring!-Knopf weg, Blätter über der Tastatur */
+html.kbd .bnav, html.kbd .shopfab { display: none !important; }
+dialog:not(.full) { margin-bottom: var(--kb, 0px); max-height: calc(88vh - var(--kb, 0px)); }
+dialog:not(.full) .sheet { max-height: calc(88vh - var(--kb, 0px)); }
 .bnav button { flex: 1; min-width: 0; border: 0; background: none; color: inherit; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .25s, border-radius .35s var(--spring), flex .35s var(--spring); }
 .bnav button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .glass .bnav { left: 50%; transform: translateX(-50%); bottom: calc(12px + var(--sab)); width: calc(100% - 24px); max-width: 380px; height: 66px; border-radius: 33px; padding: 5px; gap: 2px; color: var(--fg); }
@@ -932,3 +936,10 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .qt.back .lz { min-height: 44px; min-width: 56px; border: 0; border-radius: 999px; padding: 0 12px; font: 700 13px var(--font); cursor: pointer;
   background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--fg); }
 .qt.back .lz[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+
+/* «Im Web suchen» unter den Rezept-Suchfeldern */
+.websearch { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.websearch[hidden] { display: none; }
+.websearch small { color: var(--muted); }
+.websearch .fav { border-color: var(--accent); }
+.msheet .websearch { padding: 0 16px; }

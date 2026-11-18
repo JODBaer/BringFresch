@@ -38,6 +38,13 @@ Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand i
 **Sonst**
 - Die App lädt schneller, weil die Schrift kleiner ist (196 → 125 KB).
 
+## Neu am 18.11.2026 (v1.13.0)
+- **Rezepte von gemuese.ch, kartoffel.ch, schweizerfleisch.ch** (Joshua): `python tools/import_recipes.py add [seite]` ergänzt nur diese Seiten (je ~12 Hauptgerichte, robots.txt beachtet, 3 s Pause, nur Fakten), hängt an `static/recipes_imported.js` an und überschreibt nichts (`merge` würde alles ersetzen!). Filter `SIDE` wirft Beilagen/Vorspeisen/Süsses raus; danach von Hand durchsehen. Stand: 13 / 12 / 12 Rezepte. Herkunft in «Alle Rezepte»: `CORE.SOURCES`; Stöber-Kacheln im Reiter Rezepte.
+- **Eine Suchregel** für Menü-Blatt, Katalog und «Alle Rezepte»: `CORE.recipeMatches` (alle Wörter, Titel+Zutaten, ohne Akzente). Darunter jeweils **«Im Web suchen»**: Lieblingsseite (★, Einstellung «Suchen auf»), Google, eigene Rezept-Webseiten der WG per `site:` (`CORE.webSearchLinks`). Neue Lieblingsseiten über Google `site:` (Betty Bossi, Migusto, gemuese.ch, kartoffel.ch, Schweizer Fleisch).
+- **Keine Doppelten**: gleicher Link = gleiches Rezept (`CORE.canonicalUrl`: ohne www/Protokoll/Schrägstrich/utm_…/#). `allRecipes()` = `CORE.uniqueRecipes` (eigenes vor Katalog; eigene ohne Link nach Titel), Suche nach ID über `allRecipesFull()`/`recipeById`. Speichern mit einem Link, den der Katalog schon hat → «Schon da», bestehendes Rezept (ausser «Anpassen» = bewusste Kopie). Eigene Doppelte werden beim Laden und nach dem Abgleich zusammengefasst.
+- **Tastatur (iPhone)**: bei offener Tastatur (visualViewport > 120 px kleiner) Leiste unten + Bring!-Knopf weg (`html.kbd`), Blätter rücken über die Tastatur (`--kb`), aktives Feld in die Mitte.
+- **Glas-Blätter** stärker verschwommen (iPhone), **Markt-Ansicht nach Art** mit Umkreis und Google-Knopf, **Saisonpausen** mit Datum (Meilen), discover.swiss-Märkte (siehe oben).
+
 ## Release machen (wenn Joshua «jetzt» sagt)
 1. `cd tests && npm ci && npm run ci` → «PASS: alles grün»
 2. `git tag v2.0.0 && git push origin v2.0.0`. Nummer 2.0.0 ist entschieden, damit die Handys mit 1.10.0 «Neue Version verfügbar» sehen.

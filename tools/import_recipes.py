@@ -10,6 +10,8 @@ Keine Zubereitungstexte und keine Bilder – die App verlinkt auf das Originalre
 Ablauf:
   python tools/import_recipes.py discover   # Rezept-Links aus den Sitemaps sammeln (Vorfilter nach Titel)
   python tools/import_recipes.py fetch      # Seiten höflich abrufen (1 Anfrage / 3 s pro Website), Cache in tools/.cache
+  python tools/import_recipes.py add        # NUR die neuen Seiten (gemuese.ch, kartoffel.ch, schweizerfleisch.ch) ergänzen,
+                                            # je bis 12 Hauptgerichte, an static/recipes_imported.js anhängen (überschreibt nichts)
   python tools/import_recipes.py build      # Parsen, Diät + Saison bestimmen, Vorschlag zusammenstellen
                                             # -> tools/recipes_staging.json (zum Durchsehen)
 
@@ -62,7 +64,21 @@ SITES = {
         "sitemap": "https://www.swissmilk.ch/sitemap.xml",
         "match": r"^https://www\.swissmilk\.ch/de/rezepte-kochideen/rezepte/[^/]+/[^/]+/$",
     },
+    # Joshua 18.11.2026: Branchen-Seiten als weitere Quellen (je ~10 Rezepte; nur mit `add`, ergänzt statt überschreibt)
+    "gemuese": {  # VSGP, Zutaten nur im HTML (recipe_from_gemuese)
+        "sitemap": "https://www.gemuese.ch/sitemap.xml",
+        "match": r"^https://www\.gemuese\.ch/rezepte/[^/]+$",
+    },
+    "kartoffel": {  # Swisspatat, JSON-LD; nur Hauptgänge
+        "sitemap": "https://www.kartoffel.ch/sitemap.xml",
+        "match": r"^https://www\.kartoffel\.ch/de/rezepte/hauptgang/[^/]+\.html$",
+    },
+    "schweizerfleisch": {  # Proviande, Microdata (itemProp); Sammelseiten fallen ohne Zutaten weg
+        "sitemap": "https://schweizerfleisch.ch/sitemap.xml",
+        "match": r"^https://schweizerfleisch\.ch/rezepte/[^/]+$",
+    },
 }
+NEW_SITES = ("gemuese", "kartoffel", "schweizerfleisch")
 
 # --- Saison: Gemüse-Stichworte -> Monate (aus standalone_data.js season_items, field ∪ storage) ---------
 # Ganzjährige Zutaten (Kartoffeln, Zwiebeln, Käse …) beeinflussen die Saison nicht.
@@ -345,7 +361,7 @@ class MicrodataRecipe(HTMLParser):
 
 
 def recipe_from_microdata(page: str) -> dict | None:
-    if 'itemprop="recipeIngredient"' not in page:
+    if not re.search(r'itemprop="recipeIngredient"', page, re.I):
         return None
     p = MicrodataRecipe()
     p.feed(page)
@@ -354,12 +370,30 @@ def recipe_from_microdata(page: str) -> dict | None:
     title = html.unescape(m.group(1)).split(" | ")[0].strip() if m else clean_title(" ".join(p.h1))
     return {
         "name": title,
-        "recipeYield": (d.get("recipeYield") or [""])[0],
+        "recipeYield": (d.get("recipeYield") or [""])[0] or (lambda m: f"{m.group(1)} Personen" if m else "")(re.search(r"numberOfPersons&quot;:\s*&quot;(\d+)", page)),
         "recipeIngredient": [x for x in d.get("recipeIngredient", []) if x],
         "totalTime": (d.get("totalTime") or [""])[0],
         "recipeCategory": d.get("recipeCategory", []),
         "keywords": ", ".join(d.get("keywords", [])),
     }
+
+
+def recipe_from_gemuese(page: str) -> dict | None:
+    """gemuese.ch: keine schema.org-Daten; Zutaten als <li class="list__ingredient"> (Menge + Produkt), «Zutatenliste für 4 Personen»."""
+    if "c-recipe-ingredients" not in page:
+        return None
+    strip = lambda x: re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", re.sub(r'<span class="brush">.*?</span>', "", x, flags=re.S)))).strip()
+    lines = []
+    for li in re.findall(r'<li class="list__ingredient">(.*?)</li>', page, re.S):
+        q = re.search(r'ingredient__quantity">(.*?)</span>', li, re.S)
+        prod = re.search(r'ingredient__product">(.*?)</span>\s*</li>|ingredient__product">(.*)', li + "</li>", re.S)
+        name = strip((prod.group(1) or prod.group(2)) if prod else "")
+        if name:
+            lines.append(f"{strip(q.group(1)) if q else ''} {name}".strip())
+    m = re.search(r"Zutatenliste f(?:&#xFC;|ü)r (\d+) Personen", page)
+    t = re.search(r'<meta property="og:title" content="([^"]+)"', page) or re.search(r"<h1[^>]*>(.*?)</h1>", page, re.S)
+    return {"name": re.sub(r"\s+Rezept$", "", strip(t.group(1)).split(" | ")[0]) if t else "", "recipeYield": f"{m.group(1)} Personen" if m else "",
+            "recipeIngredient": lines, "totalTime": "", "recipeCategory": "", "keywords": ""}
 
 
 def clean_title(t: str) -> str:
@@ -370,7 +404,7 @@ def clean_title(t: str) -> str:
 
 
 def extract(page: str) -> dict | None:
-    r = recipe_from_jsonld(page) or recipe_from_microdata(page)
+    r = recipe_from_jsonld(page) or recipe_from_microdata(page) or recipe_from_gemuese(page)
     if not r:
         return None
 
@@ -471,7 +505,7 @@ def iso_minutes(s: str) -> int | None:
 
 def source_of(url: str) -> str:
     host = urllib.parse.urlparse(url).netloc
-    for key in ("bettybossi", "migusto", "fooby", "swissmilk", "chefkoch"):
+    for key in ("bettybossi", "migusto", "fooby", "swissmilk", "chefkoch", "gemuese", "kartoffel", "schweizerfleisch"):
         if key in host:
             return key
     return host
@@ -635,6 +669,62 @@ def cmd_merge():
     print(f"{len(out)} Rezepte → {target.relative_to(ROOT.parent)}")
 
 
+# Beilagen, Vorspeisen, Süsses, die der allgemeine Filter durchlässt (v.a. gemuese.ch): nicht in die Wochenwahl
+SIDE = re.compile(r"\b(cuts|smashed|slaw|pie|crème|creme|beilage|dip|chips|fries|sticks|apfel-rettich|ketchup|aufstrich|crostini|bruschetta)\b|caramell?isiert|^(apfel|rettich)", re.I)
+
+
+def cmd_add(per_site: int = 12):
+    """Neue Seiten (NEW_SITES) ERGÄNZEN statt überschreiben: Kandidaten aus der Sitemap (höflich, je ~30), abrufen, prüfen,
+    je Seite bis per_site Hauptgerichte (gemischt vegi/Fleisch, saisonal), an static/recipes_imported.js anhängen (ohne Doppelte)."""
+    CACHE.mkdir(exist_ok=True)
+    PAGES.mkdir(parents=True, exist_ok=True)
+    rnd = random.Random(SEED)
+    target = ROOT.parent / "static" / "recipes_imported.js"
+    src = target.read_text(encoding="utf-8")
+    existing = json.loads(src[src.index("["):src.rindex("]") + 1])
+    have = {re.sub(r"[^a-z]", "", r["title"].lower()) for r in existing} | {r["source_url"] for r in existing}
+    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months")
+    added = []
+    only = [a for a in sys.argv[2:] if a in NEW_SITES]
+    for site in (only or NEW_SITES):
+        cfg = SITES[site]
+        xml = get(cfg["sitemap"], timeout=120)
+        locs = [u.strip() for u in re.findall(r"<loc>([^<]+)</loc>", xml) if re.match(cfg["match"], u.strip())]
+        rnd.shuffle(locs)
+        n = int(__import__("os").environ.get("ADD_CHECK", "40"))
+        fetch_site(locs[:n], lambda m: print(m, flush=True))
+        ok, why = [], {}
+        for u in locs[:n]:
+            raw = json.loads(cache_file(u).read_text(encoding="utf-8"))
+            r = raw if "error" in raw else classify(raw)
+            if not isinstance(r, str) and "error" not in r and SIDE.search(r["title"]):
+                r = "Beilage/Vorspeise/Süsses"
+            if isinstance(r, str) or "error" in r:
+                k = r if isinstance(r, str) else r["error"]
+                why[re.sub(r"\(.*\)", "", k).strip()[:30]] = why.get(re.sub(r"\(.*\)", "", k).strip()[:30], 0) + 1
+            elif re.sub(r"[^a-z]", "", r["title"].lower()) not in have and r["source_url"] not in have:
+                ok.append(r)
+        # abwechselnd vegi / Fleisch, damit beide Seiten der WG etwas haben (bei schweizerfleisch natürlich fast nur Fleisch)
+        veg = [r for r in ok if r["diet"] != "fleisch"]; meat = [r for r in ok if r["diet"] == "fleisch"]
+        pick = []
+        while len(pick) < per_site and (veg or meat):
+            for lst in (veg, meat):
+                if lst and len(pick) < per_site:
+                    pick.append(lst.pop(0))
+        for r in pick:
+            have.add(re.sub(r"[^a-z]", "", r["title"].lower()))
+        added += pick
+        print(f"{site}: {len(locs)} Rezept-Links, {min(40, len(locs))} geprüft, {len(ok)} brauchbar, {len(pick)} übernommen; abgelehnt: {why}")
+    out = existing + [{k: r[k] for k in keep} for r in sorted(added, key=lambda r: r["title"])]
+    target.write_text(
+        "// Automatisch erzeugt von tools/import_recipes.py merge/add – nicht von Hand bearbeiten.\n"
+        "// Nur Fakten (Titel, Portionen, Zutaten); Zubereitung steht auf der verlinkten Originalseite.\n"
+        "window.OBSONARE_IMPORTED = " + json.dumps(out, ensure_ascii=False, indent=0).replace("\n", "") + ";\n",
+        encoding="utf-8",
+    )
+    print(f"{len(added)} Rezepte dazu, jetzt {len(out)} → {target.relative_to(ROOT.parent)}")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"discover": cmd_discover, "fetch": cmd_fetch, "build": cmd_build, "merge": cmd_merge}.get(cmd, lambda: print(__doc__))()
+    {"discover": cmd_discover, "fetch": cmd_fetch, "build": cmd_build, "merge": cmd_merge, "add": cmd_add}.get(cmd, lambda: print(__doc__))()

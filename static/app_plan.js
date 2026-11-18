@@ -341,7 +341,7 @@
     }
     const pc = app.popularCounts(), counts = Object.keys(pc).length ? pc : dishCounts(); // WG-Stimmen, sonst dieses Handy
     const current = state.plan[sheetDay] ? String(state.plan[sheetDay].id) : null;
-    const all = allRecipes().filter(r => String(r.id) !== current && (!f || norm(`${r.title} ${dayMeta(r)}`).includes(f)));
+    const all = allRecipes().filter(r => String(r.id) !== current && app.CORE.recipeMatches(r, f, dayMeta(r))); // gleiche Suchregel wie Katalog/«Alle Rezepte»
     const optHTML = r => `<button type="button" class="opt" role="option" data-id="${esc(r.id)}"><span><span class="n">${esc(r.title)}</span><small>${esc(dayMeta(r))}${inSeason(r) ? "" : " · nicht Saison"}</small></span>${counts[r.id] ? `<span class="pop">♥ ${counts[r.id]}×</span>` : ""}</button>`;
     let h = "";
     if (!f) {
