@@ -145,54 +145,46 @@ async function discoverItems() {
   for (const i of out) console.log(`  + ${i.k} ${i.n} | ${i.adr || ""}, ${i.ort || ""} | ${i.oh || "ohne Zeiten"}`);
   return out;
 }
-// Erkundung (nur mit DISCOVER_EXPLORE=1, Workflow-Schalter «explore»; ändert keine Daten): Der OpenData-Schlüssel hat kein
-// Partner-Projekt, darum keine /search (401 «Project wasn't supplied»). Die Listen-Endpunkte gehen ohne Projekt und filtern nach
-// additionalType, category, source (Datenquelle) – aber noch nicht nach Ort («geo location coming soon»): darum lokal inBox.
-// Log: Anzahl Schweiz, Anzahl im Gebiet, Einträge im Gebiet (nur öffentliche Angaben), nie der Schlüssel.
+// Erkundung (nur mit DISCOVER_EXPLORE=1, Workflow-Schalter «explore»; ändert keine Daten, nur Log):
+// Märkte und Brauchtum mit Markt-Charakter in der GANZEN Schweiz (Idee «Easter Eggs» in der Woche, Joshua 18.11.).
+// Ohne Partner-Projekt keine /search → Listen-Endpunkte seitenweise (~1/s). Log: Name | Typ | Ort | Datum | Quelle | Lizenz.
+const FEST = /m[aä]rkt|m[aä]rt\b|märit|marché|marche|mercato|market|chilbi|kilbi|messe\b|weihnacht|advent|christkind|böögg|sechsel[äa]uten|fulehung|ausschiesset|zibele|räbe|chäs|käse|alpabzug|alpabfahrt|alpaufzug|désalpe|bénichon|benichon|sagra|fête|foire|metzgete|wümmet|winzerfest|chestene|marroni|fasnacht|unspunnen|schwinget|gansabhauet|klausjagen|chlausjagen|silvesterchlaus|hornschlitten|escalade/i;
+const EV_TYPES = ["StreetMarketEvent", "TraditionalEvent", "SaleEvent", "ArtsAndCraftsEvent", "Fair", "FoodEvent", "Festival"];
 async function discoverExplore() {
   if (!process.env.DISCOVER_SWISS_KEY || process.env.DISCOVER_EXPLORE !== "1") return;
-  const Q = [
-    ["Märkte (civicstructures, Market)", "civicstructures?additionalType=Market"],
-    ["Hofläden (localbusinesses, FarmShop)", "localbusinesses?additionalType=FarmShop"],
-    ["Bauernhöfe (places, Farm)", "places?additionalType=Farm"],
-    ["Strassenmärkte (events, StreetMarketEvent)", "events?additionalType=StreetMarketEvent"],
-    ["Kategorie Markt sui_0220 (places)", "places?category=sui_0220"],
-    ["Kategorie Markt sui_0220 (events)", "events?category=sui_0220"],
-    ["Kategorie Lebensmittel sui_0502 (localbusinesses)", "localbusinesses?category=sui_0502"],
-    ["Zürich Tourismus ZHT-CMS (localbusinesses)", "localbusinesses?source=ZHT-CMS"],
-    ["Zürich Tourismus ZHT-CMS (civicstructures)", "civicstructures?source=ZHT-CMS"],
-    ["Zürich Tourismus ZHT-CMS (places)", "places?source=ZHT-CMS"]
-  ];
-  const MARKT = /markt|märkt|market|marché|hofladen|bauern|farm|wochenmarkt|gemüse/i;
-  for (const [label, path] of Q) {
-    let token = "", total = 0, open = 0; const hits = [], examples = [], types = {};
+  const when = o => {
+    const sc = (o.schedule || [])[0] || {};
+    const f = (o.startDate || sc.startDate || "").slice(0, 10), t = (o.endDate || sc.endDate || "").slice(0, 10);
+    return f ? (t && t !== f ? `${f}–${t}` : f) + ((o.schedule || []).length > 1 ? ` (+${o.schedule.length - 1} Termine)` : "") : "ohne Datum";
+  };
+  const line = o => `${o.name} | ${String(o.additionalType || o.type || "").replace(/^.*\//, "")} | ${(o.address || {}).addressLocality || (o.location || {}).name || ""} | ${when(o)} | ${[].concat(o.dataGovernance?.source?.acronym || []).join("/")} | ${o.license || "?"}${o.geo ? "" : " | ohne geo"}`;
+  async function scan(label, path, maxPages, keep) {
+    let token = "", total = 0; const hits = [], types = {};
     try {
-      for (let page = 0; page < 30; page++) {
-        const r = await dget(`${path}&top=100${token ? "&continuationToken=" + encodeURIComponent(token) : ""}`);
+      for (let page = 0; page < maxPages; page++) {
+        const r = await dget(`${path}${path.includes("?") ? "&" : "?"}top=100${token ? "&continuationToken=" + encodeURIComponent(token) : ""}`);
         if (r.status !== 200 || !r.json) { console.log(`ERKUNDEN ${label}: HTTP ${r.status} ${r.text.slice(0, 200)}`); break; }
         for (const o of r.json.data || []) {
           if (o.removed) continue;
           total++;
-          const t = `${o.type || ""}/${o.additionalType || ""}`; types[t] = (types[t] || 0) + 1;
-          if (/^CC/.test(o.license || "") && !/All-Rights/i.test(o.license)) open++;
-          const a = o.address || {};
-          const oh = (o.openingHoursSpecification || []).length ? `Zeiten(${o.openingHoursSpecification.length})` : (o.schedule || []).length ? `Termine(${o.schedule.length})` : "ohne Zeiten";
-          const line = `${o.name} | ${t} | ${a.streetAddress || ""}, ${a.addressLocality || ""} | ${[].concat(o.dataGovernance?.source?.acronym || o.datasource || []).join("/")} | ${o.license || "?"} | ${oh}`;
-          if (inBox(o)) hits.push(line);
-          else if (examples.length < 6) examples.push(line);
-          if (/ZHT-CMS/.test(path) && MARKT.test(o.name || "") && !inBox(o)) hits.push("(ausserhalb/ohne geo) " + line);
+          const t = String(o.additionalType || "").replace(/^.*\//, "") || "-"; types[t] = (types[t] || 0) + 1;
+          if (keep(o, t)) hits.push(o);
         }
         if (!r.json.hasNextPage || !r.json.nextPageToken) break;
+        if (page === maxPages - 1) console.log(`ERKUNDEN ${label}: nach ${maxPages} Seiten abgebrochen`);
         token = r.json.nextPageToken;
-        await new Promise(res => setTimeout(res, 1100));
+        await new Promise(res => setTimeout(res, 1050));
       }
     } catch (e) { console.log(`ERKUNDEN ${label}: Fehler ${e.cause?.code || e.message}`); }
-    const list = /ZHT-CMS/.test(path) ? hits.filter(h => MARKT.test(h)) : hits;
-    console.log(`ERKUNDEN ${label}: Schweiz ${total} (offene Lizenz ${open}), im Gebiet ${hits.length}; Typen ${JSON.stringify(types).slice(0, 300)}`);
-    for (const h of list.slice(0, 60)) console.log(`  - ${h}`);
-    if (!hits.length) for (const x of examples) console.log(`  (Beispiel) ${x}`);
-    await new Promise(res => setTimeout(res, 1100));
+    const top = Object.entries(types).sort((x, y) => y[1] - x[1]).slice(0, 25).map(([k, v]) => `${k}:${v}`).join(", ");
+    console.log(`ERKUNDEN ${label}: ${total} gelesen, ${hits.length} Treffer; Typen ${top}`);
+    for (const o of hits.slice(0, 400)) console.log(`  - ${line(o)}`);
+    return hits;
   }
+  await scan("CH Märkte (civicstructures, Typ Market)", "civicstructures", 40, (o, t) => t === "Market");
+  await scan("CH Orte mit Markt-Namen (places/localbusinesses)", "places", 20, o => FEST.test(o.name || ""));
+  // Anlässe: alle Seiten, Treffer = Markt-/Brauchtums-Typ oder passender Name
+  await scan("CH Anlässe (events) – Markt/Brauchtum", "events", 600, (o, t) => EV_TYPES.includes(t) && (t !== "Festival" && t !== "FoodEvent" || FEST.test(o.name || "")) || FEST.test(o.name || ""));
 }
 await discoverExplore();
 const discovered = await discoverItems();
