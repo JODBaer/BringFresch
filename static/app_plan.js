@@ -350,7 +350,9 @@
       if (popular.length) h += `<div class="msec">Beliebt bei euch</div>` + popular.map(optHTML).join("");
       h += `<div class="msec">Weitere</div>` + rest.map(optHTML).join("");
     } else {
-      h += all.sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0)).map(optHTML).join("");
+      // Treffer im Titel zuerst, dann über Zutaten; innerhalb: beliebt zuerst
+      const inTitle = r => app.CORE.recipeMatches({ title: r.title }, f) ? 1 : 0;
+      h += all.sort((a, b) => (inTitle(b) - inTitle(a)) || ((counts[b.id] || 0) - (counts[a.id] || 0))).map(optHTML).join("");
       h += `<button type="button" class="opt" role="option" data-new="1"><span><span class="n">«${esc($("msearch").value.trim())}» eintragen</span><small>eigenes Menü</small></span></button>`;
     }
     h += `<button type="button" class="opt more-link" data-catalog="1">Alle Rezepte, Filter &amp; eigenes Rezept …</button>`;
@@ -446,6 +448,15 @@
     if (wasScroll(() => $("mlist").scrollTop)) return;
     pickFromSheet(b);
   });
+  // Touch: schon beim Loslassen wählen. Ist das Suchfeld aktiv, schliesst der Browser beim Antippen zuerst die Tastatur
+  // (blur) und der nachfolgende Klick ging ins Leere (Treffer nach der Suche liess sich nicht wählen). preventDefault
+  // verhindert den doppelten Klick; Wischen (wasScroll) wählt nichts.
+  $("mlist").addEventListener("touchend", e => {
+    const b = e.target.closest(".opt");
+    if (!b || e.changedTouches.length !== 1 || wasScroll(() => $("mlist").scrollTop)) return;
+    e.preventDefault();
+    pickFromSheet(b);
+  }, { passive: false });
   $("mscrim").onclick = closeMenuSheet;
   $("msheetClose").onclick = closeMenuSheet;
   $("msheet").addEventListener("keydown", e => {

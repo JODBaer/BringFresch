@@ -15,7 +15,8 @@
   // Nur wenn wirklich eine Tastatur offen ist (sichtbarer Bereich > 120 px kleiner) – am PC bleibt die Leiste
   const isField = el => el && (el.tagName === "TEXTAREA" || el.tagName === "SELECT" || (el.tagName === "INPUT" && !/^(checkbox|radio|button|submit|range|color|file)$/.test(el.type)));
   document.addEventListener("focusin", e => {
-    if (isField(e.target)) setTimeout(() => { if (document.activeElement === e.target && e.target.scrollIntoView) e.target.scrollIntoView({ block: "center", behavior: "smooth" }); }, 350);
+    // nur wenn die Tastatur wirklich offen ist (am PC nicht scrollen)
+    if (isField(e.target)) setTimeout(() => { if (document.documentElement.classList.contains("kbd") && document.activeElement === e.target && e.target.scrollIntoView) e.target.scrollIntoView({ block: "center", behavior: "smooth" }); }, 350);
   });
   const vv = window.visualViewport;
   if (vv) {

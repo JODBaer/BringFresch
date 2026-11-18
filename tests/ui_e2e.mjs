@@ -444,6 +444,8 @@ await step(A, "Menü wechseln: Blatt öffnen, suchen, Gericht wählen, «Rückg�
   await typeInto(A, "#msearch", word);
   // gleiche Suchregel wie Katalog/«Alle Rezepte»: Titel oder Zutaten → mindestens ein Titel passt, die Liste wird kürzer
   await until(A, w => { const n = [...document.querySelectorAll("#mlist .opt[data-id] .n")]; const f = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); return n.length > 0 && n.length < 60 && n.some(x => f(x.textContent).includes(f(w))) && document.querySelector("#mlist [data-new]"); }, `Suche «${word}» filtert nicht`, word);
+  // Das Blatt schrumpft mit der kürzeren Liste (Animation): erst tippen, wenn es stillsteht – wie ein Mensch
+  await A.page.waitForFunction(() => new Promise(r => { const y = () => document.getElementById("msheet").getBoundingClientRect().top; const a = y(); setTimeout(() => r(Math.abs(y() - a) < 1), 250); }), { timeout: 5000 }).catch(() => {});
   const opt = await A.page.evaluateHandle(t => [...document.querySelectorAll("#mlist .opt[data-id]")].find(o => o.querySelector(".n").textContent === t), target);
   await tap(A, opt);
   await until(A, ([t]) => document.querySelector('.prow[data-i="2"] .t').textContent === t && !document.getElementById("msheet").classList.contains("show"), "Gericht nicht übernommen", [target]);
