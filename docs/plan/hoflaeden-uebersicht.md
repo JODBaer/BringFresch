@@ -2,6 +2,20 @@
 
 > **Stand 16.11.2026: gebaut mit Entscheid Joshua** – Ansicht nach Wochentagen, keine Karte, Daten per Workflow, KML-Export. Die Abschnitte unten zur OSM-Karte, zum Blockieren und zum Design-Entwurf sind überholt. Aktuell und zum Neuholen der Daten: `docs/uebergabe-v2.md` (Abschnitt «Hofläden & Märkte»).
 
+## Nachtrag 18.11.2026 (Joshua)
+
+**Regel: Tourismus-Seiten über discover.swiss.** zuerich.com und rapperswil-zuerichsee.ch antworten Programmen mit «403 Bot not allowed». Die Sperre nicht umgehen. Die Daten **immer über die discover.swiss-API** holen: Schlüssel = Secret `DISCOVER_SWISS_KEY`, Workflow `hoflaeden.yml`, Zürich Tourismus = Quelle `ZHT-CMS`, nur offene Lizenz (CC). Was dort fehlt, kommt von Joshua oder von der offiziellen Seite des Vereins bzw. der Gemeinde, immer mit Quelle. Die Punkte in Abschnitt 2 zu discover.swiss und Rapperswil sind damit überholt.
+
+**Saisonzeiten und Pausen** aus discover.swiss tagesgenau übernehmen (bisher nur monatsgenau, «Mar-Nov»). Vermutung: `ohFrom()` verwirft reine «geschlossen»-Einträge ohne `opens`/`closes`. In der Pause gilt ein Markt nicht als offen, die App zeigt «Winterpause bis …».
+
+**Wochenmarkt Meilen** (bisher «ohne Zeiten»). Quelle: https://wuchemaert-meilen.ch/ + Joshua
+- Jeden Freitag 07:30–11:00, beim Bahnhof Meilen
+- Saison 2026: 27.3.–30.10.; Winterpause 31.10.2026–25.3.2027; erster Markt 2027 = Fr 26.3.2027
+- Kein Markt an Feiertagen (2026: 1.5., 5.6., 18.9., Karfreitag 3.4. → dafür Do 2.4.). Die Ausfalltage jedes Jahr auf der Vereinsseite prüfen, keine Regel daraus ableiten.
+- OSM-Vorschlag: `Fr 07:30-11:00; 2026 Oct 31-2027 Mar 25 off`
+- Test (`tests/core.test.mjs`): Fr 13.11.2026 geschlossen, Fr 26.3.2027 offen
+- Spezialmärkte (`maerkte_spezial.js`, Uhrzeiten unbekannt → `pruefen: true`): Herbstmärt Fr 4.9.2026 (2027 neu eintragen), Weihnachtsmarkt So 29.11.2026. Der Weihnachtsmarkt gilt trotz Winterpause, die Pause betrifft nur den Freitagsmarkt.
+
 Stand 15.11.2026. Wunsch von Joshua: Beim Einkaufen ein Knopf zu Hofläden und Märkten in der Nähe (bis Zürich und Rapperswil), mit Öffnungszeiten, als OpenStreetMap-Übersicht. Reihenfolge laut Joshua: **zuerst dieser Plan, dann ein Design-Entwurf (live als HTML zeigen), erst danach fertig bauen.**
 
 ## 1. Was es schon gibt
