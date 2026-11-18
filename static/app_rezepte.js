@@ -352,6 +352,7 @@
     ["gemuese.ch", "https://www.gemuese.ch/rezepte"],
     ["kartoffel.ch", "https://www.kartoffel.ch/de/rezepte.html"],
     ["Schweizer Fleisch", "https://schweizerfleisch.ch/rezepte"],
+    ["Joël & Muriel", "https://joelundmuriel.ch/blogs/rezepte"],
   ];
   state.mySites = load(SITES_KEY, []) || [];
   function renderSites() {

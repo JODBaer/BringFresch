@@ -334,7 +334,8 @@
     migusto: { name: "Migusto", url: q => siteSearch("migusto.migros.ch", q) },
     gemuese: { name: "gemuese.ch", url: q => siteSearch("gemuese.ch/rezepte", q) },
     kartoffel: { name: "kartoffel.ch", url: q => siteSearch("kartoffel.ch", q) },
-    schweizerfleisch: { name: "Schweizer Fleisch", url: q => siteSearch("schweizerfleisch.ch/rezepte", q) }
+    schweizerfleisch: { name: "Schweizer Fleisch", url: q => siteSearch("schweizerfleisch.ch/rezepte", q) },
+    joelundmuriel: { name: "Joël & Muriel", url: q => siteSearch("joelundmuriel.ch/blogs/rezepte", q) }
   };
   // EINE Suchregel für alle Rezept-Suchfelder (Menü-Blatt, Katalog, Alle Rezepte; Joshua 18.11.): jedes Wort muss in Titel,
   // Zutaten oder Zusatztext vorkommen (Reihenfolge egal), ohne Gross/Klein und Akzente (ü = u, é = e)
@@ -648,7 +649,7 @@
   // darin zuerst was jetzt Saison hat, Gerichte ohne Saison in diesem Monat am Schluss der Herkunft; sonst alphabetisch
   const SOURCES = [
     ["eigene", "Eigene Rezepte"], ["swissmilk", "Swissmilk"], ["fooby", "Fooby"], ["bettybossi", "Betty Bossi"], ["migusto", "Migusto"],
-    ["gemuese", "gemuese.ch"], ["kartoffel", "kartoffel.ch"], ["schweizerfleisch", "Schweizer Fleisch"] // Joshua 18.11.
+    ["gemuese", "gemuese.ch"], ["kartoffel", "kartoffel.ch"], ["schweizerfleisch", "Schweizer Fleisch"], ["joelundmuriel", "Joël & Muriel"] // Joshua 18.11.
   ];
   function recipeSource(r) {
     if (r.shared_from) return { key: "geteilt", label: "Andere WGs" };

@@ -77,8 +77,15 @@ SITES = {
         "sitemap": "https://schweizerfleisch.ch/sitemap.xml",
         "match": r"^https://schweizerfleisch\.ch/rezepte/[^/]+$",
     },
+    # Joshua 16./18.11.2026: Koch-Seiten. robots.txt erlaubt, AGB regeln nur den Shop; nur Fakten (vegan, Kochbuch-Verlag).
+    # noahbachofen.ch und 5liber-manufaktur.ch haben (Stand 18.11.2026) keine Rezepte auf der Website.
+    "joelundmuriel": {
+        "sitemap": "https://joelundmuriel.ch/sitemap_articles_1.xml",
+        "match": r"^https://joelundmuriel\.ch/blogs/rezepte/[^/]+$",
+    },
 }
-NEW_SITES = ("gemuese", "kartoffel", "schweizerfleisch")
+NEW_SITES = ("gemuese", "kartoffel", "schweizerfleisch", "joelundmuriel")
+MAX_MIN_ADD = 60  # vereinbart: Znacht-Rezepte höchstens 60 Minuten
 
 # --- Saison: Gemüse-Stichworte -> Monate (aus standalone_data.js season_items, field ∪ storage) ---------
 # Ganzjährige Zutaten (Kartoffeln, Zwiebeln, Käse …) beeinflussen die Saison nicht.
@@ -136,7 +143,7 @@ MEAT = re.compile(
     r"steak|entrecôte|geschnetzeltes|plätzli|ente\b|truthahn|trute|kaninchen|hirsch|\breh\b|leber|saucisson|kutteln",
     re.I,
 )
-MEAT_EXCEPTIONS = re.compile(r"vegi|vegetar|vegan|planted|quorn|ersatz|bouillon|fond|gelatine|fischsauce", re.I)
+MEAT_EXCEPTIONS = re.compile(r"vegi|vegetar|vegan|planted|quorn|ersatz|bouillon|fond|gelatine|fischsauce|pasta-muschel|muschelnudel|conchiglioni", re.I)
 ANIMAL = re.compile(
     r"milch|rahm|butter|käse|quark|joghurt|jogurt|\beier?\b|eigelb|eiweiss|mozzarella|parmesan|sbrinz|gruyère|"
     r"ricotta|mascarpone|crème fraîche|creme fraiche|sauerrahm|feta|halloumi|honig|mayonnaise|raclette|fondue",
@@ -505,14 +512,14 @@ def iso_minutes(s: str) -> int | None:
 
 def source_of(url: str) -> str:
     host = urllib.parse.urlparse(url).netloc
-    for key in ("bettybossi", "migusto", "fooby", "swissmilk", "chefkoch", "gemuese", "kartoffel", "schweizerfleisch"):
+    for key in ("bettybossi", "migusto", "fooby", "swissmilk", "chefkoch", "gemuese", "kartoffel", "schweizerfleisch", "joelundmuriel"):
         if key in host:
             return key
     return host
 
 
-def classify(raw: dict) -> dict | str:
-    """Gibt ein App-Rezept zurück oder einen Ablehnungsgrund (str)."""
+def classify(raw: dict, min_servings: int = 2) -> dict | str:
+    """Gibt ein App-Rezept zurück oder einen Ablehnungsgrund (str). min_servings=1 für Seiten mit Einzelportionen (Joël & Muriel)."""
     name = clean_title(raw.get("name") or "")
     lines = raw.get("ingredients") or []
     cat_kw = f"{raw.get('category', '')} {raw.get('keywords', '')}"
@@ -522,7 +529,7 @@ def classify(raw: dict) -> dict | str:
         return "Vorspeise/Beilage"
     m = re.search(r"(\d+)", raw.get("yield") or "")
     servings = int(m.group(1)) if m else 0
-    if not 2 <= servings <= 8:
+    if not min_servings <= servings <= 8:
         return f"Portionen unklar ({raw.get('yield')})"
     minutes = iso_minutes(raw.get("totalTime", ""))
     if minutes and minutes > 120:
@@ -696,9 +703,13 @@ def cmd_add(per_site: int = 12):
         ok, why = [], {}
         for u in locs[:n]:
             raw = json.loads(cache_file(u).read_text(encoding="utf-8"))
-            r = raw if "error" in raw else classify(raw)
+            if "error" not in raw:  # Preisangaben «(0.40 Fr.)» gehören nicht auf die Einkaufsliste
+                raw["ingredients"] = [re.sub(r"\s*\(\s*\d+(?:[.,]\d+)?\s*Fr\.?\s*\)", "", l) for l in raw.get("ingredients", [])]
+            r = raw if "error" in raw else classify(raw, min_servings=1 if site == "joelundmuriel" else 2)
             if not isinstance(r, str) and "error" not in r and SIDE.search(r["title"]):
                 r = "Beilage/Vorspeise/Süsses"
+            elif not isinstance(r, str) and "error" not in r and r["prep_time_min"] > MAX_MIN_ADD:
+                r = f"über {MAX_MIN_ADD} Min."
             if isinstance(r, str) or "error" in r:
                 k = r if isinstance(r, str) else r["error"]
                 why[re.sub(r"\(.*\)", "", k).strip()[:30]] = why.get(re.sub(r"\(.*\)", "", k).strip()[:30], 0) + 1
@@ -714,7 +725,7 @@ def cmd_add(per_site: int = 12):
         for r in pick:
             have.add(re.sub(r"[^a-z]", "", r["title"].lower()))
         added += pick
-        print(f"{site}: {len(locs)} Rezept-Links, {min(40, len(locs))} geprüft, {len(ok)} brauchbar, {len(pick)} übernommen; abgelehnt: {why}")
+        print(f"{site}: {len(locs)} Rezept-Links, {min(n, len(locs))} geprüft, {len(ok)} brauchbar, {len(pick)} übernommen; abgelehnt: {why}")
     out = existing + [{k: r[k] for k in keep} for r in sorted(added, key=lambda r: r["title"])]
     target.write_text(
         "// Automatisch erzeugt von tools/import_recipes.py merge/add – nicht von Hand bearbeiten.\n"
