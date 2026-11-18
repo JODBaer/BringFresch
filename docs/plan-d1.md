@@ -1,6 +1,6 @@
-# Vorbereitung: SQLite (Cloudflare D1), mehrere WGs, geteilte Rezepte
+# Vorbereitung: SQLite (Cloudflare D1 & `node:sqlite`), mehrere WGs, geteilte Rezepte
 
-Stand: Entwurf, **noch nicht gebaut**. Heute läuft alles für eine WG im Key-Value-Speicher (KV). Dieses Dokument beschreibt den Umbau, damit er ohne Überraschungen in kleinen Schritten gehen kann.
+Stand: Entwurf, **noch nicht gebaut**. Heute läuft alles im Key-Value-Speicher (KV) – inklusive mehrerer WGs (`w:<slug>:…`) und geteilter Rezepte (`shared:<slug>`). Dieses Dokument beschreibt den Umbau auf SQLite (sowohl **Cloudflare D1** als auch **Node.js `node:sqlite`** für eigenen Host / Offline-Tests), damit er ohne Überraschungen in kleinen Schritten gehen kann.
 
 ## Warum
 
@@ -62,19 +62,51 @@ Die heutigen Endpunkte bleiben gleich, damit die App nur wenig ändern muss. Neu
 | `PUT /wg-recipes/:id` | Favorit, ausgeblendet, eigene Personenzahl |
 | `GET/PUT /members` | ersetzt `members` in `/settings` |
 
+## Plan-Aufgabe: Node.js + `node:sqlite` (Eigener Host ohne Cloudflare)
+
+Ab Node 22.5 ist SQLite direkt in Node.js eingebaut (`import { DatabaseSync } from "node:sqlite"` – null externe Abhängigkeiten). Damit kann der komplette WG-Server auf jedem beliebigen Host (Raspberry Pi, eigener VPS, Fly.io, Railway, lokal im Heimnetz) laufen – in zwei Ausbaustufen:
+
+### Stufe A: Sofortige KV-Brücke auf `node:sqlite` (0 Zeilen Änderung am Worker-Code)
+Der bestehende Worker (`worker/src/index.js`) nutzt auf `env.WG` nur 5 Methoden (`get`, `getWithMetadata`, `put`, `delete`, `list`). Ein kleiner Start-Adapter `worker/node_server.mjs` (~60 Zeilen) reicht für den kompletten Eigenbetrieb:
+- **SQLite-Tabelle für KV:**
+  ```sql
+  CREATE TABLE IF NOT EXISTS kv (
+    key   TEXT PRIMARY KEY,
+    value BLOB NOT NULL,
+    meta  TEXT,
+    exp   INTEGER -- Unix-Sekunden (aus expirationTtl), NULL = unbegrenzt
+  );
+  CREATE INDEX IF NOT EXISTS kv_exp ON kv (exp) WHERE exp IS NOT NULL;
+  ```
+- **KV-Adapter (`sqliteKv(dbPfad)`):**
+  - `get(k, type)`: liest `WHERE key = ? AND (exp IS NULL OR exp > unixepoch())`, wandelt bei `type === "json"` per `JSON.parse` um, bei `"arrayBuffer"` in `Uint8Array.buffer`.
+  - `getWithMetadata(k, type)`: liefert `{ value, metadata: JSON.parse(meta) }` (für den Rezeptbild-Cache `/img`).
+  - `put(k, v, opts)`: berechnet `exp = opts?.expirationTtl ? Math.floor(Date.now()/1000) + opts.expirationTtl : null` und speichert per `INSERT OR REPLACE INTO kv`.
+  - `delete(k)`: `DELETE FROM kv WHERE key = ?`.
+  - `list({ prefix = "" })`: `SELECT key FROM kv WHERE key LIKE ? || '%' AND (exp IS NULL OR exp > unixepoch()) ORDER BY key`.
+- **HTTP & Cron (`node:http`):**
+  - Nimmt HTTP-Anfragen entgegen, reicht sie als Web-Standard-`Request` an `worker.fetch(req, env)` weiter und liefert optional statische Dateien aus `static/` direkt mit aus.
+  - Täglicher Timer (`setInterval`) ruft `worker.scheduled({ scheduledTime: Date.now() }, env)` für `backup:<Tag>` auf und löscht abgelaufene Schlüssel (`DELETE FROM kv WHERE exp <= unixepoch()`).
+- **Backup-Import/-Export:** Ein Skript kann einen bestehenden Tages-Snapshot (`GET /backup/:day` von Cloudflare) 1:1 in die lokale `obsonare.sqlite`-Datei einspielen – Umzug von Cloudflare auf eigenen Host in unter 1 Minute.
+
+### Stufe B: Gemeinsamer D1- & `node:sqlite`-Treiber für `worker/schema.sql`
+Für den späteren Umbau auf echte SQL-Tabellen (`worker/schema.sql`) bekommt `node:sqlite` einen dünnen D1-kompatiblen Wrapper (`prepare(sql).bind(...).all() / .first() / .run()`), sodass:
+1. derselbe Worker-Code unverändert auf **Cloudflare D1** und auf **Node.js (`node:sqlite`)** läuft,
+2. `worker/test.mjs` offline gegen eine echte In-Memory-SQLite-Datenbank (`new DatabaseSync(":memory:")`) mit `worker/schema.sql` testet.
+
 ## Umbau in Schritten (jeder Schritt einzeln releasbar)
 
-1. **D1 anlegen und Schema einspielen:**
+1. **`node:sqlite`-KV-Brücke (`worker/node_server.mjs`) + Offline-Test:**
+   - Adapter für `env.WG` auf Basis von `node:sqlite` bauen und in `worker/test.mjs` gegen alle bestehenden Worker-Tests prüfen.
+2. **D1 anlegen und Schema einspielen:**
    - `npx wrangler d1 create bringfrisch`
    - Binding `DB` in `wrangler.toml` eintragen
    - `npx wrangler d1 execute bringfrisch --remote --file worker/schema.sql`
-2. **Daten übernehmen:** `worker/migrate_kv_to_d1.mjs` (noch zu schreiben) liest alle KV-Schlüssel und legt sie unter WG `default` ab.
+3. **Daten übernehmen:** `worker/migrate_kv_to_d1.mjs` (noch zu schreiben) liest alle KV-Schlüssel und legt sie in den SQL-Tabellen (`worker/schema.sql`) ab.
    - Die tägliche KV-Sicherung (`backup:<Tag>`) bleibt bis zum Schluss als Rückweg.
-3. **Doppelt schreiben:** Der Worker schreibt in KV **und** D1 und liest weiter aus KV. Die Tests vergleichen beide Ergebnisse.
-4. **Lesen aus D1:** Der Worker liest neu aus D1; KV ist nur noch die Sicherung.
-5. **Rezepte:** «Meine Rezepte» und der Katalog kommen aus `/recipes`; der Schalter «Für alle WGs teilen» wird eingeführt.
-6. **Mehrere WGs:** Kurzname in den Einstellungen, eine zweite Test-WG auf dem Test-Server, Tests für die Trennung (WG A sieht nichts von WG B).
-7. **KV aufräumen:** erst wenn D1 vier Wochen stabil läuft.
+4. **Doppelt schreiben:** Der Worker schreibt in KV **und** SQLite (D1 / `node:sqlite`) und liest weiter aus KV. Die Tests vergleichen beide Ergebnisse.
+5. **Lesen aus SQLite (D1 / `node:sqlite`):** Der Worker liest neu aus SQLite; KV ist nur noch die Sicherung.
+6. **KV aufräumen:** erst wenn SQLite vier Wochen stabil läuft.
 
 ## Tests, die dazukommen
 

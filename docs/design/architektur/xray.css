@@ -1,0 +1,38 @@
+/* Architektur-Übersicht: Röntgen-Rahmen im Handy (zusätzlich zu static/app.css). Wird von tools/build_architektur.mjs eingebaut. */
+
+/* X-Ray Inspector Highlight inside Phone */
+.xray-pulse {
+  outline: 3px solid #2e7d32 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 6px rgba(86, 143, 86, 0.36), 0 4px 16px rgba(0,0,0,0.22) !important;
+  transition: outline 0.2s, box-shadow 0.2s !important;
+}
+html.dark .xray-pulse {
+  outline: 3px solid #90ee90 !important;
+  box-shadow: 0 0 0 6px rgba(144, 238, 144, 0.38), 0 4px 16px rgba(0,0,0,0.5) !important;
+}
+body.xray-all .pday,
+body.xray-all .dish .t,
+body.xray-all .who,
+body.xray-all .num,
+body.xray-all #weekChip,
+body.xray-all #openVoteBtn,
+body.xray-all #syncBtn,
+body.xray-all #shopFab,
+body.xray-all #tab-shop .seg button,
+body.xray-all #shopSort,
+body.xray-all #allRecipesBtn,
+body.xray-all #quickLinkBtn {
+  outline: 1.5px dashed rgba(63, 122, 63, 0.75) !important;
+  outline-offset: 1px !important;
+}
+html.dark body.xray-all .pday,
+html.dark body.xray-all .dish .t,
+html.dark body.xray-all .who,
+html.dark body.xray-all .num,
+html.dark body.xray-all #weekChip,
+html.dark body.xray-all #openVoteBtn,
+html.dark body.xray-all #syncBtn,
+html.dark body.xray-all #shopFab {
+  outline: 1.5px dashed rgba(144, 238, 144, 0.75) !important;
+}

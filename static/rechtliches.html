@@ -51,10 +51,14 @@
     <li><b>Hofläden &amp; Märkte:</b> Es werden keine Kartenbilder geladen. «Route» öffnet auf deinen Wunsch Apple Karten (iPhone) bzw. Google Maps (Android) mit dem Ziel. Deinen Standort fragt die App nur, wenn du «Standort verwenden» antippst. Er bleibt auf dem Handy, wird nicht gespeichert und nicht gesendet (gemerkt wird nur ja/nein). Die Liste der Orte stammt aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL), teils ergänzt aus discover.swiss (offene Daten, CC BY-SA, Quelle: Schweiz Tourismus und Partner), die besonderen Märkte pflegen wir von Hand nach den Seiten der Veranstalter.</li>
     <li>Keine E-Mail-Adresse, kein Konto, keine Werbung, kein Tracking, keine Analyse-Dienste.</li>
   </ul>
-  <h3>Wo?</h3>
+  <h3 id="dienste">Wo läuft was?</h3>
   <ul>
-    <li><b>App:</b> GitHub Pages (GitHub Inc., USA). GitHub kann technische Zugriffsdaten wie die IP-Adresse kurz protokollieren.</li>
-    <li><b>WG-Daten:</b> Cloudflare Workers und KV (Cloudflare Inc., USA, weltweite Rechenzentren). Die Übermittlung erfolgt verschlüsselt (HTTPS). Cloudflare ist unter dem Swiss-U.S. Data Privacy Framework zertifiziert.</li>
+    <li><b>Die App selbst – GitHub Pages</b> (GitHub Inc., USA): Von dort lädt dein Handy die Seite, die Programmteile, die Schrift und die Rezept- und Hofladen-Listen. Danach läuft die App auch offline aus dem Speicher deines Handys. GitHub speichert keine WG-Daten, kann aber technische Zugriffsdaten wie die IP-Adresse kurz protokollieren.</li>
+    <li><b>WG-Server – Cloudflare Workers und KV</b> (Cloudflare Inc., USA, weltweite Rechenzentren): Hier liegen die WG-Daten von oben, dazu die tägliche Sicherung. Der WG-Server erledigt auch alles, was nach draussen geht: Er spricht mit Bring!, holt beim Einfügen eines Rezept-Links die Zutaten und für die Wochenwahl das Vorschaubild von der Rezeptseite und liefert das Kalender-Abo. Die Rezeptseite sieht dabei den WG-Server, nicht dein Handy. Die Übermittlung ist verschlüsselt (HTTPS). Cloudflare ist unter dem Swiss-U.S. Data Privacy Framework zertifiziert.</li>
+    <li><b>Bring!</b> (Bring! Labs AG, Zürich): Nur der WG-Server spricht mit Bring!, über ein eigenes Bot-Konto. Dein Handy schickt nichts direkt an Bring!. Ohne WG-Server teilst oder kopierst du die Liste selbst.</li>
+    <li><b>Kalender-Abo</b> (nur wenn du es einrichtest): Deine Kalender-App, z.B. Apple oder Google Kalender, holt dann regelmässig über einen geheimen Link beim WG-Server ab: Gericht, Uhrzeit und wer mitisst. Beim Kalender-Anbieter gelten dessen Bestimmungen. Abmelden kannst du das Abo jederzeit in deiner Kalender-App.</li>
+    <li><b>Hofläden &amp; Märkte – OpenStreetMap und discover.swiss</b>: Dein Handy fragt diese Dienste nie. Ein automatischer Ablauf auf GitHub (GitHub Actions) holt die Orte und Öffnungszeiten regelmässig bei OpenStreetMap (Overpass) und bei discover.swiss (Infocenter OpenData, Schweiz Tourismus und Partner) und legt sie als Liste in die App. Dabei werden keine Daten von euch oder eurer WG gesendet.</li>
+    <li><b>Links nach draussen</b>: «Route» (Apple Karten bzw. Google Maps), «Zum Rezept», «Rezept suchen» und «Google Kalender» öffnen die fremde Seite erst, wenn du sie antippst. Dort gelten deren Bestimmungen.</li>
   </ul>
   <h3>Wie lange?</h3>
   <ul>

@@ -65,6 +65,7 @@ cd tests && node links_live.mjs          # Rezept-Links im Browser öffnen (Inte
 cd tests && npm run ui                  # UI-Test: klickt sich wie ein Mensch durch alle Seiten/Funktionen (echter Chrome, Worker-Code + Bring!-Attrappe im Prozess)
 cd tests && npm run ci                  # alles (auch Layout + UI); --no-ui / --no-layout; ohne Browser: npm run chrome
 npx serve static                        # lokal ansehen
+node tools/build_architektur.mjs         # Architektur-Übersicht (docs/design/obsonare-architektur.html): eingebautes Handy aus static/ neu bauen; Namen prüft tests/architektur.test.mjs
 git tag v0.3.0 && git push origin v0.3.0 # Release: Tests in CI, nur bei grün GitHub Pages (WG-Version)
 node tools/build_stage.mjs               # Test-Version bauen (dist-stage/, Test-Server, «TEST»-Band)
 cd worker && npx wrangler deploy        # Worker von Hand (normal: per Release-Tag)
