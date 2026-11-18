@@ -214,7 +214,7 @@ for (const url of SERVERS) {
 }
 }
 // Overpass ganz weg (kommt vor): OSM-Orte aus der bisherigen Datei weiterverwenden, damit discover.swiss und die Handliste trotzdem
-// aktuell werden. Die Einträge von discover.swiss werden dabei nicht übernommen (die kommen frisch dazu).
+// aktuell werden. Alle bisherigen Orte bleiben (auch die mit discover-Angaben); der Abgleich nach Namen ersetzt sie frisch.
 let elements = [], previous = null;
 if (res) ({ elements } = await res.json());
 else {
@@ -222,7 +222,7 @@ else {
   const { readFileSync } = await import("node:fs");
   const src = readFileSync(new URL("../static/hoflaeden.js", import.meta.url), "utf8");
   const box = {}; new Function("window", src)(box);
-  previous = (box.BF_HOF?.items || []).filter(i => i.src !== "discover");
+  previous = (box.BF_HOF?.items || []).map(({ src, ...i }) => i);
   if (!previous.length) throw new Error("Kein Overpass-Server erreichbar und keine bisherigen Daten");
 }
 
