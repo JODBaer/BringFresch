@@ -128,6 +128,7 @@ async function discoverItems() {
       const a = o.address || {};
       const it = { n: String(o.name).replace(/\s+[–-]\s+.*$/, "").trim(), k, lat: r5(o.geo.latitude), lon: r5(o.geo.longitude), src: "discover" };
       if (a.addressLocality) it.ort = a.addressLocality.trim();
+      if (it.ort) it.n = it.n.replace(new RegExp(`,\\s*${it.ort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), ""); // «…, Wetzikon» steht schon als Ort
       if (a.streetAddress) it.adr = a.streetAddress.trim();
       const oh = ohFrom(o.openingHoursSpecification);
       if (oh) it.oh = oh;
