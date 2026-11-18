@@ -42,9 +42,12 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – Obsonare baut 
 - [ ] **Einkauf: Bring! nur noch an einer Stelle** – heute kann man an 3 Stellen auf Bring! laden plus einzeln (Zeile antippen). Vereinfachen: ein Bring!-Knopf (Vorschlag Joshua: schwebender Knopf, z.B. unten links)
 - [ ] **«Prüfen» = eine Seite mit allem**: die drei Reiter (Kaufen · Auf Bring! · Vorrat) bleiben wie sie sind (Joshua: «ganz gut»). Erst beim Tippen auf «Prüfen» kommen die drei Bereiche (Kaufen aus dem Plan, Vorrat knapp, schon auf Bring!) übersichtlich auf **eine** Seite zusammen, als Vergleich wie bei einem Merge (Git, Sublime Merge): links/rechts bzw. oben/unten, was dazukommt und was schon da ist – farbig markiert, **ohne +/−-Zeichen**. Zuerst als HTML-Entwurf zeigen
 - [ ] **Bot vergisst eben gesetzte Artikel**, wenn Bring! kurz noch den alten Stand liefert → kann sie nicht mehr wegnehmen (Rückgängig, Live-Test-Reste). Lösung muss «gekauft» (Bring! «recently») von «noch alt gelesen» unterscheiden (erster Versuch zurückgenommen, brach «gekauft und von jemand anderem neu eingetragen»)
-- [ ] Bring!-Batch: ob Mengen ändern im Batch allein wirkt, ist offen (Live-Test zeigt «mixed», Ergebnis stimmt dank Nachschicken)
+- [ ] Bring!-Batch: ob Mengen ändern im Batch allein wirkt, ist offen (Live-Test zeigt «mixed», Ergebnis stimmt dank Nachschicken). Live-Beweis in `stage_live.mjs` eingebaut (16.11.): 60 Artikel in einem Durchgang + Zeile «INFO Batch-Mengen: wirkt allein / braucht Nachschicken» im Log von `stage.yml`. Ergebnis Live-Lauf 16.11. (stage.yml, grün): 60 Artikel in einem Batch gesetzt (ok, Modus batch); Mengen per Batch ändern braucht Nachschicken (mixed, Endergebnis stimmt); Wegnehmen von 60: erster Aufruf nur 45, Rest im zweiten Aufruf
 
 ## Als Nächstes
+
+- [ ] **Markt-Ansicht übersichtlicher** (Joshua 17.11., nach v1.12.0): nach **Art** gruppieren (Hofläden, Bio-Läden, Wochenmärkte, Spezialmärkte, Automaten), pro Ort Link + «Route»; **Radius vergrössern**; Öffnungszeiten **klein pro Ort** (Mo–So in einer Zeile) statt Liste pro Wochentag – heute steht z.B. ein 24-h-Hofladen 7× da, das ist unübersichtlich.
+- [ ] **Markt: kleiner Knopf «Google-Suche»** (Joshua 17.11.): wie im ersten Hofläden-Entwurf eine Google-Maps-Suche «Hofladen» / «Wochenmarkt» in der Nähe, als kleiner Knopf zusätzlich zur eigenen Liste (Suchergebnisse können kurios sein, darum nur als Zusatz).
 
 - [ ] **Redesign Plan-Ansicht – prüfen**: `node tests/layout_check.mjs --shots` (390×844, 375×667, 390×600; iPhone/Android, hell/dunkel) und auf dem echten iPhone/Android ansehen
 - [ ] Redesign für Einkauf, Rezepte & Saison, Einstellungen (folgt separat, gleiche Vorgabe)

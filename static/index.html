@@ -171,6 +171,10 @@
           <label for="dinnerTime">Znacht um<small>Für den Kalender</small></label>
           <input type="time" id="dinnerTime" value="18:30">
         </div>
+        <div class="set-row set-line">
+          <label for="marketsMapUrl">Karte «Märkte»<small>Link deiner Google-«Meine Karten»-Karte, für alle in der WG</small></label>
+          <input type="url" id="marketsMapUrl" placeholder="https://www.google.com/maps/d/…" autocomplete="off" autocapitalize="none" spellcheck="false">
+        </div>
         <div class="set-row">
           <span class="set-sub">Kalender <small>nur die Abende, an denen du mitisst</small></span>
           <div class="cal-btns">
@@ -481,14 +485,17 @@
   <dialog id="hofDialog">
     <div class="sheet">
       <div class="sheet-head">
-        <div><h2>Hofläden &amp; Märkte</h2><p>Frisch vom Hof – öffnet die Karte</p></div>
+        <div><h2>Hofläden &amp; Märkte</h2><p id="hofSub"></p></div>
         <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
       <div class="sheet-body">
-        <div class="hofrow"><span>Wochenmarkt Robenhausen (Wetzikon)</span><a class="btn" href="https://www.rapperswil-zuerichsee.ch/de/besuchen/shopping/wochenmarkt-robenhausen-wetzikon" target="_blank" rel="noopener">Infos</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt+Robenhausen+Wetzikon" target="_blank" rel="noopener">Karte</a></div>
-        <div class="hofrow"><span>In der Nähe</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt" target="_blank" rel="noopener">Märkte</a></div>
-        <div class="hofrow"><span>Rapperswil-Jona</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen+Rapperswil-Jona" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt+Rapperswil" target="_blank" rel="noopener">Märkte</a></div>
-        <div class="hofrow"><span>Zürich</span><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Hofladen+Zürich" target="_blank" rel="noopener">Hofläden</a><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=Wochenmarkt+Zürich" target="_blank" rel="noopener">Märkte</a></div>
+        <div id="hofGeo" class="hofgeo"><button type="button" class="btn" id="hofLocate">📍 Standort verwenden</button><small>Nur auf diesem Handy, wird nicht gesendet oder gespeichert.</small></div>
+        <div id="hofAll" class="hofgeo"></div>
+        <div id="hofCards" class="hofcards"></div>
+        <div id="hofSeason" class="hofseason"></div>
+        <div id="hofSpecial"></div>
+        <div id="hofWeek"></div>
+        <p class="hint hofnote" id="hofNote">Öffnungszeiten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL) – können veraltet sein. Die besonderen Märkte pflegen wir von Hand.</p>
       </div>
     </div>
   </dialog>
@@ -519,6 +526,9 @@
   <script src="app_plan.js"></script>
   <script src="app_einkauf.js"></script>
   <script src="app_vorrat.js"></script>
+  <script src="hoflaeden.js"></script>
+  <script src="maerkte_spezial.js"></script>
+  <script src="app_hof.js"></script>
   <script src="app_rezepte.js"></script>
   <script src="app_wahl.js"></script>
   <script src="app_alle.js"></script>

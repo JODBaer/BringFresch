@@ -240,7 +240,7 @@
   // ---------------------------------------------------------------------------
   let settingsTimer = null, settingsServer = true;
   function wgSettings() {
-    return { members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), recipeSites: state.mySites, customRecipes: importer.customRecipes };
+    return { members: state.members, dinnerTime: load(DINNER_KEY, "18:30"), recipeSites: state.mySites, favMarkets: load(STORE.KEYS.FAV_KEY, []), marketsMapUrl: load(STORE.KEYS.MAPS_URL_KEY, ""), customRecipes: importer.customRecipes };
   }
   function settingsChanged() {
     save(SETTINGS_UPDATED_KEY, Date.now());
@@ -296,6 +296,8 @@
     }
     if (st.dinnerTime) { save(DINNER_KEY, st.dinnerTime); $("dinnerTime").value = st.dinnerTime; }
     if (Array.isArray(st.recipeSites)) { state.mySites = st.recipeSites; save(SITES_KEY, state.mySites); app.renderSites(); }
+    if (Array.isArray(st.favMarkets)) { save(STORE.KEYS.FAV_KEY, st.favMarkets); if (app.renderHof && $("hofDialog").open) app.renderHof(); }
+    if (typeof st.marketsMapUrl === "string") { save(STORE.KEYS.MAPS_URL_KEY, st.marketsMapUrl); $("marketsMapUrl").value = st.marketsMapUrl; if (app.renderHof && $("hofDialog").open) app.renderHof(); }
     if (Array.isArray(st.customRecipes)) { importer.customRecipes = st.customRecipes; importer.saveCustomRecipes(); app.renderMyRecipes(); }
     app.renderMembers();
   }

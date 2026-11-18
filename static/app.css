@@ -852,9 +852,28 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 /* Einkauf: Hofläden & Märkte (Karten-Links) */
 .hofchip { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 12px; min-height: 32px; font: 600 13px var(--font); text-transform: none; letter-spacing: 0; cursor: pointer; }
 .hofchip[hidden] { display: none; }
-.hofrow { display: flex; align-items: center; gap: 8px; }
-.hofrow span { flex: 1 1 auto; font-weight: 600; }
-.hofrow .btn { flex: 0 0 auto; text-decoration: none; color: inherit; padding: 9px 14px; }
+.hofgeo { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.hofgeo[hidden] { display: none; }
+.hofgeo small, .hofcard small, .hofsp small, .hofit small { color: var(--muted); font-size: 12.5px; }
+.hofseason { display: flex; flex-direction: column; gap: 2px; }
+.hofseason small { color: var(--muted); font-size: 12px; }
+.hofseason small a { color: inherit; }
+.hofvegs details { display: inline; }
+.hofvegs summary { display: inline; cursor: pointer; color: var(--muted); }
+.hofcards { display: grid; gap: 10px; }
+.hofcard { display: flex; flex-direction: column; gap: 3px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.hofcard > small:first-child { text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+.hofrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.hofrow b { min-width: 0; overflow-wrap: anywhere; }
+.hofcard .st, .hofsp .st, .hofit .st { font-size: 13px; font-weight: 600; color: var(--muted); }
+.hofcard .st.open, .hofsp .st.open, .hofit .st.open { color: var(--accent); }
+.hofstar { border: 0; background: none; color: var(--fg); font-size: 22px; line-height: 1; padding: 4px 8px; min-height: 36px; cursor: pointer; }
+.hofstar[aria-pressed="true"] { color: var(--warn); }
+.hofact { display: flex; gap: 8px; margin-top: 4px; }
+.hofroute { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 14px; min-height: 32px; display: inline-flex; align-items: center; font: 600 13px var(--font); text-decoration: none; }
+#hofSpecial h3, .hofday h3 { margin: 14px 0 4px; font-size: 14px; }
+.hofsp, .hofit { display: flex; flex-direction: column; gap: 2px; padding: 8px 2px; border-bottom: 1px solid var(--line); }
+.hofnote { font-size: 12px; padding: 0; }
 
 /* Rezepte: «Alle Rezepte ansehen» in der Zeile «Meine Rezepte» */
 .label-act { align-items: center; }

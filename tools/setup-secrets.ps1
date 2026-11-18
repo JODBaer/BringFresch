@@ -13,7 +13,8 @@
 #   Nur das Bot-Passwort des Test-Servers neu setzen:  … setup-secrets.ps1 -BotPassword
 #   Nur die Account-ID neu setzen (ohne Eingabe):       … setup-secrets.ps1 -AccountId
 #   Alles von Grund auf neu (Token, Bot, PINs, beide Server, Test-Lauf): … setup-secrets.ps1 -Neu
-param([string]$Repo = 'jodbaer/BringFresch', [switch]$BotPassword, [switch]$AccountId, [switch]$Neu,
+#   Nur den discover.swiss-Schlüssel (Hofläden & Märkte) setzen:          … setup-secrets.ps1 -DiscoverSwiss
+param([string]$Repo = 'jodbaer/BringFresch', [switch]$BotPassword, [switch]$AccountId, [switch]$Neu, [switch]$DiscoverSwiss,
       [string]$BotMail = 'allmenbot@gmail.com')
 
 $ErrorActionPreference = 'Stop'
@@ -69,6 +70,32 @@ function BringCheck($mail, $pw) {
   } catch { return $null }
 }
 
+if ($DiscoverSwiss) {
+  # Schlüssel für discover.swiss (offizielle Tourismusdaten) -> GitHub-Secret DISCOVER_SWISS_KEY.
+  # Nur der Workflow «Hofläden aktualisieren» liest ihn; er kommt nie ins Repo und nie in die App.
+  Step 1 'discover.swiss-Schlüssel -> GitHub (DISCOVER_SWISS_KEY)'
+  Write-Host '  Im Browser (öffnet sich gleich):'
+  Write-Host '    1. Auf developer.discover.swiss anmelden bzw. registrieren («Sign up»)'
+  Write-Host '    2. «Products» -> «Infocenter OpenData» -> «Subscribe» (Name z.B. «Obsonare»)'
+  Write-Host '    3. «Profile» -> beim Abo «Primary key» -> «Show» -> kopieren'
+  Start-Process 'https://developer.discover.swiss/'
+  $key = (Hidden 'Schlüssel einfügen').Trim()
+  if (-not $key) { Warn 'leer – nichts geändert'; return }
+  Write-Host '  prüfe den Schlüssel direkt bei discover.swiss …'
+  try {
+    $null = Invoke-RestMethod -Uri 'https://api.discover.swiss/info/v2/places?top=1' -Headers @{ 'Ocp-Apim-Subscription-Key' = $key; 'Accept-Language' = 'de' }
+    Ok 'discover.swiss nimmt den Schlüssel an'
+  } catch {
+    $code = $_.Exception.Response.StatusCode.value__
+    if ($code -eq 401 -or $code -eq 403) { Warn "discover.swiss lehnt ab ($code) – Schlüssel falsch oder Abo noch nicht aktiv"; if (-not (Ask 'Trotzdem speichern?')) { Remove-Variable key; return } }
+    else { Warn "Prüfung nicht möglich ($code) – Schlüssel wird trotzdem gespeichert" }
+  }
+  GhSecret 'DISCOVER_SWISS_KEY' $key
+  Remove-Variable key -ErrorAction SilentlyContinue
+  [GC]::Collect()
+  Write-Host "`nFertig. Schreib Claude «Schlüssel ist drin» – dann wird der Import gebaut und der Workflow gestartet." -ForegroundColor Cyan
+  return
+}
 if ($AccountId) {
   Push-Location (Join-Path $root 'worker')
   try { $who = (npx --yes wrangler whoami 2>$null | Out-String) } finally { Pop-Location }

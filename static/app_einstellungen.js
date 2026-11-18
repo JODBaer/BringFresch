@@ -112,6 +112,7 @@
     $("syncPin").value = state.sync.pin || "";
     $("syncWg").value = state.sync.wg || "";
     $("dinnerTime").value = load(DINNER_KEY, "18:30");
+    $("marketsMapUrl").value = load(app.STORE.KEYS.MAPS_URL_KEY, "");
     app.setSyncStatus(app.connected() ? "Verbinde …" : "Nicht verbunden: WG-PIN unter «Mehr» eingeben. Bis dahin Bring! über Teilen/Kopieren.", false);
     if (app.connected()) loadBringLists(); else $("setMore").open = true;
   }
@@ -266,6 +267,13 @@
   $("dinnerTime").addEventListener("change", () => {
     save(DINNER_KEY, $("dinnerTime").value || "18:30");
     app.schedulePlanPush();
+    app.settingsChanged();
+  });
+
+  $("marketsMapUrl").addEventListener("change", () => {
+    const v = $("marketsMapUrl").value.trim();
+    if (v && !/^https:\/\//.test(v)) { toast("Der Link muss mit https:// beginnen"); $("marketsMapUrl").value = load(app.STORE.KEYS.MAPS_URL_KEY, ""); return; }
+    save(app.STORE.KEYS.MAPS_URL_KEY, v);
     app.settingsChanged();
   });
 

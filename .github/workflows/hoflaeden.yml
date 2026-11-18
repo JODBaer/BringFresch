@@ -1,0 +1,47 @@
+# Hofläden & Märkte aus OpenStreetMap (Overpass) neu holen -> static/hoflaeden.js
+# Von Hand («Run workflow») oder am 1. des Monats. Committet NUR auf den Zweig ccr-c75d431f-nkpfcv, nie auf main;
+# von dort wird der Stand bei Gelegenheit nach main gemergt. Daten © OpenStreetMap-Mitwirkende (ODbL).
+name: Hofläden aktualisieren
+
+on:
+  workflow_dispatch:
+    inputs:
+      explore:
+        description: "discover.swiss erkunden (nur Log, ändert nichts)"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 4 1 * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "hoflaeden"
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ccr-c75d431f-nkpfcv
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/update_hoflaeden.mjs
+        env:
+          DISCOVER_SWISS_KEY: ${{ secrets.DISCOVER_SWISS_KEY }} # optional; ohne Secret wird discover.swiss übersprungen
+          DISCOVER_EXPLORE: ${{ inputs.explore && '1' || '' }}
+      - name: Committen, falls geändert
+        run: |
+          # «stand» (Datum) allein ist keine Änderung
+          if git diff --quiet -I'^window\.BF_HOF = \{ stand' -- static/hoflaeden.js; then
+            echo "Keine Änderung."; git checkout -- static/hoflaeden.js; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/hoflaeden.js
+          git commit -m "chore(hoflaeden): Daten aus OpenStreetMap aktualisiert"
+          git push origin HEAD:ccr-c75d431f-nkpfcv

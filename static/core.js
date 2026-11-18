@@ -623,7 +623,231 @@
       }));
   }
 
+  // ---------------------------------------------------------------------------
+  // Hofläden & Märkte (Daten aus OpenStreetMap, static/hoflaeden.js): Öffnungszeiten, Entfernung
+  // ---------------------------------------------------------------------------
+  // Liest das Übliche aus «opening_hours» (z.B. «Apr-Oct: Mo-Fr 08:00-12:00,14:00-18:30; Sa 08:00-12:00; PH off»).
+  // Spätere Regeln ersetzen frühere für ihre Tage (wie bei OSM). Feiertage (PH) werden übergangen.
+  // Unbekanntes (sunrise, «by appointment», Wochen-Nummern …) → null: dann zeigt die App den Text roh.
+  const OH_DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  const OH_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+  const OH_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const ohRange = (list, a, b) => { const i = list.indexOf(a), j = list.indexOf(b), out = []; for (let k = i; ; k = (k + 1) % list.length) { out.push(k); if (k === j) break; } return out; };
+  function ohSel(txt, list) { // «Mo-Fr,Sa» → Set der Indizes; null wenn unbekannt
+    const set = new Set();
+    for (const p of txt.split(",")) {
+      const m = p.trim().match(/^(\w\w\w?)(?:\s*-\s*(\w\w\w?))?$/);
+      if (!m || !list.includes(m[1]) || (m[2] && !list.includes(m[2]))) return null;
+      (m[2] ? ohRange(list, m[1], m[2]) : [list.indexOf(m[1])]).forEach(i => set.add(i));
+    }
+    return set;
+  }
+  const ohMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  function parseHours(oh) {
+    const s = String(oh || "").trim();
+    if (!s) return null;
+    if (s === "24/7") return [{ months: null, days: new Set([0, 1, 2, 3, 4, 5, 6]), spans: [[0, 1440]] }];
+    const rules = [];
+    const DAY = "(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)";
+    const parts = s.replace(new RegExp(`(\\d)\\s*,\\s*(?=${DAY}\\b)`, "g"), "$1; ").split(/\s*(?:;|\|\|)\s*/).filter(Boolean);
+    for (const part of parts) {
+      const m = part.match(/^(?:((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\w,\s-]*?)\s*:?\s+)?(?:((?:Mo|Tu|We|Th|Fr|Sa|Su|PH)[\w,\s-]*?)\s+)?(off|closed|(?:\d{1,2}:\d\d\s*-\s*\d{1,2}:\d\d\+?(?:\s*,\s*\d{1,2}:\d\d\s*-\s*\d{1,2}:\d\d\+?)*))$/);
+      if (!m) return null;
+      const months = m[1] ? ohSel(m[1].replace(/\s+/g, ""), OH_MON) : null;
+      if (m[1] && !months) return null;
+      let dayTxt = m[2] ? m[2].replace(/\s+/g, "") : "";
+      if (dayTxt) {
+        dayTxt = dayTxt.split(",").filter(d => d !== "PH").join(",");
+        if (!dayTxt) continue; // nur Feiertage
+      }
+      const days = dayTxt ? ohSel(dayTxt, OH_DAYS) : new Set([0, 1, 2, 3, 4, 5, 6]);
+      if (!days) return null;
+      const spans = /^(off|closed)$/.test(m[3]) ? [] : m[3].split(",").map(t => {
+        const [a, b] = t.replace(/\+/g, "").split("-").map(x => ohMin(x.trim()));
+        return [a, b > a ? b : 1440];
+      });
+      rules.push({ months, days, spans });
+    }
+    return rules.length ? rules : null;
+  }
+  const ohWeekday = date => (date.getDay() + 6) % 7; // Mo = 0
+  function ohSpansOn(rules, date) {
+    const wd = ohWeekday(date), mon = date.getMonth();
+    let spans = [];
+    for (const r of rules) if (r.days.has(wd) && (!r.months || r.months.has(mon))) spans = r.spans;
+    return spans;
+  }
+  const ohClock = min => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`;
+  // Jetzt offen? → { open, text } («offen bis 18:30», «öffnet 14:00», «öffnet Sa 8:00», «geschlossen»); null = unbekannt
+  function openState(oh, now) {
+    const rules = parseHours(oh);
+    if (!rules) return null;
+    const min = now.getHours() * 60 + now.getMinutes();
+    const today = ohSpansOn(rules, now);
+    const cur = today.find(([a, b]) => min >= a && min < b);
+    if (cur) return { open: true, text: cur[1] >= 1440 ? (cur[0] === 0 ? "immer offen" : "offen bis Mitternacht") : `offen bis ${ohClock(cur[1])}` };
+    const later = today.find(([a]) => a > min);
+    if (later) return { open: false, text: `öffnet ${ohClock(later[0])}` };
+    for (let k = 1; k <= 7; k++) {
+      const d = new Date(now); d.setDate(d.getDate() + k);
+      const sp = ohSpansOn(rules, d);
+      if (sp.length) return { open: false, text: `öffnet ${k === 1 ? "morgen" : OH_DE[ohWeekday(d)]} ${ohClock(sp[0][0])}` };
+    }
+    return { open: false, text: "Saisonpause" };
+  }
+  // Öffnungszeiten der Woche (im Monat von «now») kurz auf Deutsch: «Mo–Fr 8:00–18:30 · Sa 8:00–12:00»; unbekannt = Text roh
+  function hoursText(oh, now) {
+    const rules = parseHours(oh);
+    if (!rules) return String(oh || "").trim();
+    const monday = new Date(now); monday.setDate(now.getDate() - ohWeekday(now));
+    const week = OH_DAYS.map((_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return ohSpansOn(rules, d); });
+    const key = sp => sp.map(([a, b]) => `${ohClock(a)}–${b >= 1440 ? "24:00" : ohClock(b)}`).join(", ");
+    const out = [];
+    for (let i = 0; i < 7;) {
+      let j = i;
+      while (j + 1 < 7 && key(week[j + 1]) === key(week[i])) j++;
+      if (week[i].length) out.push(`${i === 0 && j === 6 ? "täglich" : i === j ? OH_DE[i] : `${OH_DE[i]}${j === i + 1 ? "," : "–"}${OH_DE[j]}`} ${key(week[i])}`);
+      i = j + 1;
+    }
+    return out.length ? (key(week[0]) === "0:00–24:00" && out.length === 1 ? "immer offen" : out.join(" · ")) : "Saisonpause";
+  }
+  // Entfernung in km (Luftlinie)
+  function distKm(a, b) {
+    const R = 6371, rad = x => x * Math.PI / 180;
+    const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  // ---- Hofläden & Märkte: Woche nach Tagen, nächster Ort, Lieblinge, Spezialmärkte ----
+  const farmKey = it => `${it.n}@${it.lat},${it.lon}`;
+  const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const addDays = (d, n) => { const x = dayStart(d); x.setDate(x.getDate() + n); return x; };
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // Orte mit bekannten Zeiten, nach Entfernung; Hofautomaten bleiben aussen vor (immer offen)
+  function farmPlaces(items, ref, now) {
+    return items.filter(it => it.k !== "automat").map(it => ({ ...it, key: farmKey(it), km: distKm(ref, it), state: openState(it.oh, now) }))
+      .sort((a, b) => a.km - b.km);
+  }
+  // Pro Tag ab heute: was offen ist (Zeiten des Tages), nach Entfernung. Heute: nur was noch nicht zu ist.
+  // Orte ohne bekannte Zeiten erscheinen nicht (und nie als «offen»). favs = Schlüssel der Lieblinge (immer mit dabei).
+  function farmWeek(items, { ref, now, days = 7, favs = [], maxKm = 40, perDay = 8 }) {
+    const places = farmPlaces(items, ref, now).map(p => ({ ...p, rules: parseHours(p.oh) })).filter(p => p.rules);
+    const min = now.getHours() * 60 + now.getMinutes();
+    return Array.from({ length: days }, (_, i) => {
+      const date = addDays(now, i);
+      const rows = [];
+      for (const p of places) {
+        let spans = ohSpansOn(p.rules, date);
+        if (i === 0) spans = spans.filter(([, b]) => b > min);
+        if (!spans.length) continue;
+        const fav = favs.includes(p.key);
+        if (!fav && p.km > maxKm) continue;
+        const from = spans[0][0], to = spans[spans.length - 1][1];
+        rows.push({ ...p, fav, spans, text: spans.map(([a, b]) => `${ohClock(a)}–${b >= 1440 ? "24:00" : ohClock(b)}`).join(", "), from, to, now: i === 0 && spans.some(([a, b]) => min >= a && min < b) });
+      }
+      const keep = rows.filter(r => r.fav), rest = rows.filter(r => !r.fav).slice(0, perDay);
+      return { date, wd: ohWeekday(date), rows: [...keep, ...rest].sort((a, b) => a.km - b.km) };
+    });
+  }
+  // Karte «Am nächsten»: der nächste Hofladen/Markt mit bekannten Zeiten (offen oder nicht)
+  function nearestFarm(items, ref, now) {
+    return farmPlaces(items, ref, now).find(p => p.state) || null;
+  }
+  // Karte «Lieblings»: von den Lieblingen der, der jetzt offen ist (der nächste), sonst der nächste
+  function favFarm(items, favs, ref, now) {
+    const f = farmPlaces(items, ref, now).filter(p => favs.includes(p.key));
+    return f.find(p => p.state && p.state.open) || f[0] || null;
+  }
+  // Saisongemüse des Monats (VSGP-Daten season_items): Freiland zuerst, dann Lagerware; nameOf macht den einfachen Namen; ohne Doppelte
+  function seasonVeg(items, month, nameOf = it => it.name) {
+    const has = (it, k) => (it[k] || []).includes(month);
+    const out = [];
+    for (const it of [...items.filter(i => has(i, "field_months")), ...items.filter(i => !has(i, "field_months") && has(i, "storage_months"))]) {
+      const nm = nameOf(it);
+      if (nm && !out.includes(nm)) out.push(nm);
+    }
+    return out;
+  }
+  // Ort öffnen: immer über Koordinaten (nie Textsuche). iPhone = Apple Karten (mit Name), sonst Google Maps
+  function routeUrl(it, ios) {
+    return ios ? `https://maps.apple.com/?ll=${it.lat},${it.lon}&q=${encodeURIComponent(it.n)}` : `https://www.google.com/maps/search/?api=1&query=${it.lat},${it.lon}`;
+  }
+  const xmlEsc = t => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const OH_LONG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  const OH_MONTH = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const ohDate = x => { const [y, m, d] = x.split("-").map(Number); return `${d}.${m}.${y}`; };
+  // Wann ein Spezialmarkt stattfindet, als Text («4. Montag im November», «14.11.2026», «3.12.2026–20.12.2026, Do/Fr/Sa/So»)
+  function specialWhen(ev) {
+    const out = [];
+    if (ev.rule) out.push(`${ev.rule.nth < 0 ? "letzter" : ev.rule.nth + "."} ${OH_LONG[ev.rule.wd]} im ${OH_MONTH[ev.rule.m - 1]}`);
+    (ev.dates || []).forEach(x => out.push(ohDate(x)));
+    (ev.ranges || []).forEach(([x, y]) => out.push(`${ohDate(x)}–${ohDate(y)}${ev.days ? ", " + ev.days.map(d => OH_DE[d]).join("/") : ""}`));
+    return out.join("; ");
+  }
+  const kmlPm = (name, desc, it, style) => `<Placemark><name>${xmlEsc(name)}</name><description>${xmlEsc(desc)}</description>${style ? `<styleUrl>#${style}</styleUrl>` : ""}<Point><coordinates>${it.lon},${it.lat},0</coordinates></Point></Placemark>`;
+  const placeDesc = (i, now) => [i.oh ? hoursText(i.oh, now) : "Öffnungszeiten unbekannt", [i.adr, i.ort].filter(Boolean).join(", "), i.bio ? "Bio" : "", i.web || ""].filter(Boolean).join("\n");
+  const specialDesc = e => [specialWhen(e), e.zeit || "", e.ort || "", e.pruefen ? "Datum prüfen" : "", e.web || ""].filter(Boolean).join("\n");
+  // Eine KML-Datei pro Art (Ebenen in Google «Meine Karten», je mit Häkchen): Hofläden, Bio-Läden, Wochenmärkte, Spezialmärkte, Hofautomaten.
+  // Eigene Farbe je Ebene (Symbole von Google). Leere Arten fehlen. [{ key, name, count, file, kml }]
+  function kmlLayers(items, specials, now) {
+    const defs = [
+      { key: "hof", name: "Hofläden", icon: "grn-circle", list: items.filter(i => i.k === "hof" && !i.bio), desc: i => placeDesc(i, now) },
+      { key: "bio", name: "Bio-Läden", icon: "ltblu-circle", list: items.filter(i => i.k === "hof" && i.bio), desc: i => placeDesc(i, now) },
+      { key: "markt", name: "Wochenmärkte", icon: "orange-circle", list: items.filter(i => i.k === "markt"), desc: i => placeDesc(i, now) },
+      { key: "spezial", name: "Spezialmärkte", icon: "purple-circle", list: specials || [], desc: specialDesc },
+      { key: "automat", name: "Hofautomaten", icon: "blu-circle", list: items.filter(i => i.k === "automat"), desc: i => placeDesc(i, now) }
+    ];
+    return defs.filter(d => d.list.length).map(d => ({
+      key: d.key, name: d.name, count: d.list.length, file: `Obsonare – ${d.name}.kml`,
+      kml: `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xmlEsc("Obsonare – " + d.name)}</name><Style id="s"><IconStyle><scale>1.1</scale><Icon><href>https://maps.google.com/mapfiles/kml/paddle/${d.icon}.png</href></Icon></IconStyle></Style>${d.list.map(i => kmlPm(i.n, d.desc(i), i, "s")).join("")}</Document></kml>\n`
+    }));
+  }
+  // KML für Google «Meine Karten» (Import einmal von Hand): alle Orte + besondere Märkte, gleiche Daten wie die Liste
+  function kmlExport(items, specials, now) {
+    const pm = (name, desc, it) => `<Placemark><name>${xmlEsc(name)}</name><description>${xmlEsc(desc)}</description><Point><coordinates>${it.lon},${it.lat},0</coordinates></Point></Placemark>`;
+    const folder = (name, rows) => rows.length ? `<Folder><name>${xmlEsc(name)}</name>${rows.join("")}</Folder>` : "";
+    const KIND_DE = { hof: "Hofläden", markt: "Märkte", automat: "Hofautomaten" };
+    const body = ["hof", "markt", "automat"].map(k => folder(KIND_DE[k], items.filter(i => i.k === k).map(i =>
+      pm(i.n, [i.oh ? hoursText(i.oh, now) : "Öffnungszeiten unbekannt", [i.adr, i.ort].filter(Boolean).join(", "), i.bio ? "Bio" : "", i.web || ""].filter(Boolean).join("\n"), i))));
+    const sp = folder("Besondere Märkte", (specials || []).map(e =>
+      pm(e.n, [specialWhen(e), e.zeit || "", e.ort || "", e.pruefen ? "Datum prüfen" : "", e.web || ""].filter(Boolean).join("\n"), e)));
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Hofläden und Märkte (Obsonare)</name>${body.join("")}${sp}</Document></kml>\n`;
+  }
+  // n-ter Wochentag eines Monats (month 1–12, wd Mo=0, n 1–5); n = -1: der letzte
+  function nthWeekday(year, month, n, wd) {
+    if (n > 0) {
+      const first = new Date(year, month - 1, 1), d = 1 + ((wd - ohWeekday(first) + 7) % 7) + (n - 1) * 7;
+      const r = new Date(year, month - 1, d);
+      return r.getMonth() === month - 1 ? r : null;
+    }
+    const last = new Date(year, month, 0);
+    return new Date(year, month - 1, last.getDate() - ((ohWeekday(last) - wd + 7) % 7));
+  }
+  // Tage eines Spezialmarkts zwischen from und to (einschliesslich). Eintrag: { rule:{m,nth,wd} } oder { ranges:[["2026-12-03","2026-12-20"]], days:[3,4,5,6] } oder { dates:["2026-11-14"] }
+  function specialDays(ev, from, to) {
+    const out = [], a = dayStart(from), b = dayStart(to);
+    if (ev.rule) {
+      for (let y = a.getFullYear(); y <= b.getFullYear(); y++) { const d = nthWeekday(y, ev.rule.m, ev.rule.nth, ev.rule.wd); if (d && d >= a && d <= b) out.push(d); }
+    }
+    for (const x of ev.dates || []) { const d = dayStart(new Date(x + "T00:00:00")); if (d >= a && d <= b) out.push(d); }
+    for (const [x, y] of ev.ranges || []) {
+      for (let d = dayStart(new Date(x + "T00:00:00")), e = dayStart(new Date(y + "T00:00:00")); d <= e; d = addDays(d, 1)) {
+        if (d >= a && d <= b && (!ev.days || ev.days.includes(ohWeekday(d)))) out.push(d);
+      }
+    }
+    return out.sort((p, q) => p - q);
+  }
+  // Spezialmärkte der nächsten «days» Tage (Standard 6 Wochen): Name, erster und letzter Tag in diesem Fenster, Entfernung; nach Datum
+  function specialUpcoming(list, { ref, now, days = 42 }) {
+    const end = addDays(now, days);
+    return list.map(ev => {
+      const ds = specialDays(ev, now, end);
+      return ds.length ? { ...ev, first: ds[0], last: ds[ds.length - 1], count: ds.length, today: ds[0].getTime() === dayStart(now).getTime(), km: distKm(ref, ev) } : null;
+    }).filter(Boolean).sort((a, b) => a.first - b.first || a.km - b.km);
+  }
+
   root.BF_CORE = {
+    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, seasonVeg, kmlExport, kmlLayers, specialWhen, nthWeekday, specialDays, specialUpcoming,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,

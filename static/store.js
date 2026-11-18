@@ -11,6 +11,8 @@
     STAPLES_KEY: "bringfrisch_user_staples",       // Grundvorrat
     DINNER_KEY: "bringfrisch_dinner_time",         // Znacht-Zeit
     SITES_KEY: "bringfrisch_recipe_sites",         // Rezept-Webseiten zum Stöbern
+    FAV_KEY: "bringfrisch_fav_markets",            // Lieblings-Hofläden/-Märkte (Schlüssel «Name@lat,lon»), pro WG gemeinsam (/settings: favMarkets)
+    MAPS_URL_KEY: "bringfrisch_markets_map_url",   // Link der Google-«Meine Karten»-Karte mit allen Märkten (/settings: marketsMapUrl)
     CUSTOM_RECIPES_KEY: "bringfrisch_custom_recipes" // eigene Rezepte (recipe_importer.js)
   };
   // Abgleich: eigener Stempel pro Dokument (≠ gemerkter Server-Stand = hier geändert), siehe «Abgleich» in app.js
@@ -34,6 +36,7 @@
     SHARED_RECIPES_KEY: "bringfrisch_shared_recipes", // Rezepte der anderen WGs (Zwischenspeicher von /recipes/shared, offline da)
     POPULAR_KEY: "bringfrisch_popular",            // Beliebtheit dieser WG (Zwischenspeicher von /popular: Stimmen pro Woche)
     SHOP_SORT_KEY: "bringfrisch_shop_sort",        // Einkauf/Vorrat: "rezept" (nach Gericht) oder "kat" (nach Kategorie wie in Bring!)
+    HOF_GEO_KEY: "bringfrisch_hof_geo",            // Hofläden: Standort verwenden ja/nein (nur die Zustimmung, nie der Standort selbst)
     SEARCH_SITE_KEY: "bringfrisch_search_site"     // «Rezept suchen auf»: swissmilk | fooby | google
   };
   // Schlüssel mit Zusatz
