@@ -1,0 +1,44 @@
+# Warteschlange für Änderungen: jeder Pull Request auf main -> alle Offline-Tests (wie lokal: cd tests && npm ci && npm run ci)
+# Mit Auto-Merge (gh pr merge --auto --squash) fügt GitHub den PR bei grünen Tests selbst in main ein;
+# die Regel für main verlangt den Check «tests». Mehrere PRs warten nicht aufeinander.
+name: Tests (Pull Request)
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "ci-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TZ: Europe/Zurich
+      BROWSER: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm ci
+      - name: All tests (Syntax, App, Integration, Worker, Layout, UI)
+        working-directory: tests
+        run: npm run ci -- --shots
+      - name: Upload screenshots (Layout + UI)
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: test-shots
+          path: tests/shots/
+          if-no-files-found: ignore
