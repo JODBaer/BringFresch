@@ -78,6 +78,19 @@
     return `${Math.round(amount * 10) / 10} ${u}`.trim();
   }
 
+  // Menge zum Kochen (Plan-Ansicht, Joshua 18.11.): Stück, EL, TL … auf halbe genau – 1 Zwiebel für 4, gekocht für 2 = ½ Zwiebel.
+  // Eingekauft wird ganz: die Einkaufsliste rundet die Summe der Woche mit formatAmount auf ganze Stück auf.
+  // «nach Belieben» (Salz, Pfeffer, einige Tropfen, etwas …) wird nicht umgerechnet.
+  const TO_TASTE = /^(salz|pfeffer|salz und pfeffer|salz, pfeffer|muskat|einige|etwas|wenig|nach belieben|wenige|1 prise)\b/i;
+  function formatCookAmount(amount, unit, name, scale) {
+    const u = (unit || "").trim();
+    if (!COUNT_UNITS.test(u.toLowerCase())) return formatAmount(amount, u);
+    if (name && TO_TASTE.test(String(name).trim()) && scale > 0) amount = amount / scale; // Rezeptmenge lassen
+    const q = Math.max(0.5, Math.round(amount * 2) / 2);
+    const whole = Math.floor(q), half = q - whole ? "½" : "";
+    return `${whole || !half ? whole : ""}${half} ${u}`.trim();
+  }
+
   // Einkaufsnamen aufräumen: «Schweizer», Klammern, «à ca. 400 g» wandern in die Zusatzinfo (wie die Menge)
   const SYNONYMS = { "speisekartoffeln": "Kartoffeln", "festkochende kartoffeln": "Kartoffeln", "mehligkochende kartoffeln": "Kartoffeln", "zwiebeln": "Zwiebel" };
   const TAP_WATER = /^((lauwarmes|kaltes|heisses|warmes|kochendes)?\s*(liter\s+)?(salz)?wasser|bratschlauch|backpapier)$/i;
@@ -952,6 +965,6 @@
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
     effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
-    formatAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList
+    formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList
   };
 })(typeof globalThis !== "undefined" ? globalThis : self);

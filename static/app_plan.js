@@ -5,7 +5,7 @@
   "use strict";
   const app = window.BF_APP;
   if (!app) return;
-  const { DATA, isoWeek, plusWeek, portionsFor, formatAmount, cleanIngredient, importer, DAYS, MONTHS,
+  const { DATA, isoWeek, plusWeek, portionsFor, formatAmount, formatCookAmount, cleanIngredient, importer, DAYS, MONTHS,
     DEFAULT_SERVINGS, load, save, DINNER_KEY, ME_KEY, COUNTS_KEY, state, savePlan, $, recipeHref, recipeLinkLabel, esc, currentMonth,
     todayIndex, initialsMap, toast, copyText, allRecipes, inSeason, makeDay, generateWeek, refresh, canPlanNext,
     nextPlan } = app;
@@ -149,7 +149,7 @@
     const scale = (portions || day.servings || DEFAULT_SERVINGS) / (day.servings || DEFAULT_SERVINGS);
     return (day.ingredients || []).map(ing => {
       const raw = parseFloat(ing.amount);
-      const amt = Number.isFinite(raw) ? formatAmount(raw * scale, (ing.unit || "").trim()) : "";
+      const amt = Number.isFinite(raw) ? formatCookAmount(raw * scale, (ing.unit || "").trim(), ing.name, scale) : ""; // kochen: auf halbe Stück; Einkauf rundet auf ganze
       return { amt, name: cleanIngredient(ing.name).name || ing.name };
     });
   }
