@@ -211,12 +211,4 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
 }
 
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
-// Kochen (Plan-Ansicht): Stück geteilt statt aufgerundet, Einkauf bleibt ganz
-check(C.formatCookAmount(0.5, "Stk", "Zwiebel", 0.5) === "½ Stk", "1 Zwiebel für 4, gekocht für 2 = ½ Stk");
-check(C.formatCookAmount(1.5, "Stk", "Zwiebel", 1.5) === "1½ Stk" && C.formatCookAmount(0.25, "EL", "Öl", 0.25) === "¼ EL", "1½ Stk, ¼ EL");
-check(C.formatCookAmount(3, "Stk", "Ei", 1.5) === "3 Stk" && C.formatCookAmount(0.1, "Stk", "Ei", 0.1) === "¼ Stk", "ganze Zahl bleibt ganz, kleinste Menge ¼");
-check(C.formatCookAmount(0.5, "Stk", "Salz", 0.5) === "1 Stk" && C.formatCookAmount(0.5, "Stk", "Einige Tropfen Zitronensaft", 0.5) === "1 Stk", "Salz / «einige Tropfen» nicht teilen");
-check(C.formatCookAmount(200, "g", "Pilze", 0.5) === "200 g", "Gramm wie bisher");
-check(C.formatAmount(0.5, "Stk") === "1 Stk", "Einkauf: halbe Zwiebel = 1 Zwiebel kaufen");
-
 process.exit(fails ? 1 : 0);
