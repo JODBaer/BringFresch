@@ -5,6 +5,8 @@ Leitsatz: *einfach zu benutzen, einfach zu bekommen.* Neue Features erst nach de
 
 WG: Joshua, Lukas, Leonie = Fleisch · Jo = Vegi (keine Veganer).
 
+**«Obsonare 2.0.0 Umbau starten»** (Speicher-Umzug `bringfrisch_*` → `obsonare_*`, Schriftzug, Adressen): zuerst `docs/uebergabe-obsonare-2.md` lesen.
+
 **Mehrere Chats gleichzeitig:** Vor der ersten Änderung an Code (`static/app.js`, `index.html`, `worker/`, `tests/`) einen eigenen Worktree anlegen (`EnterWorktree`), nie zu zweit im Hauptordner arbeiten. Nur eigene Pfade committen (`git add <pfade>`, nie `-A`), nicht stashen, keine fremden Dateien zurücksetzen, `tests/node_modules` nicht für andere umbauen. Fertig = `npm run ci` grün im Worktree → auf `main` → Worktree entfernen.
 
 ## Architektur

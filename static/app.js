@@ -38,7 +38,7 @@
   const DATA = window.OBSONARE_DATA || {};
   // Reine Regeln (auch vom WG-Server benutzt): core.js
   const CORE = window.BF_CORE;
-  const { isoWeek, weekKey, plusWeek, portionsFor, formatAmount, cleanIngredient, hasWord, bringItemId, bringPayload } = CORE;
+  const { isoWeek, weekKey, plusWeek, portionsFor, formatAmount, formatCookAmount, cleanIngredient, hasWord, bringItemId, bringPayload } = CORE;
   const importer = window.recipeImporter;
 
   const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -362,7 +362,7 @@
     save(KEYS.plan, plan);
   }
 
-  Object.assign(app, { emptyDay, DATA, CORE, isoWeek, weekKey, plusWeek, portionsFor, formatAmount, cleanIngredient, hasWord,
+  Object.assign(app, { emptyDay, DATA, CORE, isoWeek, weekKey, plusWeek, portionsFor, formatAmount, formatCookAmount, cleanIngredient, hasWord,
     bringItemId, bringPayload, importer, DAYS, MONTHS, DEFAULT_SERVINGS, DEFAULT_MEMBERS, APP_VERSION, DONATE_URL,
     REPO_URL, TEST_URL, LIVE_URL, DEFAULT_SYNC_URL, STORE, load, save, remove, baseKey, SYNC_KEY, PLAN_UPDATED_KEY,
     VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, PLAN_WEEK_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY, VOTE_KEY, ME_KEY,
