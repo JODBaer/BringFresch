@@ -90,7 +90,7 @@
     bringSpecs: {}, // name (klein) -> Mengenangabe auf Bring!
     sentSpecs: {}, // name (klein) -> was der Bot zuletzt gesendet hat
     shopFilter: "toBuy",
-    hof: { ref: null }, // Hofläden & Märkte: Standort nur im Speicher, nie gespeichert oder gesendet
+    hof: { ref: null, km: 60, open: {} }, // Hofläden & Märkte: Standort nur im Speicher (nie gespeichert/gesendet), Umkreis, aufgeklappte Abschnitte
     catalogDay: 0,
     catalogFilter: "all",
     catalogMode: "day",

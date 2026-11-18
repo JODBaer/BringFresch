@@ -604,17 +604,28 @@ await step(A, "Einkauf: Abschnitte Kaufen/Auf Bring!/Vorrat, Liste kopieren", as
   expect((await clip(A)).split("\n").length === parseInt(t, 10), "kopierte Zeilen ≠ Anzahl");
 });
 
-await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte nach Wochentagen: Karten, Spezialmärkte, Route, Lieblingsstern, Standort", async () => {
+await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte nach Art: Karten, Spezialmärkte, Umkreis, «Alle zeigen», Wochenzeiten pro Ort, Google-Suche, Route, Lieblingsstern, Standort", async () => {
   await tap(A, '#tab-shop .seg [data-filter="staples"]');
   await until(A, () => document.getElementById("hofBtn").hidden, "Markt-Chip im Vorrat sichtbar");
   await tap(A, '#tab-shop .seg [data-filter="toBuy"]');
   await until(A, () => !document.getElementById("hofBtn").hidden, "Markt-Chip bei Kaufen nicht sichtbar");
   await tap(A, "#hofBtn");
-  await until(A, () => document.getElementById("hofDialog").open && document.querySelectorAll("#hofWeek .hofday").length === 7, "Blatt mit 7 Tagen nicht offen");
+  await until(A, () => document.getElementById("hofDialog").open && document.querySelectorAll("#hofGroups .hofgroup").length >= 3, "Blatt mit Abschnitten nach Art nicht offen");
   expect(await A.page.$eval("#hofSub", e => /ab Rapperswil-Jona/.test(e.textContent)), "ohne Standort muss «ab Rapperswil-Jona» stehen");
   expect(await A.page.$$eval("#hofCards .hofcard", c => c.length === 2 && /Am nächsten/.test(c[0].textContent) && /Lieblings/.test(c[1].textContent)), "zwei Karten «Am nächsten» / «Lieblings»");
   expect(await A.page.$$eval("#hofCards .hofcard:first-child .hofroute", a => { const ios = document.documentElement.classList.contains("glass"); return a.length > 0 && (ios ? /^https:\/\/maps\.apple\.com\/\?ll=47\.\d+,8\.\d+&q=/ : /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=47\.\d+,8\.\d+$/).test(a[0].href); }), "Route: Apple Karten (iPhone) bzw. Google Maps (Android) über Koordinaten, keine Textsuche");
-  expect(await A.page.$$eval("#hofDialog a[href]", a => a.every(x => !/query=Hofladen|query=Wochenmarkt/.test(x.href))), "freie Textsuche in Google Maps darf nicht vorkommen");
+  expect(await A.page.$$eval("#hofDialog a[href]", a => a.filter(x => /maps\/search\/(Hofladen|Wochenmarkt)/.test(x.href)).every(x => x.closest("#hofGoogle"))), "freie Google-Suche nur als kleiner Zusatz-Knopf unten");
+  expect(await A.page.$$eval("#hofGoogle a", a => a.length === 2 && /\/maps\/search\/Hofladen\/@47\.2267,8\.8184,12z$/.test(a[0].href) && /Wochenmarkt/.test(a[1].href)), "Google-Suche Hofladen/Wochenmarkt ab Rapperswil fehlt");
+  const heads = await A.page.$$eval("#hofGroups .hofgroup h3", h => h.map(x => x.firstChild.textContent.trim()));
+  expect(heads[0] === "Wochenmärkte" && heads.includes("Hofläden") && heads.includes("Hofautomaten"), `Abschnitte nach Art: ${heads}`);
+  expect(await A.page.$$eval("#hofGroups .hofgroup", g => g.every(x => x.querySelectorAll(".hofit").length <= 6)), "mehr als 6 Orte je Abschnitt vor «Alle zeigen»");
+  const more = await A.page.$eval('#hofGroups [data-more="hof"]', b => +b.textContent.match(/\d+/)[0]);
+  await tap(A, '#hofGroups [data-more="hof"]');
+  await until(A, n => document.querySelectorAll('#hofGroups [data-group="hof"] .hofit').length === n, "«Alle zeigen» klappt nicht auf", more);
+  await tap(A, '#hofKm [data-km="15"]');
+  await until(A, n => document.querySelectorAll('#hofGroups [data-group="hof"] .hofit').length < n, "Umkreis 15 km zeigt nicht weniger Hofläden", more);
+  expect(await A.page.$$eval("#hofGroups .hofit small:nth-of-type(2)", s => s.every(x => { const m = x.textContent.match(/([\d,]+) (k?m)$/); return m && (m[2] === "m" || parseFloat(m[1].replace(",", ".")) <= 15); })), "Orte ausserhalb 15 km sichtbar");
+  await tap(A, '#hofKm [data-km="60"]');
   // Google «Meine Karten»: ohne Link Anleitung + Export; mit Link in den WG-Einstellungen «Alle in Google Maps»
   expect(await A.page.$eval("#hofAll", e => !!e.querySelector("details") && !!e.querySelector("#hofKml") && !e.querySelector("a.btn")), "ohne Link: Anleitung und Export-Knopf, kein «Alle in Google Maps»");
   await tap(A, "#hofAll summary");
@@ -627,13 +638,13 @@ await step(A, "Einkauf: Chip «Markt» (nicht im Vorrat) → Hofläden & Märkte
   await A.page.evaluate(() => { localStorage.setItem("bringfrisch_markets_map_url", JSON.stringify("https://www.google.com/maps/d/viewer?mid=test123")); window.BF_APP.renderHof(); });
   await until(A, () => document.querySelector("#hofAll a.btn")?.href === "https://www.google.com/maps/d/viewer?mid=test123", "«Alle in Google Maps» fehlt trotz Link");
   await A.page.evaluate(() => { localStorage.removeItem("bringfrisch_markets_map_url"); window.BF_APP.renderHof(); });
-  expect(await A.page.$$eval("#hofWeek .hofit", r => r.some(x => /\d:\d\d–\d/.test(x.textContent))), "keine Zeiten in der Woche");
+  expect(await A.page.$$eval("#hofGroups .hofit", r => r.some(x => /(Mo|Di|Mi|Do|Fr|Sa|So|täglich)[^·]* \d+:\d\d–\d/.test(x.textContent))), "keine Wochenzeiten pro Ort");
   expect(await A.page.$$eval("#hofSpecial .hofsp", r => r.some(x => /Zibelemärit/.test(x.textContent) && /23\.11\./.test(x.textContent))), "Zibelemärit (23.11.) fehlt bei den besonderen Märkten");
   expect(await A.page.$$eval("#hofSpecial .hofsp", r => r.some(x => /Datum prüfen/.test(x.textContent))), "«Datum prüfen» fehlt");
   expect(await A.page.$eval("#hofSeason", e => /Jetzt Saison:/.test(e.textContent) && /Lauch|Kürbis|Rosenkohl|Wirsing|Karotten|Kartoffeln/.test(e.textContent) && /kann abweichen/.test(e.textContent) && !!e.querySelector('a[href="https://www.gemuese.ch/"]')), "Saison-Zeile (November) mit Quelle gemuese.ch fehlt");
   // Lieblingsstern: Karte «Lieblings» zeigt den Ort, Stern wird mit den WG-Einstellungen gespeichert
-  const name = await A.page.$eval("#hofWeek .hofit b", e => e.textContent);
-  await tap(A, "#hofWeek .hofit .hofstar");
+  const name = await A.page.$eval("#hofGroups .hofit b", e => e.textContent);
+  await tap(A, "#hofGroups .hofit .hofstar");
   await until(A, (n) => document.querySelector("#hofCards .hofcard:nth-child(2) b")?.textContent === n, "Lieblings-Karte zeigt den Favoriten nicht", name);
   expect(await A.page.$eval("#hofCards .hofcard:nth-child(2) .hofstar", b => b.getAttribute("aria-pressed") === "true"), "Stern nicht gesetzt");
   expect(await A.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_fav_markets") || "[]").length === 1), "Favorit nicht gespeichert");

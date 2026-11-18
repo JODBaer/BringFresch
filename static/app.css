@@ -871,7 +871,13 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .hofstar[aria-pressed="true"] { color: var(--warn); }
 .hofact { display: flex; gap: 8px; margin-top: 4px; }
 .hofroute { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 14px; min-height: 32px; display: inline-flex; align-items: center; font: 600 13px var(--font); text-decoration: none; }
-#hofSpecial h3, .hofday h3 { margin: 14px 0 4px; font-size: 14px; }
+#hofSpecial h3, .hofday h3, .hofgroup h3 { margin: 14px 0 4px; font-size: 14px; }
+.hofgroup h3 small { color: var(--muted); font-weight: 600; margin-left: 4px; }
+.hofmore { margin-top: 6px; }
+.hofkm { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.hofkm .sortsw { margin-left: 0; }
+.hofgoogle { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.hofgoogle small { color: var(--muted); }
 .hofsp, .hofit { display: flex; flex-direction: column; gap: 2px; padding: 8px 2px; border-bottom: 1px solid var(--line); }
 .hofnote { font-size: 12px; padding: 0; }
 

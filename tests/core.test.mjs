@@ -169,6 +169,15 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(wk[0].rows.map(r => r.n).join() === "Weit", "Di: nur der Hofladen mit Zeiten (Nah/Ohne haben nichts)");
   check(wk[0].rows[0].text === "8:00–12:00, 14:00–18:30" && wk[0].rows[0].now, "Di 10 Uhr: Zeiten des Tages, jetzt offen");
   check(wk[4].wd === 5 && wk[4].rows.map(r => r.n).join() === "Nah,Weit", "Sa: Markt zuerst (näher), dann Hofladen");
+  // Nach Art (Joshua 17.11.): Abschnitte in fester Reihenfolge, nach Entfernung, Umkreis, Lieblinge immer
+  {
+    const gi = [{ n: "Weit", k: "hof", lat: 47.37, lon: 8.54, oh: "Mo-Fr 08:00-18:00" }, { n: "Nah", k: "markt", lat: 47.227, lon: 8.82, oh: "Sa 07:00-11:00" },
+      { n: "Bio", k: "hof", bio: 1, lat: 47.23, lon: 8.83 }, { n: "Auto", k: "automat", lat: 47.24, lon: 8.81 }, { n: "Nah2", k: "hof", lat: 47.228, lon: 8.82 }];
+    const gr = C.farmGroups(gi, { ref: rap, now: di10 });
+    check(gr.map(g => g.key).join() === "markt,hof,bio,automat" && gr[1].rows.map(r => r.n).join() === "Nah2,Weit", `Abschnitte nach Art, nach Entfernung (${gr.map(g => g.key + ":" + g.rows.map(r => r.n))})`);
+    const near = C.farmGroups(gi, { ref: rap, now: di10, maxKm: 5 });
+    check(!near.some(g => g.rows.some(r => r.n === "Weit")) && C.farmGroups(gi, { ref: rap, now: di10, maxKm: 5, favs: [C.farmKey(gi[0])] }).find(g => g.key === "hof").rows.some(r => r.n === "Weit" && r.fav), "Umkreis 5 km: Zürich fehlt, ausser als Liebling");
+  }
   const late = C.farmWeek(items, { ref: rap, now: di19 });
   check(late[0].rows.length === 0, "abends: heute nichts mehr");
   check(C.farmWeek(items, { ref: rap, now: di10, favs: [C.farmKey(items[0])], maxKm: 5 })[0].rows.length === 1 && C.farmWeek(items, { ref: rap, now: di10, maxKm: 5 })[0].rows.length === 0, "Lieblinge auch ausserhalb der Reichweite");
@@ -184,6 +193,8 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(C.specialWhen({ ranges: [["2026-12-03", "2026-12-20"]], days: [3, 4, 5, 6] }) === "3.12.2026–20.12.2026, Do/Fr/Sa/So" && C.specialWhen({ dates: ["2026-11-14"] }) === "14.11.2026", "Datumstext von Spezialmärkten");
   // Echte Daten: alle Orte kommen in die KML (auch von Hand gepflegte, Märkte ausserhalb der Saison, Spezialmärkte)
   const allItems = globalThis.BF_HOF.items, allSpec = globalThis.BF_SPECIAL.items;
+  const dupes = allItems.filter((a, i) => allItems.some((b, j) => j > i && a.k === b.k && a.n === b.n && C.distKm(a, b) < 0.05));
+  check(dupes.length === 0, `Daten: kein Ort doppelt (gleiche Art, gleicher Name, < 50 m) ${dupes.slice(0, 3).map(d => d.n)}`);
   const kmlAll = C.kmlExport(allItems, allSpec, new Date(2026, 10, 10, 10, 0));
   check((kmlAll.match(/<Placemark>/g) || []).length === allItems.length + allSpec.length, `KML enthält alle ${allItems.length} Orte + ${allSpec.length} Spezialmärkte`);
   check(kmlAll.includes("<name>Rapperswiler Freitagsmarkt</name>") && kmlAll.includes("<name>Wochenmarkt Robenhausen</name>") && kmlAll.includes("<name>Zibelemärit</name>"), "KML: Freitagsmarkt, Robenhausen (von Hand gepflegt, Saison Mär–Nov) und Zibelemärit stehen drin");

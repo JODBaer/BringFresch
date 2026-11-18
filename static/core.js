@@ -749,6 +749,15 @@
       return { date, wd: ohWeekday(date), rows: [...keep, ...rest].sort((a, b) => a.km - b.km) };
     });
   }
+  // Nach Art (Joshua 17.11.): Wochenmärkte, Hofläden, Bio-Läden, Hofautomaten – je Abschnitt nach Entfernung, im Umkreis maxKm.
+  // Lieblinge stehen immer drin, auch weiter weg. Orte ohne Zeiten stehen auch drin (Text «Zeiten unbekannt» macht die App).
+  const FARM_GROUPS = [["markt", "Wochenmärkte"], ["hof", "Hofläden"], ["bio", "Bio-Läden"], ["automat", "Hofautomaten"]];
+  function farmGroups(items, { ref, now, maxKm = 60, favs = [] }) {
+    const all = items.map(it => { const key = farmKey(it); return { ...it, key, km: distKm(ref, it), state: openState(it.oh, now), fav: favs.includes(key) }; })
+      .filter(p => p.fav || p.km <= maxKm).sort((a, b) => a.km - b.km);
+    const kindOf = p => (p.k === "hof" && p.bio ? "bio" : p.k);
+    return FARM_GROUPS.map(([key, name]) => ({ key, name, rows: all.filter(p => kindOf(p) === key) })).filter(g => g.rows.length);
+  }
   // Karte «Am nächsten»: der nächste Hofladen/Markt mit bekannten Zeiten (offen oder nicht)
   function nearestFarm(items, ref, now) {
     return farmPlaces(items, ref, now).find(p => p.state) || null;
@@ -847,7 +856,7 @@
   }
 
   root.BF_CORE = {
-    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, nearestFarm, favFarm, routeUrl, seasonVeg, kmlExport, kmlLayers, specialWhen, nthWeekday, specialDays, specialUpcoming,
+    parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, farmGroups, nearestFarm, favFarm, routeUrl, seasonVeg, kmlExport, kmlLayers, specialWhen, nthWeekday, specialDays, specialUpcoming,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,

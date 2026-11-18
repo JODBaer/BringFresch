@@ -1,5 +1,6 @@
-// Obsonare – Hofläden & Märkte: Blatt nach Wochentagen (keine Karte). Oben «Am nächsten» und «Lieblings», dann Spezialmärkte
-// der nächsten Wochen, dann die Woche ab heute: pro Tag, was offen ist. «Route» öffnet Apple Karten (iPhone) bzw. Google Maps.
+// Obsonare – Hofläden & Märkte (keine Karte). Oben «Am nächsten» und «Lieblings», dann Spezialmärkte der nächsten Wochen,
+// dann nach Art (Wochenmärkte, Hofläden, Bio-Läden, Hofautomaten; Joshua 17.11.): pro Ort eine Zeile mit Zustand, Wochenzeiten klein,
+// Umkreis wählbar. Unten ein kleiner Knopf «Google-Suche» als Zusatz. «Route» öffnet Apple Karten (iPhone) bzw. Google Maps.
 // Daten: static/hoflaeden.js (OpenStreetMap, tools/update_hoflaeden.mjs) und static/maerkte_spezial.js (von Hand). Regeln: core.js.
 // Standort: nur nach Knopfdruck «Standort verwenden»; bleibt im Speicher, wird nie gesendet oder gespeichert (nur ja/nein pro Handy).
 // Lieblinge: pro WG gemeinsam in den WG-Einstellungen (favMarkets). Teil der App (Aufbau und Namensraum BF_APP: siehe Kopf von app.js).
@@ -61,11 +62,22 @@
         <div class="hofrow"><b>${esc(e.n)}</b><span class="st${e.today ? " open" : ""}">${esc(dayText(e.first, now))}${e.count > 1 ? ` bis ${e.last.getDate()}.${e.last.getMonth() + 1}.` : ""}</span></div>
         <small>${esc(e.ort)} · ${esc(e.zeit || "")} · ${kmText(e.km)}${e.pruefen ? " · <b>Datum prüfen</b>" : ""}</small>
         <div class="hofact">${route(e)}${e.web ? `<a class="hofroute" href="${esc(e.web)}" target="_blank" rel="noopener">Webseite</a>` : ""}</div></div>`).join("") : "";
-    const week = CORE.farmWeek(items, { ref: r, now, favs: fav });
-    $("hofWeek").innerHTML = week.map((d, i) => `<section class="hofday"><h3>${esc(dayText(d.date, now))}</h3>${d.rows.map(it => `<div class="hofit">
+    // Nach Art: zuerst 6 je Abschnitt, «Alle zeigen» klappt auf (gemerkt bis zum Schliessen)
+    document.querySelectorAll("#hofKm [data-km]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.km === state.hof.km)));
+    const groups = CORE.farmGroups(items, { ref: r, now, maxKm: state.hof.km, favs: fav });
+    const SHOW = 6;
+    $("hofGroups").innerHTML = groups.map(g => {
+      const all = !!state.hof.open[g.key], rows = all ? g.rows : g.rows.slice(0, SHOW);
+      return `<section class="hofgroup" data-group="${g.key}"><h3>${esc(g.name)} <small>${g.rows.length}</small></h3>${rows.map(it => `<div class="hofit">
         <div class="hofrow"><b>${esc(it.n)}</b>${star(it.key, it.fav)}</div>
-        <small><span class="${it.now ? "st open" : ""}">${esc(it.text)}</span> · ${esc(KIND[it.k] || "")}${it.ort ? ` · ${esc(it.ort)}` : ""} · ${kmText(it.km)}</small>
-        <div class="hofact">${route(it)}</div></div>`).join("") || `<p class="hint">${i === 0 ? "Heute hat nichts mehr offen." : "Nichts in der Nähe."}</p>`}</section>`).join("");
+        <small>${it.oh ? `<span class="st${it.state && it.state.open ? " open" : ""}">${esc(stText(it))}</span> · ${esc(CORE.hoursText(it.oh, now))}` : "Zeiten unbekannt"}</small>
+        <small>${it.ort ? `${esc(it.ort)} · ` : ""}${kmText(it.km)}${it.bio && it.k !== "hof" ? " · Bio" : ""}</small>
+        <div class="hofact">${route(it)}${it.web ? `<a class="hofroute" href="${esc(it.web)}" target="_blank" rel="noopener">Webseite</a>` : ""}</div></div>`).join("")}
+        ${g.rows.length > SHOW ? `<button type="button" class="hofroute hofmore" data-more="${g.key}">${all ? "Weniger zeigen" : `Alle ${g.rows.length} zeigen`}</button>` : ""}</section>`;
+    }).join("") || `<p class="hint">Im Umkreis von ${state.hof.km} km nichts gefunden.</p>`;
+    // Kleiner Zusatz: freie Google-Maps-Suche (Ergebnisse können kurios sein), ab Standort bzw. Rapperswil-Jona
+    const g = q => `https://www.google.com/maps/search/${encodeURIComponent(q)}/@${r.lat.toFixed(4)},${r.lon.toFixed(4)},12z`;
+    $("hofGoogle").innerHTML = `<small>Mehr in Google Maps:</small> <a class="hofroute" href="${esc(g("Hofladen"))}" target="_blank" rel="noopener">Hofladen</a><a class="hofroute" href="${esc(g("Wochenmarkt"))}" target="_blank" rel="noopener">Wochenmarkt</a>`;
   }
 
   // Standort: nur nach Knopfdruck (Zustimmung ja/nein pro Handy), dann bei jedem Öffnen frisch. Nie senden oder speichern.
@@ -84,6 +96,7 @@
   }
   function openHof() {
     state.hof.ref = null;
+    state.hof.open = {};
     $("hofDialog").showModal();
     renderHof();
     if (load(STORE.KEYS.HOF_GEO_KEY, false) === true) locate(renderHof);
@@ -109,6 +122,18 @@
     }, i * 400));
     toast(files.length > 1 ? `${files.length} KML-Dateien gespeichert` : "KML gespeichert");
   }
+  $("hofKm").addEventListener("click", e => {
+    const b = e.target.closest("[data-km]");
+    if (!b) return;
+    state.hof.km = +b.dataset.km;
+    renderHof();
+  });
+  $("hofGroups").addEventListener("click", e => {
+    const b = e.target.closest("[data-more]");
+    if (!b) return;
+    state.hof.open[b.dataset.more] = !state.hof.open[b.dataset.more];
+    renderHof();
+  });
   $("hofDialog").addEventListener("click", e => {
     const one = e.target.closest("[data-kml]");
     if (one) exportKml(one.dataset.kml);
