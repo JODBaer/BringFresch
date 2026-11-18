@@ -502,7 +502,7 @@ await step(A, "Rezept-Katalog: über das Blatt öffnen, Filter Alle/Vegi/Fleisch
   await tap(A, '#catalogFilters [data-filter="all"]');
   await typeInto(A, "#catalogSearch", "kartoffel");
   await until(A, n => { const k = document.querySelectorAll("#catalogList .recipe").length; return k > 0 && k < n; }, "Suche «kartoffel» filtert nicht", allCount);
-  await until(A, () => { const a = [...document.querySelectorAll('.websearch[data-ws="catalogSearch"] a')]; return a.length >= 2 && /swissmilk.*qt=kartoffel/.test(a[0].href) && a[0].classList.contains("fav") && /google\.com\/search\?q=kartoffel%20Rezept/.test(a[1].href); }, "«Im Web suchen» unter der Katalog-Suche fehlt (Lieblingsseite + Google)");
+  await until(A, () => { const a = [...document.querySelectorAll('.websearch[data-ws="catalogSearch"] a')]; return a.length >= 2 && /swissmilk.*query=kartoffel/.test(a[0].href) && a[0].classList.contains("fav") && /google\.com\/search\?q=kartoffel%20Rezept/.test(a[1].href); }, "«Im Web suchen» unter der Katalog-Suche fehlt (Lieblingsseite + Google)");
   await shot(A, "05-katalog");
   await dialogNoHScroll(A, "catalogDialog");
 });
