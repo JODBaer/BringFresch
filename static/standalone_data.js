@@ -417,6 +417,7 @@ window.OBSONARE_DATA = {
     },
     {
       id: "gnocchi_tomate",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2024_FAMI_01/gnocchi-mit-tomatensauce/",
       title: "Gnocchi mit Tomatensauce und Mozzarella",
       category: "schnell",
       quick: true,
@@ -738,6 +739,7 @@ window.OBSONARE_DATA = {
     },
     {
       id: "spaghetti_pomodoro",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2022_DIVE_55/spaghetti-napoli/",
       title: "Spaghetti al pomodoro",
       category: "italienisch",
       diet: "vegi",
@@ -1010,6 +1012,7 @@ window.OBSONARE_DATA = {
     },
     {
       id: "poulet_curry",
+      source_url: "https://www.bettybossi.ch/de/rezepte/rezept/rotes-thai-curry-10001351/",
       title: "Poulet-Curry mit Kokosmilch und Reis",
       category: "exotisch",
       diet: "fleisch",
@@ -1031,6 +1034,7 @@ window.OBSONARE_DATA = {
     },
     {
       id: "schweinsbraten_kartoffelstock",
+      source_url: "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/KO2025_PROV_32/schweinsbraten/",
       title: "Schweinsbraten mit Kartoffelstock und Rotkraut",
       category: "schweizerisch",
       diet: "fleisch",

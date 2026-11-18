@@ -326,7 +326,7 @@
   // «Rezept suchen auf …» – wie die Suchmaschine im Browser, pro Handy umschaltbar (Standard Swissmilk).
   // Auf den Rezeptseiten ohne das Wort «Rezept» suchen (dort ist alles ein Rezept), bei Google mit.
   const SEARCH_SITES = {
-    swissmilk: { name: "Swissmilk", url: q => `https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=${encodeURIComponent(q)}` },
+    swissmilk: { name: "Swissmilk", url: q => `https://www.swissmilk.ch/de/suche/?query=${encodeURIComponent(q)}` },
     fooby: { name: "Fooby", url: q => `https://fooby.ch/de/suche.html?query=${encodeURIComponent(q)}` },
     google: { name: "Google", url: q => `https://www.google.com/search?q=${encodeURIComponent(q + " Rezept")}` }
   };
@@ -338,7 +338,19 @@
   // Gleiches Gericht = gleicher Titel (ohne Gross/Klein, Satzzeichen) oder gleicher Rezept-Link,
   // z.B. ein eigenes Rezept, das es im Katalog schon gibt
   const dishKey = r => String((r && r.title) || "").toLowerCase().replace(/[^a-z0-9äöüéèàç]+/g, " ").trim();
-  const sameDish = (a, b) => String(a.id) === String(b.id) || (!!dishKey(a) && dishKey(a) === dishKey(b)) || (!!a.source_url && a.source_url === b.source_url);
+  // Link ohne http/https, www., ?…, #… und Schrägstrich am Ende: swissmilk.ch/…/gschwellti = www.swissmilk.ch/…/gschwellti/
+  const urlKey = u => String(u || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/[?#].*$/, "").replace(/\/+$/, "");
+  const sameDish = (a, b) => String(a.id) === String(b.id) || (!!dishKey(a) && dishKey(a) === dishKey(b)) || (!!urlKey(a.source_url) && urlKey(a.source_url) === urlKey(b.source_url));
+  // Jedes Gericht nur einmal zeigen (Katalog, «Alle Rezepte», Wechseln). `first` gewinnt (z.B. eigene Rezepte vor dem Katalog,
+  // damit eine angepasste Kopie das Original ersetzt); die Reihenfolge von `all` bleibt.
+  function uniqueDishes(all, first = []) {
+    const kept = [];
+    for (const r of [...first, ...all]) if (r && !kept.some(k => sameDish(k, r))) kept.push(r);
+    const ids = new Set(kept.map(r => String(r.id)));
+    const out = [];
+    for (const r of all) if (ids.has(String(r.id)) && !out.some(o => String(o.id) === String(r.id))) out.push(r);
+    return out;
+  }
   function backupRecipe(all, group, excludeIds, quick, month) {
     const taken = all.filter(r => excludeIds.includes(String(r.id)));
     const free = all.filter(r => !excludeIds.includes(String(r.id)) && !taken.some(t => sameDish(t, r)) && !!r.quick === !!quick);
@@ -851,7 +863,7 @@
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
-    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, SEARCH_SITES, searchSite, searchHref, votersOf, ranking, assignDays,
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, urlKey, sameDish, uniqueDishes, SEARCH_SITES, searchSite, searchHref, votersOf, ranking, assignDays,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList
   };

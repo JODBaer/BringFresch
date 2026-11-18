@@ -242,6 +242,9 @@
     // gleicher Bestand für alle WGs: Katalog + eigene + geteilte der anderen WGs (Stimmen bleiben pro WG)
     return [...(DATA.recipes || []), ...(window.OBSONARE_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
   }
+  // Zum Anzeigen (Katalog, «Alle Rezepte», Wechseln): jedes Gericht nur einmal – gleicher Link oder Titel = ein Rezept,
+  // eigene Rezepte (z.B. angepasste Kopie) vor dem Katalog. Zum Nachschlagen per Id bleibt allRecipes().
+  const shownRecipes = () => CORE.uniqueDishes(allRecipes(), (importer && importer.customRecipes) || []);
   // Beliebtheit: Stimmen der Wochenwahl dieser WG (vom WG-Server); ohne Server: wie oft auf diesem Handy gewählt
   function popularCounts() {
     const wg = CORE.popularity((load(STORE.KEYS.POPULAR_KEY, null) || {}).weeks);
@@ -361,7 +364,7 @@
     VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, PLAN_WEEK_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY, VOTE_KEY, ME_KEY,
     WELCOME_KEY, TERMS_KEY, COUNTS_KEY, OS_KEY, THEME_KEY, MODE_KEY, SEARCH_SITE_KEY, KEYS, state, currentPlan, otherPlan, savePlan,
     saveMembers, saveStaples, $, searchKey, searchName, recipeLinkLabel, recipeHref, guessMeat, esc, currentMonth, todayIndex, initialsMap,
-    toast, copyText, allRecipes, popularCounts, effectiveDiet, fitsDiet, inSeason, pickRecipe, makeDay, generateWeek, normalizePlan,
+    toast, copyText, allRecipes, shownRecipes, popularCounts, effectiveDiet, fitsDiet, inSeason, pickRecipe, makeDay, generateWeek, normalizePlan,
     normalizeWeek, subscribe, notify, toBuyItems, listLine, DIET_LABEL, refresh, recipeById, dietGroup, nextWeekKey, canPlanNext,
     shownWeek, isOpenWeek, nextPlan, setCurrentPlan });
 })();

@@ -125,7 +125,7 @@
     const q = $("catalogSearch").value.toLowerCase().trim();
     const f = state.catalogFilter;
     document.querySelectorAll("#catalogFilters button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === f)));
-    const list = allRecipes().filter(r => {
+    const list = app.shownRecipes().filter(r => {
       if (f === "vegi" && !fitsDiet(r, "vegi")) return false;
       if (f === "fleisch" && r.diet !== "fleisch") return false;
       if (f === "season" && !inSeason(r)) return false;

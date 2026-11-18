@@ -53,8 +53,14 @@ check(dup.length === 14 && new Set(dup).size === 14 && dup[0] === "v0" && dup[1]
 const twin = [...all, { id: "custom-1", title: "Gericht V0", diet: "vegi", season_months: [11] }];
 twin.find(r => r.id === "v0").title = "Gericht v0";
 check(!C.cleanCandidates(twin, ["v0", "custom-1"], 11, 2, 0).includes("custom-1"), "eigenes Rezept mit gleichem Titel wie ein Katalog-Gericht = dasselbe Gericht");
+// Gleicher Link (auch mit/ohne www., Schrägstrich, ?…) = ein Rezept; die eigene Kopie ersetzt das Original in der Anzeige
+const linked = [{ id: "k1", title: "Toast Hawaii", source_url: "https://www.swissmilk.ch/de/rezepte/toast-hawaii/" },
+  { id: "k2", title: "Toast Hawaii · Betty Bossi", source_url: "https://www.bettybossi.ch/de/rezepte/toast-hawaii" },
+  { id: "custom-9", title: "Unser Toast", source_url: "https://swissmilk.ch/de/rezepte/toast-hawaii?utm=x" }];
+check(C.sameDish(linked[0], linked[2]) && !C.sameDish(linked[0], linked[1]), "gleicher Link = gleiches Gericht, andere Seite = eigenes Rezept");
+check(C.uniqueDishes(linked, [linked[2]]).map(r => r.id).join() === "k2,custom-9", "uniqueDishes: jedes Gericht einmal, eigene Rezepte gewinnen, Reihenfolge bleibt");
 check(Array.from({ length: 30 }, () => C.pickCandidates(twin, 11, 14, 2)).every(c => !(c.includes("v0") && c.includes("custom-1"))), "Wochenwahl zieht nie zweimal dasselbe Gericht (gleicher Titel)");
-check(C.searchHref(undefined, "Spinat Rezept") === "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/?qt=Spinat" && /google\.com\/search\?q=Riz%20Casimir%20Rezept$/.test(C.searchHref("google", "Riz Casimir")) && /fooby/.test(C.searchHref("fooby", "x")), "Rezept suchen: Standard Swissmilk, umschaltbar auf Fooby / Google");
+check(C.searchHref(undefined, "Spinat Rezept") === "https://www.swissmilk.ch/de/suche/?query=Spinat" && /google\.com\/search\?q=Riz%20Casimir%20Rezept$/.test(C.searchHref("google", "Riz Casimir")) && /fooby/.test(C.searchHref("fooby", "x")), "Rezept suchen: Standard Swissmilk, umschaltbar auf Fooby / Google");
 const votes = { a: { likes: ["x", "y"], days: { y: 2 } }, b: { likes: ["y"], days: {} }, c: { likes: [], days: {} } };
 check(C.ranking(["x", "y", "z"], ms, votes).map(r => r.id).join() === "y,x,z", "Rangliste: 2 Stimmen vor 1 vor 0");
 const week = Array.from({ length: 7 }, () => ({ eaters: ["a", "b", "c"] }));
