@@ -452,7 +452,7 @@ window.BF_HOF = { stand: "2026-11-18", items: [
   {"n":"Wochenmarkt Altstetten","k":"markt","lat":47.38759,"lon":8.48586,"oh":"Sa 06:00-12:00","web":"https://www.zuercher-maerkte.ch/Maerkte.php?Lang=de&ziel=1","src":"discover","ort":"Zürich"},
   {"n":"Wochenmarkt Bürkliplatz","k":"markt","lat":47.36731,"lon":8.54073,"oh":"Tu,Fr 06:00-11:00","web":"https://www.zuercher-maerkte.ch/Maerkte.php?Lang=de&ziel=3","bio":1,"src":"discover","ort":"Zürich"},
   {"n":"Wochenmarkt Meilen","k":"markt","lat":47.27043,"lon":8.64123,"src":"discover","ort":"Meilen","adr":"Dorfplatz Meilen","web":"http://www.wuchemaert.ch/"},
-  {"n":"Wochenmarkt Robenhausen, Wetzikon","k":"markt","ort":"Wetzikon","adr":"Dorfstrasse 15","oh":"Mar-Nov Sa 08:00-11:00","web":"https://robenhausen.ch/?page_id=105","lat":47.33257,"lon":8.78697,"src":"discover"},
+  {"n":"Wochenmarkt Robenhausen","k":"markt","ort":"Wetzikon","adr":"Dorfstrasse 15","oh":"Mar-Nov Sa 08:00-11:00","web":"https://robenhausen.ch/?page_id=105","lat":47.33257,"lon":8.78697,"src":"discover"},
   {"n":"Wochenmarkt Stäfa","k":"markt","lat":47.23903,"lon":8.73037,"src":"discover","ort":"Stäfa","adr":"Kirchbühlstrasse 40","oh":"Sa 08:00-12:00","web":"https://www.staefa.ch/aktuell/agenda.html/51/event/1688/eventdate/1698"},
   {"n":"Wochenmarkt Uster","k":"markt","lat":47.35087,"lon":8.71422,"src":"discover","ort":"Uster","adr":"Post- und der Gerichtsstrasse","oh":"Fr 07:30-11:00","web":"https://www.uster.ch/maerktered/3709"},
   {"n":"Wochenmarkt Wädenswil","k":"markt","lat":47.22958,"lon":8.67224,"src":"discover","ort":"Wädenswil","adr":"Gerbestrasse","oh":"Sa 08:00-12:00"},
