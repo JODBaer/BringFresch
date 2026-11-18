@@ -100,7 +100,7 @@ async function dall(path, max = 40) {
 function kindFromDiscover(o, from) {
   const t = String(o.additionalType || "").replace(/^.*\//, ""), n = o.name || "";
   if (from === "civic") {
-    if (t === "Market") return SPECIAL.test(n) ? null : /markt|märt|market|marché/i.test(n) ? "markt" : "hof"; // z.B. Juckerhof = Hof
+    if (t === "Market") return SPECIAL.test(n) ? null : /markt|märkt|märt|market|marché/i.test(n) ? "markt" : "hof"; // z.B. Juckerhof = Hof
     if (t === "Farm") return "hof";
     return null;
   }
@@ -133,6 +133,9 @@ async function discoverItems() {
       if (oh) it.oh = oh;
       const web = a.url || o.url;
       if (web && /^https?:\/\//.test(web)) it.web = web;
+      // derselbe Ort doppelt (z.B. Juckerhof als Markt und als Laden): einer reicht, der mit Zeiten gewinnt
+      const twin = out.findIndex(x => x.k === it.k && Math.abs(x.lat - it.lat) < 0.0015 && Math.abs(x.lon - it.lon) < 0.002);
+      if (twin >= 0) { if (!out[twin].oh && it.oh) out[twin] = it; continue; }
       out.push(it);
     }
   } catch (e) { console.warn(`discover.swiss: Abbruch (${e.cause?.code || e.message}) – OSM und Handliste laufen weiter`); return []; }
@@ -210,8 +213,18 @@ for (const url of SERVERS) {
   res = null;
 }
 }
-if (!res) throw new Error("Kein Overpass-Server erreichbar");
-const { elements } = await res.json();
+// Overpass ganz weg (kommt vor): OSM-Orte aus der bisherigen Datei weiterverwenden, damit discover.swiss und die Handliste trotzdem
+// aktuell werden. Die Einträge von discover.swiss werden dabei nicht übernommen (die kommen frisch dazu).
+let elements = [], previous = null;
+if (res) ({ elements } = await res.json());
+else {
+  console.warn("Kein Overpass-Server erreichbar – OSM-Orte aus der bisherigen static/hoflaeden.js");
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../static/hoflaeden.js", import.meta.url), "utf8");
+  const box = {}; new Function("window", src)(box);
+  previous = (box.BF_HOF?.items || []).filter(i => i.src !== "discover");
+  if (!previous.length) throw new Error("Kein Overpass-Server erreichbar und keine bisherigen Daten");
+}
 
 const kindOf = t => (t.amenity === "marketplace" ? "markt" : t.amenity === "vending_machine" ? "automat" : "hof");
 const VEND = { milk: "Milch", eggs: "Eier", fruit: "Obst", vegetables: "Gemüse", cheese: "Käse", meat: "Fleisch", potatoes: "Kartoffeln" };
@@ -235,6 +248,7 @@ function mergeDiscover(osm, disc) {
   return out;
 }
 const places = {};
+if (previous) items.push(...previous);
 for (const e of elements) {
   const t = e.tags || {};
   if (!(t.shop === "farm" || t.shop === "greengrocer" || t.amenity === "marketplace" || t.amenity === "vending_machine")) { // nur Orte zum Nachschlagen (Robenhausen), keine Läden
