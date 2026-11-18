@@ -96,50 +96,53 @@ async function discoverItems() {
   console.log(`discover.swiss: ${calls} Abrufe, ${total} Objekte, ${out.length} im Gebiet mit offener Lizenz (${closed} ohne offene Lizenz ausgelassen)`);
   return out;
 }
-// Erkundung der Suche (/search, Doku: docs.discover.swiss → Search service): nur mit DISCOVER_EXPLORE=1 (Workflow-Schalter «explore»).
-// Schreibt ins Log, was es zu Märkten/Hofläden im Umkreis gibt (nur öffentliche Angaben, nie den Schlüssel); ändert keine Daten.
+// Erkundung (nur mit DISCOVER_EXPLORE=1, Workflow-Schalter «explore»; ändert keine Daten): Der OpenData-Schlüssel hat kein
+// Partner-Projekt, darum keine /search (401 «Project wasn't supplied»). Die Listen-Endpunkte gehen ohne Projekt und filtern nach
+// additionalType, category, source (Datenquelle) – aber noch nicht nach Ort («geo location coming soon»): darum lokal inBox.
+// Log: Anzahl Schweiz, Anzahl im Gebiet, Einträge im Gebiet (nur öffentliche Angaben), nie der Schlüssel.
 async function discoverExplore() {
   if (!process.env.DISCOVER_SWISS_KEY || process.env.DISCOVER_EXPLORE !== "1") return;
-  const GEO = "geo.distance(geo, geography'POINT(8.68 47.30)') le 35"; // Zürich – Rapperswil – Wetzikon
   const Q = [
-    ["Typ Markt", { filters: [`additionalType eq 'Market'`, GEO] }],
-    ["Typ Hofladen", { filters: [`additionalType eq 'FarmShop'`, GEO] }],
-    ["Typ Bauernhof", { filters: [`additionalType eq 'Farm'`, GEO] }],
-    ["Typ Strassenmarkt (Anlass)", { filters: [`additionalType eq 'StreetMarketEvent'`, GEO] }],
-    ["Tags Märkte", { allTag: ["farmers-market", "street-market", "christmas-market", "buy"], filters: [GEO] }],
-    ["Kategorie Markt sui_0220", { category: ["sui_0220"], filters: [GEO] }],
-    ["Kategorie Lebensmittel sui_0502", { category: ["sui_0502"], filters: [GEO] }],
-    ["Kategorie Regional/Produzent", { category: ["sui_0506", "sui_0507"], filters: [GEO] }],
-    ["Text Wochenmarkt", { searchText: "Wochenmarkt", filters: [GEO] }],
-    ["Text Markt (nur Zürich Tourismus)", { searchText: "markt*", datasource: ["ZHT-CMS"] }],
-    ["Text Hofladen", { searchText: "Hofladen Hofladen* Bauernmarkt", filters: [GEO] }],
-    ["Typ Markt ganze Schweiz", { filters: [`additionalType eq 'Market'`] }]
+    ["Märkte (civicstructures, Market)", "civicstructures?additionalType=Market"],
+    ["Hofläden (localbusinesses, FarmShop)", "localbusinesses?additionalType=FarmShop"],
+    ["Bauernhöfe (places, Farm)", "places?additionalType=Farm"],
+    ["Strassenmärkte (events, StreetMarketEvent)", "events?additionalType=StreetMarketEvent"],
+    ["Kategorie Markt sui_0220 (places)", "places?category=sui_0220"],
+    ["Kategorie Markt sui_0220 (events)", "events?category=sui_0220"],
+    ["Kategorie Lebensmittel sui_0502 (localbusinesses)", "localbusinesses?category=sui_0502"],
+    ["Zürich Tourismus ZHT-CMS (localbusinesses)", "localbusinesses?source=ZHT-CMS"],
+    ["Zürich Tourismus ZHT-CMS (civicstructures)", "civicstructures?source=ZHT-CMS"],
+    ["Zürich Tourismus ZHT-CMS (places)", "places?source=ZHT-CMS"]
   ];
-  let shown = false;
-  for (const [label, body] of Q) {
+  const MARKT = /markt|märkt|market|marché|hofladen|bauern|farm|wochenmarkt|gemüse/i;
+  for (const [label, path] of Q) {
+    let token = "", total = 0, open = 0; const hits = [], examples = [], types = {};
     try {
-      const res = await fetch(DISCOVER + "search", {
-        method: "POST",
-        headers: { "Ocp-Apim-Subscription-Key": process.env.DISCOVER_SWISS_KEY, "Content-Type": "application/json", Accept: "application/json", "Accept-Language": "de", categoryVersion: "sui", "User-Agent": "BringFresch-hoflaeden/1.0 (+https://github.com/jodbaer/BringFresch; Erkundung)" },
-        body: JSON.stringify({ resultsPerPage: 50, currentPage: 1, ...body }),
-        signal: AbortSignal.timeout(30000)
-      });
-      const text = await res.text();
-      let j = null; try { j = JSON.parse(text); } catch { /* */ }
-      if (res.status !== 200 || !j) { console.log(`ERKUNDEN ${label}: HTTP ${res.status} ${text.slice(0, 300)}`); continue; }
-      if (!shown) { console.log(`ERKUNDEN Antwort-Felder: ${Object.keys(j).join(", ")}`); shown = true; }
-      const list = j.values || j.data || j.results || j.value || [];
-      const total = j.count ?? j.totalCount ?? j.total ?? list.length;
-      console.log(`ERKUNDEN ${label}: ${total} Treffer`);
-      for (const o of list.slice(0, 40)) {
-        const a = o.address || {};
-        const ds = [].concat(o.datasource || o.dataGovernance?.source?.acronym || []).join("/");
-        const oh = (o.openingHoursSpecification || []).length ? `Zeiten(${o.openingHoursSpecification.length})` : o.openingHours ? "openingHours" : (o.schedule || []).length ? `Termine(${o.schedule.length})` : "ohne Zeiten";
-        console.log(`  - ${o.name} | ${o.type || ""}/${o.additionalType || ""} | ${a.addressLocality || ""} | ${ds} | ${o.license || "?"} | ${oh}${o.geo ? "" : " | ohne geo"}`);
+      for (let page = 0; page < 30; page++) {
+        const r = await dget(`${path}&top=100${token ? "&continuationToken=" + encodeURIComponent(token) : ""}`);
+        if (r.status !== 200 || !r.json) { console.log(`ERKUNDEN ${label}: HTTP ${r.status} ${r.text.slice(0, 200)}`); break; }
+        for (const o of r.json.data || []) {
+          if (o.removed) continue;
+          total++;
+          const t = `${o.type || ""}/${o.additionalType || ""}`; types[t] = (types[t] || 0) + 1;
+          if (/^CC/.test(o.license || "") && !/All-Rights/i.test(o.license)) open++;
+          const a = o.address || {};
+          const oh = (o.openingHoursSpecification || []).length ? `Zeiten(${o.openingHoursSpecification.length})` : (o.schedule || []).length ? `Termine(${o.schedule.length})` : "ohne Zeiten";
+          const line = `${o.name} | ${t} | ${a.streetAddress || ""}, ${a.addressLocality || ""} | ${[].concat(o.dataGovernance?.source?.acronym || o.datasource || []).join("/")} | ${o.license || "?"} | ${oh}`;
+          if (inBox(o)) hits.push(line);
+          else if (examples.length < 6) examples.push(line);
+          if (/ZHT-CMS/.test(path) && MARKT.test(o.name || "") && !inBox(o)) hits.push("(ausserhalb/ohne geo) " + line);
+        }
+        if (!r.json.hasNextPage || !r.json.nextPageToken) break;
+        token = r.json.nextPageToken;
+        await new Promise(res => setTimeout(res, 1100));
       }
-      if (list[0] && label === "Typ Markt") console.log(`ERKUNDEN Felder eines Markts: ${Object.keys(list[0]).join(", ")}`);
     } catch (e) { console.log(`ERKUNDEN ${label}: Fehler ${e.cause?.code || e.message}`); }
-    await new Promise(r => setTimeout(r, 1100));
+    const list = /ZHT-CMS/.test(path) ? hits.filter(h => MARKT.test(h)) : hits;
+    console.log(`ERKUNDEN ${label}: Schweiz ${total} (offene Lizenz ${open}), im Gebiet ${hits.length}; Typen ${JSON.stringify(types).slice(0, 300)}`);
+    for (const h of list.slice(0, 60)) console.log(`  - ${h}`);
+    if (!hits.length) for (const x of examples) console.log(`  (Beispiel) ${x}`);
+    await new Promise(res => setTimeout(res, 1100));
   }
 }
 await discoverExplore();
