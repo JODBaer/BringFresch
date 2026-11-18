@@ -238,13 +238,14 @@ function mergeDiscover(osm, disc) {
   const dist = (a, b) => 2 * R * Math.asin(Math.sqrt(Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lon - a.lon) / 2) ** 2));
   const out = osm.slice();
   for (const d of disc) {
-    // derselbe Ort: < 250 m und (gemeinsames Ortswort, z.B. «Oerlikon», oder bei Märkten genau dieselben Zeiten),
+    // derselbe Ort: < 250 m und gemeinsames Ortswort (z.B. «Oerlikon»), Märkte mit genau denselben Zeiten < 500 m,
     // oder < 3 km und Name enthält den anderen (Robenhausen: Ort von Hand ≠ Adresse). Nähe allein reicht nicht (Rosenhof ≠ Rathausbrücke).
     const words = n => new Set(String(n).toLowerCase().replace(/[^a-zäöüéèà ]/g, " ").split(/\s+/).filter(w => w.length >= 5 && !/^(dorfs|haupt)/.test(w) && !/^(markt|wochenmarkt|blumen|gemüsemarkt|hofladen|märkte)$/.test(w)));
     const shareWord = (a, b) => { const B = new Set([...words(b)].map(w => w.slice(0, 5))); return [...words(a)].some(w => B.has(w.slice(0, 5))); }; // «Jucker Farm» = «Juckerhof»
     const sameOh = (a, b) => a.oh && b.oh && a.oh.replace(/\s/g, "") === b.oh.replace(/\s/g, "");
     const i = out.findIndex(o => o.k === d.k && (
-      (dist(o, d) < 0.25 && (shareWord(o.n, d.n) || (d.k === "markt" && sameOh(o, d)))) ||
+      (dist(o, d) < 0.25 && shareWord(o.n, d.n)) ||
+      (d.k === "markt" && dist(o, d) < 0.5 && sameOh(o, d)) || // Rathausbrücke = Stadthausquai (270 m, gleiche Zeiten)
       (dist(o, d) < 3 && (normN(o.n).includes(normN(d.n)) || normN(d.n).includes(normN(o.n))))));
     if (i < 0) { out.push(d); continue; }
     const keep = out[i]._hand ? { oh: out[i].oh } : {}; // Zeiten von Hand (amtlich) bleiben; Name/Adresse/Ort offiziell
