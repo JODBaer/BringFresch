@@ -1,6 +1,7 @@
 // Layout-Prüfung der Plan-Ansicht in einem echten Browser (Edge/Chrome, headless).
 //   node layout_check.mjs            -> prüft 390×844, 375×667, 390×600 in iPhone- und Android-Stil, hell und dunkel
 //   node layout_check.mjs --shots    -> legt zusätzlich Bildschirmfotos in tests/shots/ ab
+//   node layout_check.mjs --quick    -> nur die engste Grösse 375×667, hell (PR-Prüfung; alles vor dem Release)
 // Regeln (Obsonare-Plan-Redesign.md §5): Mit einem offenen Tag bleiben alle 7 Tage sichtbar;
 // beim Aufklappen bewegt sich nichts ausser dem geöffneten Tag (Zeilen darüber, Kopfzeile, Schrift bleiben stehen).
 // Geprüft wird an einem Donnerstag: laufende Woche und nächste Woche (Chip «KW n →», offene Tage).
@@ -31,9 +32,10 @@ const ciArgs = process.env.CI || process.platform === "linux" ? ["--no-sandbox",
 // eigenes Profil pro Lauf: zwei Läufe gleichzeitig (z.B. zwei Worktrees) stören sich sonst
 const profileDir = mkdtempSync(path.join(tmpdir(), "bf-layout-profile-"));
 const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ["--allow-file-access-from-files", "--no-first-run", "--no-default-browser-check", "--disable-gpu", ...ciArgs], userDataDir: profileDir });
-const sizes = [[390, 844], [375, 667], [390, 600]];
+const QUICK = process.argv.includes("--quick");
+const sizes = QUICK ? [[375, 667]] : [[390, 844], [375, 667], [390, 600]];
 for (const os of ["ios", "android"]) {
-  for (const scheme of ["light", "dark"]) {
+  for (const scheme of QUICK ? ["light"] : ["light", "dark"]) {
     for (const [w, h] of sizes) for (const view of ["cur", "next"]) {
       const page = await browser.newPage();
       await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });

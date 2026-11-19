@@ -65,11 +65,13 @@
   function showList() {
     const n = info.changes.length;
     const done = status && status.released;
+    const feats = info.changes.filter(c => c.feat).length; // nur neue Funktionen brauchen die Freigabe; Fixes gehen von selbst raus
     const el = sheet(`
       <h2>${done ? "Freigegeben" : n ? "Neu zum Testen" : "Nichts Neues"}</h2>
       <small>${done ? `Dieser Stand ist ${esc(status.tag)}` : `seit ${esc(info.base || "letztem Release")} · ${n} Änderung${n === 1 ? "" : "en"}`} · Version ${esc(info.version)}</small>
-      ${n ? `<ul>${info.changes.map(c => `<li><i>${c.n ? "#" + esc(c.n) : "·"}</i>${esc(c.title)}</li>`).join("")}</ul>` : ""}
-      ${n && !done ? `<div class="bfr-btns"><button class="bfr-btn bfr-ok" type="button" data-a="ok">Freigeben</button><button class="bfr-btn bfr-no" type="button" data-a="no">Problem melden</button></div>` : `<div class="bfr-btns"><button class="bfr-btn bfr-no" type="button" data-a="no">Problem melden</button></div>`}
+      ${n ? `<ul>${info.changes.map(c => `<li><i>${c.n ? "#" + esc(c.n) : "·"}</i>${c.feat ? "<b>neu</b> · " : ""}${esc(c.title)}</li>`).join("")}</ul>` : ""}
+      ${n && !done && !feats ? `<p class="bfr-msg">Nur kleine Fixes: gehen nach der Release-Prüfung automatisch zur WG.</p>` : ""}
+      ${n && !done && feats ? `<div class="bfr-btns"><button class="bfr-btn bfr-ok" type="button" data-a="ok">Freigeben</button><button class="bfr-btn bfr-no" type="button" data-a="no">Problem melden</button></div>` : `<div class="bfr-btns"><button class="bfr-btn bfr-no" type="button" data-a="no">Problem melden</button></div>`}
       <p class="bfr-msg" hidden></p>`);
     const msg = el.querySelector(".bfr-msg");
     const ok = el.querySelector('[data-a="ok"]');

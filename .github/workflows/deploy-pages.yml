@@ -2,20 +2,24 @@
 #   1. WG-Server (Cloudflare Worker «bringfrisch») hochladen   (braucht Secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID)
 #   2. danach die App auf GitHub Pages veröffentlichen          (Server zuerst: neue App findet immer schon den neuen Server)
 # Zurück zur alten Server-Version: cd worker && npx wrangler rollback
-# Ein normaler Push auf main veröffentlicht nichts. Lokal dasselbe: cd tests && npm ci && npm run ci
+# Auch aufgerufen von release-auto.yml (kleine Fixes ohne Freigabe, Version als Eingabe; Tag erst danach).
+# Ein normaler Push auf main veröffentlicht nur über release-auto.yml. Lokal dasselbe: cd tests && npm ci && npm run ci
 name: Release Obsonare (Tests + WG-Server + GitHub Pages)
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version ohne v (z.B. v1.13.3 -> 1.13.3 wird in build_site.mjs gesetzt)"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
   test:
@@ -72,6 +76,9 @@ jobs:
 
   deploy:
     needs: [test, worker]
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
     permissions:
       contents: read
       pages: write
@@ -91,7 +98,8 @@ jobs:
         run: |
           # _site = index.html + static/, Version = Release-Tag (v1.5.3 -> 1.5.3), node --check aller .js
           # (gleiches Skript wie im Test tests/release_build.test.mjs)
-          node tools/build_site.mjs _site
+          V="${{ inputs.version }}"
+          node tools/build_site.mjs _site "${V#v}"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5.0.0
         with:
