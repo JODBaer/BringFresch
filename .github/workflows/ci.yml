@@ -1,4 +1,5 @@
-# Warteschlange für Änderungen: jeder Pull Request auf main -> alle Offline-Tests (wie lokal: cd tests && npm ci && npm run ci)
+# Warteschlange für Änderungen: jeder Pull Request auf main -> PR-Prüfung (ca. 2 Min, wie lokal: cd tests && npm run ci -- --pr):
+# alle schnellen Tests, Browser nur für das, was die Änderung betreffen kann (docs/teststrategie.md). Alles vor dem Release.
 # Mit Auto-Merge (gh pr merge --auto --squash) fügt GitHub den PR bei grünen Tests selbst in main ein;
 # die Regel für main verlangt den Check «tests». Mehrere PRs warten nicht aufeinander.
 name: Tests (Pull Request)
@@ -24,6 +25,8 @@ jobs:
       BROWSER: /usr/bin/google-chrome
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0   # geänderte Dateien gegen main bestimmen (run_ci.mjs --pr)
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
@@ -32,9 +35,9 @@ jobs:
       - name: Install test dependencies
         working-directory: tests
         run: npm ci
-      - name: All tests (Syntax, App, Integration, Worker, Layout, UI)
+      - name: PR-Prüfung (schnelle Tests + Browser nach Bedarf)
         working-directory: tests
-        run: npm run ci -- --shots
+        run: npm run ci -- --pr --shots
       - name: Upload screenshots (Layout + UI)
         if: failure()
         uses: actions/upload-artifact@v7.0.2

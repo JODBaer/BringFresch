@@ -6,6 +6,8 @@ import { readFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+const { appHtml } = createRequire(import.meta.url)("./app_html.js");
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..");
@@ -50,6 +52,10 @@ try {
   check(!!pattern && stageUpd.includes(pattern.trim()), "Test-Version: Suchmuster in «Aktualisieren» unverändert");
   const r5 = spawnSync(process.execPath, ["--check", path.join(stageOut, "app.js")], { encoding: "utf8" });
   check(r5.status === 0, "Test-Version: app.js gültiges JavaScript");
+  // Live-Test (stage_live.mjs) lädt die Test-Seite in jsdom: jedes <script src> muss einbettbar sein (19.11.: freigabe.js mit defer war es nicht)
+  let staged = "";
+  try { staged = r4.status === 0 ? appHtml(stageOut) : ""; } catch (e) { console.log(e.message); }
+  check(staged.includes("stageBand") && staged.includes("release/approve"), "Test-Version: Seite samt Test-Freigabe für den Live-Test einbettbar");
 } finally {
   rmSync(out, { recursive: true, force: true });
 }

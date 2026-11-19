@@ -519,8 +519,8 @@ check(snap3["w:sonnenhof:plan"] && !snap3["lock:sonnenhof"], `Sicherung enthält
   check(r.status === 409 && gh.refs.length === 0, "Freigabe: anderer Stand als main -> 409, kein Tag (erst Neues anschauen)");
   r = await rel("/release/approve", { body: { sha: "abc1234" } });
   d = await r.json();
-  check(d.ok && d.tag === "v1.13.3" && gh.refs[0]?.ref === "refs/tags/v1.13.3" && gh.refs[0]?.sha === "abc1234def", "Freigabe: setzt v1.13.3 auf den Stand von main");
-  gh.tags.unshift({ name: "v1.13.3", commit: { sha: "abc1234def" } });
+  check(d.ok && d.tag === "v1.14.0" && gh.refs[0]?.ref === "refs/tags/v1.14.0" && gh.refs[0]?.sha === "abc1234def", "Freigabe: neue Funktion -> v1.14.0 auf den Stand von main");
+  gh.tags.unshift({ name: "v1.14.0", commit: { sha: "abc1234def" } });
   r = await rel("/release/approve", { body: { sha: "abc1234" } });
   d = await r.json();
   check(d.already && gh.refs.length === 1, "Freigabe: zweimal tippen setzt keinen zweiten Tag");

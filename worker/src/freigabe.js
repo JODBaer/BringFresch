@@ -1,6 +1,7 @@
 // Test-Freigabe (nur Test-Server, Secret RELEASE_TOKEN): aus der Test-App heraus freigeben oder ein Problem melden.
 //   GET  /release/status?sha=…           -> { enabled, released, tag }   (ist dieser Stand schon als Release getaggt?)
-//   POST /release/approve {sha}          -> { ok, tag, url }              setzt den nächsten Tag v1.2.(3+1) auf sha
+//   POST /release/approve {sha}          -> { ok, tag, url }              setzt den nächsten Tag v1.(2+1).0 auf sha
+//                                                                          (neue Funktion; kleine Fixes gehen ohne Freigabe als v1.2.(3+1), release-auto.yml)
 //                                                                          -> deploy-pages.yml: Tests, WG-Server, WG-App
 //   POST /release/issue {text, version, sha} -> { ok, number, url }       legt ein GitHub-Issue an, kein Release
 // Nur die erste WG des Test-Servers (Test-PIN). Freigegeben wird nur, was gerade auf main liegt (sonst 409:
@@ -36,7 +37,7 @@ export async function latestTag(env) {
   const tags = await gh(env, "/tags?per_page=100");
   return tags.filter(t => semver(t.name)).sort((a, b) => newer(semver(b.name), semver(a.name)))[0] || null;
 }
-export const nextTag = name => { const v = semver(name || "v0.0.0"); return `v${v[0]}.${v[1]}.${v[2] + 1}`; };
+export const nextTag = name => { const v = semver(name || "v0.0.0"); return `v${v[0]}.${v[1] + 1}.0`; };
 
 export async function release(request, env, path, url) {
   if (!env.RELEASE_TOKEN) {

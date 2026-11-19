@@ -1,6 +1,9 @@
 // UI-Test wie ein Mensch: echter Chrome/Edge (headless), Handy 390×844 mit Touch, tippt sich durch jede Seite und jede Funktion.
 //   node ui_e2e.mjs            -> alle Abläufe, am Schluss «ALLES OK» oder «n FEHLER» (Exit-Code 1)
 //   node ui_e2e.mjs --shots    -> zusätzlich Bildschirmfotos in tests/shots/ui/ (Fehlerfotos immer)
+//   node ui_e2e.mjs --core     -> nur die Kernabläufe (PR-Prüfung): verbundenes Handy B (Wochenwahl, Bring! füllen +
+//                                 Rückgängig, Nachfrage, Vorrat, Herunterziehen, Server weg) und Erster Start (D).
+//                                 Alles andere läuft vor jedem Release (run_ci.mjs ohne --pr). Siehe docs/teststrategie.md
 // Ohne Internet und ohne Zugangsdaten, jedes Mal gleich:
 //   - static/ läuft über einen kleinen lokalen Webserver (wie GitHub Pages, mit Service Worker)
 //   - feste Uhr (Di 10.11.2026 12:00, Do 12.11. für «nächste Woche», Mo 16.11. für den Wochenwechsel) + fester Zufall
@@ -19,6 +22,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const staticDir = path.join(here, "..", "static");
 const SHOTS = process.argv.includes("--shots");
+const CORE = process.argv.includes("--core");
+const CORE_PHONES = /^(B-|D-)/; // Kernabläufe: verbunden (Bring!, Abgleich, Vorrat) und Erster Start
+let skipped = 0;
 const shotDir = path.join(here, "shots", "ui");
 mkdirSync(shotDir, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -135,6 +141,7 @@ const BASE = `http://127.0.0.1:${server.address().port}/`;
 let fails = 0;
 let shotNo = 0;
 async function step(P, name, fn) {
+  if (CORE && !CORE_PHONES.test(P.name)) { skipped++; return; }
   const t0 = Date.now();
   try {
     await fn();
@@ -1884,5 +1891,6 @@ await D.context.close();
 
 await browser.close();
 server.close();
+if (CORE) console.log(`\nNur Kernabläufe (--core): ${skipped} weitere Schritte laufen vor dem Release`);
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

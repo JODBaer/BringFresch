@@ -1,0 +1,59 @@
+# Auto-Release (Teststrategie, docs/teststrategie.md): nach jedem Merge auf main entscheidet tools/release_decide.mjs
+#   - nur kleine Änderungen (fix/docs/test/chore/ci …) -> ganze Release-Prüfung + WG-Server + WG-App (deploy-pages.yml),
+#     danach Tag v…+0.0.1 – ohne Freigabe
+#   - neue Funktion (feat) dabei -> nichts; Joshua prüft in der Test-App und gibt dort frei (Test-Server setzt v…+0.1.0)
+#   - nichts Neues -> nichts
+name: Auto-Release (kleine Fixes)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: "release-auto"
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      action: ${{ steps.d.outputs.action }}
+      tag: ${{ steps.d.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0   # Tags + Commits seit dem letzten Release
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+      - id: d
+        run: node tools/release_decide.mjs
+
+  release:
+    needs: decide
+    if: needs.decide.outputs.action == 'patch'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy-pages.yml
+    with:
+      version: ${{ needs.decide.outputs.tag }}
+    secrets: inherit
+
+  tag:
+    needs: [decide, release]
+    if: needs.decide.outputs.action == 'patch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # Tag erst nach erfolgreichem Release (rot = kein Tag, nichts bei der WG). Mit dem eingebauten Token gesetzt,
+      # darum startet deploy-pages.yml nicht ein zweites Mal.
+      - run: |
+          git tag "${{ needs.decide.outputs.tag }}" "${{ github.sha }}"
+          git push origin "${{ needs.decide.outputs.tag }}"
