@@ -223,6 +223,7 @@ async function phone({ name, os, scheme, now, preset = {}, context, url }) {
   const record = t => { if (!P.allow.some(re => re.test(t))) P.errors.push(t); };
   page.on("pageerror", e => record(`pageerror: ${e.message}`));
   page.on("console", m => { if (m.type() === "error") record(`console: ${m.text()}`); });
+  page.on("response", r => { if (r.status() >= 400 && process.env.DEBUG_HTTP) console.log(`   [${name}] ${r.status()} ${r.request().method()} ${r.url()}`); }); // DEBUG_HTTP=1: welche Anfrage schlug fehl?
   await page.setRequestInterception(true);
   page.on("request", req => handle(P, req));
   await page.goto(url || `${BASE}?os=${os}`, { waitUntil: "load" });
@@ -1121,6 +1122,8 @@ await step(A, "WG-PIN: falscher PIN zeigt Fehler, richtiger PIN verbindet", asyn
   await typeInto(A, "#syncPin", "0000");
   await tap(A, '#syncForm button[type="submit"]');
   await until(A, () => document.getElementById("syncStatus").textContent === "Falscher WG-PIN", "Fehler bei falschem PIN fehlt");
+  // die übrigen Anfragen mit dem falschen PIN (Plan, Vorrat, Einstellungen …) antworten auch 401 – abwarten, sonst zählen sie als Fehler
+  await A.page.waitForNetworkIdle({ idleTime: 400, timeout: 5000 }).catch(() => {});
   A.allow.pop();
   await typeInto(A, "#syncPin", PIN);
   await tap(A, '#syncForm button[type="submit"]');

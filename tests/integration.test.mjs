@@ -146,7 +146,7 @@ check(names.size === bringList.length && bringList.length > 0 && bringList.lengt
 check(bringList.some(i => / \+ /.test(i.specification)) || bringList.length === n, "zusammengefasste Mengen z.B. «2 dl + 100 g»");
 const catalog = A2.BRING_CATALOG || {};
 const known = bringList.filter(i => catalog[i.name]);
-check(known.length / bringList.length >= 0.8, `${known.length}/${bringList.length} Einträge sind Bring!-Katalogartikel (mit Bild): ${bringList.slice(0, 6).map(i => i.name + " [" + i.specification + "]").join(", ")}`);
+check(known.length / bringList.length >= 0.8, `${known.length}/${bringList.length} Einträge sind Bring!-Katalogartikel (mit Bild); ohne Bild: ${bringList.filter(i => !catalog[i.name]).map(i => i.name).join(", ")}`);
 check(bringList.every(i => i.specification && !/\d\.\d{3}/.test(i.specification)), "Mengen sauber formatiert");
 check(/✓ in Bring!/.test(A2.document.getElementById("ctaCount").textContent), `nach dem Füllen: Chip «✓ in Bring!» (${A2.document.getElementById("ctaCount").textContent}, ${bringList.length} Einträge)`);
 

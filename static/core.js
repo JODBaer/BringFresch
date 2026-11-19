@@ -104,7 +104,8 @@
     name = name.replace(/^(stängel|stängeli|liter|zweig|zweige|zweiglein|prise|bund)\s+/i, "").trim();
     name = SYNONYMS[name.toLowerCase()] || name;
     name = name.charAt(0).toUpperCase() + name.slice(1);
-    return { name, note: notes.join(", "), skip: TAP_WATER.test(name) };
+    // «Beiseite gestellte Marinade», «zurückbehaltener Sud»: entsteht beim Kochen, kommt nie auf die Liste
+    return { name, note: notes.join(", "), skip: TAP_WATER.test(name) || /^(beiseite gestellte|zurückbehaltene[rn]?|aufgefangene[rn]?)\s/i.test(name) };
   }
 
   // Wort-Abgleich (Grundvorrat): ganze Wörter statt Teilwörter. «Mehl» passt auf «Weissmehl»-Stichwort nur als Wort,
@@ -156,6 +157,7 @@
     "speckwürfeli": "Speck", "speckwürfelchen": "Speck", "apfelwein": "Cidre", "cornflakes": "Corn Flakes", "fleur de sel": "Salz",
     "quinoa": "Couscous", "goldhirse": "Couscous", "pleurotus": "Pilze", "kräuterseitlinge": "Pilze", "estragonzweiglein": "Kräuter",
     "cervelats": "Cervelat", "luganighe": "Wurst", "mortadella": "Aufschnitt", "schinkentranchen": "Schinken",
+    "cornichons": "Essiggurken", "kopfsalatblätter": "Salat", "kopfsalat": "Salat", "lattich": "Salat", "sojasauce": "Soyasauce",
   };
   const BRING_PREFIX = [
     [/^kalbs?/, "Kalbfleisch"], [/^schweins?/, "Schweinefleisch"], [/^rinds?/, "Rindfleisch"], [/^lamm/, "Lamm"],
