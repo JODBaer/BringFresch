@@ -161,7 +161,7 @@
       ? `<span class="${cls}${imgState(r.source_url)}" data-img="${esc(r.source_url)}" data-emoji="${emoji}" aria-hidden="true"${imgCache.get(r.source_url) ? ` style="background-image:url(${imgCache.get(r.source_url)})"` : ""}></span>`
       : `<span class="${cls} none" data-emoji="${emoji}" aria-hidden="true"></span>`;
   }
-  // Bilder in einem Bereich erst laden, wenn sie sichtbar werden (höchstens 3 gleichzeitig). root = scrollender Bereich.
+  // Bilder in einem Bereich erst laden, wenn sie sichtbar werden (höchstens 6 gleichzeitig – Issue #9: mit 3 dauerte die Wochenwahl lange). root = scrollender Bereich.
   const watchers = new Map();
   function watchImages(container, root, stop = false) {
     if (!container) return;
@@ -177,7 +177,7 @@
     const queue = [];
     let running = 0;
     const pump = () => {
-      while (running < 3 && queue.length) {
+      while (running < 6 && queue.length) {
         const u = queue.shift();
         if (imgCache.has(u)) { show(u); continue; }
         running++;
@@ -210,7 +210,7 @@
         show(u);
       }
     };
-    await Promise.all([worker(), worker(), worker()]); // höchstens 3 gleichzeitig
+    await Promise.all(Array.from({ length: 6 }, worker)); // höchstens 6 gleichzeitig (Issue #9)
   }
 
   let voteOpen = null; // umgedrehte Memory-Karte (Gericht-ID)
