@@ -83,7 +83,8 @@ class RecipeImporter {
   }
 
   // shared: für alle WGs sichtbar (Standard). Nur «false» wird gespeichert (fehlt = geteilt).
-  createCustomRecipe({ title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "", shared = true }) {
+  // nutrition: Nährwerte der Rezeptseite pro Portion (vom WG-Server beim Link-Import), sonst schätzt die App aus den Zutaten
+  createCustomRecipe({ title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "", shared = true, nutrition }) {
     const cleanUrl = (url || "").trim();
     const recipe = {
       id: "custom-" + Date.now(),
@@ -99,17 +100,18 @@ class RecipeImporter {
     };
     if (shared === false) recipe.shared = false;
     if (cleanUrl) recipe.source_url = cleanUrl;
+    if (nutrition && cleanUrl) recipe.nutrition = nutrition;
     // gleicher Link (auch als Variante: www, Schrägstrich, utm_…) oder – ohne Link – gleicher Titel: bestehendes Rezept aktualisieren statt doppelt
     const C = window.BF_CORE;
     const same = C ? this.customRecipes.find(r => (cleanUrl && C.sameLink(r.source_url, cleanUrl)) || (!cleanUrl && !r.source_url && C.dishKey(r) && C.dishKey(r) === C.dishKey(recipe)))
       : cleanUrl && this.customRecipes.find(r => r.source_url === cleanUrl);
-    if (same) return this.updateCustomRecipe(same.id, { title, url: cleanUrl, diet, servings, ingredientsText, instructions, shared });
+    if (same) return this.updateCustomRecipe(same.id, { title, url: cleanUrl, diet, servings, ingredientsText, instructions, shared, nutrition });
     this.customRecipes.push(recipe);
     this.saveCustomRecipes();
     return recipe;
   }
 
-  updateCustomRecipe(id, { title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "", shared = true }) {
+  updateCustomRecipe(id, { title, url = "", diet = "vegi", servings = 4, ingredientsText = "", instructions = "", shared = true, nutrition }) {
     const r = this.customRecipes.find(x => x.id === id);
     if (!r) return null;
     const cleanUrl = (url || "").trim();
@@ -120,6 +122,9 @@ class RecipeImporter {
       ingredients: this.parseIngredients(ingredientsText),
       instructions: (instructions || "").trim(),
     });
+    // Nährwerte der Rezeptseite: neu geholte übernehmen; anderer Link ohne neue Angaben = alte Angaben passen nicht mehr
+    if (nutrition) r.nutrition = nutrition;
+    else if (nutrition === null || (r.source_url || "") !== cleanUrl) delete r.nutrition;
     if (cleanUrl) r.source_url = cleanUrl; else delete r.source_url;
     if (shared === false) r.shared = false; else delete r.shared;
     this.saveCustomRecipes();

@@ -230,7 +230,8 @@
       // Memory-Karte: Umdrehen = wählen. Titel, Beschreibung und 🌐-Link stehen vorne wie hinten an derselben Stelle;
       // hinten oben Wunschtag (oder «egal») und «Doch nicht». Antippen irgendwo dreht zurück (bleibt gewählt).
       const href = recipeHref(r);
-      const meta = `${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.`;
+      const nt = app.nutritionOf(r); // achte ich auf Kalorien/Protein? Dann steht es auf der Karte («proteinreich», «leicht» …)
+      const meta = `${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${nt && nt.tag ? ` · <span class="ntag${/wenig|reichhaltig/.test(nt.tag) ? " warn" : ""}">${nt.tag}</span>` : ""}`;
       const band = `<span class="vband"><span class="vbt">${esc(r.title)}</span><span class="vbm">${meta}</span></span>${href
         ? `<a class="vgo" href="${esc(href)}" target="_blank" rel="noopener" aria-label="${esc(recipeLinkLabel(r))}" title="${esc(recipeLinkLabel(r))}">🌐</a>` : ""}`;
       return `

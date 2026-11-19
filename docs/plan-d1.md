@@ -32,6 +32,13 @@ Schema: [`worker/schema.sql`](../worker/schema.sql). Kurz:
 - **`bot_item`**: was der Bot auf die Bring!-Liste gesetzt hat (heute `bot:<liste>`).
 - **`recipe_site`**: Rezept-Webseiten zum Stöbern pro WG.
 
+### Nährwerte (19.11.2026, heute schon in KV/JSON gebaut)
+
+- `recipe.kcal`, `protein_g`, `fat_g`, `carbs_g`: **nur** Angaben der Rezeptseite (schema.org, pro Portion). Heute als `nutrition` im Rezept-JSON (Katalog `recipes_imported.js`, eigene/geteilte Rezepte in `/settings` bzw. `shared:<wg>`).
+- Geschätzte Werte werden nie gespeichert – `CORE.nutritionFor` rechnet sie aus den Zutaten (gleiche Datei in App und Worker). Abgeleitete Daten in der Datenbank veralten, sobald jemand eine Zutat ändert.
+- `member.goal` (`kcal` | `protein`): worauf jemand achtet; heute Feld im Mitbewohner-Objekt in `/settings`.
+- Umzug: 1:1 aus dem JSON übernehmbar, keine Sonderlogik nötig.
+
 ## WGs trennen
 
 - **Wer gehört zu welcher WG?** Die App kennt `wg` (Kurzname) und PIN. Der Header `X-WG-PIN` bleibt, dazu kommt `X-WG` (Kurzname).

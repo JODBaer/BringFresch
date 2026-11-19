@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS member (
   name    TEXT NOT NULL,
   short   TEXT,                                    -- Kürzel (max. 3 Zeichen oder 1 Emoji), leer = automatisch
   diet    TEXT NOT NULL CHECK (diet IN ('fleisch', 'vegi', 'vegan')),
+  goal    TEXT CHECK (goal IN ('kcal', 'protein')),  -- worauf die Person achtet (NULL = nichts); heute member.goal in /settings
   pos     INTEGER NOT NULL DEFAULT 0,              -- Reihenfolge im Plan
   PRIMARY KEY (wg_id, id)
 );
@@ -45,6 +46,12 @@ CREATE TABLE IF NOT EXISTS recipe (
   instructions TEXT,                               -- nur bei selbst geschriebenen Rezepten
   months       TEXT,                               -- JSON [1..12], Saison
   flags        TEXT,                               -- JSON {quick, vegi_swap, no_addons, is_leftovers, is_salad}
+  -- Nährwerte pro Portion NUR, wenn die Rezeptseite sie angibt (schema.org nutrition). Geschätzte Werte werden nie
+  -- gespeichert: CORE.nutritionFor rechnet sie bei Bedarf aus den Zutaten (folgen so jeder Änderung, keine Altlasten).
+  kcal         INTEGER CHECK (kcal BETWEEN 1 AND 3000),
+  protein_g    INTEGER CHECK (protein_g BETWEEN 0 AND 3000),
+  fat_g        INTEGER CHECK (fat_g BETWEEN 0 AND 3000),
+  carbs_g      INTEGER CHECK (carbs_g BETWEEN 0 AND 3000),
   copied_from  TEXT REFERENCES recipe(id) ON DELETE SET NULL,  -- «Anpassen» = eigene Kopie
   created      INTEGER NOT NULL,
   updated      INTEGER NOT NULL

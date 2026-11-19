@@ -15,7 +15,7 @@
 //   GET  /plan                        -> { week, plan, members, updated }
 //   PUT  /plan {week, plan, members}
 //   GET/PUT /plan/:week               -> Plan einer bestimmten Woche (ab Donnerstag: nächste Woche planen)
-//   GET  /recipe?url=…                -> { title, servings, ingredients[], minutes }  (Rezept-Link importieren)
+//   GET  /recipe?url=…                -> { title, servings, ingredients[], minutes, nutrition }  (Rezept-Link importieren)
 //   GET/PUT /vorrat                   -> gemeinsamer Grundvorrat der WG
 //   GET/PUT /settings                 -> WG-Einstellungen (Mitbewohner, Znacht-Zeit, Rezept-Webseiten, eigene Rezepte)
 //   GET  /popular                     -> { weeks: { "2026-W46": { rezeptId: Stimmen } } } Beliebtheit pro WG

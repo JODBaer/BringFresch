@@ -4,6 +4,9 @@
 // WGs mit geteilten Rezepten unter shared:index. Jede WG schreibt nur ihren eigenen Eintrag (kein Überschreiben fremder).
 // Nur Fakten: Titel, Ernährung, Personen, Zeit, Zutaten, Saison, Link, eigene Zubereitung.
 
+import "../../static/core.js";
+const { cleanNutrition } = globalThis.BF_CORE;
+
 const MAX_RECIPES = 300;
 
 function clean(r) {
@@ -22,6 +25,8 @@ function clean(r) {
   if (!out.season_months.length) out.season_months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   if (typeof r.source_url === "string" && /^https:\/\//.test(r.source_url)) out.source_url = r.source_url.slice(0, 500);
   if (typeof r.instructions === "string" && r.instructions.trim()) out.instructions = r.instructions.slice(0, 4000);
+  const n = cleanNutrition(r.nutrition); // Nährwerte der Rezeptseite (pro Portion), geschätzte werden nie gespeichert
+  if (n) out.nutrition = n;
   return out;
 }
 

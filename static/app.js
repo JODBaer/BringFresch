@@ -362,7 +362,28 @@
     save(KEYS.plan, plan);
   }
 
-  Object.assign(app, { emptyDay, DATA, CORE, isoWeek, weekKey, plusWeek, portionsFor, formatAmount, formatCookAmount, cleanIngredient, hasWord,
+  // Nährwerte als Randnotiz (CORE.nutritionFor): für «Ich bin» gerechnet (eigene Ernährung + Extra-Fleisch/-Käse),
+  // ohne «Ich bin» nur die Rezeptportion. me.goal = worauf diese Person achtet («kcal», «protein», sonst nichts).
+  function meMember() {
+    const id = load(ME_KEY, null);
+    return state.members.find(m => m.id === id) || null;
+  }
+  function nutritionOf(r) {
+    const me = meMember();
+    const n = CORE.nutritionFor(r, me ? me.diet : undefined);
+    if (!n) return null;
+    const goal = (me && me.goal) || "";
+    return { ...n, goal, tag: CORE.nutritionTag(n, goal), mine: !!me };
+  }
+  // «≈ 640 kcal · 32 g Protein · proteinreich» – Teil, auf den ich achte, fett
+  function nutritionHTML(r) {
+    const n = nutritionOf(r);
+    if (!n) return "";
+    const k = `${n.src === "seite" ? "" : "≈ "}${n.kcal} kcal`, p = `${n.protein} g Protein`;
+    return `${n.goal === "kcal" ? `<b>${k}</b>` : k} · ${n.goal === "protein" ? `<b>${p}</b>` : p}${n.tag ? ` · <span class="ntag${/wenig|reichhaltig/.test(n.tag) ? " warn" : ""}">${n.tag}</span>` : ""}`;
+  }
+
+  Object.assign(app, { meMember, nutritionOf, nutritionHTML, emptyDay, DATA, CORE, isoWeek, weekKey, plusWeek, portionsFor, formatAmount, formatCookAmount, cleanIngredient, hasWord,
     bringItemId, bringPayload, importer, DAYS, MONTHS, DEFAULT_SERVINGS, DEFAULT_MEMBERS, APP_VERSION, DONATE_URL,
     REPO_URL, TEST_URL, LIVE_URL, DEFAULT_SYNC_URL, STORE, load, save, remove, baseKey, SYNC_KEY, PLAN_UPDATED_KEY,
     VORRAT_UPDATED_KEY, SETTINGS_UPDATED_KEY, PLAN_WEEK_KEY, DINNER_KEY, NEXT_KEY, SITES_KEY, VOTE_KEY, ME_KEY,

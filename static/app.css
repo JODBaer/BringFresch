@@ -78,7 +78,7 @@ button.item { width: 100%; background: none; border-left: 0; border-right: 0; bo
 .news p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
 
 /* WG */
-.member { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+.member { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
 .member:first-child { border-top: 0; }
 .member b { font-size: 14.5px; }
 select, input[type="text"], input[type="url"], input[type="search"], input[type="number"], textarea {
@@ -485,6 +485,17 @@ html.dark .av.off { background: rgba(255,255,255,.1) !important; color: rgba(255
 .ing li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ing li b { font-weight: 750; color: var(--primary); }
 .ing .none { grid-column: 1 / -1; color: var(--fg2); }
+/* Nährwerte als Randnotiz (Plan, Wochenwahl, Katalog): leise, der Teil, auf den ich achte, fett */
+.nutri { margin: 6px 0 0; font-size: 12px; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nutri b { color: var(--fg); font-weight: 750; }
+.nutri .nwho { opacity: .7; }
+.ntag { color: var(--primary); font-weight: 700; }
+.ntag.warn { color: var(--fg); font-weight: 600; font-style: italic; }
+/* knappste Dichte (kleines Handy): keine eigene Zeile, sondern kurz in der Kopfzeile des offenen Tags («· 640 kcal · 32 g P») */
+.mnut { display: none; } .mnut .b { font-weight: 750; color: var(--fg); }
+html.d3 .nutri { display: none; }
+html.d3 .prow.open .mnut { display: inline; }
+.vcard .vbm .ntag, .vcard .vm .ntag { color: inherit; font-weight: 800; font-style: normal; }
 .links { display: flex; gap: 6px; margin-top: 10px; }
 .links a, .links button { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px; font: 700 14px var(--font); text-decoration: none; cursor: pointer; border: 0; transition: border-radius .3s var(--spring); }
 .glass .links a { background: var(--primary); color: var(--on-primary); border-radius: 999px; }
@@ -1016,4 +1027,5 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .rthumb.none::after, .othumb.none::after { content: attr(data-emoji); font-size: 26px; line-height: 1; }
 .othumb.none::after { font-size: 20px; }
 .recipe-head .recipe-txt { flex: 1 1 auto; min-width: 0; }
+.recipe-txt small.nutri { display: block; margin-top: 2px; }
 .opt:has(.othumb) { grid-template-columns: auto 1fr auto; }

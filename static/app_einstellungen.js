@@ -24,6 +24,9 @@
         <select data-diet="${esc(m.id)}" aria-label="Ernährung von ${esc(m.name)}">
           ${Object.keys(DIET_LABEL).map(d => `<option value="${d}"${m.diet === d ? " selected" : ""}>${DIET_LABEL[d]}</option>`).join("")}
         </select>
+        <select data-goal="${esc(m.id)}" aria-label="${esc(m.name)} achtet auf">
+          ${Object.entries(app.CORE.GOAL_SHORT).map(([g, l]) => `<option value="${g}"${(m.goal || "") === g ? " selected" : ""}>${l}</option>`).join("")}
+        </select>
         <button class="icon-btn" type="button" data-remove="${esc(m.id)}" aria-label="${esc(m.name)} entfernen">✕</button>
       </div>`).join("");
   }
@@ -55,9 +58,13 @@
   // ---------------------------------------------------------------------------
   $("members").addEventListener("change", e => {
     const sel = e.target.closest("[data-diet]");
-    if (!sel) return;
-    const m = state.members.find(x => x.id === sel.dataset.diet);
-    m.diet = sel.value;
+    const goal = e.target.closest("[data-goal]"); // Kalorien / Proteine: wie die Ernährung gemeinsam für die WG
+    if (!sel && !goal) return;
+    const m = state.members.find(x => x.id === (sel ? sel.dataset.diet : goal.dataset.goal));
+    if (!m) return;
+    if (sel) m.diet = sel.value;
+    else if (goal.value) m.goal = goal.value;
+    else delete m.goal;
     saveMembers();
     app.settingsChanged();
     refresh();

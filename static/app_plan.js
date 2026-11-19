@@ -154,6 +154,22 @@
     });
   }
 
+  // Randnotiz unter den Zutaten: Kalorien und Protein für mich (bzw. pro Portion), Schätzung aus den Zutaten
+  function nutriLine(day) {
+    const html = app.nutritionHTML(day);
+    if (!html) return "";
+    const n = app.nutritionOf(day);
+    const who = n.mine ? "für dich" : "pro Portion";
+    const how = n.src === "seite" ? "laut Rezeptseite" : "geschätzt aus den Zutaten";
+    return `<p class="nutri" title="${who}, ${how}${n.mine ? " – mit Extra-Fleisch/-Käse und Salat" : ""}">${html} <span class="nwho">${who}</span></p>`;
+  }
+
+  // dasselbe kurz für die Kopfzeile (nur bei knapper Dichte d3 sichtbar, siehe app.css .mnut)
+  function mnut(day) {
+    const n = app.nutritionOf(day);
+    return n ? `<span class="mnut"> · <span class="${n.goal === "kcal" ? "b" : ""}">${n.kcal} kcal</span> · <span class="${n.goal === "protein" ? "b" : ""}">${n.protein} g P</span></span>` : "";
+  }
+
   const totalLabel = (day, idx) =>
     `${DAYS[idx]}: für ${portionsFor(day)} kochen (${day.eaters.length + (day.extra_guests || 0)} Personen + ${day.leftover_buffer || 0} Reste). Antippen: plus eins`;
 
@@ -168,7 +184,7 @@
         <button type="button" class="pday" aria-expanded="${idx === openIdx}" aria-label="${DAYS[idx]}: ganzes Menü zeigen">${DAYS[idx].slice(0, 2)}</button>
         <div class="dish">
           <button type="button" class="t" data-pick="${idx}" aria-label="${DAYS[idx]}: ${esc(day.title)} – wechseln">${esc(day.title)}</button>
-          <span class="meta">${esc(dayMeta(day))}${day.time ? ` · <span class="by">🕖 ${esc(day.time)}${day.time_by ? ` (${esc(day.time_by)})` : ""}</span>` : ""}</span>
+          <span class="meta">${esc(dayMeta(day))}${mnut(day)}${day.time ? ` · <span class="by">🕖 ${esc(day.time)}${day.time_by ? ` (${esc(day.time_by)})` : ""}</span>` : ""}</span>
         </div>
         <div class="who${many ? " many" : ""}"${many ? ` style="--cols:${cols}"` : ""}>${state.members.map((m, k) => {
           const on = day.eaters.includes(m.id);
@@ -181,6 +197,7 @@
       </div>
       <div class="more"><div><div class="inner">
         <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
+        ${nutriLine(day)}
         <div class="links">${recipeHref(day) ? `<a href="${esc(recipeHref(day))}" target="_blank" rel="noopener">${day.source_url ? "Zum Rezept ↗" : esc(recipeLinkLabel(day))}</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button>${day.empty ? "" : `<input class="tm" type="time" data-time="${idx}" value="${esc(day.time || load(DINNER_KEY, "18:30"))}" aria-label="Znacht-Zeit am ${DAYS[idx]} (gilt für alle)">`}</div>
       </div></div></div>
     </div>`;

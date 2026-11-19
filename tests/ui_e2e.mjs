@@ -406,7 +406,8 @@ await step(A, "Pop-up «Später»: fliegt weg, roter Punkt bleibt", async () => 
   await shot(A, "02-plan");
 });
 
-await step(A, "Plan: jeden Tag auf- und zuklappen, alle 7 Tage bleiben sichtbar", async () => {
+let nutriDays = 0;
+await step(A, "Plan: jeden Tag auf- und zuklappen, alle 7 Tage bleiben sichtbar, Nährwerte als Randnotiz", async () => {
   for (let i = 0; i < 7; i++) {
     await tap(A, `.prow[data-i="${i}"] .pday`);
     await until(A, i => document.querySelector(`.prow[data-i="${i}"]`).classList.contains("open") && document.querySelectorAll(".prow.open").length === 1, `Tag ${i} geht nicht auf`, i);
@@ -415,13 +416,17 @@ await step(A, "Plan: jeden Tag auf- und zuklappen, alle 7 Tage bleiben sichtbar"
       const nav = document.querySelector(".bnav").getBoundingClientRect().top;
       const last = document.querySelector('.prow[data-i="6"]').getBoundingClientRect().bottom;
       const ing = document.querySelector(`.prow[data-i="${i}"] .ing`);
-      return { fits: last <= nav + 0.5, ing: ing.getBoundingClientRect().height > 0 && ing.children.length > 0 };
+      const nutri = document.querySelector(`.prow[data-i="${i}"] .nutri`), mnut = document.querySelector(`.prow[data-i="${i}"] .mnut`);
+      const shown = el => el && el.getBoundingClientRect().height > 0 && /\d+ kcal · \d+ g P/.test(el.textContent); // eigene Zeile, bei d3 kurz in der Kopfzeile
+      return { fits: last <= nav + 0.5, ing: ing.getBoundingClientRect().height > 0 && ing.children.length > 0, nutri: !nutri || shown(nutri) || shown(mnut), hasNutri: !!nutri };
     }, i);
-    expect(r.fits && r.ing, `Tag ${i}: Zutaten sichtbar=${r.ing}, alle Tage sichtbar=${r.fits}`);
+    expect(r.fits && r.ing && r.nutri, `Tag ${i}: Zutaten sichtbar=${r.ing}, Nährwerte sichtbar=${r.nutri}, alle Tage sichtbar=${r.fits}`);
+    nutriDays += r.hasNutri ? 1 : 0;
     if (i === 2) await shot(A, "03-tag-offen");
     await tap(A, `.prow[data-i="${i}"] .pday`);
     await until(A, i => !document.querySelector(`.prow[data-i="${i}"]`).classList.contains("open"), `Tag ${i} geht nicht zu`, i);
   }
+  expect(nutriDays >= 5, `Nährwerte nur bei ${nutriDays} von 7 Menüs`);
 });
 
 await step(A, "Plan: Esser pro Person an- und abwählen (Portionen zählen mit, niemand = 0)", async () => {
@@ -511,12 +516,14 @@ await step(A, "Rezept-Katalog: über das Blatt öffnen, Filter Alle/Vegi/Fleisch
   expect((await text(A, "#catalogSubtitle")) === "für Freitag · 4 Esser", `Untertitel: ${await text(A, "#catalogSubtitle")}`);
   allCount = await count(A, "#catalogList .recipe");
   const counts = {};
-  for (const f of ["vegi", "fleisch", "season", "custom", "all"]) {
+  for (const f of ["vegi", "fleisch", "season", "custom", "protein", "leicht", "all"]) {
     await tap(A, `#catalogFilters [data-filter="${f}"]`);
     await until(A, f => document.querySelector(`#catalogFilters [data-filter="${f}"]`).getAttribute("aria-pressed") === "true", `Filter ${f} nicht aktiv`, f);
     counts[f] = await count(A, "#catalogList .recipe");
   }
   expect(counts.vegi > 0 && counts.vegi < allCount && counts.fleisch > 0 && counts.fleisch < allCount && counts.season > 0 && counts.season <= allCount && counts.all === allCount, `Filter-Zahlen ${JSON.stringify(counts)} / ${allCount}`);
+  expect(counts.protein > 0 && counts.protein < allCount && counts.leicht > 0 && counts.leicht < allCount, `Filter Proteinreich/Leicht: ${counts.protein} / ${counts.leicht} von ${allCount}`);
+  expect(await A.page.$$eval("#catalogList .recipe .nutri", n => n.length > 0 && n.every(x => /kcal · \d+ g Protein/.test(x.textContent))), "Katalog: kcal und Protein pro Rezept fehlen");
   await tap(A, '#catalogFilters [data-filter="custom"]');
   await until(A, () => [...document.querySelectorAll("#catalogList .recipe b")].map(b => b.textContent).join() === "Omas Testsuppe", "Filter Eigene zeigt nicht nur das eigene Menü");
   await tap(A, '#catalogFilters [data-filter="all"]');
@@ -565,7 +572,8 @@ await step(A, "Eigenes Rezept von Hand: Titel aus Link, Formular, Speichern & ei
   await dialogNoHScroll(A, "recipeDialog");
   await tap(A, '#recipeForm button[type="submit"]');
   await until(A, () => !document.getElementById("recipeDialog").open && document.querySelector('.prow[data-i="5"] .t').textContent === "Testgratin", "eigenes Rezept nicht im Plan");
-  expect((await text(A, '.prow[data-i="5"] .meta')) === "Fleisch · 30 Min.", `Meta: ${await text(A, '.prow[data-i="5"] .meta')}`);
+  const meta5 = await A.page.$eval('.prow[data-i="5"] .meta', m => { const c = m.cloneNode(true); c.querySelectorAll(".mnut").forEach(x => x.remove()); return c.textContent.trim(); }); // .mnut = Nährwerte, nur bei d3 sichtbar
+  expect(meta5 === "Fleisch · 30 Min.", `Meta: ${meta5}`);
   await tap(A, '.prow[data-i="5"] .pday');
   // 6 Portionen (4 + 2 Reste) aus einem Rezept für 3: 300 g -> 600 g
   await until(A, () => [...document.querySelectorAll('.prow[data-i="5"] .ing li')].map(l => l.textContent).join("|") === "600 g Lauch|4 dl Halbrahm", "Zutaten nicht auf 6 Portionen umgerechnet");
@@ -1009,6 +1017,9 @@ await step(A, "Mitbewohner: hinzufügen (Vegi), Ernährung ändern (Vegan), entf
   expect(await A.page.$eval('.prow[data-i="0"] .who', w => w.classList.contains("many")), "5 Personen: kompakte Kreise fehlen");
   await choose(A, "#members .member:last-child select", "vegan");
   await until(A, () => (JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.name === "Mia") || {}).diet === "vegan", "Ernährung nicht gespeichert");
+  await choose(A, "#members .member:last-child [data-goal]", "protein");
+  await until(A, () => (JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.name === "Mia") || {}).goal === "protein", "Ziel «Protein» nicht gespeichert");
+  expect(await A.page.$$eval("#members .member", rows => rows.every(r => r.scrollWidth <= r.clientWidth + 1)), "Mitbewohner-Zeile mit Ziel ist zu breit");
   await tap(A, "#members .member:last-child [data-remove]");
   await until(A, () => document.querySelector("#members .member:last-child [data-remove]").textContent === "Entfernen?", "Nachfrage fehlt");
   await tap(A, "#members .member:last-child [data-remove]");

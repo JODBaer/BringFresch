@@ -297,5 +297,26 @@ check(C.formatAmount(0.5, "Stk") === "1 Stk" && C.formatAmount(1.5, "Stk") === "
   check(C.searchFarms(globalThis.BF_HOF.items, "", {}).length === 0, "leere Suche: nichts");
 }
 
+// Nährwerte (Joshua 19.11.): Schätzung aus den Zutaten, pro Person wie der Einkauf (Extra-Fleisch / Grillkäse / Salat)
+{
+  const N = n => C.nutrientOf(n) && C.nutrientOf(n).k[0];
+  check(N("Weissmehl") === "*mehl" && N("Rapsöl") === "*öl" && N("Pouletbrüstli") === "^pouletbrust" && N("Kokosmilch") === "kokosmilch", "Zutat → Nährwert: Grundwort hinten (Weissmehl, Rapsöl), Kokosmilch ist keine Milch");
+  check(N("Raclette-Kartoffeln") === "*kartoffeln" && N("Getrocknete Tomaten in Öl") !== "*öl" && N("Alkoholfreier Apfelwein") !== "ei", "Bindestrich = Grundwort hinten, «in Öl» ist nicht die Zutat, «…freier» enthält kein Ei");
+  check(C.nutrientOf("Vegi-Hack").meat === 0 && C.nutrientOf("Rindshackfleisch").meat === 1, "Vegi-Hack ist kein Fleisch");
+  const pasta = { diet: "vegi", servings: 4, ingredients: [{ name: "Spaghetti", amount: "400", unit: "g" }, { name: "Pelati", amount: "1", unit: "Dose" }, { name: "Olivenöl", amount: "2", unit: "EL" }, { name: "Parmesan", amount: "80", unit: "g" }, { name: "Salz", amount: "1", unit: "" }] };
+  const base = C.nutritionFor(pasta);
+  check(base && base.src === "schätzung" && base.kcal >= 450 && base.kcal <= 550 && base.protein >= 16 && base.protein <= 20, `Pasta pro Portion ≈ 500 kcal, 18 g Protein (${base && base.kcal} kcal, ${base && base.protein} g)`);
+  const meat = C.nutritionFor(pasta, "fleisch"), vegi = C.nutritionFor(pasta, "vegi");
+  check(meat.protein - base.protein === 31 && vegi.protein - base.protein === 23, `Fleisch-Esser +150 g Fleisch, Vegi +100 g Grillkäse, beide +50 g Salat (+${meat.protein - base.protein} / +${vegi.protein - base.protein} g Protein)`);
+  const gesch = { diet: "fleisch", servings: 4, vegi_swap: { name: "Tofu", amount: 120, unit: "g" }, ingredients: [{ name: "Kalbsgeschnetzeltes", amount: "600", unit: "g" }, { name: "Rösti (Beutel)", amount: "2", unit: "Pck" }] };
+  const gv = C.nutritionFor(gesch, "vegi"), gm = C.nutritionFor(gesch, "fleisch");
+  check(gm.protein > gv.protein && gv.protein < 30, `Vegi am Fleisch-Tisch isst das Fleisch nicht, dafür den Vegi-Ersatz (Fleisch ${gm.protein} g, Vegi ${gv.protein} g Protein)`);
+  check(C.nutritionFor({ ...pasta, nutrition: { calories: "612 kcal", proteinContent: "24 g" } }).kcal === 610 && C.nutritionFor({ ...pasta, nutrition: { calories: "612 kcal" } }).src === "seite", "Angaben der Rezeptseite gehen vor der Schätzung");
+  check(C.nutritionFor({ is_leftovers: true, ingredients: [] }) === null && C.nutritionFor({ servings: 4, ingredients: [{ name: "Zauberpulver", amount: "500", unit: "g" }, { name: "Salz", amount: "1", unit: "TL" }] }) === null, "Resteessen und Unbekanntes: keine Zahl statt Unsinn");
+  check(C.nutritionFor({ servings: 4, ingredients: [{ name: "Bundrüebli", amount: "500", unit: "Stk" }, { name: "Butter", amount: "20", unit: "g" }] }).kcal < 300, "«500 Stk» ist ein Tippfehler für Gramm");
+  check(C.cleanNutrition({ calories: "2000 kJ" }).kcal === 478 && C.cleanNutrition({ calories: "viel" }) === null && C.cleanNutrition({ calories: "450", proteinContent: "99999" }).protein === null, "Seitenangaben: kJ umgerechnet, Unsinn weg");
+  check(C.nutritionTag({ kcal: 900, protein: 45 }, "protein") === "proteinreich" && C.nutritionTag({ kcal: 900, protein: 12 }, "protein") === "wenig Protein" && C.nutritionTag({ kcal: 560, protein: 12 }, "kcal") === "leicht" && C.nutritionTag({ kcal: 560, protein: 45 }, "") === "", "Ziel: proteinreich / wenig Protein / leicht – ohne Ziel kein Vermerk");
+}
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

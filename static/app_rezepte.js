@@ -142,6 +142,9 @@
       if (f === "season" && !inSeason(r)) return false;
       if (f === "custom" && !r.is_custom && !String(r.id).startsWith("custom-")) return false;
       if (f === "shared" && !r.shared_from) return false;
+      // für mich gerechnet (Ernährung von «Ich bin»), auch wenn ich sonst nicht darauf achte
+      if (f === "protein" && CORE.nutritionTag(CORE.nutritionFor(r, (app.meMember() || {}).diet), "protein") !== "proteinreich") return false;
+      if (f === "leicht" && CORE.nutritionTag(CORE.nutritionFor(r, (app.meMember() || {}).diet), "kcal") !== "leicht") return false;
       return CORE.recipeMatches(r, q); // gleiche Suchregel wie Menü-Blatt und «Alle Rezepte»
     });
     // nach Beliebtheit (Stimmen eurer Wochenwahlen), dann Saison, dann Titel
@@ -152,6 +155,7 @@
       ? `<div class="empty">Keine Rezepte gefunden.</div>`
       : list.map(r => {
         const custom = r.is_custom || String(r.id).startsWith("custom-");
+        const nh = app.nutritionHTML(r);
         return `
         <div class="card recipe">
           <div class="recipe-head">
@@ -159,6 +163,7 @@
             <div class="recipe-txt">
               <b>${esc(r.title)}</b>${pop[r.id] ? ` <span class="likes" title="Stimmen eurer Wochenwahlen">♥ ${pop[r.id]}</span>` : ""}
               <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}${r.shared_from ? " · geteilt" : custom && r.shared === false ? " · nur unsere WG" : ""}</small>
+              ${nh ? `<small class="nutri">${nh}</small>` : ""}
             </div>
             ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : `🔎 Auf ${esc(searchName())} suchen`}</a>` : ""}
           </div>
@@ -291,6 +296,7 @@
   // Link: erster https-Link aus beliebigem Text («Schau mal: https://… 😋» aus dem Teilen-Menü)
   const linkIn = text => { const m = String(text || "").match(/https?:\/\/[^\s<>"']+/); return m ? m[0].replace(/[),.!?]+$/, "") : ""; };
   let lastFetched = "";
+  let linkNutrition = null; // { url, n } – Nährwerte, die der WG-Server von der Rezeptseite geholt hat
   async function fetchRecipeLink(force) {
     const link = linkIn($("recipeUrl").value);
     if (!link) { if (force) toast("Kein Link gefunden – bitte https://… einfügen"); return; }
@@ -316,6 +322,7 @@
       instructions: $("recipeInstructions").value,
       shared: $("recipeShared").checked
     };
+    if (linkNutrition && fields.url && CORE.sameLink(linkNutrition.url, fields.url) && linkNutrition.n) fields.nutrition = linkNutrition.n;
     // Gleicher Link schon im Katalog (Swissmilk, Fooby … oder geteilt)? Dann das bestehende Rezept nehmen, keine Kopie (Joshua 18.11.)
     const known = !editingId && !copying && app.recipeByLink(fields.url);
     if (known && !known.is_custom && !String(known.id).startsWith("custom-")) {
@@ -425,10 +432,11 @@
       $("recipeServings").value = r.servings || DEFAULT_SERVINGS;
       $("recipeServingsHint").textContent = `Laut Webseite für ${r.servings || DEFAULT_SERVINGS} Personen – anpassen, falls es nicht stimmt.`;
       if (!$("recipeIngredients").value.trim()) $("recipeIngredients").value = (r.ingredients || []).join("\n");
+      linkNutrition = { url: link, n: CORE.cleanNutrition(r.nutrition) }; // Nährwerte der Seite, beim Speichern dabei
       // Fleisch oder Fisch im Titel/den Zutaten -> «Fleisch» vorwählen (sonst steht z.B. «Wirzwickel mit Hackfleisch» als Vegi da)
       const meat = guessMeat(`${$("recipeTitle").value}\n${$("recipeIngredients").value}`);
       if (meat && $("recipeDiet").value !== "fleisch") $("recipeDiet").value = "fleisch";
-      toast(`${(r.ingredients || []).length} Zutaten übernommen${meat ? " · als Fleisch erkannt" : ""}`);
+      toast(`${(r.ingredients || []).length} Zutaten übernommen${meat ? " · als Fleisch erkannt" : ""}${linkNutrition.n ? ` · ${linkNutrition.n.kcal} kcal pro Portion` : ""}`);
       return true;
     } catch (e) {
       toast(e.message);

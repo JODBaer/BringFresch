@@ -307,6 +307,274 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Nährwerte (Joshua 19.11.): Kalorien und Protein pro Person als Randnotiz. Quelle in dieser Reihenfolge:
+  // 1. Angaben der Rezeptseite (schema.org «nutrition», recipe.nutrition = pro Portion, src «seite»)
+  // 2. Schätzung aus den Zutaten (Tabelle unten, Werte pro 100 g, gerundet nach Schweizer Nährwertdatenbank).
+  // Geschätztes wird NIE gespeichert – es folgt immer den aktuellen Zutaten. Pro Person gerechnet wie der Einkauf:
+  // Rezeptportion (Vegis ohne Fleisch daraus) + Extra-Fleisch / Grillkäse / Vegi-Ersatz + 50 g Salat.
+  // ---------------------------------------------------------------------------
+  // [kcal, Protein, Fett, Kohlenhydrate] pro 100 g. Schlüssel: «x» = ganzes Wort (auch Mehrzahl), «*x» = Wort endet auf x
+  // (Weissmehl, Rapsöl), «^x» = Wort beginnt mit x (Pouletbrüstli). Erster Treffer gilt → Genaues vor Allgemeinem.
+  // pc = g pro Stück, can = g pro Dose/Glas/Packung (was gegessen wird), bund, d = g pro ml, fat = «nach Belieben» = 1 EL.
+  const NUTRIENTS = [
+    // Fertiges & Schnelles (vor Fleisch, Teig, Käse – «Chicken Nuggets» ist kein Poulet-Brüstli)
+    { k: ["^nugget", "chicken nuggets"], v: [250, 15, 14, 16], meat: 1 },
+    { k: ["*fischstäbli", "fischstäbchen", "sea style sticks"], v: [200, 13, 9, 17], meat: 1 },
+    { k: ["*maultaschen"], v: [220, 9, 8, 27], meat: 1 },
+    { k: ["dumplings", "gyoza"], v: [210, 8, 7, 28], meat: 1 },
+    { k: ["cordon"], v: [260, 17, 15, 14], pc: 150, meat: 1 },
+    { k: ["ravioli", "raviolis", "tortellini"], v: [250, 10, 8, 33] },
+    { k: ["gnocchi"], v: [150, 4, 0.5, 32] },
+    { k: ["*pizza"], v: [230, 9, 9, 28], pc: 350 },
+    { k: ["*rösti"], v: [100, 2, 4, 14], can: 500 },
+    { k: ["pommes"], v: [160, 2.5, 6, 24] },
+    { k: ["kartoffelstock"], v: [350, 8, 1, 75], can: 120 },
+    { k: ["fondue"], v: [240, 15, 18, 2] },
+    { k: ["pesto"], v: [500, 5, 50, 6], can: 190 },
+    { k: ["*bratensauce", "bratensaucen"], v: [400, 8, 15, 55], can: 30 },
+    // Fleisch & Fisch
+    { k: ["^speck", "*speck", "speckwürfeli"], v: [300, 16, 26, 0], slice: 15, meat: 1 },
+    { k: ["bündnerfleisch", "trockenfleisch"], v: [150, 35, 2, 1], slice: 8, meat: 1 },
+    { k: ["rohschinken", "*rohschinken", "salsiz", "salami", "mortadella", "aufschnitt", "coppa"], v: [280, 22, 21, 1], slice: 15, meat: 1 },
+    { k: ["*schinken", "schinkentranchen"], v: [110, 20, 3, 1], slice: 25, meat: 1 },
+    { k: ["cervelat", "cervelats"], v: [260, 12, 23, 1], pc: 100, meat: 1 },
+    { k: ["wienerli"], v: [250, 13, 22, 1], pc: 50, meat: 1 },
+    { k: ["*wurst", "luganighe", "chipolata", "salsiccia", "chorizo"], v: [270, 13, 24, 1], pc: 130, meat: 1 },
+    { k: ["*hackfleisch", "hack"], v: [230, 19, 17, 0], meat: 1 },
+    { k: ["^pouletbrust", "pouletbrüstli", "^pouletgeschnetzelt", "^pouletfleisch", "chicken"], v: [110, 23, 1.5, 0], pc: 150, meat: 1 },
+    { k: ["^poulet", "^huhn", "^hähnchen", "*poulet"], v: [170, 19, 10, 0], pc: 150, meat: 1 },
+    { k: ["^schweinsbraten", "schweinehals", "^schweinshals"], v: [210, 18, 15, 0], meat: 1 },
+    { k: ["^rinds", "^rind", "*rind", "^entrecôte", "^steak", "*steak", "*huft", "^voressen", "*voressen", "^siedfleisch"], v: [150, 21, 7, 0], pc: 180, meat: 1 },
+    { k: ["*plätzli", "*plätzchen", "*schnitzel", "*schnitzeli"], v: [120, 22, 3, 0], pc: 70, meat: 1 },
+    { k: ["^kalbs", "^kalb", "*geschnetzeltes", "*kotelett", "*koteletts", "*filet", "*ragout", "^schweins", "^schweine", "*fleisch", "*braten"], v: [130, 21, 5, 0], pc: 180, meat: 1 },
+    { k: ["^lamm"], v: [200, 19, 14, 0], pc: 150, meat: 1 },
+    { k: ["^lachs", "*lachs", "lachsfilet", "lachsfilets"], v: [200, 20, 13, 0], pc: 150, meat: 1 },
+    { k: ["thon", "thunfisch", "^thunfisch"], v: [190, 25, 10, 0], can: 155, pc: 150, meat: 1 },
+    { k: ["^crevette", "^garnele", "^shrimp", "^scampi"], v: [90, 18, 1, 1], meat: 1 },
+    { k: ["^forelle", "^kabeljau", "^seelachs", "^seehecht", "^seeteufel", "^saibling", "^egli", "^zander", "^fisch", "*fisch", "*filets"], v: [85, 18, 1, 0], pc: 150, meat: 1 },
+    // Pflanzliches Protein (vor Bohnen/Linsen: «Tofu» bleibt Tofu)
+    { k: ["tofu", "tempeh"], v: [140, 14, 8, 2], pc: 200 },
+    { k: ["planted", "seitan"], v: [150, 20, 5, 4], pc: 150 },
+    // Milch & Käse
+    { k: ["grillkäse", "halloumi"], v: [320, 22, 25, 2], pc: 100 },
+    { k: ["doppelrahmfrischkäse", "*frischkäse", "frischkäse", "philadelphia", "kräuterkäse"], v: [250, 7, 23, 3] },
+    { k: ["mascarpone"], v: [450, 5, 47, 3] },
+    { k: ["mozzarella", "burrata"], v: [250, 18, 19, 1], pc: 125 },
+    { k: ["feta", "salatkäse", "ziegenkäse", "hüttenkäse", "cottage"], v: [260, 16, 21, 1], pc: 150 },
+    { k: ["ricotta"], v: [150, 9, 11, 3] },
+    { k: ["parmesan", "sbrinz", "sbrinzlocken", "grana", "pecorino", "reibkäse", "*reibkäse", "hobelkäse"], v: [400, 33, 29, 0] },
+    { k: ["*käse", "käse", "gruyère", "greyerzer", "emmentaler", "appenzeller", "tilsiter", "*bergkäse", "raclette", "cheddar", "käseplatte", "vacherin", "gouda", "brie", "camembert"], v: [390, 26, 31, 0], slice: 30 },
+    { k: ["magerquark"], v: [70, 12, 0.3, 4] },
+    { k: ["rahmquark", "kräuterquark", "*quark", "quark"], v: [130, 10, 8, 3] },
+    { k: ["sauerrahm", "saurer halbrahm", "saucenhalbrahm", "saucen halbrahm"], v: [160, 3, 15, 4], d: 1 },
+    { k: ["doppelrahm"], v: [420, 2, 45, 3], d: 1 },
+    { k: ["vollrahm", "schlagrahm"], v: [335, 2, 35, 3], d: 1 },
+    { k: ["crème fraîche", "creme fraiche", "crème", "fraîche"], v: [300, 2.5, 30, 3], d: 1 },
+    { k: ["halbrahm", "*rahm", "rahm"], v: [250, 2.5, 25, 3.5], d: 1 },
+    { k: ["kokosmilch", "kokosnussmilch"], v: [180, 1.8, 18, 3], d: 1, can: 400 },
+    { k: ["haferdrink", "*drink", "sojadrink", "hafermilch"], v: [45, 1, 1.5, 6.7], d: 1 },
+    { k: ["*joghurt", "joghurt", "jogurt", "yoghurt"], v: [70, 4, 3.5, 5], pc: 180 },
+    { k: ["*milch", "milch"], v: [65, 3.3, 3.5, 4.8], d: 1.03 },
+    { k: ["eigelb", "eigelbe"], v: [340, 16, 30, 0.6], pc: 18 },
+    { k: ["eiweiss"], v: [50, 11, 0, 0.7], pc: 33 },
+    { k: ["ei", "eier", "freilandeier"], v: [140, 12.5, 10, 0.7], pc: 60 },
+    // Fett
+    { k: ["butter", "^bratbutter", "*butter", "bratcrème", "bratcreme", "butterflocken", "margarine"], v: [740, 0.7, 82, 0.6], d: 0.95, fat: 1 },
+    { k: ["salatsauce", "*dressing", "mayo", "mayonnaise"], v: [350, 1, 35, 6], d: 1, fat: 1 },
+    { k: ["*öl", "öl", "kokosfett"], v: [900, 0, 100, 0], d: 0.92, fat: 1 },
+    // Teigwaren, Getreide, Brot
+    { k: ["spätzle", "spätzli", "knöpfle", "knöpfli"], v: [200, 7, 2.5, 37] },
+    { k: ["spaghetti", "*teigwaren", "teigwaren", "magronen", "hörnli", "nudeln", "*nudeln", "pasta", "lasagneblätter", "orecchiette", "conchiglioni", "muscheln", "pappardelle", "penne", "tagliatelle", "fusilli", "farfalle", "makkaroni", "linguine"], v: [355, 12, 1.5, 70] },
+    { k: ["*reis", "reis", "risotto", "basmati", "^wildreis", "^reis"], v: [350, 7, 1, 77] },
+    { k: ["polenta", "bramata", "griess", "couscous", "quinoa", "*hirse", "hirse", "rollgerste", "gerste", "bulgur", "graupen"], v: [355, 11, 2, 70] },
+    { k: ["haferflocken", "*flocken", "müesli", "birchermüesli", "cornflakes"], v: [370, 13, 7, 59] },
+    { k: ["*linsen", "linsen"], v: [340, 24, 1.5, 50] },
+    { k: ["kichererbsen", "*bohnen", "bohnen", "kidneybohnen"], v: [110, 7, 1, 15], can: 250 },
+    { k: ["paniermehl", "panko"], v: [360, 11, 2, 72], d: 0.5 },
+    { k: ["maizena", "*stärke", "speisestärke"], v: [350, 0.3, 0, 86], d: 0.6 },
+    { k: ["*mehl", "mehl"], v: [350, 11, 1.5, 72], d: 0.55 },
+    { k: ["^frühlingsrollen", "reispapier", "glasnudeln"], v: [340, 6, 1, 80], pc: 10 },
+    { k: ["*teig", "*teige", "*blätterteig", "teig", "^yufka"], v: [400, 6, 25, 38], pc: 250, can: 250 },
+    { k: ["zopf"], v: [300, 9, 8, 48], pc: 500 },
+    { k: ["tortilla", "tortillas", "*tortillas", "wraps"], v: [300, 8, 7, 50], pc: 40 },
+    { k: ["toast", "toastbrot"], v: [270, 8, 4, 48], can: 500, slice: 25 },
+    { k: ["*brötchen", "brötli", "*brötli", "fladenbrot", "naan", "pita"], v: [270, 9, 3, 50], pc: 90 },
+    { k: ["*brot", "brot", "baguette", "papadam"], v: [250, 8, 1.5, 50], pc: 500, slice: 40 },
+    { k: ["*kartoffeln", "kartoffeln", "kartoffel", "gschwellti"], v: [75, 2, 0.1, 16], pc: 150 },
+    { k: ["süsskartoffeln", "süsskartoffel"], v: [86, 1.6, 0.1, 20], pc: 300 },
+    // Süsses, Nüsse
+    { k: ["*zucker", "zucker", "ahornsirup", "sirup"], v: [400, 0, 0, 100], d: 0.85 },
+    { k: ["honig", "konfitüre", "*konfitüre", "marmelade", "nutella"], v: [300, 0.3, 0, 75], can: 100, d: 1.4 },
+    { k: ["*nüsse", "nüsse", "kürbiskerne", "sonnenblumenkerne", "cashewkerne", "cashews", "^baumnuss", "^haselnuss", "sesamkerne", "baumnusskerne", "mandeln", "pinienkerne", "sesam", "sesamsamen", "*samen", "erdnüsse"], v: [600, 18, 52, 10], d: 0.6 },
+    { k: ["rosinen", "sultaninen", "*schnitze", "dörraprikosen", "dörrobst", "datteln", "feigen"], v: [300, 2.5, 0.5, 70] },
+    { k: ["kastanien", "marroni"], v: [200, 3, 2, 42] },
+    { k: ["schokolade", "kakao"], v: [530, 7, 31, 55] },
+    // Gemüse & Früchte (Süsskartoffel, Kürbiskerne … stehen schon oben)
+    { k: ["getrocknete"], v: [250, 12, 8, 30], pc: 8 },
+    { k: ["tomatenpüree", "tomatenpürée", "tomatenmark"], v: [90, 4.5, 0.5, 15], can: 70 },
+    { k: ["pelati", "passata", "*tomatensauce", "tomatensauce", "sugo", "tomatensugo"], v: [30, 1.3, 0.2, 5], can: 400 },
+    { k: ["avocado"], v: [160, 2, 15, 3], pc: 150 },
+    { k: ["oliven", "*oliven"], v: [150, 1, 15, 1], pc: 4 },
+    { k: ["mais", "maiskolben"], v: [85, 3, 1.2, 15], can: 285, pc: 200 },
+    { k: ["erbsen", "erbsli", "kefen"], v: [80, 6, 0.5, 11] },
+    { k: ["randen", "rande"], v: [45, 1.5, 0.1, 8], pc: 150 },
+    { k: ["pastinaken", "pastinake", "schwarzwurzeln"], v: [60, 1.3, 0.4, 12], pc: 150 },
+    { k: ["banane", "bananen"], v: [90, 1, 0.3, 20], pc: 120 },
+    { k: ["apfelmus", "*mus", "kompott"], v: [70, 0.3, 0.1, 17], can: 360 },
+    { k: ["ananas"], v: [60, 0.4, 0.1, 14], pc: 900, can: 240 },
+    { k: ["zitrone", "zitronen", "limette", "limetten", "zitronensaft", "limettensaft", "zitronenschnitz"], v: [30, 0.5, 0.3, 3], pc: 40, d: 1 },
+    { k: ["apfel", "äpfel", "birne", "birnen", "orange", "orangen", "*orangen", "*melone", "melone", "mango", "*beeren", "beeren", "erdbeeren", "trauben", "zwetschgen", "granatapfel", "granatapfelkerne"], v: [52, 0.5, 0.2, 12], pc: 150 },
+    { k: ["^steinpilz", "shiitake"], v: [300, 25, 3, 30], pc: 3 },
+    { k: ["salat", "*salat", "rucola", "kresse", "spinat", "*spinat", "^spinat", "chicorée", "lattich", "sprossen", "*sprossen", "nori"], v: [18, 2, 0.3, 1.5], pc: 130, bund: 100 },
+    { k: ["zwiebel", "zwiebeln", "*zwiebeln", "*zwiebel", "zwiebelringe", "schalotte", "schalotten", "lauch", "^lauch", "*lauch"], v: [35, 1.3, 0.2, 7], pc: 100, bund: 100 },
+    { k: ["knoblauch", "knoblauchzehe", "knoblauchzehen", "knoblauchzeh", "zehe", "zehen"], v: [140, 6, 0.5, 28], pc: 5 },
+    { k: ["ingwer", "*ingwer"], v: [80, 2, 0.8, 16], pc: 20 },
+    { k: ["rüebli", "*rüebli", "*kabis", "^kohlrabi", "^sellerie", "*krautstiele", "krautstiel", "geschwellti", "randensaft", "karotten", "*karotten", "karotte", "peperoni", "*peperoni", "zucchetti", "zucchini", "aubergine", "auberginen", "fenchel", "kohlrabi", "*kohl", "kohl", "wirz", "pak", "sellerie", "*sellerie", "blumenkohl", "*blumenkohle", "broccoli", "brokkoli", "tomate", "tomaten", "*tomaten", "gurke", "*gurke", "gurken", "radieschen", "radiesli", "champignons", "pilze", "*pilze", "pleurotus", "*seitlinge", "kürbis", "*kürbis", "spargeln", "*spargeln", "okras", "rotkraut", "sauerkraut", "chinakohl", "cornichons", "essiggurke", "silberzwiebeln", "gemüse", "*gemüse", "federkohl", "rosenkohl", "kapern"], v: [28, 1.5, 0.2, 4.5], pc: 150, bund: 150 },
+    { k: ["*bouillon", "bouillon", "*bouillonpaste", "*bouillonpulver", "fond", "brühe"], v: [5, 0.3, 0.2, 0.3], d: 1 },
+    { k: ["*wein", "wein", "cidre", "apfelwein", "*apfelwein", "bier", "kirsch", "whisky", "noilly", "cognac", "portwein", "apfelsaft"], v: [35, 0.1, 0, 2], d: 1 },
+    { k: ["sojasauce", "*sauce", "tamari", "austernsauce", "ketchup", "chutney", "sambal", "sriracha", "senf", "*senf", "miso"], v: [90, 4, 2, 15], can: 40, d: 1.1 },
+    { k: ["*currypaste", "currypaste", "curry", "*curry", "currypulver", "garam", "masala"], v: [150, 4, 8, 15] },
+    { k: ["*essig", "essig", "balsamico", "aceto"], v: [40, 0, 0, 8], d: 1 },
+    // Gewürze & Kräuter: praktisch nichts, aber bekannt (zählt für die Sicherheit der Schätzung)
+    { k: ["salz", "*salz", "sel", "pfeffer", "*pfeffer", "^peperoncin", "*peperoncino", "^chili", "*chilischote", "^kreuzkümmel", "kümmel", "^kurkuma", "safran", "harissa", "*gewürzmischung", "pulver", "*schote", "^muskat", "mmuskatnuss", "^estragon", "*blätter", "*bläter", "muskat", "muskatnuss", "paprika", "*paprika", "paprikapulver", "chili", "*chili", "chilipulver", "chiliflocken", "kreuzkümmel", "kurkuma", "zimt", "zimtpulver", "^lorbeer", "nelken", "gewürznelken", "oregano", "thymian", "rosmarin", "basilikum", "petersilie", "peterli", "schnittlauch", "koriander", "dill", "estragon", "kerbel", "salbei", "*minze", "minze", "kräuter", "*kräuter", "bärlauch", "bohnenkraut", "knoblauchpulver", "meerrettich", "*samen", "*körner", "zatar", "tabasco", "wasabi", "backpulver", "hefe", "vanille", "*paste", "^koriander", "^zweig", "kapuzinerblüten", "pfefferkörner", "provenzalische", "^salbei", "^thymian", "^rosmarin", "^basilikum", "kaffee", "*tee", "tee", "gewürz", "*gewürz"], v: [0, 0, 0, 0], spice: 1 },
+  ];
+  const UNIT_G = { g: 1, gr: 1, kg: 1000, mg: 0.001 };
+  const UNIT_ML = { ml: 1, cl: 10, dl: 100, l: 1000, liter: 1000 };
+  const nutriTokens = s => String(s || "").toLowerCase().split(/[^a-zäöüàâçéèêëïîôûß]+/).filter(Boolean);
+  function nutriMatch(tokens, joined, key) {
+    if (key.includes(" ")) return joined.includes(key);
+    if (key[0] === "*") { const k = key.slice(1); return tokens.some(t => t.endsWith(k)); }
+    if (key[0] === "^") { const k = key.slice(1); return tokens.some(t => t.startsWith(k)); }
+    return tokens.some(t => t === key || (t.startsWith(key) && /^(n|e|en|s|es|li)$/.test(t.slice(key.length))));
+  }
+  const nutriCache = new Map();
+  function nutrientOf(rawName) {
+    // was nach «in/mit/aus/vom …» steht, ist nicht die Zutat («Getrocknete Tomaten in Öl», «Hackfleisch vom Rind»)
+    const full = String(rawName || "").toLowerCase();
+    const name = full.replace(/\s+(in|im|am|an|mit|aus|zum|zur|ohne|für|nach|vom|von)\s+.*$/, "");
+    if (nutriCache.has(full)) return nutriCache.get(full);
+    // Bindestrich-Wörter zählen mit dem Grundwort hinten: «Raclette-Kartoffeln» = Kartoffeln, «Chili-Öl» = Öl
+    const find = s => { const tokens = nutriTokens(s.replace(/[a-zäöüéèàç]+-(?=[a-zäöüéèàç])/g, "")), joined = tokens.join(" "); return NUTRIENTS.find(e => e.k.some(key => nutriMatch(tokens, joined, key))) || null; };
+    const tokens = nutriTokens(full);
+    let hit = find(name) || (name !== full ? find(full) : null); // «Schenkel vom Poulet»: dann eben ganzer Name
+    // «Vegi-Hack», «Vegi-Nuggets», «planted Chicken»: Fleischersatz = kein Fleisch, Werte wie Fleischersatz
+    if (hit && hit.meat && tokens.some(t => /^(vegi|vegan|vegane|veganer|planted|plant|pflanzlich)$/.test(t))) hit = { ...hit, meat: 0, v: [180, 18, 9, 6] };
+    nutriCache.set(full, hit);
+    return hit;
+  }
+  // Gramm für eine Zutat (ganze Menge im Rezept). null = Gewicht unbekannt (zählt gegen die Sicherheit)
+  function gramsOf(ing, entry) {
+    const u = String(ing.unit || "").trim().toLowerCase().replace(/\.$/, "");
+    const raw = parseFloat(String(ing.amount ?? "").replace(",", "."));
+    const amt = Number.isFinite(raw) ? raw : 1;
+    const e = entry || {};
+    if (UNIT_G[u]) return amt * UNIT_G[u];
+    const d = e.d || 1;
+    if (UNIT_ML[u]) return amt * UNIT_ML[u] * d;
+    if (u === "el") return amt * (e.d ? 15 * e.d : 10);
+    if (u === "tl") return amt * (e.d ? 5 * e.d : 3);
+    if (/^(prise|prisen|msp|messerspitze|tropfen|spritzer)$/.test(u)) return 0.3 * amt;
+    if (/^(stk|stück|st)$/.test(u)) {
+      const each = String(ing.name || "").match(/à\s*(?:ca\.?\s*)?(\d+)\s*g/i); // «Lachsfilet à 180 g»
+      if (!each && amt > 40) return amt; // «500 Stk Bundrüebli» = Tippfehler für Gramm
+      return amt * (each ? +each[1] : e.pc || (e.spice ? 1 : entry ? 100 : null));
+    }
+    if (u === "") return e.fat ? 10 : 0; // ohne Einheit = «nach Belieben»: nur Fett zählt (1 EL)
+    if (u === "bund") return amt * (e.bund || 25);
+    if (/^(dose|dosen|büchse)$/.test(u)) return amt * (e.can || 400);
+    if (/^(glas|gläser)$/.test(u)) return amt * (e.can || 250);
+    if (/^(pck|packung|päckli|beutel|becher)$/.test(u)) return amt * (e.can || (u === "becher" ? 180 : 250));
+    if (/^(tranche|tranchen|scheibe|scheiben)$/.test(u)) return amt * (e.slice || 25);
+    if (/^(zehe|zehen)$/.test(u)) return amt * 5;
+    if (/^(zweig|zweige|zweiglein|stängel|blatt|blätter)$/.test(u)) return amt * 1;
+    if (u === "handvoll") return amt * 30;
+    if (u === "cm") return amt * 8;
+    if (u === "kopf") return amt * 500;
+    if (u === "rolle") return amt * (e.can || 250);
+    if (u === "stange" || u === "stangen") return amt * 200;
+    if (u === "tube") return amt * (e.can || 70);
+    if (u === "flasche") return amt * (e.can || 150);
+    if (u === "portion" || u === "portionen") return amt * 150;
+    return entry ? amt * (e.pc || 100) : null;
+  }
+
+  // Zutaten → Summe pro Portion; ohneFleisch = Vegi am Fleisch-Tisch (isst das Fleisch nicht)
+  function sumIngredients(ings, servings, withoutMeat) {
+    const tot = [0, 0, 0, 0];
+    let known = 0, all = 0;
+    for (const ing of ings || []) {
+      if (!ing || !ing.name) continue;
+      const { name, skip } = cleanIngredient(ing.name);
+      if (skip) continue;
+      const entry = nutrientOf(name) || nutrientOf(String(ing.name).split(/\s+oder\s+|\s*\/\s*/)[0]);
+      const g = gramsOf(ing, entry);
+      if (g == null) { all += 100; continue; } // unbekannt, ca. 100 g
+      all += g;
+      if (!entry) continue;
+      known += g;
+      if (withoutMeat && entry.meat) continue;
+      entry.v.forEach((x, i) => { tot[i] += x * g / 100; });
+    }
+    const s = Math.max(1, +servings || DEFAULT_SERVINGS);
+    return { v: tot.map(x => x / s), cover: all ? known / all : 0, grams: all / s };
+  }
+
+  const ADDON_MEAT = [200, 20, 13, 0], ADDON_CHEESE = [320, 22, 25, 2], ADDON_TOFU = [140, 14, 8, 2], SALAD = [18, 2, 0.3, 1.5];
+  // Angaben einer Rezeptseite säubern (schema.org NutritionInformation: «520 kcal», «32 g» …) → pro Portion oder null
+  function cleanNutrition(n) {
+    if (!n || typeof n !== "object") return null;
+    const num = x => { const m = String(x ?? "").replace(",", ".").match(/\d+(\.\d+)?/); return m ? +m[0] : null; };
+    let kcal = num(n.kcal ?? n.calories);
+    if (kcal != null && /kj/i.test(String(n.calories || "")) && !/kcal/i.test(String(n.calories || ""))) kcal = kcal / 4.184;
+    const out = { kcal, protein: num(n.protein ?? n.proteinContent), fat: num(n.fat ?? n.fatContent), carbs: num(n.carbs ?? n.carbohydrateContent) };
+    if (!(out.kcal > 30 && out.kcal < 3000)) return null; // ohne plausible Kalorien nichts übernehmen
+    for (const k of Object.keys(out)) out[k] = out[k] == null || !(out[k] >= 0 && out[k] < 3000) ? null : Math.round(out[k]);
+    return { ...out, src: "seite" };
+  }
+
+  // Nährwerte pro Person für ein Rezept / einen Plan-Tag. diet = Ernährung der Person («fleisch», «vegi», «vegan»);
+  // ohne diet = nur die Rezeptportion. -> { kcal, protein, fat, carbs, src: "seite"|"schätzung", cover } oder null
+  function nutritionFor(r, diet) {
+    if (!r || r.is_leftovers || r.empty) return null;
+    const servings = r.servings || DEFAULT_SERVINGS;
+    const site = cleanNutrition(r.nutrition);
+    const noMeat = !!diet && diet !== "fleisch" && r.diet === "fleisch";
+    let base, cover, src;
+    if (site && !noMeat) { base = [site.kcal, site.protein || 0, site.fat || 0, site.carbs || 0]; cover = 1; src = "seite"; }
+    else {
+      const s = sumIngredients(r.ingredients, servings, noMeat);
+      if (s.cover < 0.7 || s.grams < 40) return null; // zu wenig bekannt – lieber nichts als Unsinn
+      base = s.v; cover = s.cover; src = "schätzung";
+    }
+    const add = (v, g) => { base = base.map((x, i) => x + v[i] * g / 100); };
+    if (diet === "fleisch" && r.diet !== "fleisch" && !r.no_addons) add(ADDON_MEAT, 150);
+    if (diet && diet !== "fleisch") {
+      const swap = r.vegi_swap;
+      if (swap && swap.name) {
+        const e = nutrientOf(cleanIngredient(swap.name).name);
+        if (e) add(e.v, gramsOf(swap, e) || 0);
+      } else if (!r.no_addons) diet === "vegan" ? add(ADDON_TOFU, 150) : add(ADDON_CHEESE, 100);
+    }
+    if (diet && !r.no_salad) add(SALAD, 50);
+    const [kcal, protein, fat, carbs] = base.map(x => Math.round(x));
+    return { kcal: Math.round(kcal / 10) * 10, protein, fat, carbs, src, cover: Math.round(cover * 100) / 100 };
+  }
+
+  // Worauf jemand achtet (pro Mitbewohner in den WG-Einstellungen, member.goal) und was das Menü dafür ist
+  const GOAL_LABEL = { "": "nichts Besonderes", kcal: "Kalorien", protein: "Proteine" };
+  const GOAL_SHORT = { "": "Ziel –", kcal: "Ziel: kcal", protein: "Ziel: Protein" }; // Auswahl in den Einstellungen (schmal)
+  // Grenzen pro Person und Znacht, mit Extra-Fleisch/-Käse und Salat gerechnet – darum eher hoch. Katalog 19.11.:
+  // Vegi ⅖ proteinreich, ¼ leicht; Fleisch-Esser bekommen an Vegi-Tagen 150 g Fleisch dazu, darum meist proteinreich.
+  const PROTEIN_RICH = 40, PROTEIN_LOW = 25, KCAL_LIGHT = 650, KCAL_RICH = 1000;
+  function nutritionTag(n, goal) {
+    if (!n) return "";
+    if (goal === "protein") return n.protein >= PROTEIN_RICH ? "proteinreich" : n.protein < PROTEIN_LOW ? "wenig Protein" : "";
+    if (goal === "kcal") return n.kcal <= KCAL_LIGHT ? "leicht" : n.kcal >= KCAL_RICH ? "reichhaltig" : "";
+    return "";
+  }
+  const nutritionText = n => (n ? `${n.src === "seite" ? "" : "≈ "}${n.kcal} kcal · ${n.protein} g Protein` : "");
+
+  // ---------------------------------------------------------------------------
   // Rezeptwahl und Wochenwahl: was passt zu wem, was hat Saison, wer hat was gewählt, welches Gericht an welchem Tag
   // ---------------------------------------------------------------------------
   // Strengste Ernährung der Esser: ein Vegi am Tisch = vegi für alle
@@ -1040,6 +1308,7 @@
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
     effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
-    formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList
+    formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList,
+    nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_SHORT
   };
 })(typeof globalThis !== "undefined" ? globalThis : self);

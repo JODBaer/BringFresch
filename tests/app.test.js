@@ -56,6 +56,20 @@ const row0 = () => d.querySelectorAll("#days .prow")[0];
 row0().querySelector(".pday").click();
 check(row0().classList.contains("open") && d.querySelectorAll("#days .prow.open").length === 1, "Tag antippen klappt das Menü auf");
 check(row0().querySelectorAll(".ing li").length > 0 && /Wechseln/.test(row0().querySelector(".links").textContent), "Zutaten + «Wechseln» im offenen Menü");
+// Nährwerte als Randnotiz: ohne «Ich bin» pro Portion; mit Ziel «Protein» für mich gerechnet, Protein fett
+const nutriRows = () => [...d.querySelectorAll("#days .prow .nutri")];
+check(nutriRows().length >= 5 && nutriRows().every(n => /kcal · \d+ g Protein/.test(n.textContent) && /pro Portion/.test(n.textContent)), `Menüs zeigen kcal und Protein pro Portion (${nutriRows().length} von 7)`);
+w.localStorage.setItem("bringfrisch_me", JSON.stringify("jo"));
+const goalSel = d.querySelector("#members [data-goal='jo']");
+check(!!goalSel && goalSel.options.length === 3, "Einstellungen: pro Person «Ziel» (–, kcal, Protein) neben der Ernährung");
+goalSel.value = "protein";
+goalSel.dispatchEvent(new w.Event("change", { bubbles: true }));
+check(JSON.parse(w.localStorage.getItem("bringfrisch_members")).find(m => m.id === "jo").goal === "protein", "Ziel wird bei den Mitbewohnern gespeichert (gemeinsam für die WG)");
+check(nutriRows().every(n => /für dich/.test(n.textContent) && /\d+ g Protein/.test(n.querySelector("b").textContent)), "mit «Ich bin» + Ziel: für dich gerechnet, Protein hervorgehoben");
+goalSel.value = "";
+goalSel.dispatchEvent(new w.Event("change", { bubbles: true }));
+check(!("goal" in JSON.parse(w.localStorage.getItem("bringfrisch_members")).find(m => m.id === "jo")), "Ziel «–» entfernt das Feld wieder");
+w.localStorage.removeItem("bringfrisch_me");
 // Rezept-Link: Original-Seite, sonst Web-Suche nach dem Menü (nie ein falscher Link); Schnelles/Reste ohne Link
 const linkRows = [...d.querySelectorAll("#days .prow:not(.unplanned)")].filter(r => !/schnell|Reste/.test(r.querySelector(".meta").textContent));
 check(linkRows.length > 0 && linkRows.every(r => r.querySelector(".links a[href^='https://']")), "jedes Menü hat einen Rezept-Link oder «Rezept suchen»");

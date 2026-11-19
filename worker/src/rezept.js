@@ -1,5 +1,7 @@
 // Rezept-Link importieren (schema.org) und Vorschaubild zum Rezept
 import { BLOCKED_HOSTS, httpError, json, safeFetch } from "./http.js";
+import "../../static/core.js"; // cleanNutrition: Nährwerte der Rezeptseite säubern (gleiche Regel wie in der App)
+const { cleanNutrition } = globalThis.BF_CORE;
 
 // ---------------------------------------------------------------------------------------------
 // Bild zum Rezept (Wochenwahl): einmal von der Rezeptseite holen (og:image bzw. schema.org image) und im
@@ -159,7 +161,10 @@ export async function importRecipe(link) {
     const og = (html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]*)"/) || [])[1];
     const title = og ? og.replace(/\s*[-|–].*$/, "") : (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/) || [])[1] || "";
     const yieldText = (html.match(/itemprop="recipeYield"[^>]*>([^<]*)/) || [])[1] || "";
-    recipe = { name: title.replace(/<[^>]+>/g, "").trim(), recipeIngredient: ingredients, recipeYield: yieldText };
+    // Nährwerte als Microdata (itemprop="calories" …), z.B. Swissmilk
+    const micro = p => { const m = html.match(new RegExp(`itemprop="${p}"[^>]*?(?:content="([^"]*)"[^>]*>|>([\\s\\S]*?)<\\/)`)); return m ? text(m[1] || m[2] || "") : ""; };
+    const nutrition = { calories: micro("calories"), proteinContent: micro("proteinContent"), fatContent: micro("fatContent"), carbohydrateContent: micro("carbohydrateContent") };
+    recipe = { name: title.replace(/<[^>]+>/g, "").trim(), recipeIngredient: ingredients, recipeYield: yieldText, nutrition };
   }
   const yieldText = [].concat(recipe.recipeYield || "").join(" ");
   const servings = parseInt((yieldText.match(/\d+/) || ["4"])[0], 10);
@@ -171,6 +176,8 @@ export async function importRecipe(link) {
     minutes: t ? (+(t[1] || 0)) * 60 + (+(t[2] || 0)) : null,
     ingredients: [].concat(recipe.recipeIngredient || []).map(s => decodeEntities(String(s).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())).filter(Boolean),
     url: u.toString(),
+    // schema.org NutritionInformation gilt pro Portion (servingSize); nur Zahlen, nur wenn plausibel – sonst schätzt die App
+    nutrition: cleanNutrition([].concat(recipe.nutrition || [])[0]),
   };
 }
 

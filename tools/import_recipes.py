@@ -326,7 +326,7 @@ def recipe_from_jsonld(page: str) -> dict | None:
 
 class MicrodataRecipe(HTMLParser):
     """Liest itemprop-Felder (Swissmilk nutzt Microdata statt JSON-LD)."""
-    WANT = {"recipeYield", "recipeIngredient", "totalTime", "recipeCategory", "keywords"}
+    WANT = {"recipeYield", "recipeIngredient", "totalTime", "recipeCategory", "keywords", "calories", "proteinContent", "fatContent", "carbohydrateContent"}
     VOID = {"meta", "link", "img", "br", "input", "hr", "source"}
 
     def __init__(self):
@@ -382,6 +382,7 @@ def recipe_from_microdata(page: str) -> dict | None:
         "totalTime": (d.get("totalTime") or [""])[0],
         "recipeCategory": d.get("recipeCategory", []),
         "keywords": ", ".join(d.get("keywords", [])),
+        "nutrition": {k: d[k][0] for k in ("calories", "proteinContent", "fatContent", "carbohydrateContent") if d.get(k)},
     }
 
 
@@ -410,6 +411,25 @@ def clean_title(t: str) -> str:
     return t.split(" | ")[0].strip()
 
 
+def nutrition_of(n) -> dict | None:
+    """«520 kcal», «32 g» → {kcal, protein, fat, carbs, src: "seite"}; gleiche Regel wie CORE.cleanNutrition (static/core.js)."""
+    if isinstance(n, list):
+        n = n[0] if n else None
+    if not isinstance(n, dict):
+        return None
+
+    def num(v):
+        m = re.search(r"\d+(?:[.,]\d+)?", str(v or ""))
+        return float(m.group(0).replace(",", ".")) if m else None
+    kcal = num(n.get("calories"))
+    if kcal is not None and re.search(r"kj", str(n.get("calories")), re.I) and not re.search(r"kcal", str(n.get("calories")), re.I):
+        kcal /= 4.184
+    if kcal is None or not 30 < kcal < 3000:
+        return None
+    out = {"kcal": kcal, "protein": num(n.get("proteinContent")), "fat": num(n.get("fatContent")), "carbs": num(n.get("carbohydrateContent"))}
+    return {**{k: (round(v) if v is not None and 0 <= v < 3000 else None) for k, v in out.items()}, "src": "seite"}
+
+
 def extract(page: str) -> dict | None:
     r = recipe_from_jsonld(page) or recipe_from_microdata(page) or recipe_from_gemuese(page)
     if not r:
@@ -432,6 +452,8 @@ def extract(page: str) -> dict | None:
         "diet": as_text(r.get("suitableForDiet")),
         # Vorschaubild vorhanden? (nur ja/nein – das Bild selbst holt der WG-Server beim Anzeigen, nie ins Repo)
         "image": bool(r.get("image")) or bool(re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']https?://', page)),
+        # Nährwerte pro Portion (schema.org NutritionInformation), nur Zahlen – die App schätzt sonst aus den Zutaten
+        "nutrition": nutrition_of(r.get("nutrition")),
     }
 
 
@@ -591,6 +613,7 @@ def classify(raw: dict, min_servings: int = 2) -> dict | str:
         "primary_vegetables": veg_found,
         "ingredients": ingredients,
         "season_months": sorted(months),
+        **({"nutrition": raw["nutrition"]} if raw.get("nutrition") else {}),
         "seasons": seasons,
         "season_strength": strength,
     }
@@ -666,8 +689,8 @@ def cmd_merge():
         chosen = [r for r in data["recipes"] if r["id"] in ids]
     else:
         chosen = [r for r in data["recipes"] if r["proposed"]]
-    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months")
-    out = [{k: r[k] for k in keep} for r in sorted(chosen, key=lambda r: r["title"])]
+    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
+    out = [{k: r[k] for k in keep if k in r} for r in sorted(chosen, key=lambda r: r["title"])]
     target = ROOT.parent / "static" / "recipes_imported.js"
     target.write_text(
         "// Automatisch erzeugt von tools/import_recipes.py merge – nicht von Hand bearbeiten.\n"
@@ -692,7 +715,7 @@ def cmd_add(per_site: int = 12):
     src = target.read_text(encoding="utf-8")
     existing = json.loads(src[src.index("["):src.rindex("]") + 1])
     have = {re.sub(r"[^a-z]", "", r["title"].lower()) for r in existing} | {r["source_url"] for r in existing}
-    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months")
+    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
     added = []
     only = [a for a in sys.argv[2:] if a in NEW_SITES]
     for site in (only or NEW_SITES):
@@ -728,7 +751,7 @@ def cmd_add(per_site: int = 12):
             have.add(re.sub(r"[^a-z]", "", r["title"].lower()))
         added += pick
         print(f"{site}: {len(locs)} Rezept-Links, {min(n, len(locs))} geprüft, {len(ok)} brauchbar, {len(pick)} übernommen; abgelehnt: {why}")
-    out = existing + [{k: r[k] for k in keep} for r in sorted(added, key=lambda r: r["title"])]
+    out = existing + [{k: r[k] for k in keep if k in r} for r in sorted(added, key=lambda r: r["title"])]
     target.write_text(
         "// Automatisch erzeugt von tools/import_recipes.py merge/add – nicht von Hand bearbeiten.\n"
         "// Nur Fakten (Titel, Portionen, Zutaten); Zubereitung steht auf der verlinkten Originalseite.\n"
@@ -738,6 +761,48 @@ def cmd_add(per_site: int = 12):
     print(f"{len(added)} Rezepte dazu, jetzt {len(out)} → {target.relative_to(ROOT.parent)}")
 
 
+def cmd_nutrition():
+    """Nährwerte (pro Portion, schema.org) für die schon übernommenen Rezepte nachtragen (Joshua 19.11.: erneutes Abrufen ok).
+    Höflich wie fetch: robots.txt, pro Website eine Seite nach der anderen (DELAY_S), Websites parallel. Nur Zahlen, kein Text.
+    Rezepte ohne Angaben bleiben ohne – die App schätzt dann aus den Zutaten (CORE.nutritionFor)."""
+    sys.stdout.reconfigure(encoding="utf-8")  # Windows-Konsole (cp1252) kennt ✓ nicht – sonst bricht der Abruf einer Website ab
+    target = ROOT.parent / "static" / "recipes_imported.js"
+    src = target.read_text(encoding="utf-8")
+    recipes = json.loads(src[src.index("["):src.rindex("]") + 1])
+    todo: dict[str, list[dict]] = {}
+    for r in recipes:
+        if r.get("source_url") and not r.get("nutrition"):
+            todo.setdefault(urllib.parse.urlparse(r["source_url"]).netloc, []).append(r)
+    lock = threading.Lock()
+    stats = {"ok": 0, "keine": 0, "fehler": 0}
+
+    def run(lst):
+        for r in lst:
+            try:
+                if not allowed(r["source_url"]):
+                    raise RuntimeError("robots.txt")
+                x = extract(get(r["source_url"]))
+                n = x.get("nutrition") if x else None
+                if n:
+                    r["nutrition"] = n
+                with lock:
+                    stats["ok" if n else "keine"] += 1
+                    print(("✓ " + r["title"] + " – " + str(n["kcal"]) + " kcal") if n else ("· " + r["title"]), flush=True)
+            except Exception as e:
+                with lock:
+                    stats["fehler"] += 1
+                    print(f"✗ {r['title']}: {str(e)[:80]}", flush=True)
+            time.sleep(DELAY_S)
+
+    threads = [threading.Thread(target=run, args=(lst,)) for lst in todo.values()]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    target.write_text(src[:src.index("[")] + json.dumps(recipes, ensure_ascii=False, indent=0).replace("\n", "") + ";\n", encoding="utf-8")
+    print(f"Nährwerte: {stats['ok']} gefunden, {stats['keine']} ohne Angaben, {stats['fehler']} Fehler → {target.relative_to(ROOT.parent)}")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"discover": cmd_discover, "fetch": cmd_fetch, "build": cmd_build, "merge": cmd_merge, "add": cmd_add}.get(cmd, lambda: print(__doc__))()
+    {"discover": cmd_discover, "fetch": cmd_fetch, "build": cmd_build, "merge": cmd_merge, "add": cmd_add, "nutrition": cmd_nutrition}.get(cmd, lambda: print(__doc__))()

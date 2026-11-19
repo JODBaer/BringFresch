@@ -80,13 +80,14 @@ globalThis.fetch = async (url, init = {}) => {
     return new Response(`<html><head><meta property="og:title" content="Auberginenrollen - Rezept | Swissmilk"></head><body><h1>Navigieren</h1><table>
       <tr itemprop="recipeIngredient"><td colspan="2" class="Ingredient--text">Bratpfanne</td></tr>
       <tr itemprop="recipeIngredient" class="Ingredient"><td class="Ingredient--amount"><span><!----><span>50</span><span> g</span></span></td><td class="Ingredient--text">Ingwer</td></tr>
-      <tr itemprop="recipeIngredient" class="Ingredient"><td class="Ingredient--amount"><span>2</span></td><td class="Ingredient--text">Auberginen</td></tr></table><span itemprop="recipeYield">4 Personen</span></body></html>`);
+      <tr itemprop="recipeIngredient" class="Ingredient"><td class="Ingredient--amount"><span>2</span></td><td class="Ingredient--text">Auberginen</td></tr></table><span itemprop="recipeYield">4 Personen</span>
+      <div itemprop="nutrition" itemscope><span itemprop="calories">450 kcal</span><span itemprop="proteinContent">17 g</span></div></body></html>`);
   }
   if (url.startsWith("https://blog.example.ch/")) {
     return new Response(`<html><script type="application/ld+json">{"@graph":[{"@type":"WebPage"},{"@type":["Recipe"],"name":"Omas R&#246;sti","recipeYield":["2"],"recipeIngredient":["800 g Kartoffeln","2 EL Butter"]}]}</script></html>`);
   }
   if (url.startsWith("https://www.bettybossi.ch/")) {
-    return new Response(`<html><script type="application/ld+json">{"@context":"https://schema.org","@type":"Recipe","name":"Zwiebelsuppe","recipeYield":"4 Personen","totalTime":"PT46M","recipeIngredient":["5 Zwiebeln","2 EL Butter"]}</script></html>`);
+    return new Response(`<html><script type="application/ld+json">{"@context":"https://schema.org","@type":"Recipe","name":"Zwiebelsuppe","recipeYield":"4 Personen","totalTime":"PT46M","recipeIngredient":["5 Zwiebeln","2 EL Butter"],"nutrition":{"@type":"NutritionInformation","calories":"312 kcal","proteinContent":"9,5 g","fatContent":"18 g","carbohydrateContent":"25 g"}}</script></html>`);
   }
   return new Response("not mocked", { status: 599 });
 };
@@ -327,12 +328,15 @@ check(!Object.keys(JSON.parse(store.get("backup:2026-11-10")).keys).some(k => k.
 r = await call("/recipe?url=" + encodeURIComponent("https://www.bettybossi.ch/de/rezepte/rezept/zwiebelsuppe-10010500/"));
 const rec = await r.json();
 check(rec.title === "Zwiebelsuppe" && rec.servings === 4 && rec.minutes === 46 && rec.ingredients.length === 2, "Rezept-Link wird ausgelesen");
+check(rec.nutrition && rec.nutrition.kcal === 312 && rec.nutrition.protein === 10 && rec.nutrition.fat === 18 && rec.nutrition.carbs === 25 && rec.nutrition.src === "seite", `Nährwerte der Rezeptseite (schema.org nutrition, «9,5 g») werden pro Portion übernommen (${JSON.stringify(rec.nutrition)})`);
 r = await call("/recipe?url=" + encodeURIComponent("https://www.swissmilk.ch/de/rezepte/x/"));
 const sm = await r.json();
 check(sm.title === "Auberginenrollen" && sm.ingredients.join("|") === "50 g Ingwer|2 Auberginen", `Swissmilk: Titel und Zutaten aus den Tabellenzeilen, ohne Bratpfanne (${sm.title}: ${sm.ingredients})`);
+check(sm.nutrition && sm.nutrition.kcal === 450 && sm.nutrition.protein === 17, `Swissmilk: Nährwerte aus Microdata (${JSON.stringify(sm.nutrition)})`);
 r = await call("/recipe?url=" + encodeURIComponent("Schau mal: https://blog.example.ch/roesti 😋"));
 const bl = await r.json();
 check(bl.title === "Omas Rösti" && bl.servings === 2 && bl.ingredients.length === 2, "jede Rezeptseite geht, Link aus geteiltem Text, &#246; wird ö");
+check(bl.nutrition === null, "Seite ohne Nährwerte: nutrition = null (die App schätzt dann aus den Zutaten)");
 r = await call("/recipe?url=" + encodeURIComponent("http://localhost:8787/x"));
 check(r.status === 400, "interne Adressen werden abgelehnt");
 r = await call("/recipe?url=" + encodeURIComponent("nur Text ohne Link"));
@@ -391,12 +395,14 @@ check((await (await sh("/cal-link")).json()).url.endsWith("/cal/cal-sonnenhof-01
 {
 const smem = [{ id: "a", name: "A" }];
 const srec = (id, title, extra = {}) => ({ id, title, diet: "vegi", servings: 4, ingredients: [{ name: "Lauch", amount: "500", unit: "g" }], ...extra });
-r = await call("/settings", { method: "PUT", body: { settings: { members: smem, customRecipes: [srec("custom-1", "Mamas Lauchgratin", { instructions: "Ofen 200°" }), srec("custom-2", "Geheimrezept", { shared: false })] } } });
+r = await call("/settings", { method: "PUT", body: { settings: { members: smem, customRecipes: [srec("custom-1", "Mamas Lauchgratin", { instructions: "Ofen 200°", nutrition: { kcal: 480, protein: 21, fat: 30, carbs: 28, src: "seite" } }), srec("custom-2", "Geheimrezept", { shared: false }), srec("custom-3", "Unsinn-Werte", { nutrition: { kcal: "viel", protein: 99999 } })] } } });
 check(r.status === 200, "erste WG speichert zwei eigene Rezepte (eins nicht geteilt)");
 let shr = await (await sh("/recipes/shared")).json();
 const got = shr.recipes.find(x => x.title === "Mamas Lauchgratin");
 check(!!got && got.id.startsWith("x-") && got.id.endsWith("-custom-1") && got.shared_from === true && got.ingredients[0].name === "Lauch" && got.instructions === "Ofen 200°", `zweite WG sieht das geteilte Rezept der ersten (${got && got.id}), ohne WG-Namen`);
 check(!shr.recipes.some(x => x.title === "Geheimrezept"), "abgewähltes Rezept bleibt in der eigenen WG");
+check(got && got.nutrition && got.nutrition.kcal === 480 && got.nutrition.protein === 21, "geteiltes Rezept behält die Nährwerte der Rezeptseite");
+check(shr.recipes.some(x => x.title === "Unsinn-Werte" && !x.nutrition), "unbrauchbare Nährwerte werden beim Teilen weggelassen");
 check((await (await call("/recipes/shared")).json()).recipes.length === 0, "eigene Rezepte kommen nicht doppelt zurück");
 r = await sh("/settings", { method: "PUT", body: { settings: { members: smem, customRecipes: [srec("custom-1", "Sonnenhof-Curry")] } } });
 const fromMain = (await (await call("/recipes/shared")).json()).recipes;
