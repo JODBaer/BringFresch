@@ -155,7 +155,8 @@
         return `
         <div class="card recipe">
           <div class="recipe-head">
-            <div>
+            ${app.imgSpan(r, "rthumb")}
+            <div class="recipe-txt">
               <b>${esc(r.title)}</b>${pop[r.id] ? ` <span class="likes" title="Stimmen eurer Wochenwahlen">♥ ${pop[r.id]}</span>` : ""}
               <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}${r.shared_from ? " · geteilt" : custom && r.shared === false ? " · nur unsere WG" : ""}</small>
             </div>
@@ -168,6 +169,7 @@
           </div>
         </div>`;
       }).join("");
+    app.watchImages($("catalogList"), $("catalogDialog").querySelector(".sheet-body")); // Bilder vom WG-Server, verkleinert
   }
 
   $("catalogSearch").oninput = renderCatalog;

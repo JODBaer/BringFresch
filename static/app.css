@@ -983,3 +983,14 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .websearch small { color: var(--muted); }
 .websearch .fav { border-color: var(--accent); }
 .msheet .websearch { padding: 0 16px; }
+
+/* Vorschaubilder im Katalog und im Menü-Blatt (gleicher Lader wie Wochenwahl/«Alle Rezepte»; ohne Bild: Emoji) */
+.rthumb, .othumb { flex: 0 0 auto; display: grid; place-items: center; border-radius: 12px; background: var(--line) center / cover no-repeat; opacity: .6; transition: opacity .3s; }
+.rthumb { width: 56px; height: 56px; }
+.othumb { width: 44px; height: 44px; border-radius: 10px; }
+.rthumb.ok, .othumb.ok, .rthumb.none, .othumb.none { opacity: 1; }
+.rthumb.none, .othumb.none { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.rthumb.none::after, .othumb.none::after { content: attr(data-emoji); font-size: 26px; line-height: 1; }
+.othumb.none::after { font-size: 20px; }
+.recipe-head .recipe-txt { flex: 1 1 auto; min-width: 0; }
+.opt:has(.othumb) { grid-template-columns: auto 1fr auto; }

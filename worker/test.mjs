@@ -296,6 +296,19 @@ store.set(bbKey, ""); kvOpts.set(bbKey, { metadata: { none: true } }); // «kein
 r = await call("/img?url=" + encodeURIComponent(BB));
 check(r.status === 200 && (await r.arrayBuffer()).byteLength === 4 && imgFetches === 3, `Betty Bossi: kleine Fassung (-B640) statt 2 MB; altes «kein Bild» wird neu geprüft (${r.status}, ${imgFetches})`);
 await backup(env, new Date("2026-11-10T03:00:00Z"));
+// Verkleinerte Fassung vom Handy (Joshua 19.11.: komprimiert auf Cloudflare): ersetzt nur ein vorhandenes, grösseres Original
+const putImg = (link, bytes, type = "image/jpeg", pin = "1234") => worker.fetch(new Request("https://bf.example.workers.dev/img?url=" + encodeURIComponent(link), {
+  method: "PUT", headers: { Origin: ORIGIN, "Content-Type": type, ...(pin ? { "X-WG-PIN": pin } : {}) }, body: new Uint8Array(bytes) }), env);
+check((await putImg(IMG_PAGE, [255, 216, 255, 0], "image/jpeg", "falsch")).status === 401, "Bild hochladen nur mit PIN");
+check((await putImg(IMG_PAGE, [1, 2, 3], "image/jpeg")).status === 400 && (await putImg(IMG_PAGE, [255, 216, 255, 0], "image/png")).status === 400, "nur echte JPEG/WebP");
+check((await putImg(IMG_PAGE, [255, 216, 255, 0, 0, 0, 0, 0])).status === 204, "grössere Fassung: angenommen, aber nicht gespeichert");
+r = await call("/img?url=" + encodeURIComponent(IMG_PAGE));
+check((await r.arrayBuffer()).byteLength === 6 && !r.headers.get("X-Img-Small"), "Original bleibt, wenn die neue Fassung nicht kleiner ist");
+check((await putImg(IMG_PAGE, [255, 216, 255, 0])).status === 204, "kleinere Fassung hochgeladen");
+r = await call("/img?url=" + encodeURIComponent(IMG_PAGE));
+check(r.status === 200 && (await r.arrayBuffer()).byteLength === 4 && r.headers.get("X-Img-Small") === "1" && imgFetches === 3, "danach liefert der Server die kleine Fassung (X-Img-Small), ohne neuen Abruf");
+const newKey = "img:" + [...new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode("https://fooby.ch/de/rezepte/99/neu")))].map(b => b.toString(16).padStart(2, "0")).join("");
+check((await putImg("https://fooby.ch/de/rezepte/99/neu", [255, 216, 255, 0])).status === 204 && !store.has(newKey), "ohne vorhandenes Original wird nichts angelegt (niemand schiebt fremde Bilder unter)");
 check(!Object.keys(JSON.parse(store.get("backup:2026-11-10")).keys).some(k => k.startsWith("img:")), "Bilder nicht in der täglichen Sicherung");
 
 // 5. Rezept-Link

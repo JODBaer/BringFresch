@@ -438,6 +438,7 @@ await step(A, "Menü wechseln: Blatt öffnen, suchen, Gericht wählen, «Rückg�
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   expect((await text(A, "#msheetTitle")).startsWith("Mi: Menü wechseln"), "Titel des Blatts");
   expect((await A.page.$$eval("#mlist .msec", l => l.map(e => e.textContent))).includes("Weitere"), "Abschnitt «Weitere» fehlt");
+  expect(await A.page.$$eval("#mlist .opt[data-id]", o => o.length > 0 && o.every(x => x.querySelector(".othumb"))), "Menü-Blatt: Bild-Fläche pro Gericht fehlt");
   await shot(A, "04-menu-blatt");
   const target = await A.page.$eval("#mlist .opt[data-id]:nth-of-type(3) .n", e => e.textContent);
   const word = target.split(/\s+/).find(w => w.length >= 4) || target;
@@ -503,6 +504,8 @@ await step(A, "Rezept-Katalog: über das Blatt öffnen, Filter Alle/Vegi/Fleisch
   await typeInto(A, "#catalogSearch", "kartoffel");
   await until(A, n => { const k = document.querySelectorAll("#catalogList .recipe").length; return k > 0 && k < n; }, "Suche «kartoffel» filtert nicht", allCount);
   await until(A, () => { const a = [...document.querySelectorAll('.websearch[data-ws="catalogSearch"] a')]; return a.length >= 2 && /swissmilk.*query=kartoffel/.test(a[0].href) && a[0].classList.contains("fav") && /google\.com\/search\?q=kartoffel%20Rezept/.test(a[1].href); }, "«Im Web suchen» unter der Katalog-Suche fehlt (Lieblingsseite + Google)");
+  expect(await A.page.$$eval("#catalogList .recipe", r => r.length > 0 && r.every(x => x.querySelector(".rthumb"))), "Katalog: Bild-Fläche pro Rezept fehlt");
+  expect(await A.page.$$eval("#catalogList .rthumb.none", t => t.length > 0 && t.every(x => x.dataset.emoji)), "ohne WG-Server: Emoji statt Bild");
   await shot(A, "05-katalog");
   await dialogNoHScroll(A, "catalogDialog");
 });

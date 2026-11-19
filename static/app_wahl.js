@@ -117,19 +117,81 @@
     return hit ? hit[1] : r.diet === "fleisch" ? "🥩" : "🥕";
   }
   const imgLoading = new Set();
+  // Bild verkleinern (Joshua 19.11.: «darfst komprimieren»): höchstens 480 px, WebP ~0.72 – nur auf dem Handy, nie im Repo
+  async function shrinkImage(blob) {
+    try {
+      if (!window.createImageBitmap || !blob || !blob.size) return blob;
+      const bmp = await createImageBitmap(blob);
+      const k = Math.min(1, 480 / Math.max(bmp.width, bmp.height));
+      if (k >= 1 && blob.size < 60000) return blob;
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      const out = await new Promise(r => c.toBlob(r, "image/webp", 0.72));
+      return out && out.size && out.size < blob.size ? out : blob;
+    } catch (e) { return blob; }
+  }
+  const IMG_CACHE = "bf-img-s"; // verkleinerte Bilder; die alte Ablage «bf-img» (Originalgrösse) wird einmal gelöscht
+  try { if (window.caches) caches.delete("bf-img").catch(() => {}); } catch (e) { /* ohne Cache */ }
   async function loadImg(u) {
     const req = `${state.sync.url.replace(/\/+$/, "")}/img?url=${encodeURIComponent(u)}`;
     let cache = null;
-    try { cache = window.caches ? await caches.open("bf-img") : null; } catch (e) { /* ohne Cache */ }
+    try { cache = window.caches ? await caches.open(IMG_CACHE) : null; } catch (e) { /* ohne Cache */ }
     let res = cache ? await cache.match(req).catch(() => null) : null;
-    if (!res) {
+    let blob;
+    if (res) blob = await res.blob();
+    else {
       const r = await fetch(req, { headers: { "X-WG-PIN": state.sync.pin, ...(state.sync.wg ? { "X-WG": state.sync.wg } : {}) } });
       if (r.status === 204 || r.status === 404) { imgCache.set(u, ""); return; } // kein Bild zu diesem Rezept
       if (!r.ok) return; // später nochmals
-      if (cache) await cache.put(req, r.clone()).catch(() => {});
-      res = r;
+      const orig = await r.blob();
+      blob = await shrinkImage(orig);
+      if (cache) await cache.put(req, new Response(blob, { headers: { "Content-Type": blob.type || "image/jpeg" } })).catch(() => {});
+      // kleinere Fassung zurück auf den WG-Server (Cloudflare), damit dort und auf den anderen Handys nur noch die kleine liegt
+      if (blob !== orig && blob.size < orig.size && !r.headers.get("X-Img-Small")) {
+        fetch(req, { method: "PUT", headers: { "Content-Type": blob.type, "X-WG-PIN": state.sync.pin, ...(state.sync.wg ? { "X-WG": state.sync.wg } : {}) }, body: blob }).catch(() => {});
+      }
     }
-    imgCache.set(u, URL.createObjectURL(await res.blob()));
+    imgCache.set(u, URL.createObjectURL(blob));
+  }
+  // Bild-Fläche zu einem Rezept (Wochenwahl, «Alle Rezepte», Katalog, Menü-Blatt): Bild vom WG-Server oder passendes Emoji
+  function imgSpan(r, cls = "vimg") {
+    const emoji = dishEmoji(r);
+    return r.source_url && app.connected()
+      ? `<span class="${cls}${imgState(r.source_url)}" data-img="${esc(r.source_url)}" data-emoji="${emoji}" aria-hidden="true"${imgCache.get(r.source_url) ? ` style="background-image:url(${imgCache.get(r.source_url)})"` : ""}></span>`
+      : `<span class="${cls} none" data-emoji="${emoji}" aria-hidden="true"></span>`;
+  }
+  // Bilder in einem Bereich erst laden, wenn sie sichtbar werden (höchstens 3 gleichzeitig). root = scrollender Bereich.
+  const watchers = new Map();
+  function watchImages(container, root) {
+    if (!container) return;
+    const old = watchers.get(container);
+    if (old) old.disconnect();
+    if (!app.connected() || typeof IntersectionObserver === "undefined") return;
+    const show = u => container.querySelectorAll("[data-img]").forEach(e => {
+      if (e.dataset.img !== u || !imgCache.has(u)) return;
+      const src = imgCache.get(u);
+      e.classList.remove("ok", "none"); e.classList.add(src ? "ok" : "none");
+      if (src) e.style.backgroundImage = `url(${src})`;
+    });
+    const queue = [];
+    let running = 0;
+    const pump = () => {
+      while (running < 3 && queue.length) {
+        const u = queue.shift();
+        if (imgCache.has(u)) { show(u); continue; }
+        running++;
+        loadImg(u).catch(() => {}).finally(() => { running--; show(u); pump(); });
+      }
+    };
+    const ob = new IntersectionObserver(entries => entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      ob.unobserve(en.target);
+      const u = en.target.dataset.img;
+      if (imgCache.has(u)) show(u); else if (!queue.includes(u)) { queue.push(u); pump(); }
+    }), { root: root || null, rootMargin: "200px" });
+    container.querySelectorAll("[data-img]:not(.ok):not(.none)").forEach(e => ob.observe(e));
+    watchers.set(container, ob);
   }
   async function loadVoteImages() {
     const todo = [...new Set([...document.querySelectorAll("#voteGrid .vimg[data-img]")].map(e => e.dataset.img))]
@@ -399,6 +461,6 @@
   $("wscrim").onclick = () => dockWahlPop();
   $("wpop").addEventListener("keydown", e => { if (e.key === "Escape") dockWahlPop(); });
 
-  Object.assign(app, { imgCache, imgState, dishEmoji, loadImg, voteKey, saveVote, pullVote, pushCandidates, myId, renderVote, openVoteFor, wahlDue, markWahl,
+  Object.assign(app, { imgCache, imgState, dishEmoji, loadImg, imgSpan, watchImages, shrinkImage, voteKey, saveVote, pullVote, pushCandidates, myId, renderVote, openVoteFor, wahlDue, markWahl,
     openWahlPop });
 })();

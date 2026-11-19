@@ -42,7 +42,7 @@ import { requireWg, scoped } from "./auth.js";
 import { backup, countWeek, getPopular, getWeek, putDoc } from "./speicher.js";
 import { bringList, bringLists, bringRemove, bringSetTarget, bringSync } from "./bring.js";
 import { calendar } from "./kalender.js";
-import { importRecipe, recipeImage } from "./rezept.js";
+import { importRecipe, recipeImage, storeSmallImage } from "./rezept.js";
 import { getShared, publishShared } from "./geteilt.js";
 import { release } from "./freigabe.js";
 // Für Tests und Werkzeuge
@@ -81,6 +81,7 @@ async function route(request, env, url) {
   env = { ...env, WG: scoped(env.WG, wg.prefix), RAW: env.WG, WG_CTX: wg };
 
   if (path === "/img" && method === "GET") return recipeImage(env, url.searchParams.get("url"));
+  if (path === "/img" && method === "PUT") return storeSmallImage(env, url.searchParams.get("url"), request); // verkleinert vom Handy
   if (path === "/bring/list" && method === "GET") return json(await bringList(env));
   if (path === "/bring/lists" && method === "GET") return json(await bringLists(env));
   if (path === "/bring/target" && method === "PUT") return json(await bringSetTarget(env, await body(request)));

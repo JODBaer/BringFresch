@@ -342,7 +342,7 @@
     const pc = app.popularCounts(), counts = Object.keys(pc).length ? pc : dishCounts(); // WG-Stimmen, sonst dieses Handy
     const current = state.plan[sheetDay] ? String(state.plan[sheetDay].id) : null;
     const all = allRecipes().filter(r => String(r.id) !== current && app.CORE.recipeMatches(r, f, dayMeta(r))); // gleiche Suchregel wie Katalog/«Alle Rezepte»
-    const optHTML = r => `<button type="button" class="opt" role="option" data-id="${esc(r.id)}"><span><span class="n">${esc(r.title)}</span><small>${esc(dayMeta(r))}${inSeason(r) ? "" : " · nicht Saison"}</small></span>${counts[r.id] ? `<span class="pop">♥ ${counts[r.id]}×</span>` : ""}</button>`;
+    const optHTML = r => `<button type="button" class="opt" role="option" data-id="${esc(r.id)}">${app.imgSpan(r, "othumb")}<span><span class="n">${esc(r.title)}</span><small>${esc(dayMeta(r))}${inSeason(r) ? "" : " · nicht Saison"}</small></span>${counts[r.id] ? `<span class="pop">♥ ${counts[r.id]}×</span>` : ""}</button>`;
     let h = "";
     if (!f) {
       const popular = all.filter(r => counts[r.id]).sort((a, b) => counts[b.id] - counts[a.id]).slice(0, 4);
@@ -357,6 +357,7 @@
     }
     h += `<button type="button" class="opt more-link" data-catalog="1">Alle Rezepte, Filter &amp; eigenes Rezept …</button>`;
     $("mlist").innerHTML = h;
+    app.watchImages($("mlist"), $("mlist")); // Vorschaubilder (WG-Server, verkleinert), erst wenn sichtbar
   }
 
   function fitKeyboard() {

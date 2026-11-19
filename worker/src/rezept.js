@@ -14,19 +14,42 @@ export function smallerImage(u) {
   if (u.hostname === "res.cloudinary.com") return s.replace(/\/w_1200,h_630,/, "/w_640,h_400,");
   return s;
 }
-export async function recipeImage(env, link) {
+async function imageKey(link) {
   let u;
   try { u = new URL(String(link || "")); } catch { throw httpError(400, "Kein Link"); }
   if (u.protocol !== "https:" || BLOCKED_HOSTS.test(u.hostname)) throw httpError(400, "Nur normale Webseiten (https://…)");
   const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(u.toString()));
-  const key = "img:" + [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+  return { u, key: "img:" + [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("") };
+}
+// Verkleinerte Fassung vom Handy (Joshua 19.11.: Bilder komprimiert auf Cloudflare): ersetzt das gespeicherte Original,
+// aber nur wenn es schon eines gibt und die neue Fassung kleiner ist und wirklich ein JPEG/WebP ist – so kann niemand
+// fremde Bilder unterschieben oder grösser machen. Danach laden alle Handys gleich die kleine Fassung.
+export const IMG_SMALL_MAX = 250_000;
+export async function storeSmallImage(env, link, request) {
+  const { key } = await imageKey(link);
   const kv = env.RAW || env.WG;
-  const send = (buf, type) => new Response(buf, { headers: { "Content-Type": type, "Cache-Control": "private, max-age=2592000" } });
+  const type = (request.headers.get("Content-Type") || "").split(";")[0].trim();
+  if (!/^image\/(webp|jpeg)$/.test(type)) throw httpError(400, "Nur WebP oder JPEG");
+  const buf = await request.arrayBuffer();
+  const b = new Uint8Array(buf);
+  const isJpeg = b[0] === 0xff && b[1] === 0xd8, isWebp = b.length > 12 && String.fromCharCode(...b.slice(0, 4)) === "RIFF" && String.fromCharCode(...b.slice(8, 12)) === "WEBP";
+  if (!buf.byteLength || buf.byteLength > IMG_SMALL_MAX || !(isJpeg || isWebp)) throw httpError(400, "Kein gültiges Bild");
+  const hit = await kv.getWithMetadata(key, "arrayBuffer");
+  if (!hit || hit.value == null || (hit.metadata && hit.metadata.none)) return new Response(null, { status: 204 }); // nichts zu ersetzen
+  if (hit.metadata && hit.metadata.small) return new Response(null, { status: 204 }); // schon verkleinert
+  if (buf.byteLength >= hit.value.byteLength) return new Response(null, { status: 204 });
+  await kv.put(key, buf, { metadata: { type, from: (hit.metadata && hit.metadata.from) || "", small: true } });
+  return new Response(null, { status: 204 });
+}
+export async function recipeImage(env, link) {
+  const { u, key } = await imageKey(link);
+  const kv = env.RAW || env.WG;
+  const send = (buf, type, small) => new Response(buf, { headers: { "Content-Type": type, "Cache-Control": "private, max-age=2592000", ...(small ? { "X-Img-Small": "1" } : {}) } });
   const hit = await kv.getWithMetadata(key, "arrayBuffer");
   if (hit && hit.value != null) {
     // kein Bild = 204 (kein Fehler: der Browser meldet 404 sonst als Fehler in der Konsole)
     if (hit.metadata && hit.metadata.none) { if (hit.metadata.v === IMG_V) return new Response(null, { status: 204 }); }
-    else return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg");
+    else return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg", hit.metadata && hit.metadata.small);
   }
   const none = async () => { await kv.put(key, "", { metadata: { none: true, v: IMG_V }, expirationTtl: 7 * 86400 }); return new Response(null, { status: 204 }); };
   const UA = { "User-Agent": "Mozilla/5.0 (compatible; Obsonare-RecipeImport/1.1; private WG meal planner)" };
