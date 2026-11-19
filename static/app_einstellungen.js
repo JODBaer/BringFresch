@@ -329,6 +329,12 @@
     $("versionCard").classList.toggle("new", !!isNew);
   }
   async function hardReload() {
+    // Browser-Cache der App-Dateien auffrischen (GitHub Pages: max-age=600), sonst kommt nach dem Neuladen die alte Version
+    try {
+      const files = [location.href.split("#")[0], ...[...document.scripts].map(s => s.src), ...[...document.querySelectorAll('link[rel="stylesheet"]')].map(l => l.href)]
+        .filter(u => u && u.startsWith(location.origin));
+      await Promise.all(files.map(u => fetch(u, { cache: "reload" }).catch(() => {})));
+    } catch (e) { /* egal */ }
     try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* egal */ }
     try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch (e) { /* egal */ }
     location.reload();
