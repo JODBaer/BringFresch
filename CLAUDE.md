@@ -7,7 +7,7 @@ WG: Joshua, Lukas, Leonie = Fleisch · Jo = Vegi (keine Veganer).
 
 **«Obsonare 2.0.0 Umbau starten»** (Speicher-Umzug `bringfrisch_*` → `obsonare_*`, Schriftzug, Adressen): zuerst `docs/uebergabe-obsonare-2.md` lesen.
 
-**Mehrere Chats gleichzeitig:** Vor der ersten Änderung an Code (`static/app.js`, `index.html`, `worker/`, `tests/`) einen eigenen Worktree anlegen (`EnterWorktree`), nie zu zweit im Hauptordner arbeiten. Nur eigene Pfade committen (`git add <pfade>`, nie `-A`), nicht stashen, keine fremden Dateien zurücksetzen, `tests/node_modules` nicht für andere umbauen. Fertig = `npm run ci` grün im Worktree → auf `main` → Worktree entfernen.
+**Mehrere Chats gleichzeitig:** Vor der ersten Änderung an Code (`static/app.js`, `index.html`, `worker/`, `tests/`) einen eigenen Worktree anlegen (`EnterWorktree`), nie zu zweit im Hauptordner arbeiten. Nur eigene Pfade committen (`git add <pfade>`, nie `-A`), nicht stashen, keine fremden Dateien zurücksetzen, `tests/node_modules` nicht für andere umbauen. Fertig = `npm run ci` grün im Worktree → auf `main` → Worktree entfernen. **Ohne Warten (bevorzugt):** Zweig pushen, `gh pr create --fill` + `gh pr merge --auto --squash` → GitHub testet (`ci.yml`, Check «tests») und fügt bei grün selbst in `main` ein; mehrere PRs stellen sich an, keiner wartet auf den anderen. Rot = PR bleibt offen (Fotos als Artefakt). Direkter Push auf `main` geht weiterhin (Admin), aber ohne Prüfung.
 
 ## Architektur
 
