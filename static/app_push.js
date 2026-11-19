@@ -237,10 +237,23 @@
 
   // Antippen einer Meldung öffnet Obsonare an der passenden Stelle (sw.js: ?open=… oder Nachricht ans offene Fenster)
   function openFrom(what) {
+    // Was noch offen ist (Hofläden, Grundvorrat, Menü-Blatt …), liegt sonst über Einkauf/Wochenwahl (Joshua 19.11.)
+    document.querySelectorAll("dialog[open]").forEach(d => d.close());
+    if ($("mscrim").classList.contains("show")) $("mscrim").click();
     if (what === "wahl") app.openVoteFor();
     else if (what === "einkauf") { const b = document.querySelector('.bnav [data-tab="shop"]'); if (b) b.click(); }
   }
-  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "bf-open") openFrom(e.data.open); });
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", e => {
+    if (!e.data) return;
+    if (e.data.type === "bf-open") openFrom(e.data.open);
+    // sw.js fragt vor dem Öffnen: bin ich die installierte App oder ein Browser-Tab?
+    if (e.data.type === "bf-mode" && e.ports && e.ports[0]) e.ports[0].postMessage({ standalone: standalone() });
+  });
+  // Installierte App (nicht Firefox): sw.js zeigt dann nur das kleine Symbol – Android setzt das App-Bild schon links hin.
+  // Im Browser (oder Firefox) bleibt das grosse Bild in der Meldung, sonst stünde dort nur das Browser-Zeichen.
+  if (standalone() && !/Firefox/i.test(navigator.userAgent) && "serviceWorker" in navigator) {
+    navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage({ type: "bf-installed" })).catch(() => {});
+  }
   function openFromUrl() {
     const u = new URL(location.href), what = u.searchParams.get("open");
     if (!what) return false;
