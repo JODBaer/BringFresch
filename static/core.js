@@ -861,9 +861,10 @@
     const kindOf = p => (p.k === "hof" && p.bio ? "bio" : p.k);
     return FARM_GROUPS.map(([key, name]) => ({ key, name, rows: all.filter(p => kindOf(p) === key) })).filter(g => g.rows.length);
   }
-  // Karte «Am nächsten»: der nächste Hofladen/Markt mit bekannten Zeiten (offen oder nicht)
-  function nearestFarm(items, ref, now) {
-    return farmPlaces(items, ref, now).find(p => p.state) || null;
+  // Karte «Am nächsten»: der nächste Hofladen/Markt mit bekannten Zeiten (offen oder nicht).
+  // skip = Schlüssel, der schon als «Lieblings» oben steht – sonst steht derselbe Ort doppelt da (Issue #8)
+  function nearestFarm(items, ref, now, skip = null) {
+    return farmPlaces(items, ref, now).find(p => p.state && p.key !== skip) || null;
   }
   // Karte «Lieblings»: von den Lieblingen der, der jetzt offen ist (der nächste), sonst der nächste
   function favFarm(items, favs, ref, now) {
