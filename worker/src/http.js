@@ -46,6 +46,7 @@ export function corsHeaders(request) {
         "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, X-WG-PIN, X-WG",
+        "Access-Control-Expose-Headers": "X-Img-Small",
         "Access-Control-Max-Age": "86400",
         Vary: "Origin",
       }

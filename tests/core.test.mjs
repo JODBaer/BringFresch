@@ -213,6 +213,7 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
   check(C.nearestFarm(items, rap, di10).n === "Nah" && C.nearestFarm([items[2]], rap, di10) === null, "am nächsten: mit Zeiten");
   check(C.favFarm(items, [C.farmKey(items[0]), C.farmKey(items[1])], rap, di10).n === "Weit", "Lieblinge: der offene zuerst");
   check(C.favFarm(items, [], rap, di10) === null, "kein Liebling");
+  check(C.nearestFarm(items, rap, di10, C.farmKey(items[1])).n === "Weit", "am nächsten: der Liebling oben steht nicht doppelt da (Issue #8)");
   check(C.routeUrl(items[0], true) === "https://maps.apple.com/?ll=47.37,8.54&q=Weit" && C.routeUrl(items[0], false) === "https://www.google.com/maps/search/?api=1&query=47.37,8.54", "Ort öffnen: über Koordinaten (Apple Karten mit Name / Google Maps), nie Textsuche");
   // KML für Google «Meine Karten»
   const kml = C.kmlExport([{ n: "Hof «Müller» & Söhne <1>", k: "hof", lat: 47.3, lon: 8.8, oh: "Mo-Fr 08:00-12:00", adr: "Dorfstr. 1", ort: "Wetzikon", web: "https://x.ch/?a=1&b=2" }, items[1]], [{ n: "Zibelemärit", ort: "Bern", lat: 46.9467, lon: 7.444, rule: { m: 11, nth: 4, wd: 0 }, zeit: "6–18 Uhr", pruefen: true }], di10);

@@ -22,10 +22,7 @@
     const id = String(r.id);
     const on = daysOf(id);
     const href = recipeHref(r);
-    const emoji = app.dishEmoji(r);
-    const img = r.source_url && app.connected()
-      ? `<span class="vimg${app.imgState(r.source_url)}" data-img="${esc(r.source_url)}" data-emoji="${emoji}" aria-hidden="true"${app.imgCache.get(r.source_url) ? ` style="background-image:url(${app.imgCache.get(r.source_url)})"` : ""}></span>`
-      : `<span class="vimg none" data-emoji="${emoji}" aria-hidden="true"></span>`;
+    const img = app.imgSpan(r); // gemeinsamer Bild-Lader (app_wahl.js)
     const meta = `${r.is_leftovers ? "♻️" : r.quick ? "⚡" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30}′`;
     return `
       <div class="vcard acard${on.length ? " on" : ""}${open === id ? " open" : ""}" data-id="${esc(id)}">
@@ -74,38 +71,8 @@
     watchImages();
   }
 
-  // Bilder erst laden, wenn die Karte sichtbar wird (der WG-Server holt jedes Bild einmal), höchstens 3 gleichzeitig
-  let observer = null;
-  const queue = [];
-  let running = 0;
-  function show(u) {
-    document.querySelectorAll("#allList .vimg[data-img]").forEach(e => {
-      if (e.dataset.img !== u || !app.imgCache.has(u)) return;
-      const src = app.imgCache.get(u);
-      e.className = `vimg${src ? " ok" : " none"}`;
-      if (src) e.style.backgroundImage = `url(${src})`;
-    });
-  }
-  function pump() {
-    while (running < 3 && queue.length) {
-      const u = queue.shift();
-      if (app.imgCache.has(u)) { show(u); continue; }
-      running++;
-      app.loadImg(u).catch(() => {}).finally(() => { running--; show(u); pump(); });
-    }
-  }
-  function watchImages() {
-    if (observer) observer.disconnect();
-    if (!app.connected() || typeof IntersectionObserver === "undefined") return;
-    observer = new IntersectionObserver(entries => entries.forEach(en => {
-      if (!en.isIntersecting) return;
-      observer.unobserve(en.target);
-      const u = en.target.dataset.img;
-      if (!app.imgCache.has(u) && !queue.includes(u)) queue.push(u);
-      pump();
-    }), { root: $("allDialog").querySelector(".sheet-body"), rootMargin: "200px" });
-    document.querySelectorAll("#allList .vimg[data-img]:not(.ok):not(.none)").forEach(e => observer.observe(e));
-  }
+  // Bilder erst laden, wenn die Karte sichtbar wird (gemeinsamer Lader, verkleinert; app_wahl.js)
+  const watchImages = () => app.watchImages($("allList"), $("allDialog").querySelector(".sheet-body"));
 
   function flipTo(id) {
     open = id;
@@ -121,7 +88,7 @@
     $("allDialog").querySelector(".sheet-body").scrollTop = 0;
   }
   $("allRecipesBtn").onclick = openAll;
-  $("allDialog").addEventListener("close", () => { if (observer) observer.disconnect(); });
+  $("allDialog").addEventListener("close", () => app.watchImages($("allList"), null, true)); // Beobachter abmelden
 
   $("allSearch").oninput = () => { query = $("allSearch").value; open = null; render(); };
   $("allWeeks").addEventListener("click", e => {

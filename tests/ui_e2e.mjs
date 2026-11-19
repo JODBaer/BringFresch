@@ -457,6 +457,7 @@ await step(A, "Menü wechseln: Blatt öffnen, suchen, Gericht wählen, «Rückg�
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   expect((await text(A, "#msheetTitle")).startsWith("Mi: Menü wechseln"), "Titel des Blatts");
   expect((await A.page.$$eval("#mlist .msec", l => l.map(e => e.textContent))).includes("Weitere"), "Abschnitt «Weitere» fehlt");
+  expect(await A.page.$$eval("#mlist .opt[data-id]", o => o.length > 0 && o.every(x => x.querySelector(".othumb"))), "Menü-Blatt: Bild-Fläche pro Gericht fehlt");
   await shot(A, "04-menu-blatt");
   const target = await A.page.$eval("#mlist .opt[data-id]:nth-of-type(3) .n", e => e.textContent);
   const word = target.split(/\s+/).find(w => w.length >= 4) || target;
@@ -522,6 +523,8 @@ await step(A, "Rezept-Katalog: über das Blatt öffnen, Filter Alle/Vegi/Fleisch
   await typeInto(A, "#catalogSearch", "kartoffel");
   await until(A, n => { const k = document.querySelectorAll("#catalogList .recipe").length; return k > 0 && k < n; }, "Suche «kartoffel» filtert nicht", allCount);
   await until(A, () => { const a = [...document.querySelectorAll('.websearch[data-ws="catalogSearch"] a')]; return a.length >= 2 && /swissmilk.*query=kartoffel/.test(a[0].href) && a[0].classList.contains("fav") && /google\.com\/search\?q=kartoffel%20Rezept/.test(a[1].href); }, "«Im Web suchen» unter der Katalog-Suche fehlt (Lieblingsseite + Google)");
+  expect(await A.page.$$eval("#catalogList .recipe", r => r.length > 0 && r.every(x => x.querySelector(".rthumb"))), "Katalog: Bild-Fläche pro Rezept fehlt");
+  expect(await A.page.$$eval("#catalogList .rthumb.none", t => t.length > 0 && t.every(x => x.dataset.emoji)), "ohne WG-Server: Emoji statt Bild");
   await shot(A, "05-katalog");
   await dialogNoHScroll(A, "catalogDialog");
 });
@@ -1293,7 +1296,7 @@ await step(B, "Wochenwahl als Leonie (Memory: Umdrehen = wählen): 3 Gerichte, W
 await step(B, "Wochenwahl: Bilder von der Rezeptseite (WG-Server legt sie ab, Handy merkt sie sich)", async () => {
   await until(B, () => document.querySelectorAll("#voteGrid .vimg.ok").length > 0 && [...document.querySelectorAll("#voteGrid .vimg.ok")].every(e => /blob:/.test(e.style.backgroundImage)), "keine Bilder in der Wochenwahl", null, 15000);
   expect([...kv.keys()].some(k => k.startsWith("img:")), "Bild nicht im WG-Server abgelegt");
-  expect(await B.page.evaluate(async () => (await (await caches.open("bf-img")).keys()).length > 0), "Bild nicht im Handy-Cache");
+  expect(await B.page.evaluate(async () => (await (await caches.open("bf-img-s")).keys()).length > 0), "Bild nicht im Handy-Cache (verkleinerte Ablage «bf-img-s»)");
   await shot(B, "02b-wochenwahl-bilder");
 });
 

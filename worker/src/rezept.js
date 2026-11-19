@@ -6,27 +6,77 @@ import { BLOCKED_HOSTS, httpError, json, safeFetch } from "./http.js";
 // WG-Server ablegen – nur für verbundene WGs (PIN), nie im öffentlichen Repo. Pro Rezept-Link genau ein Abruf,
 // danach aus dem Speicher; gibt es kein Bild, merkt sich der Server das 7 Tage (kein erneutes Anfragen).
 export const IMG_MAX = 1_600_000;
-export const IMG_V = 2; // «kein Bild» aus älteren Versionen (z.B. Betty Bossi zu gross) wird neu geprüft
+export const IMG_V = 3; // «kein Bild» aus älteren Versionen wird neu geprüft (v3: Joël & Muriel http-Bild, gemuese.ch ohne og:image – Issue #9)
 // kleinere Fassung des Vorschaubilds, wo die Seite das anbietet (Betty Bossi liefert sonst bis 1.2 MB)
 export function smallerImage(u) {
   const s = u.toString();
   if (u.hostname === "media.bettybossi.ch" && /\/-FJPG$/.test(s)) return s.replace(/\/-FJPG$/, "/-B640-FJPG");
   if (u.hostname === "res.cloudinary.com") return s.replace(/\/w_1200,h_630,/, "/w_640,h_400,");
+  if (u.hostname === "recipecontent.fooby.ch") return s.replace(/\/3_2_1200_800\.jpeg$/, "/3_2_480_320.jpeg"); // ~95 statt ~490 KB
+  // Shopify (z.B. Joël & Muriel: PNG-Screenshots ~200 KB) und gemuese.ch (Umbraco) verkleinern über ?width=
+  if (/\/cdn\/shop\//.test(u.pathname) || (/(^|\.)gemuese\.ch$/.test(u.hostname) && u.pathname.startsWith("/media/"))) {
+    const x = new URL(s);
+    x.searchParams.set("width", "640");
+    if (x.searchParams.has("height")) x.searchParams.set("height", "360");
+    return x.toString();
+  }
   return s;
 }
-export async function recipeImage(env, link) {
+async function imageKey(link) {
   let u;
   try { u = new URL(String(link || "")); } catch { throw httpError(400, "Kein Link"); }
   if (u.protocol !== "https:" || BLOCKED_HOSTS.test(u.hostname)) throw httpError(400, "Nur normale Webseiten (https://…)");
   const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(u.toString()));
-  const key = "img:" + [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+  return { u, key: "img:" + [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("") };
+}
+// Verkleinerte Fassung vom Handy (Joshua 19.11.: Bilder komprimiert auf Cloudflare): ersetzt das gespeicherte Original,
+// aber nur wenn es schon eines gibt und die neue Fassung kleiner ist und wirklich ein JPEG/WebP ist – so kann niemand
+// fremde Bilder unterschieben oder grösser machen. Danach laden alle Handys gleich die kleine Fassung.
+export const IMG_SMALL_MAX = 250_000;
+export async function storeSmallImage(env, link, request) {
+  const { key } = await imageKey(link);
   const kv = env.RAW || env.WG;
-  const send = (buf, type) => new Response(buf, { headers: { "Content-Type": type, "Cache-Control": "private, max-age=2592000" } });
+  const type = (request.headers.get("Content-Type") || "").split(";")[0].trim();
+  if (!/^image\/(webp|jpeg)$/.test(type)) throw httpError(400, "Nur WebP oder JPEG");
+  const buf = await request.arrayBuffer();
+  const b = new Uint8Array(buf);
+  const isJpeg = b[0] === 0xff && b[1] === 0xd8, isWebp = b.length > 12 && String.fromCharCode(...b.slice(0, 4)) === "RIFF" && String.fromCharCode(...b.slice(8, 12)) === "WEBP";
+  if (!buf.byteLength || buf.byteLength > IMG_SMALL_MAX || !(isJpeg || isWebp)) throw httpError(400, "Kein gültiges Bild");
+  const hit = await kv.getWithMetadata(key, "arrayBuffer");
+  if (!hit || hit.value == null || (hit.metadata && hit.metadata.none)) return new Response(null, { status: 204 }); // nichts zu ersetzen
+  if (hit.metadata && hit.metadata.small) return new Response(null, { status: 204 }); // schon verkleinert
+  if (buf.byteLength >= hit.value.byteLength) return new Response(null, { status: 204 });
+  await kv.put(key, buf, { metadata: { type, from: (hit.metadata && hit.metadata.from) || "", small: true } });
+  return new Response(null, { status: 204 });
+}
+// Vorschaubild auf der Rezeptseite finden: og:image (die https-Fassung zuerst), twitter:image, schema.org image;
+// sonst das erste Foto (JPEG/WebP) in <img>/<source> – gemuese.ch hat kein og:image (Issue #9)
+export function pickImage(html) {
+  const attr = (tag, name) => { const m = tag.match(new RegExp(`\\s${name}\\s*=\\s*["']([^"']+)["']`, "i")); return m ? m[1] : ""; };
+  const metas = html.match(/<meta\b[^>]*>/gi) || [];
+  for (const prop of ["og:image:secure_url", "og:image", "og:image:url", "twitter:image"]) {
+    const tag = metas.find(t => new RegExp(`(property|name)\\s*=\\s*["']${prop}["']`, "i").test(t) && attr(t, "content"));
+    if (tag) return attr(tag, "content");
+  }
+  const m = html.match(/"image"\s*:\s*(?:\[\s*)?(?:\{[^}]*?"url"\s*:\s*)?"(https:[^"]+)"/);
+  if (m) return m[1];
+  for (const tag of html.match(/<(img|source)\b[^>]*>/gi) || []) {
+    for (const name of ["srcset", "data-srcset", "data-src", "src"]) {
+      const v = attr(tag, name).trim().split(/\s+/)[0];
+      if (v && !v.startsWith("data:") && /\.(jpe?g|webp)(\?|$)/i.test(v)) return v;
+    }
+  }
+  return "";
+}
+export async function recipeImage(env, link) {
+  const { u, key } = await imageKey(link);
+  const kv = env.RAW || env.WG;
+  const send = (buf, type, small) => new Response(buf, { headers: { "Content-Type": type, "Cache-Control": "private, max-age=2592000", ...(small ? { "X-Img-Small": "1" } : {}) } });
   const hit = await kv.getWithMetadata(key, "arrayBuffer");
   if (hit && hit.value != null) {
     // kein Bild = 204 (kein Fehler: der Browser meldet 404 sonst als Fehler in der Konsole)
     if (hit.metadata && hit.metadata.none) { if (hit.metadata.v === IMG_V) return new Response(null, { status: 204 }); }
-    else return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg");
+    else return send(hit.value, (hit.metadata && hit.metadata.type) || "image/jpeg", hit.metadata && hit.metadata.small);
   }
   const none = async () => { await kv.put(key, "", { metadata: { none: true, v: IMG_V }, expirationTtl: 7 * 86400 }); return new Response(null, { status: 204 }); };
   const UA = { "User-Agent": "Mozilla/5.0 (compatible; Obsonare-RecipeImport/1.1; private WG meal planner)" };
@@ -36,15 +86,11 @@ export async function recipeImage(env, link) {
     if (!res.ok) return none();
     html = (await res.text()).slice(0, 2_000_000);
   } catch { return none(); }
-  const attr = (tag, name) => { const m = tag.match(new RegExp(`${name}\\s*=\\s*["']([^"']+)["']`, "i")); return m ? m[1] : ""; };
-  let src = "";
-  for (const tag of html.match(/<meta\b[^>]*>/gi) || []) {
-    if (/(property|name)\s*=\s*["'](og:image|og:image:url|twitter:image)["']/i.test(tag)) { src = attr(tag, "content"); if (src) break; }
-  }
-  if (!src) { const m = html.match(/"image"\s*:\s*(?:\[\s*)?(?:\{[^}]*?"url"\s*:\s*)?"(https:[^"]+)"/); if (m) src = m[1]; }
+  const src = pickImage(html);
   if (!src) return none();
   let imgUrl;
   try { imgUrl = new URL(src.replace(/&amp;/g, "&"), u); } catch { return none(); }
+  if (imgUrl.protocol === "http:") imgUrl.protocol = "https:"; // Joël & Muriel (Shopify) nennt das Bild mit http://
   if (imgUrl.protocol !== "https:" || BLOCKED_HOSTS.test(imgUrl.hostname)) return none();
   const getImg = async url => {
     try {

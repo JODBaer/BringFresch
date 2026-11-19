@@ -71,6 +71,11 @@ globalThis.fetch = async (url, init = {}) => {
   if (url === "https://www.bettybossi.ch/de/rezepte/rezept/gross-1/") return new Response(`<html><head><meta property="og:image" content="https://media.bettybossi.ch/image/1/image_x/-FJPG"></head></html>`);
   if (url === "https://media.bettybossi.ch/image/1/image_x/-B640-FJPG") { imgFetches++; return new Response(new Uint8Array([255, 216, 255, 9]), { headers: { "Content-Type": "image/jpeg" } }); }
   if (url === "https://media.bettybossi.ch/image/1/image_x/-FJPG") { imgFetches++; return new Response(new Uint8Array(2_000_000), { headers: { "Content-Type": "image/jpeg" } }); }
+  // Issue #9 (nachgebaut wie die echten Seiten 19.11.): Joël & Muriel nennt das Bild mit http:// (Shopify), gemuese.ch hat kein og:image
+  if (url === "https://joelundmuriel.ch/blogs/rezepte/udon") return new Response(`<html><head><meta property="og:image" content="http://joelundmuriel.ch/cdn/shop/articles/udon.png?v=1"><meta property="og:image:secure_url" content="https://joelundmuriel.ch/cdn/shop/articles/udon.png?v=1"></head></html>`);
+  if (url === "https://joelundmuriel.ch/cdn/shop/articles/udon.png?v=1&width=640") { imgFetches++; return new Response(new Uint8Array([82, 73, 70, 70, 1, 2, 3]), { headers: { "Content-Type": "image/webp" } }); }
+  if (url === "https://www.gemuese.ch/rezepte/nudeln") return new Response(`<html><head><meta property="og:title" content="Nudeln"></head><body><img class="lazyload" src="data:image/png;base64,iVBO" data-src="/frontend/img/svg/logo.svg"><picture><source media="(min-width: 1280px)" srcset="/media/ab/nudeln_quer.jpg?width=1280&amp;height=720&amp;mode=crop&amp;quality=80 1x, /media/ab/nudeln_quer.jpg?width=2560&amp;height=1440 2x"></picture></body></html>`);
+  if (url === "https://www.gemuese.ch/media/ab/nudeln_quer.jpg?width=640&height=360&mode=crop&quality=80") { imgFetches++; return new Response(new Uint8Array([255, 216, 255, 7, 7]), { headers: { "Content-Type": "image/jpeg" } }); }
   if (url.startsWith("https://www.swissmilk.ch/")) {
     return new Response(`<html><head><meta property="og:title" content="Auberginenrollen - Rezept | Swissmilk"></head><body><h1>Navigieren</h1><table>
       <tr itemprop="recipeIngredient"><td colspan="2" class="Ingredient--text">Bratpfanne</td></tr>
@@ -295,7 +300,27 @@ const bbKey = "img:" + [...new Uint8Array(await crypto.subtle.digest("SHA-1", ne
 store.set(bbKey, ""); kvOpts.set(bbKey, { metadata: { none: true } }); // «kein Bild» aus der alten Version (Bild war zu gross)
 r = await call("/img?url=" + encodeURIComponent(BB));
 check(r.status === 200 && (await r.arrayBuffer()).byteLength === 4 && imgFetches === 3, `Betty Bossi: kleine Fassung (-B640) statt 2 MB; altes «kein Bild» wird neu geprüft (${r.status}, ${imgFetches})`);
+const JM = "https://joelundmuriel.ch/blogs/rezepte/udon", GM = "https://www.gemuese.ch/rezepte/nudeln";
+const jmKey = "img:" + [...new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(JM)))].map(b => b.toString(16).padStart(2, "0")).join("");
+store.set(jmKey, ""); kvOpts.set(jmKey, { metadata: { none: true, v: 2 } }); // «kein Bild» von vor dem Fix
+r = await call("/img?url=" + encodeURIComponent(JM));
+check(r.status === 200 && r.headers.get("Content-Type") === "image/webp" && (await r.arrayBuffer()).byteLength === 7 && imgFetches === 4, `Joël & Muriel: https-Bild statt http, 640 px über Shopify; altes «kein Bild» (v2) neu geprüft – Issue #9 (${r.status}, ${imgFetches})`);
+r = await call("/img?url=" + encodeURIComponent(GM));
+check(r.status === 200 && (await r.arrayBuffer()).byteLength === 5 && imgFetches === 5, `gemuese.ch ohne og:image: erstes Foto der Seite, 640×360 – Issue #9 (${r.status}, ${imgFetches})`);
 await backup(env, new Date("2026-11-10T03:00:00Z"));
+// Verkleinerte Fassung vom Handy (Joshua 19.11.: komprimiert auf Cloudflare): ersetzt nur ein vorhandenes, grösseres Original
+const putImg = (link, bytes, type = "image/jpeg", pin = "1234") => worker.fetch(new Request("https://bf.example.workers.dev/img?url=" + encodeURIComponent(link), {
+  method: "PUT", headers: { Origin: ORIGIN, "Content-Type": type, ...(pin ? { "X-WG-PIN": pin } : {}) }, body: new Uint8Array(bytes) }), env);
+check((await putImg(IMG_PAGE, [255, 216, 255, 0], "image/jpeg", "falsch")).status === 401, "Bild hochladen nur mit PIN");
+check((await putImg(IMG_PAGE, [1, 2, 3], "image/jpeg")).status === 400 && (await putImg(IMG_PAGE, [255, 216, 255, 0], "image/png")).status === 400, "nur echte JPEG/WebP");
+check((await putImg(IMG_PAGE, [255, 216, 255, 0, 0, 0, 0, 0])).status === 204, "grössere Fassung: angenommen, aber nicht gespeichert");
+r = await call("/img?url=" + encodeURIComponent(IMG_PAGE));
+check((await r.arrayBuffer()).byteLength === 6 && !r.headers.get("X-Img-Small"), "Original bleibt, wenn die neue Fassung nicht kleiner ist");
+check((await putImg(IMG_PAGE, [255, 216, 255, 0])).status === 204, "kleinere Fassung hochgeladen");
+r = await call("/img?url=" + encodeURIComponent(IMG_PAGE));
+check(r.status === 200 && (await r.arrayBuffer()).byteLength === 4 && r.headers.get("X-Img-Small") === "1" && imgFetches === 5, "danach liefert der Server die kleine Fassung (X-Img-Small), ohne neuen Abruf");
+const newKey = "img:" + [...new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode("https://fooby.ch/de/rezepte/99/neu")))].map(b => b.toString(16).padStart(2, "0")).join("");
+check((await putImg("https://fooby.ch/de/rezepte/99/neu", [255, 216, 255, 0])).status === 204 && !store.has(newKey), "ohne vorhandenes Original wird nichts angelegt (niemand schiebt fremde Bilder unter)");
 check(!Object.keys(JSON.parse(store.get("backup:2026-11-10")).keys).some(k => k.startsWith("img:")), "Bilder nicht in der täglichen Sicherung");
 
 // 5. Rezept-Link

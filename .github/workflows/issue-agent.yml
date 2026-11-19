@@ -1,0 +1,137 @@
+# Issue-Agent: alle 2 Wochen (1. und 15. des Monats, früh am Morgen) oder von Hand («Run workflow»).
+# Liest die offenen Issues, sucht im Code die Ursache und schreibt pro Issue einen Kommentar mit
+#   Ursache · Lösungsvorschlag · fertigem Prompt für einen Agenten (z.B. Claude Code im Worktree).
+# Dazu pflegt er EIN Plan-Issue «📋 Issue-Plan» (Label issue-plan) mit Reihenfolge und Stand aller offenen Issues.
+# Er ändert NIE Code, pusht nichts und schliesst keine Issues – umsetzen tut Joshua bzw. ein Agent mit dem Prompt.
+# Schon bearbeitete Issues bekommen das Label «agent-analysiert»; neu angeschaut wird nur, was neu ist
+# oder seit seinem letzten Kommentar neue Kommentare hat.
+# Secret (GitHub > Settings > Secrets and variables > Actions), eines von beiden:
+#   CLAUDE_CODE_OAUTH_TOKEN  -> Claude-Abo (Token mit «claude setup-token» erzeugen)
+#   ANTHROPIC_API_KEY        -> API-Schlüssel (kostet pro Lauf)
+name: Issue-Agent (alle 2 Wochen)
+
+on:
+  schedule:
+    - cron: "23 5 1,15 * *"
+  workflow_dispatch:
+    inputs:
+      alle:
+        description: "Alle offenen Issues neu anschauen (auch schon analysierte)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+concurrency:
+  group: "issue-agent"
+
+jobs:
+  triage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Secret vorhanden?
+        id: key
+        env:
+          OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          API: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$OAUTH$API" ]; then
+            echo "::warning::Kein CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY – Issue-Agent übersprungen."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Offene Issues vorhanden?
+        id: issues
+        if: steps.key.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --limit 200 --json labels \
+              --jq '[.[] | select(all(.labels[]; .name != "issue-plan"))] | length')
+          echo "Offene Issues (ohne Plan-Issue): $n"
+          echo "n=$n" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ok == 'true'
+        with:
+          fetch-depth: 50
+      - name: Labels anlegen (falls neu)
+        if: steps.key.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create agent-analysiert -R "$GITHUB_REPOSITORY" --color C5DEF5 --description "Vom Issue-Agent angeschaut (Vorschlag im Kommentar)" 2>/dev/null || true
+          gh label create issue-plan -R "$GITHUB_REPOSITORY" --color 93C572 --description "Plan des Issue-Agents (wird bei jedem Lauf neu geschrieben)" 2>/dev/null || true
+      - name: Keine offenen Issues – nur den Plan nachführen (ohne Agent, kostet nichts)
+        if: steps.key.outputs.ok == 'true' && steps.issues.outputs.n == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          plan=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --label issue-plan --json number --jq '.[0].number // empty')
+          [ -n "$plan" ] && gh issue edit "$plan" -R "$GITHUB_REPOSITORY" --body "Stand $(date +%d.%m.%Y) · Keine offenen Issues 🎉 · nächster Lauf am 1./15." || true
+      - uses: anthropics/claude-code-action@v1
+        if: steps.key.outputs.ok == 'true' && steps.issues.outputs.n != '0'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          claude_args: >-
+            --model claude-opus-5-5
+            --max-turns 120
+            --allowedTools "Read,Glob,Grep,Write,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh issue create:*),Bash(gh api:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(git grep:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(sed -n:*),Bash(node --check:*),Bash(date:*)"
+          prompt: |
+            Du bist der Issue-Agent von Obsonare (Repo ${{ github.repository }}), einem WG-Menüplaner.
+            Lies zuerst CLAUDE.md (Architektur, Fachregeln). Schreib alles auf Deutsch (Schweizer Schreibweise: ss statt ß),
+            kurz und verständlich für Joshua, der kein Profi-Entwickler ist.
+
+            WICHTIG: Du änderst KEINEN Code, pushst nichts, öffnest keine Pull Requests und schliesst keine Issues.
+            Deine Arbeit sind Vorschläge: Kommentare an den Issues und ein Plan-Issue.
+
+            ## 1. Welche Issues
+            Alle offenen Issues (`gh issue list --state open --limit 200 --json number,title,labels,body,createdAt,comments`),
+            ausser dem Plan-Issue (Label `issue-plan`).
+            ${{ inputs.alle && 'Diesmal ALLE neu anschauen, auch die mit Label agent-analysiert.' || 'Neu anschauen nur: Issues OHNE Label agent-analysiert, und solche, die seit deinem letzten Kommentar (Kommentar beginnt mit «🤖 Issue-Agent») neue Kommentare von Menschen haben. Die übrigen nur für den Plan übernehmen.' }}
+            Issues aus der App heissen «Test: …» bzw. tragen unten «Gemeldet aus der Test-App · Version … · Stand <commit>».
+
+            ## 2. Pro Issue (neu anzuschauen)
+            - Such im Code die wahrscheinliche Ursache (Read/Grep, `git log`/`git show` für den genannten Stand).
+              Prüf, ob es auf dem neusten main schon behoben ist (`git log --oneline -30`, Commits mit «#<nr>» oder passendem Thema).
+            - Schreib EINEN Kommentar (`gh issue comment <nr> --body-file <datei>`; Datei vorher mit Write anlegen) in dieser Form:
+
+              🤖 Issue-Agent · <Datum>
+
+              **Verstanden als:** ein Satz, was gemeint ist (bei Unklarem: «Rückfrage:» mit der Frage an Joshua, sonst nichts erfinden).
+              **Ursache (vermutlich):** 1–3 Sätze mit Dateien und Zeilen (`static/core.js:123`).
+              **Vorschlag:** was ändern, in kleinen Schritten; Fachregeln aus CLAUDE.md beachten. Wenn es eine Design-Frage ist: so sagen (Joshua entscheidet Design live als HTML-Entwurf).
+              **Aufwand:** klein / mittel / gross · **Risiko:** niedrig / mittel / hoch
+              **Schon behoben?** nur wenn ja: mit Commit.
+
+              <details><summary>Prompt für einen Agenten</summary>
+
+              ```
+              <fertiger Prompt zum Einfügen in Claude Code: Ziel, betroffene Dateien, gewünschtes Verhalten,
+               welcher Test dazukommt (tests/core.test.mjs, worker/test.mjs, tests/ui_e2e.mjs …),
+               «Arbeite in einem eigenen Worktree, am Schluss cd tests && npm run ci grün», «Fixes #<nr>» in der Commit-Nachricht>
+              ```
+              </details>
+
+            - Danach Label setzen: `gh issue edit <nr> --add-label agent-analysiert`.
+            - Ein Issue, das schon behoben ist: nur kommentieren («Scheint mit <commit> behoben – bitte prüfen und schliessen»), nicht schliessen.
+
+            ## 3. Plan-Issue
+            Es gibt genau ein offenes Issue mit Label `issue-plan` und Titel «📋 Issue-Plan». Gibt es keins, leg es an
+            (`gh issue create --title "📋 Issue-Plan" --label issue-plan --body-file …`). Sonst ersetzt du seinen Text
+            (`gh issue edit <nr> --body-file …`), keine neuen Kommentare. Inhalt:
+            - Kopf: «Stand <Datum> · <n> offene Issues · nächster Lauf am 1./15.»
+            - **Als Nächstes** (Reihenfolge nach Nutzen für die WG und Aufwand, Bugs vor Wünschen): Tabelle
+              | # | Titel (Link) | Art (Bug/Wunsch/Frage) | Aufwand | Risiko | Nächster Schritt |
+            - **Zusammenhänge**: Issues, die zusammengehören oder sich widersprechen; was man in einem Zug machen kann.
+            - **Wartet auf Joshua**: Rückfragen und Design-Entscheide.
+            - **Vermutlich erledigt**: mit Commit.
+            Gibt es keine offenen Issues: Plan-Issue nur mit «Keine offenen Issues 🎉» aktualisieren.
+
+            Am Schluss: eine kurze Zusammenfassung (wie viele angeschaut, Link zum Plan-Issue).

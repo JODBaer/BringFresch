@@ -51,8 +51,9 @@
         <ol class="hint"><li>Unten je Art «Exportieren» (oder «Alle») und die Dateien speichern.</li><li>In «Meine Karten» (google.com/maps/d): Ebene hinzufügen → Importieren, je Datei eine Ebene (jede hat ein Häkchen).</li><li>Den Link der Karte in den Einstellungen bei «Karte Märkte» eintragen.</li></ol>
         ${layers.map(l => `<div class="hofrow"><span>${esc(l.name)} <small>${l.count} Orte</small></span><button type="button" class="hofroute" data-kml="${l.key}">Exportieren</button></div>`).join("")}
         <div class="hofrow"><span>Alle zusammen</span><button type="button" class="hofroute" id="hofKml">Alle exportieren</button></div></details>`;
-    $("hofCards").innerHTML = card("Am nächsten", CORE.nearestFarm(items, r, now), "Keine Orte mit Öffnungszeiten.", fav, now)
-      + card("Lieblings", CORE.favFarm(items, fav, r, now), "Tippe bei einem Ort auf ☆, dann steht er hier.", fav, now);
+    const favIt = CORE.favFarm(items, fav, r, now);
+    $("hofCards").innerHTML = card("Am nächsten", CORE.nearestFarm(items, r, now, favIt && favIt.key), "Keine Orte mit Öffnungszeiten.", fav, now)
+      + card("Lieblings", favIt, "Tippe bei einem Ort auf ☆, dann steht er hier.", fav, now);
     // Saisongemüse des Monats (gleiche Daten wie «Rezepte & Saison»); was ein einzelner Hofladen verkauft, wissen wir nicht
     const veg = CORE.seasonVeg((app.DATA && app.DATA.season_items) || [], now.getMonth() + 1, it => app.vegLook(it)[0]);
     $("hofSeason").innerHTML = veg.length ? `<div class="hofvegs"><b>Jetzt Saison:</b> ${esc(veg.slice(0, 6).join(" · "))}${veg.length > 6 ? ` <details><summary>mehr</summary>${esc(veg.slice(6).join(" · "))}</details>` : ""}</div>

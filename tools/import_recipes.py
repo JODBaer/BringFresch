@@ -430,6 +430,8 @@ def extract(page: str) -> dict | None:
         "category": as_text(r.get("recipeCategory")),
         "keywords": as_text(r.get("keywords")),
         "diet": as_text(r.get("suitableForDiet")),
+        # Vorschaubild vorhanden? (nur ja/nein – das Bild selbst holt der WG-Server beim Anzeigen, nie ins Repo)
+        "image": bool(r.get("image")) or bool(re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']https?://', page)),
     }
 
 
