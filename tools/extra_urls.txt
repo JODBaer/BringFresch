@@ -1,1 +1,43 @@
 # Einzelne Rezept-Links (z.B. Chefkoch), eine URL pro Zeile
+
+# gemuese.ch (VSGP, 16.11.2026: Auszüge mit Quellenangabe erlaubt, robots.txt ok)
+https://www.gemuese.ch/rezepte/blumenkohl-curry
+https://www.gemuese.ch/rezepte/kabis-kartoffel-curry
+https://www.gemuese.ch/rezepte/peperoni-kartoffel-stroganoff
+https://www.gemuese.ch/rezepte/gruenes-thai-curry
+https://www.gemuese.ch/rezepte/tomatenrisotto
+https://www.gemuese.ch/rezepte/rueeblirisotto-mit-erbsli
+https://www.gemuese.ch/rezepte/zucchetti-frittata-aus-dem-ofen
+https://www.gemuese.ch/rezepte/spinatknoepfli-mit-brauner-butter
+https://www.gemuese.ch/rezepte/kuerbis-tacos
+https://www.gemuese.ch/rezepte/lauchquiche
+https://www.gemuese.ch/rezepte/randen-flammkuchen
+https://www.gemuese.ch/rezepte/indisches-suesskartoffelcurry-mit-kichererbsen
+https://www.gemuese.ch/rezepte/broccoli-pasta
+https://www.gemuese.ch/rezepte/federkohl-pasta
+https://www.gemuese.ch/rezepte/erbsen-linsen-dal-mit-knusperzwiebeln
+https://www.gemuese.ch/rezepte/vegi-paella
+https://www.gemuese.ch/rezepte/gefuellte-peperoni
+https://www.gemuese.ch/rezepte/parmigiana
+https://www.gemuese.ch/rezepte/linsen-spinat-eintopf
+https://www.gemuese.ch/rezepte/kuerbispfanne-mit-rosenkohl
+
+# schweizerfleisch.ch (Proviande, 16.11.2026: robots.txt ok, keine Einschränkung im Impressum)
+https://schweizerfleisch.ch/rezepte/aelpler-roesti-mit-salsiz-spiegelei-und-peperonigemuese
+https://schweizerfleisch.ch/rezepte/schweinsplaetzli-mit-zucchetti-salat
+https://schweizerfleisch.ch/rezepte/schnelles-schweinsgeschnetzeltes-mit-ingwer-und-kefenstreifen
+https://schweizerfleisch.ch/rezepte/schweinsragout-mit-peperoni-an-rahmsauce
+https://schweizerfleisch.ch/rezepte/hackfleisch-eintopf-mit-kartoffeln-gemuese-und-cashewkernen
+https://schweizerfleisch.ch/rezepte/rindsragout-mit-bohnen-peperoni-und-tomaten
+https://schweizerfleisch.ch/rezepte/pouletbrust-aus-dem-ofen-mit-zucchetti-und-suesskartoffeln
+https://schweizerfleisch.ch/rezepte/gruenes-thai-curry-mit-pouletgeschnetzeltem
+https://schweizerfleisch.ch/rezepte/speck-eintopf-mit-birnen-bohnen-und-kartoffeln
+https://schweizerfleisch.ch/rezepte/curry-reispfanne-mit-schweins-geschnetzeltem-und-datteln
+https://schweizerfleisch.ch/rezepte/schnelles-chili-con-carne
+https://schweizerfleisch.ch/rezepte/schweinsragout-mit-aepfeln-an-milder-currysauce
+https://schweizerfleisch.ch/rezepte/potaufeu-vom-rind-mit-speck-kuerbis-rueebli-und-wirz
+https://schweizerfleisch.ch/rezepte/pouletgeschnetzeltes-mit-ingwer-kardamom-und-trauben
+https://schweizerfleisch.ch/rezepte/luganighetta-auf-brotsalat-mit-schafskaese
+https://schweizerfleisch.ch/rezepte/riz-casimir-mit-schweinsfiletstreifen
+https://schweizerfleisch.ch/rezepte/kalbsragout-in-tomaten-rahm-sauce
+https://schweizerfleisch.ch/rezepte/poulet-geschnetzeltes-mit-crepes

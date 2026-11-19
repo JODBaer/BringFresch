@@ -14,6 +14,9 @@ Ablauf:
                                             # -> tools/recipes_staging.json (zum Durchsehen)
 
 Zusätzliche Einzel-Links (z.B. Chefkoch): eine URL pro Zeile in tools/extra_urls.txt
+Gezielter Import (16.11.2026: gemuese.ch, schweizerfleisch.ch; von Hand gewählte Links, robots.txt/Bedingungen geprüft):
+  discover --extra   # nur extra_urls.txt, keine Sitemaps
+  fetch, build, merge --add   # neue Rezepte zu den bisherigen dazu (statt zu ersetzen)
 Nur Standardbibliothek, Python 3.9+.
 """
 from __future__ import annotations
@@ -40,7 +43,7 @@ PAGES = CACHE / "recipes"
 STAGING = ROOT / "recipes_staging.json"
 EXTRA_URLS = ROOT / "extra_urls.txt"
 
-UA = "Obsonare-RecipeImport/1.0 (private WG meal planner; low volume)"
+UA = "Obsonare-RecipeImport/1.0 (+https://github.com/jodbaer/BringFresch; private WG meal planner; low volume)"
 DELAY_S = 3.0
 PER_SITE = 90  # Kandidaten pro Website, die abgerufen werden
 SEED = 2026
@@ -394,10 +397,11 @@ def extract(page: str) -> dict | None:
 
 # --- Schritte ---------------------------------------------------------------------------------------
 def cmd_discover():
+    """«discover --extra»: nur die Links aus tools/extra_urls.txt (gezielter Import, keine Sitemaps)."""
     CACHE.mkdir(exist_ok=True)
     rnd = random.Random(SEED)
     out = {}
-    for site, cfg in SITES.items():
+    for site, cfg in ({} if "--extra" in sys.argv else SITES).items():
         try:
             xml = get(cfg["sitemap"], timeout=120)
         except Exception as e:
@@ -471,7 +475,7 @@ def iso_minutes(s: str) -> int | None:
 
 def source_of(url: str) -> str:
     host = urllib.parse.urlparse(url).netloc
-    for key in ("bettybossi", "migusto", "fooby", "swissmilk", "chefkoch"):
+    for key in ("bettybossi", "migusto", "fooby", "swissmilk", "chefkoch", "gemuese", "schweizerfleisch"):
         if key in host:
             return key
     return host
@@ -618,14 +622,23 @@ def cmd_merge():
     """Vorgeschlagene (oder in tools/recipes_selected.json ausgewählte) Rezepte in die App übernehmen."""
     data = json.loads(STAGING.read_text(encoding="utf-8"))
     selected_file = ROOT / "recipes_selected.json"
-    if selected_file.exists():
+    add = "--add" in sys.argv  # gezielter Import: alles aus dem Staging zu den bisherigen Rezepten dazu
+    if add:
+        chosen = data["recipes"]
+    elif selected_file.exists():
         ids = set(json.loads(selected_file.read_text(encoding="utf-8")))
         chosen = [r for r in data["recipes"] if r["id"] in ids]
     else:
         chosen = [r for r in data["recipes"] if r["proposed"]]
     keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months")
-    out = [{k: r[k] for k in keep} for r in sorted(chosen, key=lambda r: r["title"])]
+    out = [{k: r[k] for k in keep} for r in chosen]
     target = ROOT.parent / "static" / "recipes_imported.js"
+    if add:
+        old = json.loads(re.search(r"=\s*(\[.*\]);", target.read_text(encoding="utf-8"), re.S).group(1))
+        norm = lambda t: re.sub(r"[^a-z]", "", t.lower())
+        have = {r["id"] for r in old} | {norm(r["title"]) for r in old} | {r["source_url"] for r in old}
+        out = old + [r for r in out if r["id"] not in have and norm(r["title"]) not in have and r["source_url"] not in have]
+    out = sorted(out, key=lambda r: r["title"])
     target.write_text(
         "// Automatisch erzeugt von tools/import_recipes.py merge – nicht von Hand bearbeiten.\n"
         "// Nur Fakten (Titel, Portionen, Zutaten); Zubereitung steht auf der verlinkten Originalseite.\n"
