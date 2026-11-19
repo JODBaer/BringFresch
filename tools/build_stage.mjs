@@ -10,6 +10,7 @@ import { cpSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isFeature } from "./release_decide.mjs";
 
 export const STAGE_WORKER = "https://bringfrisch-test.bringfrisch-worker.workers.dev";
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -50,7 +51,7 @@ export function changesSince(log) {
   return String(log || "").split("\n").map(l => l.trim()).filter(Boolean).map(line => {
     const t = line.replace(/^\w+(\([^)]*\))?!?:\s*/, "");
     const m = / \(#(\d+)\)$/.exec(t);
-    return { n: m ? +m[1] : null, title: (m ? t.slice(0, m.index) : t).trim() };
+    return { n: m ? +m[1] : null, title: (m ? t.slice(0, m.index) : t).trim(), feat: isFeature(line) };
   }).filter(c => c.title && !/^Merge /.test(c.title));
 }
 const freigabe = {
