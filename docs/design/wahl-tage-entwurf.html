@@ -1,0 +1,170 @@
+<title>Wochenwahl Tage</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,600;8..144,800&display=swap">
+<style>
+/* Layout: links ein Handy (390 px) mit dem WG-Ranking zum Antippen, rechts was neu ist und was Joshua entscheidet. Farben wie die App: Hellgrün + Pistazie. */
+:root {
+  --bg: #f3f7ef; --fg: #172116; --muted: #56654f; --card: #ffffff; --line: #d3e0c9; --phone: #fbfdf9;
+  --accent: #3a5f3a; --accent-bg: #c8f6c8; --on-accent: #ffffff; --chip: #e6f4dc; --focus: #1a73e8;
+  --wish: #9a6a00; --wish-bg: #fff1c7; --off: #a7b3a1;
+  --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e130e; --fg: #e2ecdc; --muted: #a9bba0; --card: #182018; --line: #2f3c2d; --phone: #121912;
+    --accent: #90ee90; --accent-bg: #2f4a2f; --on-accent: #142414; --chip: #233223; --focus: #8ab4ff;
+    --wish: #f0bf4a; --wish-bg: #3b3115; --off: #55624f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e130e; --fg: #e2ecdc; --muted: #a9bba0; --card: #182018; --line: #2f3c2d; --phone: #121912;
+  --accent: #90ee90; --accent-bg: #2f4a2f; --on-accent: #142414; --chip: #233223; --focus: #8ab4ff;
+  --wish: #f0bf4a; --wish-bg: #3b3115; --off: #55624f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.4; margin: 0; overflow-x: hidden; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.page { max-width: 1060px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 18px; }
+.top h1 { font-size: 22px; margin: 0 0 4px; text-wrap: balance; }
+.top p { margin: 0; color: var(--muted); max-width: 68ch; }
+.stage { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 880px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.box h2 { font-size: 17px; margin: 0; }
+.box p, .box ul { margin: 0; }
+.box ul { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.q { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.q .hint { color: var(--muted); font-size: 13px; }
+
+/* Handy */
+.phone { width: 100%; max-width: 390px; justify-self: center; border-radius: 34px; border: 1px solid var(--line); background: var(--phone); overflow: hidden; box-shadow: 0 12px 40px rgba(20, 40, 20, .12); }
+.ph-head { padding: 20px 18px 8px; display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.ph-head h3 { margin: 0; font-size: 22px; }
+.ph-head small { color: var(--muted); font-size: 13px; }
+.x { border: 0; background: none; font-size: 20px; color: var(--muted); }
+.body { padding: 0 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+.label { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .02em; display: flex; justify-content: space-between; margin: 4px 2px 0; }
+.label small { font-weight: 400; }
+.rank { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line); font-size: 14px; }
+.row:first-child { border-top: 0; }
+.row .n { font-weight: 800; color: var(--accent); }
+.row .t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .vv { grid-column: 2; display: flex; gap: 3px; flex-wrap: wrap; }
+.mini { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+.row.out { color: var(--muted); }
+.row.out .n { color: var(--muted); }
+.day { grid-row: span 2; align-self: center; border: 1px solid var(--line); background: var(--chip); border-radius: 999px; padding: 6px 10px 6px 12px; font-weight: 600; font-size: 14px; min-width: 64px; display: inline-flex; gap: 4px; align-items: center; justify-content: center; cursor: pointer; font-variant-numeric: tabular-nums; }
+.day[aria-expanded="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.day .why { font-size: 12px; }
+.day.moved { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pick { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding-top: 6px; }
+.pick button { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 6px 0 4px; font-size: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.pick button small { font-size: 10px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: 2px; }
+.pick button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.pick button[aria-pressed="true"] small { color: var(--on-accent); }
+.pick button.wish { border-color: var(--wish); }
+.pick button:disabled { color: var(--off); background: transparent; border-style: dashed; cursor: default; }
+.pick-hint { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.legend { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; margin: 0 2px; }
+.btn { border: 0; border-radius: 999px; padding: 13px 16px; font-weight: 600; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.ghost { background: transparent; border: 1px solid var(--line); }
+.toast { font-size: 13px; background: var(--fg); color: var(--bg); border-radius: 12px; padding: 9px 12px; }
+@media (prefers-reduced-motion: no-preference) { .pick { animation: open .18s ease-out; } @keyframes open { from { opacity: 0; transform: translateY(-4px); } } }
+</style>
+
+<div class="page">
+  <div class="top">
+    <h1>Wochenwahl: Tag pro Gericht wählen (Entwurf A)</h1>
+    <p>Wenn alle gewählt haben, springt die Wochenwahl zum WG-Ranking. Neu steht bei jedem der 7 Gerichte schon der Tag, den Obsonare vorschlägt. Tag antippen = Mo–So, anderen Tag wählen, dann übernehmen. Zum Ausprobieren: links auf einen Tag tippen.</p>
+  </div>
+  <div class="stage">
+    <div class="phone" aria-label="Handy-Vorschau">
+      <div class="ph-head">
+        <div><h3>Wochenwahl</h3><small>KW 48 · 23.–29. November</small></div>
+        <button class="x" type="button" aria-label="Schliessen">✕</button>
+      </div>
+      <div class="body">
+        <p class="label"><span>WG-Ranking</span><small>4 von 4 haben gewählt</small></p>
+        <div class="rank" id="rank"></div>
+        <p class="legend"><span>★ Wunschtag</span><span>🏠 Fans daheim</span></p>
+        <div class="toast" id="toast" hidden></div>
+        <button class="btn primary" type="button" id="apply">7 Gerichte in den Plan übernehmen</button>
+        <button class="btn ghost" type="button">🎲 Einfach zufällig planen</button>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h2>Was neu ist</h2>
+        <ul>
+          <li>Rechts in jeder Zeile der 7 Gewinner steht der <b>vorgeschlagene Tag</b> (gleiche Regel wie heute: Wunschtag zuerst, sonst ein Tag, an dem die Fans daheim sind).</li>
+          <li>Ein kleines Zeichen sagt <b>warum</b>: ★ = Wunschtag von jemandem, 🏠 = Fans sind daheim.</li>
+          <li>Tag antippen klappt <b>Mo–So</b> auf. Unter jedem Tag steht, was dort gerade liegt.</li>
+          <li>Wählst du einen Tag, der schon belegt ist, <b>tauschen</b> die zwei Gerichte. So bleibt jeder Tag besetzt.</li>
+          <li>Gerichte ab Platz 8 haben keinen Tag; sie kommen nicht in den Plan.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h2>Was du entscheidest</h2>
+        <div class="q"><b>1. Belegter Tag: tauschen?</b><span class="hint">Vorschlag: ja, die zwei Gerichte tauschen den Tag. Alternative: der andere Tag wird frei und das Gericht rutscht auf den nächsten freien Tag.</span></div>
+        <div class="q"><b>2. Liste nach Rang oder nach Tag?</b><span class="hint">Vorschlag: nach Rang (wie heute). Nach Tag (Mo oben) wäre näher am Plan, aber man sieht die Stimmen schlechter.</span></div>
+        <div class="q"><b>3. Für alle sichtbar?</b><span class="hint">Vorschlag: nein, nur wer übernimmt, wählt die Tage. Die anderen sehen danach den Plan. (Gemeinsam umstellen bräuchte einen Abgleich pro Tag.)</span></div>
+        <div class="q"><b>4. Platz 8 und weiter: in die nächste Woche?</b><span class="hint">Vorschlag: Gerichte mit mindestens einer Stimme (hier Chili sin Carne) kommen automatisch in die Wochenwahl der nächsten Woche, mit kleinem Vermerk «von letzter Woche». Gerichte ohne Stimme fallen weg.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const top = [
+  { t: "Kürbis-Risotto", v: ["Le", "Jo", "Js", "Lu"], day: 2, why: "★" },
+  { t: "Lauch-Wähe", v: ["Le", "Jo", "Js"], day: 0, why: "🏠" },
+  { t: "Älplermagronen", v: ["Js", "Lu", "Le"], day: 4, why: "★" },
+  { t: "Poulet-Curry mit Rüebli", v: ["Js", "Lu"], day: 1, why: "🏠" },
+  { t: "Randen-Linsen-Salat", v: ["Jo", "Le"], day: 3, why: "🏠" },
+  { t: "Gnocchi mit Salbeibutter", v: ["Lu", "Jo"], day: 6, why: "🏠" },
+  { t: "Fischstäbli", v: ["Lu"], day: 5, why: "" },
+];
+const out = [{ t: "Chili sin Carne", v: ["Jo"] }, { t: "Spätzli-Pfanne", v: [] }];
+let open = -1, moved = -1;
+const $ = id => document.getElementById(id);
+function render() {
+  const byDay = {}; top.forEach((d, i) => byDay[d.day] = i);
+  $("rank").innerHTML = top.map((d, i) => `
+    <div class="row">
+      <span class="n">${i + 1}</span><span class="t">${d.t}</span>
+      <button type="button" class="day${moved === i ? " moved" : ""}" data-i="${i}" aria-expanded="${open === i}" aria-label="Tag für ${d.t}: ${DAYS[d.day]}">${DAYS[d.day]}${d.why ? `<span class="why" aria-hidden="true">${d.why}</span>` : ""} ▾</button>
+      <span class="vv">${d.v.map(x => `<span class="mini">${x}</span>`).join("")}</span>
+      ${open === i ? `<div class="pick" role="group" aria-label="Tag wählen">${DAYS.map((n, k) => {
+        const other = byDay[k];
+        const lbl = other === undefined ? "frei" : other === i ? "hier" : top[other].t.split(" ")[0];
+        return `<button type="button" data-day="${k}" aria-pressed="${d.day === k}" class="${d.why === "★" && d.day === k ? "wish" : ""}">${n}<small>${lbl}</small></button>`;
+      }).join("")}<span class="pick-hint">Belegter Tag = die zwei Gerichte tauschen</span></div>` : ""}
+    </div>`).join("") + out.map((d, i) => `
+    <div class="row out"><span class="n">${top.length + i + 1}</span><span class="t">${d.t}</span><span></span>
+      <span class="vv">${d.v.map(x => `<span class="mini">${x}</span>`).join("") || `<span class="mini">keine Stimme</span>`}</span></div>`).join("");
+}
+$("rank").addEventListener("click", e => {
+  const chip = e.target.closest(".day");
+  if (chip) { const i = +chip.dataset.i; open = open === i ? -1 : i; render(); return; }
+  const b = e.target.closest(".pick button");
+  if (!b || b.disabled) return;
+  const k = +b.dataset.day, me = top[open], other = top.findIndex(d => d.day === k);
+  let msg = "";
+  if (other >= 0 && other !== open) { top[other].day = me.day; top[other].why = ""; msg = `${me.t} → ${DAYS[k]}, ${top[other].t} → ${DAYS[me.day]}`; }
+  else msg = `${me.t} → ${DAYS[k]}`;
+  me.day = k; me.why = ""; moved = open; open = -1;
+  $("toast").textContent = msg; $("toast").hidden = false;
+  render();
+});
+$("apply").onclick = () => { $("toast").textContent = "Plan übernommen (Beispiel)"; $("toast").hidden = false; };
+render();
+</script>

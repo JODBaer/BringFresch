@@ -38,7 +38,8 @@
       saved.candidates = cleanCandidates(saved.candidates);
       return saved;
     }
-    return { week, candidates: pickCandidates(), votes: {} };
+    const carry = carryIds(week).filter(id => recipeById(id)).slice(0, 4);
+    return { week, candidates: carry.length ? cleanCandidates([...carry, ...pickCandidates()].slice(0, GRID_SIZE)) : pickCandidates(), votes: {} };
   }
 
   state.vote = null;
@@ -264,23 +265,80 @@
     const voted = state.members.filter(m => ((state.vote.votes[m.id] || {}).likes || []).length > 0);
     $("voteWho").textContent = `${voted.length} von ${state.members.length} haben gewählt`;
     if (app.renderNudge) app.renderNudge(); // «👋 … anstupsen» (app_push.js)
-    $("voteRank").innerHTML = ranking().map((x, k) => {
+    const rank = ranking();
+    const days = topDays(rank);
+    const carried = new Set(carryIds(state.vote.week));
+    const dayOf = Object.fromEntries(Object.entries(days).map(([id, d]) => [d, id]));
+    const WHY = { wish: "★", home: "🏠" };
+    $("voteRank").innerHTML = rank.map((x, k) => {
       const r = recipeById(x.id);
-      return `<div class="rank-row${k < PLAN_SIZE ? "" : " out"}">
-        <span class="n">${k + 1}</span><span class="t">${esc(r.title)}</span>
+      const top = k < PLAN_SIZE, d = days[x.id];
+      const why = top && d != null ? WHY[picked[x.id] === d ? "" : CORE.dayReason(x.id, d, state.plan, state.members, state.vote.votes)] || "" : "";
+      const chip = top && d != null
+        ? `<button type="button" class="rday" data-rday="${esc(x.id)}" aria-expanded="${dayOpen === x.id}" aria-label="Tag für ${esc(r.title)}: ${DAYS[d]}">${DAYS[d].slice(0, 2)}${why ? `<span class="why" aria-hidden="true">${why}</span>` : ""} ▾</button>`
+        : "<span></span>";
+      const pick = top && dayOpen === x.id
+        ? `<div class="rpick" role="group" aria-label="Tag wählen">${DAYS.map((n, i) => {
+            const other = dayOf[i];
+            const lbl = other == null ? "frei" : other === x.id ? "hier" : (recipeById(other) || { title: "" }).title.split(" ")[0];
+            return `<button type="button" data-rpick="${esc(x.id)}" data-day="${i}" aria-pressed="${d === i}">${n.slice(0, 2)}<small>${esc(lbl)}</small></button>`;
+          }).join("")}<span class="rpick-hint">Belegter Tag = die zwei Gerichte tauschen</span></div>`
+        : "";
+      return `<div class="rank-row${top ? "" : " out"}">
+        <span class="n">${k + 1}</span><span class="t">${esc(r.title)}${carried.has(x.id) ? ` <small class="carried">von letzter Woche</small>` : ""}</span>
         <span class="vv">${x.voters.map(m => `<span class="mini">${esc(short[m.id])}</span>`).join("")}</span>
+        ${chip}${pick}
       </div>`;
     }).join("");
   }
 
+  // Tage im WG-Ranking (Entwurf A, docs/design/wahl-tage-entwurf.html): Vorschlag wie beim Übernehmen, von Hand umstellbar.
+  // Gilt nur auf diesem Handy, bis übernommen wird; wer übernimmt, legt die Tage fest.
+  let picked = {}, dayOpen = null;
+  const topIds = rank => rank.slice(0, PLAN_SIZE).map(x => x.id);
+  const topDays = rank => CORE.rankDays(topIds(rank), assignDays(topIds(rank)), picked);
+  $("voteRank").addEventListener("click", e => {
+    const chip = e.target.closest("[data-rday]");
+    if (chip) { dayOpen = dayOpen === chip.dataset.rday ? null : chip.dataset.rday; renderVote(); return; }
+    const b = e.target.closest("[data-rpick]");
+    if (!b) return;
+    const id = b.dataset.rpick, day = +b.dataset.day;
+    const before = topDays(ranking());
+    const after = CORE.moveDay(before, id, day);
+    picked = after;
+    dayOpen = null;
+    const other = Object.keys(before).find(k => k !== id && before[k] === day);
+    const t = x => (recipeById(x) || { title: "" }).title;
+    toast(other ? `${t(id)} → ${DAYS[day]}, ${t(other)} → ${DAYS[after[other]]}` : `${t(id)} → ${DAYS[day]}`);
+    renderVote();
+  });
+
+  // Platz 8+ mit Stimme aus der Vorwoche (Wahl auf diesem Handy) kommt in die Wochenwahl dieser Woche
+  function prevWeekKey(week) {
+    const d = CORE.mondayOf(week);
+    if (!d) return null;
+    d.setUTCDate(d.getUTCDate() - 4); // Donnerstag der Vorwoche
+    return weekKey(d);
+  }
+  const carryIds = week => { const prev = prevWeekKey(week); return prev ? CORE.carryOver(load(voteKey(prev), null), state.members, PLAN_SIZE) : []; };
+
   let votePoll = null;
+  const allVoted = () => state.members.length > 0 && state.members.every(m => ((state.vote.votes[m.id] || {}).likes || []).length > 0);
+  function jumpToRank() {
+    $("voteRankLabel").scrollIntoView({ block: "start", behavior: "smooth" });
+    return true;
+  }
   function openVote() {
     voteOpen = null;
+    picked = {};
+    dayOpen = null;
     state.vote = loadVote();
     saveVote();
     renderVote();
     $("voteDialog").showModal();
-    pullVote();
+    // Haben alle gewählt, geht es direkt zum WG-Ranking (Plan übernehmen) – einmal pro Öffnen, auch nach dem Nachladen (Joshua 19.11.)
+    let jumped = allVoted() && jumpToRank();
+    pullVote().then(() => { if (!jumped && $("voteDialog").open && allVoted()) jumped = jumpToRank(); });
     clearInterval(votePoll);
     // Stimmen der anderen live nachladen – alle 30 s und nur, wenn die App sichtbar ist (schont das Gratis-Kontingent des WG-Servers)
     if (app.connected()) votePoll = setInterval(() => { if (document.visibilityState !== "hidden") pullVote(); }, 30000);
@@ -400,7 +458,7 @@
     const withVotes = top.filter(x => x.voters.length > 0).length;
     if (withVotes === 0) return toast("Noch niemand hat gewählt");
     const previous = state.plan;
-    const days = assignDays(top.map(x => x.id));
+    const days = topDays(top);
     const next = [...state.plan];
     Object.entries(days).forEach(([id, day]) => { next[day] = makeDay(recipeById(id), day, state.plan[day]); app.countDish(id); });
     state.plan = next;

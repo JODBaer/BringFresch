@@ -82,6 +82,19 @@ const week = Array.from({ length: 7 }, () => ({ eaters: ["a", "b", "c"] }));
 check(C.assignDays(["y", "x"], week, ms, votes).y === 2, "Wunschtag Mittwoch wird respektiert");
 week[2].eaters = ["c"]; week[0].eaters = ["a", "b"];
 check(C.assignDays(["x"], week, ms, votes).x === 0, "ohne Wunschtag: Tag, an dem die Fans da sind");
+// Tage im WG-Ranking von Hand (Entwurf A, Joshua 19.11.)
+{
+  const prop = { p: 0, q: 1, r: 2 };
+  check(JSON.stringify(C.rankDays(["p", "q", "r"], prop, null)) === JSON.stringify(prop), "ohne eigene Wahl = Vorschlag");
+  const m = C.moveDay(prop, "p", 2);
+  check(m.p === 2 && m.r === 0 && m.q === 1, "belegter Tag: die zwei Gerichte tauschen");
+  const kept = C.rankDays(["p", "q", "s"], { p: 0, q: 1, s: 2 }, m);
+  check(kept.p === 2 && kept.q === 1 && kept.s === 0, "neues Gericht im Ranking: eigene Wahl bleibt, das neue bekommt einen freien Tag");
+  check(C.dayReason("y", 2, week, ms, votes) === "wish" && C.dayReason("x", 0, week, ms, votes) === "home" && C.dayReason("x", 2, week, ms, votes) === "", "Grund: Wunschtag ★, Fans daheim 🏠, sonst nichts");
+  const prev = { candidates: ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"], votes: { a: { likes: ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"], days: {} } } };
+  check(C.carryOver(prev, ms).join() === "a9", "Platz 8+ mit Stimme kommt in die nächste Woche, ohne Stimme nicht");
+  check(C.carryOver(null, ms).length === 0, "ohne Wahl der Vorwoche: nichts");
+}
 
 // Grundvorrat mit Mengen (Variante C)
 const leerSt = C.shoppingList({ plan: [day], members, staples: [{ name: "Weissmehl", keywords: ["mehl"], in_stock: false }], bringItems: [] });

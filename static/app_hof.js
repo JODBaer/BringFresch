@@ -87,10 +87,12 @@
     navigator.geolocation.getCurrentPosition(pos => {
       state.hof.ref = { lat: pos.coords.latitude, lon: pos.coords.longitude };
       save(STORE.KEYS.HOF_GEO_KEY, true);
+      renderGeo();
       then && then();
     }, () => {
       state.hof.ref = null;
       save(STORE.KEYS.HOF_GEO_KEY, false);
+      renderGeo();
       toast("Standort nicht erlaubt – Entfernung ab Rapperswil-Jona");
       then && then();
     }, { timeout: 10000, maximumAge: 60000 });
@@ -102,6 +104,21 @@
     renderHof();
     if (load(STORE.KEYS.HOF_GEO_KEY, false) === true) locate(renderHof);
   }
+
+  // Einstellungen → Standort: zeigt, ob die Hofläden den Standort nehmen, und schaltet ihn wieder aus (Joshua 19.11.)
+  function renderGeo() {
+    const on = load(STORE.KEYS.HOF_GEO_KEY, false) === true;
+    $("geoState").textContent = on ? "an – Entfernung ab deinem Standort" : "aus – einschalten in Hofläden mit «Standort verwenden»";
+    $("geoOff").hidden = !on;
+  }
+  $("geoOff").onclick = () => {
+    save(STORE.KEYS.HOF_GEO_KEY, false);
+    state.hof.ref = null;
+    renderGeo();
+    toast("Standort aus – Entfernung ab Rapperswil-Jona");
+  };
+  app.subscribe(renderGeo);
+  renderGeo();
 
   $("hofBtn").onclick = openHof;
   $("hofLocate").onclick = () => locate(renderHof);

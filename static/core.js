@@ -747,6 +747,41 @@
     return result;
   }
 
+  // Tage im WG-Ranking von Hand umstellen (Joshua 19.11., docs/design/wahl-tage-entwurf.html):
+  // picked = { rezeptId: tag } aus diesem Öffnen; was noch passt, bleibt, der Rest bekommt den Vorschlag oder den nächsten freien Tag.
+  function rankDays(recipeIds, proposed, picked, days = 7) {
+    const out = {}, used = new Set();
+    recipeIds.forEach(id => { const d = picked && picked[id]; if (d != null && !used.has(d)) { out[id] = d; used.add(d); } });
+    recipeIds.forEach(id => {
+      if (out[id] != null) return;
+      let d = proposed[id];
+      if (d == null || used.has(d)) d = Array.from({ length: days }, (_, k) => k).find(k => !used.has(k));
+      if (d == null) return;
+      out[id] = d; used.add(d);
+    });
+    return out;
+  }
+  // Gericht auf einen Tag legen; liegt dort schon eines, tauschen die zwei
+  function moveDay(map, id, day) {
+    const out = { ...map };
+    const other = Object.keys(out).find(k => k !== id && out[k] === day);
+    if (other != null) out[other] = out[id];
+    out[id] = day;
+    return out;
+  }
+  // Warum dieser Tag? «wish» = Wunschtag von jemandem, «home» = ein Fan isst an dem Tag, sonst ""
+  function dayReason(id, day, plan, members, votes) {
+    const fans = votersOf(members, votes, id);
+    if (fans.some(m => ((votes[m.id] || {}).days || {})[id] === day)) return "wish";
+    if (plan[day] && fans.some(m => (plan[day].eaters || []).includes(m.id))) return "home";
+    return "";
+  }
+  // Platz 8 und weiter mit mindestens einer Stimme kommen in die Wochenwahl der nächsten Woche (Joshua 19.11.)
+  function carryOver(prevVote, members, planSize = 7) {
+    if (!prevVote || !Array.isArray(prevVote.candidates)) return [];
+    return ranking(prevVote.candidates, members, prevVote.votes || {}).slice(planSize).filter(x => x.voters.length > 0).map(x => x.id);
+  }
+
   // ---------------------------------------------------------------------------
   // Grundvorrat mit Mengen (Variante C, docs/design/grundvorrat-varianten.html)
   // Ein Artikel im Vorrat-Dokument /vorrat: { id, name, keywords, in_stock, sent,           <- altes Format (weiter gültig)
@@ -1306,7 +1341,7 @@
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
-    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays,
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, rankDays, moveDay, dayReason, carryOver,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList,
     nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_SHORT

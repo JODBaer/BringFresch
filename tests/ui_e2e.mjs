@@ -66,6 +66,8 @@ const PIN = "2468"; // nur für diesen Test-Worker im Speicher – nicht der WG-
 const kv = new Map(), kvMeta = new Map();
 const env = {
   WG_PIN: PIN, MAIN_WG: "wg1", CAL_TOKEN: "cal-test", BRING_EMAIL: "bot@test.invalid", BRING_PASSWORD: "test",
+  // Uhr der Benachrichtigungen fest auf Di 10.11. 12:00 Zürich: abends (Ruhezeit 21–8) landete der Anstupser sonst in der Warteschlange
+  TEST_NOW: "2026-11-10T11:00:00Z",
   WG: {
     async get(k, t) { const v = kv.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
     async put(k, v, o) { kv.set(k, v); if (o && o.metadata) kvMeta.set(k, o.metadata); else kvMeta.delete(k); },
@@ -1009,6 +1011,14 @@ await step(A, "Einstellungen über ⋮: nicht verbunden, «Mehr» offen", async 
   await shot(A, "11-einstellungen");
 });
 
+await step(A, "Einstellungen → Standort: an (aus den Hofläden), «Ausschalten» = aus, Hofläden messen wieder ab Rapperswil-Jona", async () => {
+  expect(/^an/.test(await text(A, "#geoState")), "Standort sollte an sein (Hofläden-Schritt)");
+  await tap(A, "#geoOff");
+  await toastIs(A, /Standort aus/);
+  expect(/^aus/.test(await text(A, "#geoState")) && await A.page.$eval("#geoOff", b => b.hidden), "Standort nicht aus");
+  expect(await A.page.evaluate(() => localStorage.getItem("bringfrisch_hof_geo") === "false"), "Zustimmung nicht zurückgenommen");
+});
+
 await step(A, "Mitbewohner: hinzufügen (Vegi), Ernährung ändern (Vegan), entfernen", async () => {
   await typeInto(A, "#newMemberName", "Mia");
   await choose(A, "#newMemberDiet", "vegi");
@@ -1347,6 +1357,23 @@ await step(B, "«+ Gericht»: Katalog im Wochenwahl-Modus, Gericht dazu → 15 G
   expect((await text(B, "#voteGrid .vcard:last-child .vt")) === t, "neues Gericht fehlt");
 });
 
+await step(B, "WG-Ranking: Tag pro Gericht (Vorschlag Mi ★), antippen = Mo–So, belegter Tag tauscht, zurück auf Mi", async () => {
+  const chipOf = t => B.page.evaluate(t => { const row = [...document.querySelectorAll("#voteRank .rank-row")].find(r => r.querySelector(".t").textContent.startsWith(t)); const c = row && row.querySelector(".rday"); return c ? { id: c.dataset.rday, txt: c.textContent } : null; }, t);
+  const c0 = await chipOf(cand[0]);
+  expect(c0 && /^Mi★/.test(c0.txt), `Vorschlag Mittwoch mit ★ fehlt (${JSON.stringify(c0)})`);
+  await tap(B, `#voteRank [data-rday="${c0.id}"]`);
+  await until(B, () => document.querySelectorAll("#voteRank .rpick button").length === 7, "Mo–So geht nicht auf");
+  const friday = await B.page.$eval(`#voteRank [data-rpick][data-day="4"] small`, s => s.textContent);
+  await clearToasts(B);
+  await tap(B, `#voteRank [data-rpick="${c0.id}"][data-day="4"]`);
+  await toastIs(B, /→ Freitag/);
+  expect(/^Fr/.test((await chipOf(cand[0])).txt), "nicht auf Freitag");
+  if (friday !== "frei") expect(await B.page.evaluate(() => [...document.querySelectorAll("#voteRank .rday")].some(c => /^Mi/.test(c.textContent))), "kein Tausch: Mittwoch leer");
+  await tap(B, `#voteRank [data-rday="${c0.id}"]`);
+  await tap(B, `#voteRank [data-rpick="${c0.id}"][data-day="2"]`);
+  expect(/^Mi/.test((await chipOf(cand[0])).txt), "nicht zurück auf Mittwoch");
+});
+
 await step(B, "7 Gerichte übernehmen: Wunschtag Mi, Plan geändert, roter Punkt weg", async () => {
   await clearToasts(B);
   await tap(B, "#voteApplyBtn");
@@ -1416,6 +1443,17 @@ await step(B, "Wochenwahl: «Noch offen», «👋 Lukas anstupsen» (Lukas hat M
   await toastIs(B, /Lukas angestupst/);
   expect(pushSent.slice(before).some(u => u.endsWith("/ui-lukas")), "keine Meldung an Lukas");
   await until(B, () => !document.getElementById("nudgeBtn") && /Heute angestupst: Lukas/.test(document.getElementById("voteNudge").textContent), "nach dem Anstupsen");
+  await B.page.evaluate(() => document.getElementById("voteDialog").close());
+});
+
+await step(B, "Wochenwahl: alle haben gewählt → beim Öffnen direkt beim WG-Ranking", async () => {
+  await B.page.evaluate(() => window.BF_APP.openVoteFor());
+  for (const who of ["joshua", "lukas"]) { await choose(B, "#voteMe", who); await likeCard(B, 1); }
+  await until(B, () => document.getElementById("voteWho").textContent === "4 von 4 haben gewählt", "nicht alle gewählt");
+  await choose(B, "#voteMe", "jo");
+  await B.page.evaluate(() => document.getElementById("voteDialog").close());
+  await B.page.evaluate(() => window.BF_APP.openVoteFor());
+  await until(B, () => { const t = document.getElementById("voteRankLabel").getBoundingClientRect().top; return t >= 0 && t < 220; }, "springt nicht zum WG-Ranking", null, 5000);
   await B.page.evaluate(() => document.getElementById("voteDialog").close());
 });
 
