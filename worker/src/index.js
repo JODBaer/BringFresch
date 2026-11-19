@@ -26,6 +26,7 @@
 //        ?week=2026-W47&dl=1          -> einmal herunterladen: nur diese Woche, eigene UIDs, als Datei
 //   GET  /backup                      -> { days: ["2026-11-10", ...] }  (tägliche Sicherung, 30 Tage)
 //   GET  /backup/:day                 -> { day, keys: { plan: …, vorrat: …, … } }
+//   GET  /release/status, POST /release/approve, POST /release/issue -> Test-Freigabe (nur Test-Server, freigabe.js)
 //
 // Cron (täglich, wrangler.toml [triggers]): Sicherung aller WG-Daten nach backup:<Tag>, läuft 30 Tage.
 // Zurückholen von Hand: worker/README.md «Sicherung».
@@ -43,6 +44,7 @@ import { bringList, bringLists, bringRemove, bringSetTarget, bringSync } from ".
 import { calendar } from "./kalender.js";
 import { importRecipe, recipeImage } from "./rezept.js";
 import { getShared, publishShared } from "./geteilt.js";
+import { release } from "./freigabe.js";
 // Für Tests und Werkzeuge
 export { backup } from "./speicher.js";
 export { pinHash, wgSlug } from "./auth.js";
@@ -164,6 +166,8 @@ async function route(request, env, url) {
     return json({ url: `${url.origin}/cal/${wg.calToken.trim()}.ics` });
   }
   if (path === "/wg" && method === "GET") return json({ name: wg.name, main: wg.main });
+  // Test-Freigabe aus der Test-App (nur mit Secret RELEASE_TOKEN, also nur auf dem Test-Server)
+  if (path.startsWith("/release/")) return release(request, env, path, url);
 
   throw httpError(404, "Unbekannter Endpunkt");
 }
