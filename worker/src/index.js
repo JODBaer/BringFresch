@@ -26,12 +26,15 @@
 //        ?week=2026-W47&dl=1          -> einmal herunterladen: nur diese Woche, eigene UIDs, als Datei
 //   GET  /backup                      -> { days: ["2026-11-10", ...] }  (tägliche Sicherung, 30 Tage)
 //   GET  /backup/:day                 -> { day, keys: { plan: …, vorrat: …, … } }
+//   GET  /push/key, PUT /push, POST /push/off, POST /week/:week/nudge, POST /erinnerung -> Benachrichtigungen (push.js)
+//   GET  /erinnerung/:token           -> (ohne PIN) Text für den iPhone-Kurzbefehl, höchstens 1× pro Woche
 //   GET  /release/status, POST /release/approve, POST /release/issue -> Test-Freigabe (nur Test-Server, freigabe.js)
 //
-// Cron (täglich, wrangler.toml [triggers]): Sicherung aller WG-Daten nach backup:<Tag>, läuft 30 Tage.
+// Cron (alle 15 Min., wrangler.toml [triggers]): Benachrichtigungen (Warteschlange nach der Ruhezeit, Markt-/Hof-Erinnerung);
+// einmal täglich um 03:00 UTC Sicherung aller WG-Daten nach backup:<Tag>, läuft 30 Tage.
 // Zurückholen von Hand: worker/README.md «Sicherung».
 //
-// Secrets (npx wrangler secret put …): BRING_EMAIL, BRING_PASSWORD, WG_PIN, CAL_TOKEN
+// Secrets (npx wrangler secret put …): BRING_EMAIL, BRING_PASSWORD, WG_PIN, CAL_TOKEN, VAPID_PUBLIC, VAPID_PRIVATE (tools/vapid.mjs)
 // Optional: BRING_LIST_UUID (sonst die Standardliste des Bot-Kontos)
 // Test-Server (wrangler --env stage): ONLY_LIST_NAME = "Home-test,Home" -> schreibt nur in diese Liste des Bots (alter Name «Home» geht weiter), nie in die WG-Liste
 // WG-Server: «Home-test» (TEST_LIST_NAME) gehört immer der Test-Version und ist für keine WG wählbar
@@ -45,14 +48,22 @@ import { calendar } from "./kalender.js";
 import { importRecipe, recipeImage } from "./rezept.js";
 import { getShared, publishShared } from "./geteilt.js";
 import { release } from "./freigabe.js";
+import { afterVote, pushCron, pushRoute, remindShortcut, weekPushInfo } from "./push.js";
 // Für Tests und Werkzeuge
 export { backup } from "./speicher.js";
 export { pinHash, wgSlug } from "./auth.js";
+export { pushCron } from "./push.js";
 
 // ---------------------------------------------------------------------------------------------
 export default {
-  async scheduled(event, env) { await backup(env, new Date(event.scheduledTime || Date.now())); },
-  async fetch(request, env) {
+  async scheduled(event, env) {
+    const at = new Date(event.scheduledTime || Date.now());
+    // ein Zeitplan (alle 15 Min.) für beides: Sicherung nur im ersten Lauf nach 03:00 UTC
+    if (at.getUTCHours() === 3 && at.getUTCMinutes() < 15) await backup(env, at);
+    await pushCron(env).catch(e => console.warn("Benachrichtigungen:", e.message));
+  },
+  async fetch(request, env, ctx) {
+    env = ctx ? { ...env, CTX: ctx } : env;
     const url = new URL(request.url);
     const cors = corsHeaders(request);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
@@ -77,9 +88,14 @@ async function route(request, env, url) {
   const cal = path.match(/^\/cal\/([^/]+)\.ics$/);
   if (cal && method === "GET") return calendar(env, cal[1], url.searchParams);
 
+  const remind = path.match(/^\/erinnerung\/([\w-]+)$/);
+  if (remind && method === "GET") return remindShortcut(env, remind[1]);
+
   const wg = await requireWg(request, env);
   env = { ...env, WG: scoped(env.WG, wg.prefix), RAW: env.WG, WG_CTX: wg };
 
+  const pushed = await pushRoute(request, env, path, url);
+  if (pushed) return pushed;
   if (path === "/img" && method === "GET") return recipeImage(env, url.searchParams.get("url"));
   if (path === "/bring/list" && method === "GET") return json(await bringList(env));
   if (path === "/bring/lists" && method === "GET") return json(await bringLists(env));
@@ -90,7 +106,10 @@ async function route(request, env, url) {
   const week = path.match(/^\/week\/(\d{4}-W\d{2})(?:\/(candidates|vote)(?:\/([\w-]+))?)?$/);
   if (week) {
     const [, key, part, member] = week;
-    if (!part && method === "GET") return json(await getWeek(env, key));
+    if (!part && method === "GET") {
+      const [wk, info] = await Promise.all([getWeek(env, key), weekPushInfo(env, key)]);
+      return json({ ...wk, ...info });
+    }
     if (part === "candidates" && method === "PUT") {
       const { candidates } = await body(request);
       if (!Array.isArray(candidates) || candidates.length > 40) throw httpError(400, "candidates ungültig");
@@ -102,6 +121,7 @@ async function route(request, env, url) {
       const { likes = [], days = {} } = await body(request);
       await env.WG.put(`week:${key}:vote:${member}`, JSON.stringify({ likes: likes.map(String), days }), { expirationTtl: 60 * 60 * 24 * 21 });
       await countWeek(env, key); // Beliebtheit pro WG (bleibt länger als die Stimmen)
+      await afterVote(env, key, member, likes.map(String)); // erste Stimme: die anderen bekommen eine Meldung
       return json({ ok: true });
     }
   }

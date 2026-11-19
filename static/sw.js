@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'bringfrisch-cache-v84';
+﻿const CACHE_NAME = 'bringfrisch-cache-v85';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const STATIC_ASSETS = [
   './app_alle.js',
   './app_sync.js',
   './app_einstellungen.js',
+  './app_push.js',
   './app_theme.js',
   './app_start.js',
   './standalone_data.js',
@@ -76,5 +77,34 @@ self.addEventListener('fetch', (event) => {
     } catch (e) {
       return cached || Response.error();
     }
+  })());
+});
+
+// Benachrichtigungen (Web Push vom WG-Server, worker/src/push.js): Meldung zeigen; antippen öffnet Obsonare an der
+// richtigen Stelle (open = "wahl" | "einkauf") – offenes Fenster nach vorne holen, sonst neu öffnen.
+self.addEventListener('push', (event) => {
+  let msg = {};
+  try { msg = event.data ? event.data.json() : {}; } catch (e) { msg = { title: 'Obsonare', body: event.data ? event.data.text() : '' }; }
+  event.waitUntil(self.registration.showNotification(msg.title || 'Obsonare', {
+    body: msg.body || '',
+    tag: msg.tag || undefined,
+    renotify: !!msg.tag,
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+    data: { open: msg.open || '' }
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const open = (event.notification.data && event.notification.data.open) || '';
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const win = wins.find((w) => new URL(w.url).pathname.startsWith(new URL(self.registration.scope).pathname));
+    if (win) {
+      win.postMessage({ type: 'bf-open', open });
+      return win.focus();
+    }
+    return self.clients.openWindow(`./?open=${encodeURIComponent(open)}`);
   })());
 });

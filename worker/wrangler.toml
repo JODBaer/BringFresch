@@ -9,9 +9,10 @@ compatibility_date = "2025-09-01"
 MAIN_WG = "allmen,wg1"
 MAIN_WG_NAME = "Allmen"
 
-# Tägliche Sicherung der WG-Daten (03:00 UTC), siehe README «Sicherung»
+# Alle 15 Min.: Benachrichtigungen (Markt-/Hof-Erinnerung, Warteschlange nach der Ruhezeit 21–8).
+# Darin einmal täglich (erster Lauf nach 03:00 UTC) die Sicherung der WG-Daten, siehe README «Sicherung»
 [triggers]
-crons = ["0 3 * * *"]
+crons = ["*/15 * * * *"]
 
 # Gemeinsamer WG-Speicher (Wochenwahl, Plan für den Kalender).
 # Einmalig anlegen: npx wrangler kv namespace create WG  -> die ausgegebene id hier eintragen.

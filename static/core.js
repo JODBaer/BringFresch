@@ -958,7 +958,81 @@
     }).filter(Boolean).sort((a, b) => a.first - b.first || a.km - b.km);
   }
 
+  // ---- Benachrichtigungen (Push): Ruhezeit, Wochenwahl-Texte, wöchentliche Markt-/Hof-Erinnerung ----
+  // Uhrzeit in Zürich als «Wanduhr»: ein Date, dessen getHours()/getDay() die Zürcher Zeit liefern – auch im
+  // WG-Server (läuft in UTC). Alle Regeln unten rechnen mit solchen Wanduhr-Daten.
+  function wallClock(d = new Date(), tz = "Europe/Zurich") {
+    const p = {};
+    new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(d).forEach(x => { p[x.type] = +x.value; });
+    return new Date(p.year, p.month - 1, p.day, p.hour % 24, p.minute);
+  }
+  // Ruhezeit 21:00–8:00: Wochenwahl-Meldungen und Anstupser warten bis 8:00 (Joshua 19.11.)
+  const QUIET_FROM = 21, QUIET_TO = 8;
+  const isQuiet = wall => wall.getHours() >= QUIET_FROM || wall.getHours() < QUIET_TO;
+  // Meldung nach einer Stimme: «Leonie hat für KW 48 gewählt» · «Noch offen: Lukas, Jo»; letzte Stimme: «Alle haben gewählt»
+  function voteMessage(members, votes, voterId, week) {
+    const kw = `KW ${+String(week).split("-W")[1]}`;
+    const did = m => (((votes || {})[m.id] || {}).likes || []).length > 0;
+    const open = (members || []).filter(m => !did(m));
+    if (!open.length) return { title: "Alle haben gewählt", body: `Plan für ${kw} übernehmen`, all: true };
+    const who = (members || []).find(m => m.id === voterId);
+    return { title: `${who ? who.name : "Jemand"} hat für ${kw} gewählt`, body: `Noch offen: ${open.map(m => m.name).join(", ")}`, all: false };
+  }
+  // Wochentage (Mo = 0), an denen ein Ort offen hat – für die Auswahl «an welchem Tag». In der Saisonpause: die Woche,
+  // in der es wieder losgeht. Unbekannte Zeiten = null (dann darf man jeden Tag wählen).
+  function openDays(oh, now) {
+    const rules = parseHours(oh);
+    if (!rules) return null;
+    const week = from => [...new Set(Array.from({ length: 7 }, (_, i) => addDays(from, i)).filter(d => ohSpansOn(rules, d).length).map(ohWeekday))].sort();
+    const now7 = week(now);
+    if (now7.length) return now7;
+    const next = nextOpenDay(rules, now);
+    return next ? week(next) : [];
+  }
+  const shortClock = min => ohClock(min).replace(/:00$/, "");
+  // Wöchentliche Erinnerung an Markt oder Hof (ein Tag pro Woche, Joshua 19.11.).
+  // pref = { name, oh?, day (Mo = 0), when: "eve" (Vorabend 19:00) | "pre" (30 Min. vor Öffnung) | "fix" (Uhrzeit time am Tag) }
+  // Fällig, sobald der Zeitpunkt erreicht ist (höchstens 3 h danach, falls der Zeitplan einmal ausfällt) und für diesen
+  // Tag noch nichts gesendet wurde (sent = Datum «2026-11-21» der letzten Meldung). Hat der Ort laut Zeiten an dem Tag
+  // zu (Winterpause, Feiertag laut Daten), kommt nichts. -> { date, title } oder null
+  function marketDue(pref, now, sent) {
+    if (!pref || !(pref.day >= 0 && pref.day <= 6)) return null;
+    const rules = pref.oh ? parseHours(pref.oh) : null;
+    for (const k of [0, 1]) {
+      const target = addDays(now, k);
+      if (ohWeekday(target) !== +pref.day || iso(target) === sent) continue;
+      const spans = rules ? ohSpansOn(rules, target) : null;
+      if (rules && !spans.length) continue;
+      const when = pref.when === "pre" && !spans ? "eve" : pref.when || "eve";
+      const at = new Date(target);
+      if (when === "eve") { at.setDate(at.getDate() - 1); at.setHours(19, 0, 0, 0); }
+      else if (when === "pre") at.setMinutes(spans[0][0] - 30);
+      else { const [h, m] = String(pref.time || "09:00").split(":").map(Number); at.setHours(h || 0, m || 0, 0, 0); }
+      if (now < at || now - at > 3 * 3600000) continue;
+      const hours = spans ? ` ${shortClock(spans[0][0])}–${spans[spans.length - 1][1] >= 1440 ? "24" : shortClock(spans[spans.length - 1][1])}` : "";
+      return { date: iso(target), title: `${k === 1 ? "Morgen" : "Heute"} ${String(pref.name || "Markt").slice(0, 60)}${hours}` };
+    }
+    return null;
+  }
+  // Text zur Bring!-Liste: «6 Sachen auf Bring!: Lauch, Rüebli, Eier …» (leer = nichts zu erinnern)
+  function bringReminder(items) {
+    const list = (items || []).filter(Boolean);
+    if (!list.length) return "";
+    const shown = list.slice(0, 4).join(", ") + (list.length > 4 ? " …" : "");
+    return `${list.length === 1 ? "1 Sache" : `${list.length} Sachen`} auf Bring!: ${shown}`;
+  }
+  // Hofläden/Märkte suchen: Name des Bauern oder Ortschaft (Name, Ort, Adresse), Lieblinge und Nahes zuerst
+  function searchFarms(items, query, { ref, favs = [], limit = 8 } = {}) {
+    const words = foldText(query).split(/\s+/).filter(Boolean);
+    if (!words.length) return [];
+    return (items || []).filter(it => { const t = foldText(`${it.n} ${it.ort || ""} ${it.adr || ""}`); return words.every(w => t.includes(w)); })
+      .map(it => ({ ...it, key: farmKey(it), km: ref ? distKm(ref, it) : 0, fav: favs.includes(farmKey(it)) }))
+      .sort((a, b) => (b.fav - a.fav) || a.km - b.km).slice(0, limit);
+  }
+
   root.BF_CORE = {
+    wallClock, isQuiet, QUIET_FROM, QUIET_TO, voteMessage, openDays, marketDue, bringReminder, searchFarms,
     parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, farmGroups, nearestFarm, favFarm, routeUrl, seasonVeg, kmlExport, kmlLayers, specialWhen, nthWeekday, specialDays, specialUpcoming,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,

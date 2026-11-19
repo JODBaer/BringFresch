@@ -42,6 +42,7 @@
   }
 
   state.vote = null;
+  state.votePush = null; // vom WG-Server: { pushers: wer Meldungen hat, nudged: wer heute angestupst ist } (app_push.js)
   const saveVote = () => save(voteKey(state.vote.week), state.vote);
 
   // Mit dem Worker abgleichen: Kandidaten + Stimmen aller holen, eigene Stimme bleibt lokal führend
@@ -61,6 +62,7 @@
         // Unbekanntes (z.B. eigenes Rezept, das hier noch fehlt) nur ausblenden, nicht vom Server löschen
         v.candidates = remote.candidates.filter(id => recipeById(id));
       }
+      state.votePush = { pushers: remote.pushers || [], nudged: remote.nudged || [] };
       const me = myId();
       Object.entries(remote.votes || {}).forEach(([member, mv]) => {
         if (member !== me || !v.votes[me]) v.votes[member] = mv;
@@ -198,6 +200,7 @@
     loadVoteImages();
     const voted = state.members.filter(m => ((state.vote.votes[m.id] || {}).likes || []).length > 0);
     $("voteWho").textContent = `${voted.length} von ${state.members.length} haben gewählt`;
+    if (app.renderNudge) app.renderNudge(); // «👋 … anstupsen» (app_push.js)
     $("voteRank").innerHTML = ranking().map((x, k) => {
       const r = recipeById(x.id);
       return `<div class="rank-row${k < PLAN_SIZE ? "" : " out"}">
@@ -233,6 +236,7 @@
     renderVote();
     app.renderMembers();
     app.renderDays();
+    if (app.pushSendPrefs) app.pushSendPrefs().catch(() => {}); // Benachrichtigungen gelten für die neue Person
   };
 
   // Tastatur: Enter/Leertaste auf der Vorderseite dreht um

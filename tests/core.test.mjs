@@ -258,5 +258,43 @@ check(C.formatCookAmount(0.5, "Stk", "Salz", 0.5) === "1 Stk" && C.formatCookAmo
 check(C.formatCookAmount(200, "g", "Pilze", 0.5) === "200 g", "Gramm wie bisher");
 check(C.formatAmount(0.5, "Stk") === "1 Stk" && C.formatAmount(1.5, "Stk") === "2 Stk", "Einkauf: halbe Zwiebel = 1 kaufen, 1½ = 2 kaufen");
 
+// Benachrichtigungen: Ruhezeit, Wochenwahl-Text, wöchentliche Markt-/Hof-Erinnerung (Joshua 19.11.)
+{
+  const wc = C.wallClock(new Date("2026-11-20T18:30:00Z")); // Winterzeit: UTC+1
+  check(wc.getHours() === 19 && wc.getMinutes() === 30 && wc.getDay() === 5, "Wanduhr Zürich: 18:30 UTC = Fr 19:30");
+  check(C.wallClock(new Date("2026-07-01T06:00:00Z")).getHours() === 8, "Sommerzeit: 6:00 UTC = 8:00 in Zürich");
+  check(C.isQuiet(new Date(2026, 10, 20, 21, 0)) && C.isQuiet(new Date(2026, 10, 20, 7, 59)) && !C.isQuiet(new Date(2026, 10, 20, 8, 0)) && !C.isQuiet(new Date(2026, 10, 20, 20, 59)), "Ruhezeit 21:00–8:00");
+  const wg = [{ id: "joshua", name: "Joshua" }, { id: "leonie", name: "Leonie" }, { id: "lukas", name: "Lukas" }, { id: "jo", name: "Jo" }];
+  const m1 = C.voteMessage(wg, { joshua: { likes: ["1"] }, leonie: { likes: ["2"] }, lukas: { likes: [] } }, "leonie", "2026-W48");
+  check(m1.title === "Leonie hat für KW 48 gewählt" && m1.body === "Noch offen: Lukas, Jo" && !m1.all, "Stimme: «Leonie hat für KW 48 gewählt» · «Noch offen: Lukas, Jo»");
+  const m2 = C.voteMessage(wg, Object.fromEntries(wg.map(m => [m.id, { likes: ["1"] }])), "jo", "2026-W48");
+  check(m2.all && m2.title === "Alle haben gewählt" && m2.body === "Plan für KW 48 übernehmen", "letzte Stimme: «Alle haben gewählt»");
+
+  const rob = { name: "Markt Robenhausen", oh: "Mar-Nov Sa 08:00-11:00", day: 5 };
+  check(JSON.stringify(C.openDays(rob.oh, new Date(2026, 10, 10))) === "[5]", "Robenhausen: nur Samstag wählbar");
+  check(JSON.stringify(C.openDays(rob.oh, new Date(2026, 11, 10))) === "[5]", "in der Winterpause: Tage der Woche, in der es wieder losgeht");
+  check(C.openDays("", new Date()) === null, "Zeiten unbekannt: jeder Tag wählbar");
+  const fri19 = new Date(2026, 10, 20, 19, 0), sat730 = new Date(2026, 10, 21, 7, 30);
+  const eve = C.marketDue({ ...rob, when: "eve" }, fri19, null);
+  check(eve && eve.date === "2026-11-21" && eve.title === "Morgen Markt Robenhausen 8–11", "Vorabend: Fr 19:00 «Morgen Markt Robenhausen 8–11»");
+  check(!C.marketDue({ ...rob, when: "eve" }, new Date(2026, 10, 20, 18, 59), null), "vor 19:00 noch nicht");
+  check(!C.marketDue({ ...rob, when: "eve" }, fri19, "2026-11-21"), "schon gesendet: nur einmal pro Woche");
+  check(!C.marketDue({ ...rob, when: "eve" }, new Date(2026, 10, 20, 22, 30), null), "mehr als 3 h zu spät: nichts mehr");
+  const pre = C.marketDue({ ...rob, when: "pre" }, sat730, null);
+  check(pre && pre.title === "Heute Markt Robenhausen 8–11", "30 Min. vor Öffnung: Sa 7:30 «Heute …»");
+  check(!C.marketDue({ ...rob, when: "pre" }, new Date(2026, 10, 21, 7, 29), null), "vor 7:30 noch nicht");
+  check(!C.marketDue({ ...rob, when: "eve" }, new Date(2026, 11, 4, 19, 0), null), "Winterpause (Dezember): keine Erinnerung");
+  const own = { name: "Bauer Meier", day: 2, when: "fix", time: "17:15" };
+  const fix = C.marketDue(own, new Date(2026, 10, 18, 17, 20), null);
+  check(fix && fix.title === "Heute Bauer Meier" && fix.date === "2026-11-18", "eigener Ort ohne Zeiten: Mi 17:15 «Heute Bauer Meier»");
+  check(!C.marketDue(own, new Date(2026, 10, 19, 17, 20), null), "an einem anderen Tag nichts");
+  check(C.marketDue({ ...own, when: "pre" }, new Date(2026, 10, 17, 19, 5), null).title === "Morgen Bauer Meier", "ohne Zeiten: «vor Öffnung» gilt als Vorabend");
+
+  check(C.bringReminder(["Lauch", "Rüebli", "Eier", "Äpfel", "Milch", "Brot"]) === "6 Sachen auf Bring!: Lauch, Rüebli, Eier, Äpfel …" && C.bringReminder(["Milch"]) === "1 Sache auf Bring!: Milch" && C.bringReminder([]) === "", "Bring!-Text, leer = keine Erinnerung");
+  const hits = C.searchFarms(globalThis.BF_HOF.items, "wetzikon robenhausen", { ref: { lat: 47.23, lon: 8.82 } });
+  check(hits.length && hits[0].n === "Wochenmarkt Robenhausen", "Suche nach Ortschaft + Name findet den Markt");
+  check(C.searchFarms(globalThis.BF_HOF.items, "", {}).length === 0, "leere Suche: nichts");
+}
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

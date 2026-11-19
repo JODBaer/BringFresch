@@ -1,7 +1,10 @@
 # Plan: Benachrichtigungen (Push)
 
-> Stand 19.11.2026, **Plan + Entwurf, noch nicht gebaut.** Entwurf: `docs/design/benachrichtigungen-entwurf.html`.
-> Reihenfolge wie bei den Hofläden: zuerst Plan, dann Entwurf live zeigen, Joshua entscheidet, dann bauen.
+> Stand 19.11.2026: **gebaut** nach Entscheid Joshua. Entwurf: `docs/design/benachrichtigungen-entwurf.html`.
+> Entscheide: (1) Zeitpunkt der Markt-Erinnerung **auswählbar** (Vorabend / vor Öffnung / fest). (2) Ort aus der Hofläden-Liste,
+> **Suche nach Name des Bauern oder Ortschaft**; fehlt er, **selbst eintragen** (Name + Tag). (3) Anstupsen 1× pro Tag, Ruhezeit 21–8: **ja**.
+> (4) «Alle haben gewählt» zusätzlich: **ja**. Abweichung vom Plan: ein Cron alle 15 Min. statt stündlich (Uhrzeiten wie 7:30 genauer),
+> Abo löschen über `POST /push/off` statt DELETE. Damit es live geht: VAPID-Secrets setzen (worker/README.md).
 
 ## Wunsch (Joshua 19.11.)
 
