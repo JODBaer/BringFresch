@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'bringfrisch-cache-v84';
+﻿const CACHE_NAME = 'bringfrisch-cache-v85';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -33,7 +33,8 @@ const STATIC_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    // cache: reload = am Browser-Cache vorbei (GitHub Pages: max-age=600), sonst landet die alte Version im neuen Cache
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS.map((u) => new Request(u, { cache: 'reload' }))))
   );
   self.skipWaiting();
 });
@@ -57,7 +58,9 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (new URL(event.request.url).origin !== self.location.origin) return;
 
-  const net = fetch(event.request).then((response) => {
+  // no-cache: beim Server nachfragen (ETag, kostet fast nichts). Ohne das lieferte der Browser-Cache bis 10 Min. lang
+  // die alte app.js, obwohl «Neue Version» schon die neue sah -> «Laden» drehte im Kreis (19.11., 1.14.0 -> 1.14.1).
+  const net = fetch(event.request, { cache: 'no-cache' }).then((response) => {
     if (response && response.status === 200) {
       const clone = response.clone();
       caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
