@@ -15,7 +15,7 @@ Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand i
   - **Google Maps** ist keine Datenquelle (Places-API: Schlüssel, Kosten, Speichern der Daten verboten). Nur Ziel der Links (Koordinaten) und Export für «Meine Karten».
   - **Saisongemüse**: Zeile «Jetzt Saison» oben im Blatt aus `season_items` (VSGP, gleiche Daten wie «Rezepte & Saison»), Quelle gemuese.ch verlinkt; nichts neu importiert.
 - **«Memory-Kachel-Bug»** meinte nur «Alle Rezepte» (behoben). Die Wochenwahl bleibt, wie sie ist.
-- **Schriftzug oben**: Das Design von «BringFrisch» gefällt Joshua, aber das Wort «Obsonare» muss hinein. Die genaue Gestaltung entscheidet er später (als HTML-Entwurf zeigen).
+- **Schriftzug oben**: Das Design von «BringFrisch» gefällt Joshua, aber das Wort «Obsonare» muss hinein. Die genaue Gestaltung entscheidet er später (als HTML-Entwurf zeigen). **Entschieden 19.11.:** Titel (Schriftzug oben, `.brand`) = **«FerObsonia»** (z.B. `Fer<em>Obsonia</em>` wie bisher `Bring<em>Frisch</em>`); Name der App bleibt **«Obsonare»** (`<title>`, `manifest.json`, Homescreen, Texte). Noch nicht umgesetzt.
 
 ## Neu seit v1.10.0 (Text für die WG)
 
@@ -59,7 +59,7 @@ Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand i
 
 ## Offen / bekannt
 - Speicher-Umzug `bringfrisch_*` → `obsonare_*` und neue Adressen: liegt auf dem Zweig `ccr-315f8b43-5aq49r` (siehe unten), noch nicht auf main.
-- Der Schriftzug oben in der App zeigt noch «BringFrisch» (`static/index.html`, `.brand`). Entschieden 16.11.: «Obsonare» kommt hinein, Gestaltung später (siehe oben).
+- Der Schriftzug oben in der App zeigt noch «BringFrisch» (`static/index.html`, `.brand`). Entschieden 19.11.: wird «FerObsonia» (siehe oben); Name der App bleibt «Obsonare».
 - Zweige `ccr-7c4789c0-pz6wnw` (Swissmilk) und `ccr-eb9048a0-ea245d` (dieser Chat) sind auf `main` und können auf GitHub gelöscht werden.
 - **Noch NICHT auf main, Arbeit anderer Chats (Stand 15.11.):**
   - `ccr-315f8b43-5aq49r` (Chat «Obsonare»): 2d250a0 «Speicher und Cache umbenannt, Umzug der Adressen vorbereitet», 55 Dateien. Das ist der offene Speicher-Umzug. Vor v2.0.0 mit Joshua klären, ob er mit hinein soll. Danach zusammenführen und `npm run ci`.
