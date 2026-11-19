@@ -198,6 +198,14 @@
           </div>
         </details>
       </div>
+      <!-- Standort (pro Handy): nur die Zustimmung für die Hofläden-Entfernung, ausschalten hier (app_hof.js) -->
+      <p class="label">Standort <small>nur auf diesem Handy</small></p>
+      <div class="card" id="geoCard">
+        <div class="set-row set-line">
+          <span>Standort für Hofläden<small id="geoState">aus</small></span>
+          <button class="btn" type="button" id="geoOff" hidden>Ausschalten</button>
+        </div>
+      </div>
 
       <details class="card set-more" id="setMore">
         <summary><span><b>Mehr</b><small>PIN, Wochenwahl, Abgleich, Kalender, wer isst wann, Plan teilen, Stil, Farben</small></span></summary>
@@ -355,7 +363,7 @@
           <button class="btn" type="button" id="voteShuffleBtn">🔀 Neu mischeln</button>
           <button class="btn" type="button" id="voteAddBtn">+ Gericht</button>
         </div>
-        <p class="label" style="padding-top:6px">WG-Ranking <small id="voteWho"></small></p>
+        <p class="label" style="padding-top:6px" id="voteRankLabel">WG-Ranking <small id="voteWho"></small></p>
         <div class="vote-nudge" id="voteNudge" hidden></div>
         <div class="card" id="voteRank"></div>
         <button class="btn primary" type="button" id="voteApplyBtn">7 Gerichte in den Plan übernehmen</button>

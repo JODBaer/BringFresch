@@ -1,5 +1,6 @@
 """App-Icons für den Homescreen erzeugen (grüner Grund, weisser Korb mit Blatt).
-   python tools/make_icons.py   -> static/icon-180.png, icon-192.png, icon-512.png, icon-maskable-512.png
+   python tools/make_icons.py   -> static/icon-180.png, icon-192.png, icon-512.png, icon-maskable-512.png, icon-badge-96.png
+   icon-badge-96.png = kleines Symbol der Benachrichtigungen (Android: Statusleiste, nur die Form zählt → weiss auf durchsichtig)
 """
 import math
 from pathlib import Path
@@ -51,6 +52,21 @@ def draw(scale):
     return img
 
 
+def badge():
+    """Nur die Form (weiss, durchsichtiger Grund), Rillen ausgeschnitten – Android färbt sie selbst ein."""
+    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    k, c = 1.25, S / 2 + 40
+    leaf(d, c - 70 * k, c - 150 * k, 300 * k, 120 * k, -60, WHITE)
+    leaf(d, c + 60 * k, c - 170 * k, 340 * k, 130 * k, -115, WHITE)
+    top, bot = c - 30 * k, c + 250 * k
+    d.rounded_rectangle([c - 330 * k, top - 40 * k, c + 330 * k, top + 40 * k], radius=40 * k, fill=WHITE)
+    d.polygon([(c - 280 * k, top + 30 * k), (c + 280 * k, top + 30 * k), (c + 210 * k, bot), (c - 210 * k, bot)], fill=WHITE)
+    for x in (-120, 0, 120):
+        d.line([(c + x * k, top + 90 * k), (c + x * 0.8 * k, bot - 50 * k)], fill=(0, 0, 0, 0), width=int(34 * k))
+    return img
+
+
 def save(img, size, name):
     img.resize((size, size), Image.LANCZOS).save(OUT / name, optimize=True)
     print(name)
@@ -61,3 +77,4 @@ save(full, 180, "icon-180.png")
 save(full, 192, "icon-192.png")
 save(full, 512, "icon-512.png")
 save(draw(0.78), 512, "icon-maskable-512.png")
+save(badge(), 96, "icon-badge-96.png")
