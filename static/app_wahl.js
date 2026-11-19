@@ -163,11 +163,11 @@
   }
   // Bilder in einem Bereich erst laden, wenn sie sichtbar werden (höchstens 3 gleichzeitig). root = scrollender Bereich.
   const watchers = new Map();
-  function watchImages(container, root) {
+  function watchImages(container, root, stop = false) {
     if (!container) return;
     const old = watchers.get(container);
-    if (old) old.disconnect();
-    if (!app.connected() || typeof IntersectionObserver === "undefined") return;
+    if (old) { old.disconnect(); watchers.delete(container); }
+    if (stop || !app.connected() || typeof IntersectionObserver === "undefined") return;
     const show = u => container.querySelectorAll("[data-img]").forEach(e => {
       if (e.dataset.img !== u || !imgCache.has(u)) return;
       const src = imgCache.get(u);

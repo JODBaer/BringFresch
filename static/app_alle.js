@@ -88,7 +88,7 @@
     $("allDialog").querySelector(".sheet-body").scrollTop = 0;
   }
   $("allRecipesBtn").onclick = openAll;
-  $("allDialog").addEventListener("close", () => { if (observer) observer.disconnect(); });
+  $("allDialog").addEventListener("close", () => app.watchImages($("allList"), null, true)); // Beobachter abmelden
 
   $("allSearch").oninput = () => { query = $("allSearch").value; open = null; render(); };
   $("allWeeks").addEventListener("click", e => {

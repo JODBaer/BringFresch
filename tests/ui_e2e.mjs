@@ -1277,7 +1277,7 @@ await step(B, "Wochenwahl als Leonie (Memory: Umdrehen = wählen): 3 Gerichte, W
 await step(B, "Wochenwahl: Bilder von der Rezeptseite (WG-Server legt sie ab, Handy merkt sie sich)", async () => {
   await until(B, () => document.querySelectorAll("#voteGrid .vimg.ok").length > 0 && [...document.querySelectorAll("#voteGrid .vimg.ok")].every(e => /blob:/.test(e.style.backgroundImage)), "keine Bilder in der Wochenwahl", null, 15000);
   expect([...kv.keys()].some(k => k.startsWith("img:")), "Bild nicht im WG-Server abgelegt");
-  expect(await B.page.evaluate(async () => (await (await caches.open("bf-img")).keys()).length > 0), "Bild nicht im Handy-Cache");
+  expect(await B.page.evaluate(async () => (await (await caches.open("bf-img-s")).keys()).length > 0), "Bild nicht im Handy-Cache (verkleinerte Ablage «bf-img-s»)");
   await shot(B, "02b-wochenwahl-bilder");
 });
 
