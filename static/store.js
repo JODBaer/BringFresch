@@ -37,7 +37,8 @@
     POPULAR_KEY: "bringfrisch_popular",            // Beliebtheit dieser WG (Zwischenspeicher von /popular: Stimmen pro Woche)
     SHOP_SORT_KEY: "bringfrisch_shop_sort",        // Einkauf/Vorrat: "rezept" (nach Gericht) oder "kat" (nach Kategorie wie in Bring!)
     HOF_GEO_KEY: "bringfrisch_hof_geo",            // Hofläden: Standort verwenden ja/nein (nur die Zustimmung, nie der Standort selbst)
-    SEARCH_SITE_KEY: "bringfrisch_search_site"     // «Rezept suchen auf»: swissmilk | fooby | google
+    SEARCH_SITE_KEY: "bringfrisch_search_site",    // «Rezept suchen auf»: swissmilk | fooby | google
+    PUSH_KEY: "bringfrisch_push"                   // Benachrichtigungen: { on, id, prefs: { voted, nudge, market }, remind } – Abo dieses Handys
   };
   // Schlüssel mit Zusatz
   const baseKey = name => `bringfrisch_base_${name}`;   // gemerkter Server-Stand: plan | next | vorrat | settings

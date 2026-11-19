@@ -1,0 +1,389 @@
+<title>Obsonare Meldungen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,600;8..144,750&display=swap">
+<style>
+/* Layout: links ein Handy (390 px) zum Antippen – Sperrbildschirm, Wochenwahl, Einstellungen, Kurzbefehl –, rechts was neu ist und was Joshua entscheidet. Farben wie die App: Hellgrün + Pistazie. */
+:root {
+  --bg: #f3f7ef; --fg: #172116; --muted: #56654f; --card: #ffffff; --line: #d3e0c9; --phone: #fbfdf9;
+  --accent: #3a5f3a; --accent-bg: #c8f6c8; --on-accent: #ffffff; --focus: #1a73e8;
+  --lock-a: #93c572; --lock-b: #2f4a2f; --notif: rgba(255,255,255,.78); --notif-fg: #172116;
+  --warn: #9a6a00; --warn-bg: #fff1c7;
+  --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e130e; --fg: #e2ecdc; --muted: #a9bba0; --card: #182018; --line: #2f3c2d; --phone: #121912;
+    --accent: #90ee90; --accent-bg: #2f4a2f; --on-accent: #142414; --focus: #8ab4ff;
+    --lock-a: #3d5a2c; --lock-b: #0b120b; --notif: rgba(30,40,30,.82); --notif-fg: #e2ecdc;
+    --warn: #f0bf4a; --warn-bg: #3b3115;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e130e; --fg: #e2ecdc; --muted: #a9bba0; --card: #182018; --line: #2f3c2d; --phone: #121912;
+  --accent: #90ee90; --accent-bg: #2f4a2f; --on-accent: #142414; --focus: #8ab4ff;
+  --lock-a: #3d5a2c; --lock-b: #0b120b; --notif: rgba(30,40,30,.82); --notif-fg: #e2ecdc;
+  --warn: #f0bf4a; --warn-bg: #3b3115;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.4; margin: 0; overflow-x: hidden; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.page { max-width: 1120px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 18px; }
+.top h1 { font-size: 22px; margin: 0 0 4px; text-wrap: balance; }
+.top p { margin: 0; color: var(--muted); max-width: 68ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.controls > span { font-size: 13px; color: var(--muted); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--card); gap: 2px; }
+.seg button { border: 0; background: none; padding: 7px 13px; border-radius: 999px; cursor: pointer; font-size: 14px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.stage { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 880px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.box h2 { font-size: 17px; margin: 0; }
+.box p, .box ul, .box ol { margin: 0; }
+.box ul, .box ol { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.q { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.q b { font-size: 15px; }
+.q .hint { color: var(--muted); font-size: 13px; }
+.limit { background: var(--warn-bg); border-color: transparent; }
+.limit h2 { color: var(--warn); }
+
+/* ---------- Handy ---------- */
+.phone { width: 100%; max-width: 390px; justify-self: center; height: 760px; border-radius: 34px; border: 1px solid var(--line); background: var(--phone); position: relative; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(20, 40, 20, .12); }
+.screen { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.ph-head { padding: 22px 18px 6px; }
+.ph-head h3 { margin: 0; font-size: 24px; }
+.ph-head small { color: var(--muted); font-size: 13px; }
+.scroll { flex: 1; overflow-y: auto; padding: 4px 14px 24px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Sperrbildschirm */
+.lock { background: linear-gradient(170deg, var(--lock-a), var(--lock-b)); color: #fff; padding: 46px 14px 20px; gap: 10px; }
+.lock .clock { text-align: center; }
+.lock .clock div { font-size: 15px; opacity: .9; }
+.lock .clock strong { display: block; font-size: 72px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.stack { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.notif { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 2px 10px; background: var(--notif); color: var(--notif-fg); border: 0; border-radius: 20px; padding: 11px 13px; text-align: left; cursor: pointer; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.notif .ic { grid-row: span 3; width: 38px; height: 38px; border-radius: 10px; background: var(--accent-bg); display: grid; place-items: center; font-size: 20px; }
+.notif .meta { display: flex; justify-content: space-between; font-size: 12px; opacity: .7; }
+.notif b { font-size: 15px; }
+.notif span.t { font-size: 14px; }
+.lock .tip { text-align: center; font-size: 12px; opacity: .85; }
+
+/* Wochenwahl */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.card h4 { margin: 0; font-size: 15px; }
+.dishes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.dish { aspect-ratio: 1; max-width: 100%; border-radius: 12px; background: var(--accent-bg); display: grid; place-items: center; font-size: 28px; position: relative; }
+.dish small { position: absolute; bottom: 4px; left: 6px; right: 6px; font-size: 10px; text-align: center; color: var(--fg); line-height: 1.15; }
+.who { display: flex; flex-direction: column; gap: 6px; }
+.person { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--accent-bg); color: var(--fg); flex: none; }
+.person .st { margin-left: auto; font-size: 13px; color: var(--muted); }
+.person.done .st { color: var(--accent); font-weight: 600; }
+.person input { width: 20px; height: 20px; accent-color: var(--accent); }
+.btn { border: 0; border-radius: 14px; padding: 12px 14px; font-weight: 700; cursor: pointer; background: var(--accent); color: var(--on-accent); }
+.btn.ghost { background: none; border: 1px solid var(--line); color: var(--fg); font-weight: 600; }
+.btn:disabled { opacity: .5; cursor: default; }
+.note { font-size: 12px; color: var(--muted); }
+.toast { position: absolute; left: 14px; right: 14px; bottom: 18px; background: var(--fg); color: var(--bg); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+
+/* Einstellungen */
+.sw { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.sw .lbl { flex: 1; min-width: 0; }
+.sw .lbl small { display: block; color: var(--muted); font-size: 12px; }
+.tg { appearance: none; -webkit-appearance: none; width: 46px; height: 28px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; flex: none; transition: background .15s; }
+.tg::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.tg:checked { background: var(--accent); }
+.tg:checked::after { transform: translateX(18px); }
+.sub { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+.sub[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.field select, .field input { border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; background: var(--phone); color: var(--fg); font-size: 14px; width: 100%; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 6px 11px; font-size: 13px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent); font-weight: 600; }
+.preview { background: var(--accent-bg); border-radius: 12px; padding: 9px 11px; font-size: 13px; }
+.ios-hint { background: var(--warn-bg); color: var(--fg); border-radius: 12px; padding: 9px 11px; font-size: 13px; }
+.linkbtn { background: none; border: 0; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0; text-align: left; font-size: 14px; }
+
+/* Kurzbefehl */
+.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.steps code, .url { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+.url { display: block; background: var(--phone); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; overflow-x: auto; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .tg, .tg::after { transition: none; } }
+</style>
+
+<div class="page">
+  <header class="top">
+    <h1>Benachrichtigungen – Entwurf</h1>
+    <p>Wochenwahl melden, anstupsen und einmal pro Woche an Markt oder Hof erinnern. Links antippen: Die Meldungen auf dem Sperrbildschirm führen zur passenden Seite. Noch nichts davon ist gebaut.</p>
+  </header>
+  <div class="controls">
+    <span>Seite</span>
+    <div class="seg" id="screenSeg" role="group" aria-label="Seite">
+      <button type="button" data-s="lock" aria-pressed="true">Sperrbildschirm</button>
+      <button type="button" data-s="wahl" aria-pressed="false">Wochenwahl</button>
+      <button type="button" data-s="set" aria-pressed="false">Einstellungen</button>
+      <button type="button" data-s="kb" aria-pressed="false">Kurzbefehl</button>
+    </div>
+    <span>Darstellung</span>
+    <div class="seg" id="themeSeg" role="group" aria-label="Darstellung">
+      <button type="button" data-t="" aria-pressed="true">Auto</button>
+      <button type="button" data-t="light" aria-pressed="false">Hell</button>
+      <button type="button" data-t="dark" aria-pressed="false">Dunkel</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="phone" aria-label="Handy-Vorschau">
+      <!-- 1 Sperrbildschirm -->
+      <section class="screen lock" data-screen="lock">
+        <div class="clock"><div>Freitag, 20. November</div><strong>19:02</strong></div>
+        <div class="stack">
+          <button type="button" class="notif" data-go="wahl">
+            <span class="ic" aria-hidden="true">🗳️</span>
+            <span class="meta"><span>Obsonare</span><span>jetzt</span></span>
+            <b>Leonie hat für KW 48 gewählt</b>
+            <span class="t">Noch offen: Lukas, Jo</span>
+          </button>
+          <button type="button" class="notif" data-go="wahl">
+            <span class="ic" aria-hidden="true">👋</span>
+            <span class="meta"><span>Obsonare</span><span>vor 2 Std.</span></span>
+            <b>Joshua stupst dich an</b>
+            <span class="t">Die Wochenwahl für KW 48 wartet noch auf dich.</span>
+          </button>
+          <button type="button" class="notif" data-go="set">
+            <span class="ic" aria-hidden="true">🧺</span>
+            <span class="meta"><span>Obsonare</span><span id="mktWhen">morgen ab 8:00</span></span>
+            <b id="mktTitle">Morgen Markt Robenhausen 8–11</b>
+            <span class="t">6 Sachen auf Bring!: Lauch, Rüebli, Eier, Äpfel …</span>
+          </button>
+        </div>
+        <p class="tip">Meldung antippen = so öffnet sich Obsonare</p>
+      </section>
+
+      <!-- 2 Wochenwahl -->
+      <section class="screen" data-screen="wahl" hidden>
+        <div class="ph-head"><h3>Wochenwahl</h3><small>KW 48 · 14 Gerichte · deine 5 Favoriten</small></div>
+        <div class="scroll">
+          <div class="dishes" aria-hidden="true">
+            <div class="dish">🎃<small>Kürbis-Risotto</small></div>
+            <div class="dish">🥬<small>Capuns</small></div>
+            <div class="dish">🍲<small>Gerstensuppe</small></div>
+            <div class="dish">🥔<small>Rösti</small></div>
+            <div class="dish">🥕<small>Rüebli-Curry</small></div>
+            <div class="dish">🧀<small>Älplermagronen</small></div>
+          </div>
+          <div class="card">
+            <h4>Wer hat gewählt?</h4>
+            <div class="who" id="who">
+              <label class="person done"><span class="av">JB</span>Joshua (du)<span class="st">✓ gewählt</span></label>
+              <label class="person done"><span class="av">LE</span>Leonie<span class="st">✓ gewählt</span></label>
+              <label class="person"><input type="checkbox" checked data-n="Lukas"><span class="av">LU</span>Lukas<span class="st">offen</span></label>
+              <label class="person"><input type="checkbox" checked data-n="Jo"><span class="av">JO</span>Jo<span class="st">offen</span></label>
+            </div>
+            <button type="button" class="btn" id="nudgeBtn">👋 Lukas &amp; Jo anstupsen</button>
+            <p class="note" id="nudgeNote">Jede Person höchstens einmal pro Tag. Zwischen 21 und 8 Uhr wartet die Meldung bis zum Morgen.</p>
+          </div>
+        </div>
+        <div class="toast" id="toast" hidden></div>
+      </section>
+
+      <!-- 3 Einstellungen -->
+      <section class="screen" data-screen="set" hidden>
+        <div class="ph-head"><h3>Einstellungen</h3><small>Benachrichtigungen · nur auf diesem Handy</small></div>
+        <div class="scroll">
+          <div class="card">
+            <div class="sw"><span class="lbl">Benachrichtigungen<small id="permState">erlaubt · iPhone (Home-Bildschirm)</small></span><input type="checkbox" class="tg" id="tgMain" checked aria-label="Benachrichtigungen auf diesem Handy"></div>
+            <p class="ios-hint">iPhone: Meldungen kommen nur, wenn Obsonare auf dem Home-Bildschirm liegt (Teilen → «Zum Home-Bildschirm»).</p>
+            <div class="sub" id="subMain">
+              <div class="sw"><span class="lbl">Jemand hat gewählt<small>«Leonie hat für KW 48 gewählt»</small></span><input type="checkbox" class="tg" checked aria-label="Jemand hat gewählt"></div>
+              <div class="sw"><span class="lbl">Anstupser aus der WG<small>wenn du noch nicht gewählt hast</small></span><input type="checkbox" class="tg" checked aria-label="Anstupser"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sw"><span class="lbl">Markt / Hof · 1× pro Woche<small>nur wenn auf Bring! etwas steht</small></span><input type="checkbox" class="tg" id="tgMkt" checked aria-label="Markt-Erinnerung"></div>
+            <div class="sub" id="subMkt">
+              <label class="field" for="mktPlace">Wo
+                <select id="mktPlace">
+                  <option value="rob">⭐ Wochenmarkt Robenhausen · Sa 8–11</option>
+                  <option value="rap">⭐ Wochenmarkt Rapperswil · Fr 7–11:30</option>
+                  <option value="own">Eigener Ort (z.B. Bauer nebenan)</option>
+                </select>
+              </label>
+              <div class="row2" id="ownRow" hidden>
+                <label class="field" for="ownName">Name<input id="ownName" value="Bauer nebenan"></label>
+                <label class="field" for="ownDay">Tag
+                  <select id="ownDay"><option>Mo</option><option>Di</option><option>Mi</option><option>Do</option><option>Fr</option><option selected>Sa</option><option>So</option></select>
+                </label>
+              </div>
+              <div class="field">Wann
+                <div class="chips" id="whenChips" role="group" aria-label="Wann">
+                  <button type="button" data-w="eve" aria-pressed="true">Am Vorabend 19:00</button>
+                  <button type="button" data-w="pre" aria-pressed="false">30 Min. vor Öffnung</button>
+                  <button type="button" data-w="fix" aria-pressed="false">Fester Zeitpunkt</button>
+                </div>
+              </div>
+              <label class="field" for="fixTime" id="fixRow" hidden>Uhrzeit<input id="fixTime" type="time" value="09:00"></label>
+              <div class="preview" id="mktPreview"></div>
+              <p class="note">Winterpause oder Feiertag: keine Meldung. Die Lieblinge ⭐ kommen aus «🧺 Markt».</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Beim Ankommen erinnern (iPhone)</h4>
+            <p class="note">Obsonare sieht deinen Standort nicht. Ein Kurzbefehl auf dem iPhone kann beim Ankommen am Hof fragen, ob diese Woche schon erinnert wurde.</p>
+            <button type="button" class="linkbtn" data-go="kb">Anleitung Kurzbefehl ›</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 Kurzbefehl -->
+      <section class="screen" data-screen="kb" hidden>
+        <div class="ph-head"><h3>Kurzbefehl</h3><small>Erinnerung beim Ankommen · einmal pro Woche</small></div>
+        <div class="scroll">
+          <div class="card">
+            <ol class="steps">
+              <li>App <b>Kurzbefehle</b> → Automation → <b>+</b> → <b>Ankommen</b>, Ort wählen (z.B. Hof nebenan), «Sofort ausführen».</li>
+              <li>Aktion <b>Inhalte von URL abrufen</b> mit deiner Adresse:
+                <span class="url">https://…/erinnerung/k7f2-9qx1</span></li>
+              <li>Aktion <b>Wenn</b> «Inhalte von URL» <b>hat beliebigen Wert</b> → <b>Mitteilung anzeigen</b> (Text = Inhalte von URL).</li>
+              <li>Optional danach: <b>App öffnen</b> → Bring!</li>
+            </ol>
+            <button type="button" class="btn ghost" id="copyBtn">Adresse kopieren</button>
+          </div>
+          <div class="card">
+            <h4>Was die Adresse antwortet</h4>
+            <p class="note">Steht etwas auf Bring! und kam diese Woche noch keine Erinnerung: <b>«Bring!: 6 Sachen – Lauch, Rüebli, Eier …»</b>. Sonst leer, und das iPhone zeigt nichts. So meldet es sich höchstens einmal pro Woche, auch wenn du täglich vorbeigehst.</p>
+            <p class="note">Die Adresse gilt nur für dieses Handy und enthält keine PIN. «Neue Adresse» unter Einstellungen macht die alte ungültig.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <div class="box">
+        <h2>Was neu wäre</h2>
+        <ul>
+          <li><b>Wochenwahl</b>: Wählt jemand, bekommen alle anderen eine Meldung. Wählt die letzte Person: «Alle haben gewählt – Plan übernehmen».</li>
+          <li><b>Anstupsen</b> in der Wochenwahl: Wer noch fehlt, ist schon angehakt, ein Knopf schickt die Meldung.</li>
+          <li><b>Markt / Hof</b>: einmal pro Woche, an einem Liebling aus «🧺 Markt» oder an einem eigenen Ort mit festem Tag. Nur wenn auf Bring! etwas steht.</li>
+          <li><b>Kurzbefehl</b> (nur iPhone): Erinnerung beim Ankommen am Hof, ebenfalls höchstens einmal pro Woche.</li>
+          <li>Ein- und ausschalten pro Handy unter Einstellungen.</li>
+        </ul>
+      </div>
+      <div class="box limit">
+        <h2>Grenzen</h2>
+        <ul>
+          <li>iPhone: Push nur mit Obsonare auf dem Home-Bildschirm (iOS 16.4 oder neuer).</li>
+          <li>Nach Ort geht nur über den iPhone-Kurzbefehl. Android hat keinen gleichwertigen Weg ohne Zusatz-App, dort gibt es nur die Erinnerung nach Zeit.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h2>Joshua entscheidet</h2>
+        <div class="q"><b>1. Markt-Erinnerung: wann?</b><span class="hint">Am Vorabend 19:00 («Morgen Markt …»), 30 Min. vor der Öffnung oder ein fester Zeitpunkt. Im Handy links sind alle drei wählbar. Soll das so bleiben oder nur eine Variante geben?</span></div>
+        <div class="q"><b>2. Welcher Bauer nebenan?</b><span class="hint">Steht er schon in der Hofläden-Liste (Name)? Sonst bleibt «Eigener Ort» mit Name und Tag.</span></div>
+        <div class="q"><b>3. Anstupsen: 1× pro Tag, Ruhe 21–8 Uhr?</b><span class="hint">Vorschlag, damit es nicht nervt.</span></div>
+        <div class="q"><b>4. «Alle haben gewählt» zusätzlich?</b><span class="hint">Eine Meldung an alle, sobald die letzte Stimme da ist.</span></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  try { const t = localStorage.getItem("bf-notif-theme"); if (t) setTheme(t); } catch (e) {}
+
+  function show(name) {
+    $$("[data-screen]").forEach(s => { s.hidden = s.dataset.screen !== name; });
+    $$("#screenSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === name));
+  }
+  $$("#screenSeg button").forEach(b => b.addEventListener("click", () => show(b.dataset.s)));
+  $$("[data-go]").forEach(b => b.addEventListener("click", () => show(b.dataset.go)));
+
+  function setTheme(t) {
+    if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+    $$("#themeSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === t));
+  }
+  $$("#themeSeg button").forEach(b => b.addEventListener("click", () => {
+    setTheme(b.dataset.t);
+    try { localStorage.setItem("bf-notif-theme", b.dataset.t); } catch (e) {}
+  }));
+
+  // Anstupsen
+  const who = $("#who"), nudge = $("#nudgeBtn"), toast = $("#toast");
+  function nudgeLabel() {
+    const n = $$("input[data-n]", who).filter(i => i.checked && !i.disabled).map(i => i.dataset.n);
+    nudge.disabled = !n.length;
+    nudge.textContent = n.length ? "👋 " + n.join(" & ") + " anstupsen" : "Niemand ausgewählt";
+    return n;
+  }
+  who.addEventListener("change", nudgeLabel);
+  nudge.addEventListener("click", () => {
+    const n = nudgeLabel();
+    if (!n.length) return;
+    $$("input[data-n]", who).forEach(i => { if (i.checked) { i.disabled = true; i.closest(".person").querySelector(".st").textContent = "angestupst"; } });
+    nudge.disabled = true;
+    nudge.textContent = "Wieder möglich ab morgen";
+    toast.textContent = n.join(" & ") + " angestupst";
+    toast.hidden = false;
+    setTimeout(() => { toast.hidden = true; }, 2600);
+  });
+
+  // Einstellungen
+  const sync = (tg, sub) => { sub.setAttribute("aria-disabled", !tg.checked); };
+  const tgMain = $("#tgMain"), tgMkt = $("#tgMkt");
+  tgMain.addEventListener("change", () => sync(tgMain, $("#subMain")));
+  tgMkt.addEventListener("change", () => sync(tgMkt, $("#subMkt")));
+
+  const places = {
+    rob: { name: "Markt Robenhausen", day: "Sa", prev: "Fr", open: "8:00", hours: "8–11", pre: "7:30" },
+    rap: { name: "Markt Rapperswil", day: "Fr", prev: "Do", open: "7:00", hours: "7–11:30", pre: "6:30" }
+  };
+  const dayNames = { Mo: "Mo", Di: "Di", Mi: "Mi", Do: "Do", Fr: "Fr", Sa: "Sa", So: "So" };
+  const prevDay = { Mo: "So", Di: "Mo", Mi: "Di", Do: "Mi", Fr: "Do", Sa: "Fr", So: "Sa" };
+  let when = "eve";
+  $$("#whenChips button").forEach(b => b.addEventListener("click", () => {
+    when = b.dataset.w;
+    $$("#whenChips button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    render();
+  }));
+  ["mktPlace", "ownName", "ownDay", "fixTime"].forEach(id => $("#" + id).addEventListener("input", render));
+
+  function render() {
+    const v = $("#mktPlace").value, own = v === "own";
+    $("#ownRow").hidden = !own;
+    const preBtn = $('#whenChips [data-w="pre"]');
+    preBtn.hidden = own;
+    if (own && when === "pre") { when = "eve"; $$("#whenChips button").forEach(x => x.setAttribute("aria-pressed", x.dataset.w === "eve")); }
+    $("#fixRow").hidden = when !== "fix";
+    const p = own
+      ? { name: $("#ownName").value.trim() || "Hof", day: $("#ownDay").value, hours: "" }
+      : places[v];
+    const fix = $("#fixTime").value || "09:00";
+    let at, title;
+    if (when === "eve") { at = (own ? prevDay[p.day] : p.prev) + " 19:00"; title = "Morgen " + p.name + (p.hours ? " " + p.hours : ""); }
+    else if (when === "pre") { at = p.day + " " + p.pre; title = "Heute " + p.name + " " + p.hours; }
+    else { at = dayNames[p.day] + " " + fix; title = "Heute " + p.name + (p.hours ? " " + p.hours : ""); }
+    $("#mktPreview").innerHTML = "<b>" + at + "</b> · «" + esc(title) + "» – 6 Sachen auf Bring!";
+    $("#mktTitle").textContent = title;
+    $("#mktWhen").textContent = at;
+  }
+  function esc(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+  render();
+
+  $("#copyBtn").addEventListener("click", async e => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText("https://…/erinnerung/k7f2-9qx1"); b.textContent = "Kopiert"; }
+    catch (err) { const r = document.createRange(); r.selectNodeContents($(".url")); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Markiert – jetzt kopieren"; }
+  });
+})();
+</script>

@@ -75,6 +75,17 @@ const env = {
   },
 };
 const kvJson = k => (kv.has(k) ? JSON.parse(kv.get(k)) : null);
+// Benachrichtigungen: eigener VAPID-Schlüssel nur für diesen Test; Meldungen an die Push-Dienste werden hier gezählt
+{
+  const vk = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  env.VAPID_PUBLIC = Buffer.from(await crypto.subtle.exportKey("raw", vk.publicKey)).toString("base64url");
+  env.VAPID_PRIVATE = (await crypto.subtle.exportKey("jwk", vk.privateKey)).d;
+}
+const pushSent = [];
+const fakePushSub = async name => {
+  const k = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  return { endpoint: `https://fcm.googleapis.com/fcm/send/ui-${name}`, keys: { p256dh: Buffer.from(await crypto.subtle.exportKey("raw", k.publicKey)).toString("base64url"), auth: Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url") } };
+};
 const bring = { L: { name: "WG", items: [] }, H: { name: "Ferien", items: [] }, T: { name: "Home-test", items: [] } };
 const RECIPE_URL = "https://www.bettybossi.ch/de/rezepte/rezept/kuerbis-lasagne-10001234/";
 const RECIPE_HTML = `<html><head><script type="application/ld+json">${JSON.stringify({
@@ -111,6 +122,7 @@ globalThis.fetch = async (url, init = {}) => {
     }
     return new Response(null, { status: 204 });
   }
+  if (url.startsWith("https://fcm.googleapis.com/")) { pushSent.push(url); return new Response(null, { status: 201 }); }
   // Rezeptseiten der Wochenwahl: Vorschaubild (og:image) -> winziges PNG
   if (/^https:\/\/(fooby\.ch|www\.swissmilk\.ch|migusto\.migros\.ch|www\.bettybossi\.ch)\//.test(url) &&url.split("?")[0] !== RECIPE_URL) return new Response(`<html><head><meta property="og:image" content="https://bilder.test/${encodeURIComponent(url).slice(-40)}.png"></head></html>`, { headers: { "Content-Type": "text/html" } });
   if (url.startsWith("https://bilder.test/")) return new Response(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64"), { headers: { "Content-Type": "image/png" } });
@@ -1334,6 +1346,66 @@ await step(B, "7 Gerichte übernehmen: Wunschtag Mi, Plan geändert, roter Punkt
   expect([cand[1], cand[3]].every(t => plan.includes(t)), "gewählte Gerichte fehlen im Plan");
   expect(!(await B.page.$eval("#openVoteBtn", b => b.classList.contains("due"))), "roter Punkt noch da");
   await shot(B, "03-plan-nach-wahl");
+});
+
+// Benachrichtigungen (Joshua 19.11.): Push im Browser nachgebaut (PushManager, Erlaubnis), Versand zählt der Test
+await step(B, "Benachrichtigungen: Einschalten (pro Handy), Markt/Hof suchen (Ortschaft), Tag + Zeitpunkt, Kurzbefehl-Adresse", async () => {
+  const sub = await fakePushSub("jo");
+  await B.page.evaluate(s => {
+    Notification.requestPermission = async () => "granted";
+    let has = null;
+    const fake = { endpoint: s.endpoint, toJSON: () => s, unsubscribe: async () => { has = null; return true; } };
+    const pm = { getSubscription: async () => has, subscribe: async o => { if (!o.applicationServerKey || o.applicationServerKey.length !== 65) throw new Error("Schlüssel fehlt"); has = fake; return fake; } };
+    Object.defineProperty(navigator.serviceWorker, "ready", { get: () => Promise.resolve({ pushManager: pm }), configurable: true });
+  }, sub);
+  await tap(B, '.bnav [data-tab="wg"]');
+  await until(B, () => !document.getElementById("tab-wg").hidden && document.getElementById("pushToggle").textContent === "Einschalten", "Karte Benachrichtigungen fehlt");
+  await tap(B, "#pushToggle");
+  await until(B, () => document.getElementById("pushState").textContent === "an · für dich", "nicht eingeschaltet");
+  const subs = () => (kvJson("push") || { subs: [] }).subs;
+  expect(subs().length === 1 && subs()[0].member === "jo" && subs()[0].endpoint === sub.endpoint, "Abo nicht beim WG-Server");
+  await tap(B, "#pushNudge");
+  await tap(B, "#pushMarketOn");
+  await until(B, () => !document.getElementById("pushMarket").hidden, "Markt-Teil geht nicht auf");
+  await B.page.type("#pushPlaceQ", "wetzikon robenhausen");
+  await until(B, () => document.querySelector("#pushHits [data-hit]") && /Wochenmarkt Robenhausen/.test(document.querySelector("#pushHits [data-hit]").textContent), "Suche nach Ortschaft findet den Markt nicht");
+  await tap(B, "#pushHits [data-hit]");
+  await until(B, () => /Wochenmarkt Robenhausen/.test(document.getElementById("pushSel").textContent), "Ort nicht gewählt");
+  expect((await B.page.$$eval("#pushDay option", o => o.map(x => x.textContent))).join() === "Samstag", "nur Samstag wählbar (Markt hat nur dann offen)");
+  expect(/Freitag 19:00/.test(await text(B, "#pushPreview")), "Vorschau Vorabend");
+  await tap(B, '#pushWhen [data-w="fix"]');
+  await until(B, () => !document.getElementById("pushTimeRow").hidden && /Samstag 09:00/.test(document.getElementById("pushPreview").textContent), "fester Zeitpunkt");
+  await new Promise(r => setTimeout(r, 900));
+  const pr = subs()[0].prefs;
+  expect(pr.nudge === false && pr.market && pr.market.name === "Wochenmarkt Robenhausen" && pr.market.day === 5 && pr.market.when === "fix", `Schalter nicht beim WG-Server: ${JSON.stringify(pr)}`);
+  // selbst eintragen (Bauer nicht in der Liste)
+  await tap(B, "#pushSelClear");
+  await tap(B, "#pushOwnBtn");
+  await B.page.type("#pushOwnName", "Hof Meier");
+  await choose(B, "#pushDay", "2");
+  await until(B, () => /Dienstag 19:00: «Morgen Hof Meier»/.test(document.getElementById("pushPreview").textContent), "eigener Ort (Mittwoch, Vorabend = Dienstag 19:00)");
+  await B.page.$eval("#pushKb", d => { d.open = true; });
+  await tap(B, "#pushRemindBtn");
+  await until(B, () => /\/erinnerung\/[\w-]{16,}$/.test(document.getElementById("pushRemindUrl").textContent), "Kurzbefehl-Adresse fehlt");
+  await shot(B, "04-benachrichtigungen");
+  await new Promise(r => setTimeout(r, 900));
+  const m = subs()[0].prefs.market;
+  expect(m && m.name === "Hof Meier" && m.day === 2, "eigener Ort nicht beim WG-Server");
+  await tap(B, '.bnav [data-tab="plan"]');
+});
+
+await step(B, "Wochenwahl: «Noch offen», «👋 Lukas anstupsen» (Lukas hat Meldungen, Joshua nicht), danach «Heute angestupst»", async () => {
+  await workerCall("/push", { method: "PUT", body: JSON.stringify({ id: "phone-lukas-ui", member: "lukas", sub: await fakePushSub("lukas"), prefs: {} }) });
+  const before = pushSent.length;
+  await B.page.evaluate(() => window.BF_APP.openVoteFor());
+  await until(B, () => document.getElementById("nudgeBtn") && /Lukas anstupsen/.test(document.getElementById("nudgeBtn").textContent), "Knopf «Lukas anstupsen» fehlt");
+  expect(/Noch offen: Joshua, Lukas/.test(await text(B, "#voteNudge")) && /Ohne Benachrichtigungen: Joshua/.test(await text(B, "#voteNudge")), "wer fehlt / ohne Meldungen");
+  await clearToasts(B);
+  await tap(B, "#nudgeBtn");
+  await toastIs(B, /Lukas angestupst/);
+  expect(pushSent.slice(before).some(u => u.endsWith("/ui-lukas")), "keine Meldung an Lukas");
+  await until(B, () => !document.getElementById("nudgeBtn") && /Heute angestupst: Lukas/.test(document.getElementById("voteNudge").textContent), "nach dem Anstupsen");
+  await B.page.evaluate(() => document.getElementById("voteDialog").close());
 });
 
 let n0 = 0, shopNames = [];

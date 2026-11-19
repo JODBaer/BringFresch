@@ -47,6 +47,7 @@
     app.renderDays();
     const m = state.members.find(x => x.id === $("meSelect").value);
     toast(`Du bist ${m ? m.name : ""} ✓`);
+    if (app.pushSendPrefs) app.pushSendPrefs().catch(() => {}); // Benachrichtigungen gelten für die neue Person
   };
 
   // ---------------------------------------------------------------------------

@@ -148,6 +148,57 @@
 
       <button class="btn dark" type="button" id="settingsSaveBtn">Speichern &amp; an alle senden</button>
 
+      <!-- Benachrichtigungen (pro Handy): Wochenwahl, Anstupser, Markt/Hof 1× pro Woche, Kurzbefehl (app_push.js) -->
+      <p class="label">Benachrichtigungen <small>nur auf diesem Handy</small></p>
+      <div class="card" id="pushCard">
+        <div class="set-row set-line">
+          <span>Benachrichtigungen<small id="pushState">aus</small></span>
+          <button class="btn dark" type="button" id="pushToggle">Einschalten</button>
+        </div>
+        <p class="hint push-hint" id="pushHint" hidden></p>
+        <div id="pushOpts">
+          <label class="set-row set-line push-sw"><span>Jemand hat gewählt<small>«Leonie hat für KW 48 gewählt»</small></span><input type="checkbox" id="pushVoted" checked></label>
+          <label class="set-row set-line push-sw"><span>Anstupser aus der WG<small>wenn du noch nicht gewählt hast</small></span><input type="checkbox" id="pushNudge" checked></label>
+          <label class="set-row set-line push-sw"><span>Markt / Hof · 1× pro Woche<small>nur wenn auf Bring! etwas steht</small></span><input type="checkbox" id="pushMarketOn"></label>
+          <div class="set-row" id="pushMarket" hidden>
+            <label class="field" for="pushPlaceQ">Hofladen oder Markt<small>Name des Bauern oder Ortschaft</small>
+              <input type="search" id="pushPlaceQ" autocomplete="off" placeholder="z.B. Robenhausen, Meier, Wetzikon">
+            </label>
+            <div class="push-hits" id="pushHits" role="listbox" aria-label="Treffer"></div>
+            <div class="push-sel" id="pushSel" hidden></div>
+            <button class="linkish" type="button" id="pushOwnBtn">Nicht in der Liste? Selbst eintragen</button>
+            <label class="field" for="pushOwnName" id="pushOwnRow" hidden>Name<input type="text" id="pushOwnName" maxlength="60" placeholder="z.B. Hof Meier"></label>
+            <div class="set-inline">
+              <label class="field" for="pushDay">Tag<select id="pushDay"></select></label>
+              <label class="field" for="pushTime" id="pushTimeRow" hidden>Uhrzeit<input type="time" id="pushTime" value="09:00"></label>
+            </div>
+            <div class="field">Wann
+              <div class="push-when" id="pushWhen" role="group" aria-label="Wann erinnern">
+                <button type="button" data-w="eve" aria-pressed="true">Am Vorabend 19:00</button>
+                <button type="button" data-w="pre" aria-pressed="false">30 Min. vor Öffnung</button>
+                <button type="button" data-w="fix" aria-pressed="false">Fester Zeitpunkt</button>
+              </div>
+            </div>
+            <p class="hint" id="pushPreview"></p>
+          </div>
+        </div>
+        <details class="set-row push-kb" id="pushKb">
+          <summary><span class="set-sub">Beim Ankommen erinnern <small>iPhone-Kurzbefehl, 1× pro Woche</small></span></summary>
+          <p class="hint">Obsonare sieht deinen Standort nicht. Ein Kurzbefehl auf dem iPhone fragt beim Ankommen am Hof nach, ob auf Bring! etwas steht – höchstens einmal pro Woche.</p>
+          <ol class="push-steps">
+            <li>App <b>Kurzbefehle</b> → Automation → <b>+</b> → <b>Ankommen</b>, Ort wählen, «Sofort ausführen».</li>
+            <li>Aktion <b>Inhalte von URL abrufen</b> mit deiner Adresse (unten).</li>
+            <li><b>Wenn</b> «Inhalte von URL» <b>hat beliebigen Wert</b> → <b>Mitteilung anzeigen</b> mit «Inhalte von URL».</li>
+            <li>Optional: <b>App öffnen</b> → Bring!</li>
+          </ol>
+          <code class="push-url" id="pushRemindUrl" hidden></code>
+          <div class="set-inline">
+            <button class="btn" type="button" id="pushRemindBtn">Adresse erstellen</button>
+            <button class="btn" type="button" id="pushRemindCopy" hidden>Kopieren</button>
+          </div>
+        </details>
+      </div>
+
       <details class="card set-more" id="setMore">
         <summary><span><b>Mehr</b><small>PIN, Wochenwahl, Abgleich, Kalender, wer isst wann, Plan teilen, Stil, Farben</small></span></summary>
         <form class="set-row" id="syncForm">
@@ -305,6 +356,7 @@
           <button class="btn" type="button" id="voteAddBtn">+ Gericht</button>
         </div>
         <p class="label" style="padding-top:6px">WG-Ranking <small id="voteWho"></small></p>
+        <div class="vote-nudge" id="voteNudge" hidden></div>
         <div class="card" id="voteRank"></div>
         <button class="btn primary" type="button" id="voteApplyBtn">7 Gerichte in den Plan übernehmen</button>
         <button class="btn" type="button" id="voteRandomBtn">🎲 Einfach zufällig planen</button>
@@ -539,6 +591,7 @@
   <script src="app_alle.js"></script>
   <script src="app_sync.js"></script>
   <script src="app_einstellungen.js"></script>
+  <script src="app_push.js"></script>
   <script src="app_theme.js"></script>
   <script src="app_start.js"></script>
 </body>

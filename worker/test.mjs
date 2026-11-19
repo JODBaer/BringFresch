@@ -1,5 +1,5 @@
 // Offline-Test für den Worker: Bring! und KV werden simuliert. Start: node worker/test.mjs
-import worker, { backup, pinHash } from "./src/index.js";
+import worker, { backup, pinHash, pushCron } from "./src/index.js";
 
 let fails = 0;
 const check = (cond, msg) => { console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`); if (!cond) fails++; };
@@ -544,6 +544,133 @@ check(snap3["w:sonnenhof:plan"] && !snap3["lock:sonnenhof"], `Sicherung enthält
   check(d.number === 7 && gh.issues[0].title === "Test: Kalender ruckelt" && /1\.13\.3-test\.3/.test(gh.issues[0].body), "Problem melden: Issue mit Titel, Text und Version");
   r = await rel("/release/approve", { body: { sha: "abc1234" }, token: "abgelaufen" });
   check(r.status === 502 && /Token abgelaufen/.test((await r.json()).error), "Freigabe: abgelaufenes Token -> verständliche Meldung");
+  globalThis.fetch = before;
+}
+
+// 9. Benachrichtigungen (Web Push): Stimme meldet sich bei den anderen, Ruhezeit, Anstupsen, Markt-Erinnerung, Kurzbefehl
+{
+  const sub = crypto.subtle, te = new TextEncoder();
+  const b64 = b => Buffer.from(b).toString("base64url");
+  const vk = await sub.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const pubRaw = new Uint8Array(await sub.exportKey("raw", vk.publicKey));
+  const vd = (await sub.exportKey("jwk", vk.privateKey)).d;
+  const at = iso => ({ ...env, VAPID_PUBLIC: b64(pubRaw), VAPID_PRIVATE: vd, TEST_NOW: iso });
+  const DAY = "2026-11-20T10:00:00Z"; // Fr 11:00 in Zürich
+  const pcall = (path, { method = "GET", body, pin = "1234", now = DAY } = {}) => worker.fetch(new Request("https://bf.example.workers.dev" + path, {
+    method, headers: { Origin: ORIGIN, "Content-Type": "application/json", ...(pin ? { "X-WG-PIN": pin } : {}) }, body: body ? JSON.stringify(body) : undefined,
+  }), at(now));
+  // Handys: eigener ECDH-Schlüssel + auth wie im Browser (PushManager)
+  async function phone(name) {
+    const k = await sub.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+    const raw = new Uint8Array(await sub.exportKey("raw", k.publicKey)), auth = crypto.getRandomValues(new Uint8Array(16));
+    return { name, k, raw, auth, endpoint: `https://fcm.googleapis.com/fcm/send/${name}`, sub: { endpoint: `https://fcm.googleapis.com/fcm/send/${name}`, keys: { p256dh: b64(raw), auth: b64(auth) } } };
+  }
+  const hk = async (salt, ikm, info, n) => new Uint8Array(await sub.deriveBits({ name: "HKDF", hash: "SHA-256", salt, info }, await sub.importKey("raw", ikm, "HKDF", false, ["deriveBits"]), n * 8));
+  async function open(ph, bodyBytes) { // wie der Browser: entschlüsseln (RFC 8291)
+    const b = new Uint8Array(bodyBytes), salt = b.slice(0, 16), idlen = b[20], asPub = b.slice(21, 21 + idlen), ct = b.slice(21 + idlen);
+    const shared = new Uint8Array(await sub.deriveBits({ name: "ECDH", public: await sub.importKey("raw", asPub, { name: "ECDH", namedCurve: "P-256" }, false, []) }, ph.k.privateKey, 256));
+    const ikm = await hk(ph.auth, shared, new Uint8Array([...te.encode("WebPush: info\0"), ...ph.raw, ...asPub]), 32);
+    const cek = await hk(salt, ikm, te.encode("Content-Encoding: aes128gcm\0"), 16), nonce = await hk(salt, ikm, te.encode("Content-Encoding: nonce\0"), 12);
+    const plain = new Uint8Array(await sub.decrypt({ name: "AES-GCM", iv: nonce }, await sub.importKey("raw", cek, "AES-GCM", false, ["decrypt"]), ct));
+    return JSON.parse(new TextDecoder().decode(plain.slice(0, plain.lastIndexOf(2))));
+  }
+  let inbox = [], gone = "";
+  const before = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    if (String(url).startsWith("https://fcm.googleapis.com/")) { inbox.push({ url: String(url), init }); return new Response(null, { status: String(url) === gone ? 410 : 201 }); }
+    return before(url, init);
+  };
+  const got = async ph => Promise.all(inbox.filter(m => m.url === ph.endpoint).map(m => open(ph, m.init.body)));
+  const A = await phone("joshua"), L = await phone("leonie"), U = await phone("lukas");
+  const wg4 = ["Joshua", "Leonie", "Lukas", "Jo"].map(n => ({ id: n.toLowerCase(), name: n, diet: "fleisch" }));
+  await call("/settings", { method: "PUT", body: { settings: { members: wg4 } } });
+
+  r = await call("/push/key");
+  check(r.status === 501, "Push ohne VAPID-Secrets: 501 (App zeigt «noch nicht eingerichtet»)");
+  r = await pcall("/push/key");
+  check((await r.json()).key === b64(pubRaw), "Push: öffentlicher Schlüssel für die App");
+  r = await pcall("/push", { method: "PUT", body: { id: "evil-phone-1", member: "joshua", sub: { endpoint: "https://evil.example/x", keys: { p256dh: "a", auth: "b" } } } });
+  check(r.status === 400, "Push: nur Adressen der Push-Dienste (kein beliebiges Abrufen)");
+  for (const [ph, prefs] of [[A, {}], [L, {}], [U, { voted: false }]]) {
+    r = await pcall("/push", { method: "PUT", body: { id: `phone-${ph.name}`, member: ph.name, sub: ph.sub, prefs } });
+    check(r.status === 200, `Push: ${ph.name} abonniert`);
+  }
+  check(JSON.parse(store.get("push:index")).main, "Push: WG im Verzeichnis für den Zeitplan");
+
+  await pcall("/week/2026-W48/vote/leonie", { method: "PUT", body: { likes: ["a"] } });
+  const a1 = await got(A);
+  check(a1.length === 1 && a1[0].title === "Leonie hat für KW 48 gewählt" && a1[0].body === "Noch offen: Joshua, Lukas, Jo" && a1[0].open === "wahl", "Leonie wählt: Joshua bekommt «Leonie hat für KW 48 gewählt · Noch offen: Joshua, Lukas, Jo»");
+  check(!(await got(L)).length && !(await got(U)).length, "nicht an Leonie selbst, nicht an Lukas (Schalter «Jemand hat gewählt» aus)");
+  const auth = inbox[0].init.headers.Authorization, [, jwt] = auth.match(/t=([^,]+)/), [h, c, sig] = jwt.split(".");
+  const okSig = await sub.verify({ name: "ECDSA", hash: "SHA-256" }, vk.publicKey, Buffer.from(sig, "base64url"), te.encode(`${h}.${c}`));
+  check(okSig && JSON.parse(Buffer.from(c, "base64url")).aud === "https://fcm.googleapis.com" && inbox[0].init.headers["Content-Encoding"] === "aes128gcm", "VAPID-Ausweis gültig signiert, Inhalt verschlüsselt (aes128gcm)");
+  inbox = [];
+  await pcall("/week/2026-W48/vote/leonie", { method: "PUT", body: { likes: ["a", "b"] } });
+  check(!inbox.length, "Stimme ändern: keine zweite Meldung");
+
+  // Ruhezeit: Joshua wählt um 22:30 -> wartet bis 8:00
+  await pcall("/week/2026-W48/vote/joshua", { method: "PUT", body: { likes: ["b"] }, now: "2026-11-20T21:30:00Z" });
+  check(!inbox.length && JSON.parse(store.get("pushq")).length === 1, "Ruhezeit 21–8: Meldung wartet");
+  await pushCron(at("2026-11-21T06:45:00Z"));
+  check(!inbox.length, "7:45 noch Ruhe");
+  await pushCron(at("2026-11-21T07:00:00Z"));
+  const l1 = await got(L);
+  check(l1.length === 1 && l1[0].title === "Joshua hat für KW 48 gewählt" && !store.has("pushq"), "8:00: Warteschlange gesendet (an Leonie)");
+  inbox = [];
+
+  // Anstupsen
+  r = await pcall("/week/2026-W48/nudge", { method: "POST", body: { from: "joshua", to: ["lukas", "jo", "leonie"] } });
+  let nd = await r.json();
+  const u1 = await got(U);
+  check(nd.sent.join() === "lukas" && nd.noDevice.join() === "jo" && nd.skipped.join() === "leonie", "Anstupsen: Lukas ja, Jo ohne Meldungen, Leonie hat schon gewählt");
+  check(u1.length === 1 && u1[0].title === "Joshua stupst dich an 👋" && /KW 48/.test(u1[0].body), "Lukas bekommt «Joshua stupst dich an 👋»");
+  nd = await (await pcall("/week/2026-W48/nudge", { method: "POST", body: { from: "leonie", to: ["lukas"] } })).json();
+  check(nd.skipped.join() === "lukas" && (await got(U)).length === 1, "heute schon angestupst: kein zweites Mal");
+  const wkInfo = await (await pcall("/week/2026-W48")).json();
+  check(wkInfo.nudged.join() === "lukas" && ["joshua", "leonie", "lukas"].every(m => wkInfo.pushers.includes(m)), "Wochenwahl weiss, wer angestupst ist und wer Meldungen hat");
+  nd = await (await pcall("/week/2026-W48/nudge", { method: "POST", body: { from: "leonie", to: ["lukas"] }, now: "2026-11-21T10:00:00Z" })).json();
+  check(nd.sent.join() === "lukas", "am nächsten Tag geht es wieder");
+  inbox = [];
+
+  // Letzte Stimme: alle
+  await pcall("/week/2026-W48/vote/lukas", { method: "PUT", body: { likes: ["a"] } });
+  inbox = [];
+  await pcall("/week/2026-W48/vote/jo", { method: "PUT", body: { likes: ["a"] } });
+  const all = [...await got(A), ...await got(L)];
+  check(all.length === 2 && all.every(m => m.title === "Alle haben gewählt" && m.body === "Plan für KW 48 übernehmen"), "letzte Stimme: «Alle haben gewählt» an alle");
+  inbox = [];
+
+  // Markt-Erinnerung (Fr 19:00 für Samstag), einmal pro Woche; verschwundenes Handy (410) wird aufgeräumt
+  const market = { name: "Markt Robenhausen", oh: "Mar-Nov Sa 08:00-11:00", day: 5, when: "eve" };
+  await pcall("/push", { method: "PUT", body: { id: "phone-joshua", member: "joshua", sub: A.sub, prefs: { market } } });
+  await pcall("/push", { method: "PUT", body: { id: "phone-leonie", member: "leonie", sub: L.sub, prefs: { market } } });
+  gone = L.endpoint;
+  await pushCron(at("2026-11-20T17:45:00Z"));
+  check(!inbox.length, "18:45: noch nicht");
+  await pushCron(at("2026-11-20T18:00:00Z"));
+  const m1 = await got(A);
+  check(m1.length === 1 && m1[0].title === "Morgen Markt Robenhausen 8–11" && /auf Bring!/.test(m1[0].body) && m1[0].open === "einkauf", "19:00: «Morgen Markt Robenhausen 8–11» mit Bring!-Liste");
+  check(!JSON.parse(store.get("push")).subs.some(s => s.id === "phone-leonie"), "Handy gibt es nicht mehr (410): Abo gelöscht");
+  inbox = [];
+  await pushCron(at("2026-11-20T18:15:00Z"));
+  check(!inbox.length, "Markt: nur einmal pro Woche");
+
+  // Kurzbefehl (iPhone): ohne PIN, 1× pro Woche
+  const { url: rurl } = await (await pcall("/erinnerung", { method: "POST", body: {} })).json();
+  const tok = rurl.split("/").pop();
+  check(/^https:\/\/bf\.example\.workers\.dev\/erinnerung\/[\w-]{16,}$/.test(rurl), "Kurzbefehl: eigene Adresse");
+  let t = await (await pcall(`/erinnerung/${tok}`, { pin: null })).text();
+  check(/Sachen? auf Bring!: /.test(t), "Kurzbefehl: Text mit der Bring!-Liste");
+  t = await (await pcall(`/erinnerung/${tok}`, { pin: null, now: "2026-11-22T10:00:00Z" })).text();
+  check(t === "", "Kurzbefehl: zweites Mal in derselben Woche leer (iPhone zeigt nichts)");
+  t = await (await pcall(`/erinnerung/${tok}`, { pin: null, now: "2026-11-23T10:00:00Z" })).text();
+  check(t !== "", "Kurzbefehl: neue Woche wieder");
+  const { url: rurl2 } = await (await pcall("/erinnerung", { method: "POST", body: { old: tok } })).json();
+  check((await pcall(`/erinnerung/${tok}`, { pin: null })).status === 404 && rurl2 !== rurl, "neue Adresse: alte ungültig");
+
+  await pcall("/push/off", { method: "POST", body: { id: "phone-joshua" } });
+  await pcall("/push/off", { method: "POST", body: { id: "phone-lukas" } });
+  check(!JSON.parse(store.get("push")).subs.length && !JSON.parse(store.get("push:index")).main, "Ausschalten löscht das Abo (und die WG aus dem Verzeichnis)");
   globalThis.fetch = before;
 }
 

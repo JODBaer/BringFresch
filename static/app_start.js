@@ -101,6 +101,7 @@
   app.markWahl();
   const welcome = !app.connected() && !fromLink && !load(WELCOME_KEY, false);
   if (welcome) app.openWelcome();
+  else if (app.openFromUrl()) { /* aus einer Benachrichtigung geöffnet (app_push.js) */ }
   else if (app.wahlDue()) setTimeout(app.openWahlPop, 500);
   if (fromLink) toast("Wochenplan aus Link übernommen");
   else app.pullShared();

@@ -31,6 +31,10 @@ npx wrangler secret put BRING_EMAIL       # E-Mail des Bot-Kontos
 npx wrangler secret put BRING_PASSWORD    # Passwort des Bot-Kontos
 npx wrangler secret put WG_PIN            # z.B. 4-6 Ziffern, bekommen alle in der WG
 npx wrangler secret put CAL_TOKEN         # langer Zufallstext, z.B. 32 Zeichen
+# Benachrichtigungen (optional; ohne sie meldet die App «noch nicht eingerichtet»):
+node ../tools/vapid.mjs                     # erzeugt VAPID_PUBLIC und VAPID_PRIVATE
+npx wrangler secret put VAPID_PUBLIC
+npx wrangler secret put VAPID_PRIVATE      # Test-Server: dasselbe mit --env stage und einem eigenen Schlüsselpaar
 npx wrangler deploy                       # gibt die Adresse aus: https://bringfrisch.<name>.workers.dev
 ```
 
@@ -71,7 +75,7 @@ Fehlt der Token, veröffentlicht der Release nur die App und zeigt eine Warnung.
 
 ## Sicherung
 
-Jeden Tag um 03:00 UTC (Cron in `wrangler.toml`) speichert der Worker alle WG-Daten (Plan, Wochenwahl, Vorrat, Listenwahl, Bot-Merkliste) als `backup:<Tag>`. Jede Sicherung läuft nach 30 Tagen ab.
+Jeden Tag um 03:00 UTC (Cron in `wrangler.toml`, läuft alle 15 Min. für die Benachrichtigungen; die Sicherung nur im ersten Lauf nach 03:00) speichert der Worker alle WG-Daten (Plan, Wochenwahl, Vorrat, Listenwahl, Bot-Merkliste) als `backup:<Tag>`. Jede Sicherung läuft nach 30 Tagen ab.
 
 - Ansehen: `GET /backup` (Tage) und `GET /backup/2026-11-10` (Inhalt), beide mit `X-WG-PIN`
 - Zurückholen, z.B. nur den Vorrat:

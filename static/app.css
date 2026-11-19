@@ -984,6 +984,29 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .websearch .fav { border-color: var(--accent); }
 .msheet .websearch { padding: 0 16px; }
 
+/* Benachrichtigungen (app_push.js): Karte unter Einstellungen, «Anstupsen» in der Wochenwahl */
+.push-hint { padding: 0 14px 12px; }
+#pushCard small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
+#pushCard .set-sub small { display: inline; }
+#pushOpts.off { opacity: .45; pointer-events: none; }
+.push-sw { cursor: pointer; }
+.push-sw input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); flex: 0 0 auto; }
+.push-hits { display: flex; flex-direction: column; gap: 4px; }
+.push-hits:empty { display: none; }
+.push-hits button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 12px; padding: 8px 10px; font: inherit; font-size: 14px; cursor: pointer; }
+.push-hits small, .push-sel small { color: var(--muted); font-size: 12px; }
+.push-sel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; border: 1px solid var(--accent); border-radius: 12px; padding: 8px 4px 8px 10px; }
+.push-sel b, .push-sel small { grid-column: 1; }
+.push-sel .icon-btn { grid-column: 2; grid-row: 1 / span 2; }
+.push-when { display: flex; flex-wrap: wrap; gap: 6px; }
+.push-when button { border: 1px solid var(--line); background: none; color: var(--fg); border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 13px; font-weight: 400; cursor: pointer; }
+.push-when button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
+.push-kb summary { cursor: pointer; list-style: none; }
+.push-kb summary::-webkit-details-marker { display: none; }
+.push-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.push-url { display: block; overflow-x: auto; white-space: nowrap; font-size: 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.vote-nudge { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; font-size: 13.5px; }
+.vote-nudge small { font-size: 12px; }
 /* Vorschaubilder im Katalog und im Menü-Blatt (gleicher Lader wie Wochenwahl/«Alle Rezepte»; ohne Bild: Emoji) */
 .rthumb, .othumb { flex: 0 0 auto; display: grid; place-items: center; border-radius: 12px; background: var(--line) center / cover no-repeat; opacity: .6; transition: opacity .3s; }
 .rthumb { width: 56px; height: 56px; }
