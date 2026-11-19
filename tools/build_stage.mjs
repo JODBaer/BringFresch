@@ -43,7 +43,7 @@ edit("app.js", s => {
 edit("index.html", s => s
   .replace("<title>Obsonare</title>", "<title>Obsonare Test</title>")
   .replace('content="Obsonare">', 'content="Obsonare Test">')
-  .replace("</body>", `<div id="stageBand" role="button" tabindex="0" aria-label="Test-Version: Neu zum Testen und Freigeben" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;padding:1px 10px 2px;border-radius:0 0 8px 8px;background:#e8590c;color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.1em;white-space:nowrap">TEST · Bring!-Liste «Home-test»</div>\n<script src="freigabe.js" defer></script>\n</body>`));
+  .replace("</body>", `<div id="stageBand" role="button" tabindex="0" aria-label="Test-Version: Neu zum Testen und Freigeben" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;padding:1px 10px 2px;border-radius:0 0 8px 8px;background:#e8590c;color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.1em;white-space:nowrap">TEST · Bring!-Liste «Home-test»</div>\n<script src="freigabe.js"></script>\n</body>`));
 
 // Test-Freigabe (nur in der Test-Version): Änderungen seit dem letzten Release-Tag für das Blatt «Neu zum Testen»
 // (Band antippen, tools/stage/freigabe.js). Squash-Merges heissen «feat(x): Titel (#12)» -> { n: 12, title: "Titel" }.
