@@ -136,17 +136,17 @@ SEASONS = {"winter": [12, 1, 2], "fruehling": [3, 4, 5], "sommer": [6, 7, 8], "h
 # --- Diät -------------------------------------------------------------------------------------------
 MEAT = re.compile(
     r"fleisch|poulet|huhn|hühner|hähnchen|\brind|kalb|schwein|lamm|speck|schinken|hackfleisch|ghackets|gehacktes\b|"
-    r"wurst|würste|salami|chorizo|cervelat|wienerli|landjäger|merguez|pancetta|prosciutto|coppa|bündner|mostbröckli|"
+    r"wurst|würste|salami|mortadella|chorizo|cervelat|wienerli|landjäger|merguez|pancetta|prosciutto|coppa|bündner|mostbröckli|"
     r"lachs|fisch|thon|thunfisch|crevette|krevette|garnele|scampi|forelle|egli|dorsch|kabeljau|zander|sardelle|anchovis|"
-    r"seeteufel|dorade|wolfsbarsch|felchen|saibling|pangasius|muschel|tintenfisch|calamar|sepia|hummer|krabbe|"
+    r"seeteufel|dorade|wolfsbarsch|\bfelchen|saibling|pangasius|muschel|tintenfisch|calamar|sepia|hummer|krabbe|"
     r"salsiccia|surimi|brät|kebab|gyros|nduja|'nduja|lardo|guanciale|kassler|leberkäse|fleischkäse|"
-    r"steak|entrecôte|geschnetzeltes|plätzli|ente\b|truthahn|trute|kaninchen|hirsch|\breh\b|leber|saucisson|kutteln",
+    r"steak|entrecôte|geschnetzeltes|plätzli|\bente\b|\benten|bresaola|truthahn|trute|kaninchen|hirsch|\breh\b|leber|saucisson|kutteln",
     re.I,
 )
-MEAT_EXCEPTIONS = re.compile(r"vegi|vegetar|vegan|planted|quorn|ersatz|bouillon|fond|gelatine|fischsauce|pasta-muschel|muschelnudel|conchiglioni", re.I)
+MEAT_EXCEPTIONS = re.compile(r"vegi|vegetar|vegan|planted|quorn|ersatz|bouillon|fond|gelatine|fischsauce|pasta-muschel|muschelnudel|conchiglioni|bergkäse|kohlsteak|selleriesteak|tamarind", re.I)
 ANIMAL = re.compile(
     r"milch|rahm|butter|käse|quark|joghurt|jogurt|\beier?\b|eigelb|eiweiss|mozzarella|parmesan|sbrinz|gruyère|"
-    r"ricotta|mascarpone|crème fraîche|creme fraiche|sauerrahm|feta|halloumi|honig|mayonnaise|raclette|fondue",
+    r"ricotta|burrata|stracciatella|mascarpone|crème fraîche|creme fraiche|sauerrahm|feta|halloumi|honig|mayonnaise|raclette|fondue",
     re.I,
 )
 ANIMAL_EXCEPTIONS = re.compile(r"kokos|hafer|soja|mandel|pflanz|vegan|erdnussbutter", re.I)
@@ -203,7 +203,7 @@ AISLES = [
                          r"rapsöl|sojasauce|ketchup|mayonnaise|tomatenpüree|tomatenmark|honig|zucker|mehl|maizena|backpulver"),
     ("Fleisch & Fisch", MEAT.pattern),
     ("Milch & Käse", r"milch|rahm|butter|käse|quark|joghurt|jogurt|\beier?\b|mozzarella|parmesan|sbrinz|gruyère|"
-                     r"ricotta|mascarpone|crème fraîche|sauerrahm|feta|halloumi|tofu|raclette"),
+                     r"ricotta|burrata|stracciatella|mascarpone|crème fraîche|sauerrahm|feta|halloumi|tofu|raclette"),
     ("Brot & Gebäck", r"brot|baguette|toast|teig|blätterteig|kuchenteig|pizzateig|tortilla|wraps"),
     ("Vorrat & Konserven", r"reis|risotto|pasta|teigwaren|spaghetti|nudel|hörnli|magronen|penne|gnocchi|polenta|"
                            r"linsen|bohnen.*dose|kichererbsen|couscous|bulgur|quinoa|dose|kokosmilch|nüsse|mandeln|"
@@ -717,7 +717,8 @@ def cmd_add(per_site: int = 12):
     have = {re.sub(r"[^a-z]", "", r["title"].lower()) for r in existing} | {r["source_url"] for r in existing}
     keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
     added = []
-    only = [a for a in sys.argv[2:] if a in NEW_SITES]
+    # ohne Angabe die neuen Seiten; mit Namen auch die grossen (Joshua 19.11.: mehr Rezepte, am liebsten mit Nährwerten)
+    only = [a for a in sys.argv[2:] if a in SITES]
     for site in (only or NEW_SITES):
         cfg = SITES[site]
         xml = get(cfg["sitemap"], timeout=120)
@@ -740,6 +741,8 @@ def cmd_add(per_site: int = 12):
                 why[re.sub(r"\(.*\)", "", k).strip()[:30]] = why.get(re.sub(r"\(.*\)", "", k).strip()[:30], 0) + 1
             elif re.sub(r"[^a-z]", "", r["title"].lower()) not in have and r["source_url"] not in have:
                 ok.append(r)
+        # Rezepte mit Nährwerten der Seite zuerst (stabil sortiert, Zufallsreihenfolge bleibt sonst)
+        ok.sort(key=lambda r: not r.get("nutrition"))
         # abwechselnd vegi / Fleisch, damit beide Seiten der WG etwas haben (bei schweizerfleisch natürlich fast nur Fleisch)
         veg = [r for r in ok if r["diet"] != "fleisch"]; meat = [r for r in ok if r["diet"] == "fleisch"]
         pick = []

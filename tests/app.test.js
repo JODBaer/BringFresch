@@ -325,7 +325,8 @@ const gi = gplan.findIndex(d => !d.empty);
 gplan[gi].extra_guests = 1;
 
 const gd = boot({ bringfrisch_current_plan: gp, bringfrisch_plan_week: JSON.parse(md.localStorage.getItem("bringfrisch_plan_week")) }).window.document;
-check(/\+1 Gast$/.test(gd.querySelectorAll("#days .prow")[gi].querySelector(".meta").textContent), `Gast sichtbar in der Zeile (${gd.querySelectorAll("#days .prow")[gi].querySelector(".meta").textContent})`);
+const metaNoNut = el => { const c = el.cloneNode(true); c.querySelectorAll(".mnut").forEach(x => x.remove()); return c.textContent; }; // .mnut = Nährwerte, nur bei d3 sichtbar
+check(/\+1 Gast$/.test(metaNoNut(gd.querySelectorAll("#days .prow")[gi].querySelector(".meta"))), `Gast sichtbar in der Zeile (${metaNoNut(gd.querySelectorAll("#days .prow")[gi].querySelector(".meta"))})`);
 
 { // Ein Zustand: alles Geteilte liegt in state; Abonnenten werden nach refresh() gerufen
   const A = gd.defaultView.BF_APP;
