@@ -472,5 +472,55 @@ const b3 = await backup(env, new Date("2026-11-12T03:00:00Z"));
 const snap3 = JSON.parse(store.get("backup:2026-11-12")).keys;
 check(snap3["w:sonnenhof:plan"] && !snap3["lock:sonnenhof"], `Sicherung enthält die zweite WG, keine Sperren (${b3.count})`);
 
+// --- Test-Freigabe (freigabe.js): GitHub nachgebaut, nichts geht ins Internet
+{
+  const gh = { main: "abc1234def", tags: [{ name: "v1.13.2", commit: { sha: "0ld0000" } }, { name: "v1.9.9", commit: { sha: "x" } }], refs: [], issues: [], status: 201 };
+  const before = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    url = String(url);
+    if (!url.startsWith("https://api.github.com/repos/JODBaer/BringFresch")) return before(url, init);
+    if (!/^Bearer tok-gh$/.test(init.headers.Authorization)) return Response.json({ message: "Bad credentials" }, { status: 401 });
+    const p = url.slice("https://api.github.com/repos/JODBaer/BringFresch".length);
+    if (p.startsWith("/tags")) return Response.json(gh.tags);
+    if (p === "/commits/main") return Response.json({ sha: gh.main });
+    if (p === "/git/refs" && init.method === "POST") { gh.refs.push(JSON.parse(init.body)); return Response.json({}, { status: 201 }); }
+    if (p === "/issues" && init.method === "POST") { gh.issues.push(JSON.parse(init.body)); return Response.json({ number: 7, html_url: "https://github.com/JODBaer/BringFresch/issues/7" }, { status: 201 }); }
+    return Response.json({ message: "Not Found" }, { status: 404 });
+  };
+  const rel = (path, { body, pin = "1234", token = "tok-gh" } = {}) => worker.fetch(new Request("https://stage.example" + path, {
+    method: body ? "POST" : "GET",
+    headers: { Origin: ORIGIN, "X-WG-PIN": pin, ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  }), { ...env, RELEASE_TOKEN: token || undefined });
+
+  r = await rel("/release/status?sha=abc1234", { token: "" });
+  check((await r.json()).enabled === false, "Freigabe: ohne RELEASE_TOKEN (WG-Server) abgeschaltet");
+  r = await rel("/release/approve", { body: { sha: "abc1234" }, token: "" });
+  check(r.status === 501 && gh.refs.length === 0, "Freigabe: WG-Server setzt nie einen Tag");
+  r = await rel("/release/approve", { body: { sha: "abc1234" }, pin: "9999" });
+  check(r.status === 401 && gh.refs.length === 0, "Freigabe: falsche PIN -> nichts");
+  r = await rel("/release/status?sha=abc1234");
+  let d = await r.json();
+  check(d.enabled && d.tag === "v1.13.2" && !d.released, "Freigabe: Status kennt den letzten Release (v1.13.2 vor v1.9.9)");
+  r = await rel("/release/approve", { body: { sha: "fff9999" } });
+  check(r.status === 409 && gh.refs.length === 0, "Freigabe: anderer Stand als main -> 409, kein Tag (erst Neues anschauen)");
+  r = await rel("/release/approve", { body: { sha: "abc1234" } });
+  d = await r.json();
+  check(d.ok && d.tag === "v1.13.3" && gh.refs[0]?.ref === "refs/tags/v1.13.3" && gh.refs[0]?.sha === "abc1234def", "Freigabe: setzt v1.13.3 auf den Stand von main");
+  gh.tags.unshift({ name: "v1.13.3", commit: { sha: "abc1234def" } });
+  r = await rel("/release/approve", { body: { sha: "abc1234" } });
+  d = await r.json();
+  check(d.already && gh.refs.length === 1, "Freigabe: zweimal tippen setzt keinen zweiten Tag");
+  check((await (await rel("/release/status?sha=abc1234")).json()).released, "Freigabe: Status zeigt «freigegeben»");
+  r = await rel("/release/issue", { body: { text: "  " } });
+  check(r.status === 400 && gh.issues.length === 0, "Problem melden: leerer Text -> nichts");
+  r = await rel("/release/issue", { body: { text: "Kalender ruckelt\nauf dem iPhone", version: "1.13.3-test.3", sha: "abc1234" } });
+  d = await r.json();
+  check(d.number === 7 && gh.issues[0].title === "Test: Kalender ruckelt" && /1\.13\.3-test\.3/.test(gh.issues[0].body), "Problem melden: Issue mit Titel, Text und Version");
+  r = await rel("/release/approve", { body: { sha: "abc1234" }, token: "abgelaufen" });
+  check(r.status === 502 && /Token abgelaufen/.test((await r.json()).error), "Freigabe: abgelaufenes Token -> verständliche Meldung");
+  globalThis.fetch = before;
+}
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

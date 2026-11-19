@@ -42,7 +42,23 @@ edit("app.js", s => {
 edit("index.html", s => s
   .replace("<title>Obsonare</title>", "<title>Obsonare Test</title>")
   .replace('content="Obsonare">', 'content="Obsonare Test">')
-  .replace("</body>", `<div aria-hidden="true" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;padding:1px 10px 2px;border-radius:0 0 8px 8px;background:#e8590c;color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.1em;pointer-events:none">TEST · Bring!-Liste «Home-test»</div>\n</body>`));
+  .replace("</body>", `<div id="stageBand" role="button" tabindex="0" aria-label="Test-Version: Neu zum Testen und Freigeben" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;padding:1px 10px 2px;border-radius:0 0 8px 8px;background:#e8590c;color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.1em;white-space:nowrap">TEST · Bring!-Liste «Home-test»</div>\n<script src="freigabe.js" defer></script>\n</body>`));
+
+// Test-Freigabe (nur in der Test-Version): Änderungen seit dem letzten Release-Tag für das Blatt «Neu zum Testen»
+// (Band antippen, tools/stage/freigabe.js). Squash-Merges heissen «feat(x): Titel (#12)» -> { n: 12, title: "Titel" }.
+export function changesSince(log) {
+  return String(log || "").split("\n").map(l => l.trim()).filter(Boolean).map(line => {
+    const t = line.replace(/^\w+(\([^)]*\))?!?:\s*/, "");
+    const m = / \(#(\d+)\)$/.exec(t);
+    return { n: m ? +m[1] : null, title: (m ? t.slice(0, m.index) : t).trim() };
+  }).filter(c => c.title && !/^Merge /.test(c.title));
+}
+const freigabe = {
+  sha: git(["rev-parse", "HEAD"]), base: lastTag, version,
+  changes: lastTag ? changesSince(git(["log", "--first-parent", "--format=%s", `${lastTag}..HEAD`])) : [],
+};
+writeFileSync(path.join(out, "freigabe.json"), JSON.stringify(freigabe, null, 1));
+cpSync(path.join(root, "tools", "stage", "freigabe.js"), path.join(out, "freigabe.js"));
 edit("manifest.json", s => s.replace(/"name": "Obsonare"/, '"name": "Obsonare Test"').replace(/"short_name": "Obsonare"/, '"short_name": "Obsonare Test"'));
 edit("sw.js", s => s.replace(/bringfrisch-cache-/, "bringfrisch-stage-cache-"));
-console.log(`dist-stage/ gebaut (Server: ${STAGE_WORKER}${version ? `, Version ${version}` : ""})`);
+console.log(`dist-stage/ gebaut (Server: ${STAGE_WORKER}${version ? `, Version ${version}` : ""}, ${freigabe.changes.length} Änderung(en) seit ${lastTag || "–"})`);
