@@ -12,6 +12,16 @@
   // ---------------------------------------------------------------------------
   // Rendering: WG
   // ---------------------------------------------------------------------------
+  // Ernährung + Ziel in einer Auswahl: Fleisch / Fleisch · proteinreich / Fleisch · leicht / Vegi … (CORE.DIET_CHOICES)
+  const dietOptions = cur => app.CORE.DIET_CHOICES.map(c => `<option value="${c.value}"${c.value === cur ? " selected" : ""}>${c.label}</option>`).join("");
+  const setDiet = (m, value) => {
+    const { diet, goal } = app.CORE.parseDietChoice(value);
+    m.diet = diet;
+    if (goal) m.goal = goal; else delete m.goal;
+    return m;
+  };
+  for (const id of ["newMemberDiet", "welcomeDiet"]) if ($(id)) $(id).innerHTML = dietOptions("fleisch");
+
   function renderMembers() {
     if ($("meSelect")) {
       const me = load(ME_KEY, null);
@@ -21,12 +31,7 @@
     $("members").innerHTML = state.members.map(m => `
       <div class="member">
         <b>${esc(m.name)}</b>
-        <select data-diet="${esc(m.id)}" aria-label="Ernährung von ${esc(m.name)}">
-          ${Object.keys(DIET_LABEL).map(d => `<option value="${d}"${m.diet === d ? " selected" : ""}>${DIET_LABEL[d]}</option>`).join("")}
-        </select>
-        <select data-goal="${esc(m.id)}" aria-label="${esc(m.name)} achtet auf">
-          ${Object.entries(app.CORE.GOAL_SHORT).map(([g, l]) => `<option value="${g}"${(m.goal || "") === g ? " selected" : ""}>${l}</option>`).join("")}
-        </select>
+        <select data-diet="${esc(m.id)}" aria-label="Ernährung von ${esc(m.name)}">${dietOptions(app.CORE.dietChoice(m))}</select>
         <button class="icon-btn" type="button" data-remove="${esc(m.id)}" aria-label="${esc(m.name)} entfernen">✕</button>
       </div>`).join("");
   }
@@ -57,14 +62,11 @@
   // WG: Mitbewohner, Anwesenheit, Plan teilen
   // ---------------------------------------------------------------------------
   $("members").addEventListener("change", e => {
-    const sel = e.target.closest("[data-diet]");
-    const goal = e.target.closest("[data-goal]"); // Kalorien / Proteine: wie die Ernährung gemeinsam für die WG
-    if (!sel && !goal) return;
-    const m = state.members.find(x => x.id === (sel ? sel.dataset.diet : goal.dataset.goal));
+    const sel = e.target.closest("[data-diet]"); // Ernährung + Ziel (proteinreich / leicht), gemeinsam für die WG
+    if (!sel) return;
+    const m = state.members.find(x => x.id === sel.dataset.diet);
     if (!m) return;
-    if (sel) m.diet = sel.value;
-    else if (goal.value) m.goal = goal.value;
-    else delete m.goal;
+    setDiet(m, sel.value);
     saveMembers();
     app.settingsChanged();
     refresh();
@@ -94,7 +96,7 @@
     const name = $("newMemberName").value.trim();
     if (!name) return;
     const id = name.toLowerCase().replace(/[^a-z0-9äöü]+/g, "-") + "-" + Date.now().toString(36);
-    state.members.push({ id, name, diet: $("newMemberDiet").value });
+    state.members.push(setDiet({ id, name }, $("newMemberDiet").value));
     [state.plan, otherPlan()].filter(Boolean).forEach(p => p.forEach(d => d.eaters.push(id)));
     saveMembers();
     app.settingsChanged();
@@ -219,7 +221,7 @@
     const name = $("welcomeName").value.trim();
     if (!name) return $("welcomeName").focus();
     const id = name.toLowerCase().replace(/[^a-z0-9äöü]+/g, "-") + "-" + Date.now().toString(36);
-    const me = { id, name, diet: $("welcomeDiet").value };
+    const me = setDiet({ id, name }, $("welcomeDiet").value);
     // neue WG: nur ich (die Beispiel-WG fällt weg); bestehende WG: ich komme dazu
     const members = welcomeFresh ? [me] : [...state.members, me];
     app.applySettings({ members });

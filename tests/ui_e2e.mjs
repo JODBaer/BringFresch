@@ -1028,9 +1028,9 @@ await step(A, "Mitbewohner: hinzufügen (Vegi), Ernährung ändern (Vegan), entf
   expect(await A.page.$eval('.prow[data-i="0"] .who', w => w.classList.contains("many")), "5 Personen: kompakte Kreise fehlen");
   await choose(A, "#members .member:last-child select", "vegan");
   await until(A, () => (JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.name === "Mia") || {}).diet === "vegan", "Ernährung nicht gespeichert");
-  await choose(A, "#members .member:last-child [data-goal]", "protein");
-  await until(A, () => (JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.name === "Mia") || {}).goal === "protein", "Ziel «Protein» nicht gespeichert");
-  expect(await A.page.$$eval("#members .member", rows => rows.every(r => r.scrollWidth <= r.clientWidth + 1)), "Mitbewohner-Zeile mit Ziel ist zu breit");
+  await choose(A, "#members .member:last-child [data-diet]", "vegan:kcal");
+  await until(A, () => { const m = JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.name === "Mia") || {}; return m.diet === "vegan" && m.goal === "kcal"; }, "«Vegan · leicht» nicht gespeichert");
+  expect(await A.page.$$eval("#members .member", rows => rows.every(r => r.scrollWidth <= r.clientWidth + 1)), "Mitbewohner-Zeile ist zu breit");
   await tap(A, "#members .member:last-child [data-remove]");
   await until(A, () => document.querySelector("#members .member:last-child [data-remove]").textContent === "Entfernen?", "Nachfrage fehlt");
   await tap(A, "#members .member:last-child [data-remove]");

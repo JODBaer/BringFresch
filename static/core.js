@@ -564,7 +564,18 @@
 
   // Worauf jemand achtet (pro Mitbewohner in den WG-Einstellungen, member.goal) und was das Menü dafür ist
   const GOAL_LABEL = { "": "nichts Besonderes", kcal: "Kalorien", protein: "Proteine" };
-  const GOAL_SHORT = { "": "Ziel –", kcal: "Ziel: kcal", protein: "Ziel: Protein" }; // Auswahl in den Einstellungen (schmal)
+  // Eine Auswahl pro Person für Ernährung + Ziel (Joshua 20.11.): «Fleisch · proteinreich», «Vegi · leicht» …
+  // Gespeichert bleibt getrennt: member.diet und member.goal («protein» = proteinreich, «kcal» = leicht).
+  const GOAL_WORD = { protein: "proteinreich", kcal: "leicht" };
+  const DIET_CHOICES = ["fleisch", "vegi", "vegan"].flatMap(d => ["", "protein", "kcal"].map(g => ({
+    value: g ? `${d}:${g}` : d, diet: d, goal: g,
+    label: `${{ fleisch: "Fleisch", vegi: "Vegi", vegan: "Vegan" }[d]}${g ? ` · ${GOAL_WORD[g]}` : ""}`,
+  })));
+  const dietChoice = m => (m && m.goal && GOAL_WORD[m.goal] ? `${m.diet}:${m.goal}` : (m && m.diet) || "fleisch");
+  function parseDietChoice(v) {
+    const [diet, goal] = String(v || "").split(":");
+    return { diet: ["fleisch", "vegi", "vegan"].includes(diet) ? diet : "fleisch", goal: GOAL_WORD[goal] ? goal : "" };
+  }
   // Grenzen pro Person und Znacht, mit Extra-Fleisch/-Käse und Salat gerechnet – darum eher hoch. Katalog 19.11.:
   // Vegi ⅖ proteinreich, ¼ leicht; Fleisch-Esser bekommen an Vegi-Tagen 150 g Fleisch dazu, darum meist proteinreich.
   const PROTEIN_RICH = 40, PROTEIN_LOW = 25, KCAL_LIGHT = 650, KCAL_RICH = 1000;
@@ -1346,6 +1357,6 @@
     effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, rankDays, moveDay, dayReason, carryOver,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList,
-    nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_SHORT
+    nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_WORD, DIET_CHOICES, dietChoice, parseDietChoice
   };
 })(typeof globalThis !== "undefined" ? globalThis : self);

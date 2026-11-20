@@ -60,15 +60,19 @@ check(row0().querySelectorAll(".ing li").length > 0 && /Wechseln/.test(row0().qu
 const nutriRows = () => [...d.querySelectorAll("#days .prow .nutri")];
 check(nutriRows().length >= 5 && nutriRows().every(n => /kcal · \d+ g Protein/.test(n.textContent) && /pro Portion/.test(n.textContent)), `Menüs zeigen kcal und Protein pro Portion (${nutriRows().length} von 7)`);
 w.localStorage.setItem("bringfrisch_me", JSON.stringify("jo"));
-const goalSel = d.querySelector("#members [data-goal='jo']");
-check(!!goalSel && goalSel.options.length === 3, "Einstellungen: pro Person «Ziel» (–, kcal, Protein) neben der Ernährung");
-goalSel.value = "protein";
+const goalSel = d.querySelector("#members [data-diet='jo']");
+const optTexts = [...goalSel.options].map(o => o.textContent);
+check(optTexts.length === 9 && optTexts.includes("Vegi · proteinreich") && optTexts.includes("Fleisch · leicht") && goalSel.value === "vegi", `Einstellungen: eine Auswahl pro Person für Ernährung + Ziel (${optTexts.join(", ")})`);
+goalSel.value = "vegi:protein";
 goalSel.dispatchEvent(new w.Event("change", { bubbles: true }));
-check(JSON.parse(w.localStorage.getItem("bringfrisch_members")).find(m => m.id === "jo").goal === "protein", "Ziel wird bei den Mitbewohnern gespeichert (gemeinsam für die WG)");
+const jo = () => JSON.parse(w.localStorage.getItem("bringfrisch_members")).find(m => m.id === "jo");
+check(jo().diet === "vegi" && jo().goal === "protein", "«Vegi · proteinreich» speichert Ernährung und Ziel getrennt (gemeinsam für die WG)");
+check(d.querySelector("#members [data-diet='jo']").value === "vegi:protein", "nach dem Speichern steht «Vegi · proteinreich» in der Auswahl");
 check(nutriRows().every(n => /für dich/.test(n.textContent) && /\d+ g Protein/.test(n.querySelector("b").textContent)), "mit «Ich bin» + Ziel: für dich gerechnet, Protein hervorgehoben");
-goalSel.value = "";
-goalSel.dispatchEvent(new w.Event("change", { bubbles: true }));
-check(!("goal" in JSON.parse(w.localStorage.getItem("bringfrisch_members")).find(m => m.id === "jo")), "Ziel «–» entfernt das Feld wieder");
+const goalSel2 = d.querySelector("#members [data-diet='jo']");
+goalSel2.value = "vegi";
+goalSel2.dispatchEvent(new w.Event("change", { bubbles: true }));
+check(jo().diet === "vegi" && !("goal" in jo()), "zurück auf «Vegi» entfernt das Ziel wieder");
 w.localStorage.removeItem("bringfrisch_me");
 // Rezept-Link: Original-Seite, sonst Web-Suche nach dem Menü (nie ein falscher Link); Schnelles/Reste ohne Link
 const linkRows = [...d.querySelectorAll("#days .prow:not(.unplanned)")].filter(r => !/schnell|Reste/.test(r.querySelector(".meta").textContent));
