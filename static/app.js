@@ -363,7 +363,7 @@
   }
 
   // Nährwerte als Randnotiz (CORE.nutritionFor): für «Ich bin» gerechnet (eigene Ernährung + Extra-Fleisch/-Käse),
-  // ohne «Ich bin» nur die Rezeptportion. me.goal = worauf diese Person achtet («kcal», «protein», sonst nichts).
+  // ohne «Ich bin» nur die Rezeptportion. me.goal = worauf diese Person achtet («kcal», «protein», beides oder nichts; CORE.goalsOf).
   function meMember() {
     const id = load(ME_KEY, null);
     return state.members.find(m => m.id === id) || null;
@@ -373,14 +373,15 @@
     const n = CORE.nutritionFor(r, me ? me.diet : undefined);
     if (!n) return null;
     const goal = (me && me.goal) || "";
-    return { ...n, goal, tag: CORE.nutritionTag(n, goal), mine: !!me };
+    return { ...n, goal, goals: CORE.goalsOf(me), tag: CORE.nutritionTag(n, goal), mine: !!me };
   }
   // «≈ 640 kcal · 32 g Protein · proteinreich» – Teil, auf den ich achte, fett
   function nutritionHTML(r) {
     const n = nutritionOf(r);
     if (!n) return "";
     const k = `${n.src === "seite" ? "" : "≈ "}${n.kcal} kcal`, p = `${n.protein} g Protein`;
-    return `${n.goal === "kcal" ? `<b>${k}</b>` : k} · ${n.goal === "protein" ? `<b>${p}</b>` : p}${n.tag ? ` · <span class="ntag${/wenig|reichhaltig/.test(n.tag) ? " warn" : ""}">${n.tag}</span>` : ""}`;
+    const tags = n.tag ? n.tag.split(" · ").map(t => ` · <span class="ntag${/wenig|reichhaltig/.test(t) ? " warn" : ""}">${t}</span>`).join("") : "";
+    return `${n.goals.includes("kcal") ? `<b>${k}</b>` : k} · ${n.goals.includes("protein") ? `<b>${p}</b>` : p}${tags}`;
   }
 
   Object.assign(app, { meMember, nutritionOf, nutritionHTML, emptyDay, DATA, CORE, isoWeek, weekKey, plusWeek, portionsFor, formatAmount, formatCookAmount, cleanIngredient, hasWord,

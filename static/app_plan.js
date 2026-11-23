@@ -167,7 +167,7 @@
   // dasselbe kurz für die Kopfzeile (nur bei knapper Dichte d3 sichtbar, siehe app.css .mnut)
   function mnut(day) {
     const n = app.nutritionOf(day);
-    return n ? `<span class="mnut"> · <span class="${n.goal === "kcal" ? "b" : ""}">${n.kcal} kcal</span> · <span class="${n.goal === "protein" ? "b" : ""}">${n.protein} g P</span></span>` : "";
+    return n ? `<span class="mnut"> · <span class="${n.goals.includes("kcal") ? "b" : ""}">${n.kcal} kcal</span> · <span class="${n.goals.includes("protein") ? "b" : ""}">${n.protein} g P</span></span>` : "";
   }
 
   const totalLabel = (day, idx) =>

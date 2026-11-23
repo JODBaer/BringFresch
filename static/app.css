@@ -78,7 +78,11 @@ button.item { width: 100%; background: none; border-left: 0; border-right: 0; bo
 .news p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
 
 /* WG */
-.member { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+.member { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+.mchips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.mgroup { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.mchip { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 5px 11px; font: 600 13px var(--font); cursor: pointer; }
+.mchip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .member:first-child { border-top: 0; }
 .member b { font-size: 14.5px; }
 select, input[type="text"], input[type="url"], input[type="search"], input[type="number"], textarea {

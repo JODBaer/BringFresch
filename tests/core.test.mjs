@@ -328,9 +328,14 @@ check(C.formatAmount(0.5, "Stk") === "1 Stk" && C.formatAmount(1.5, "Stk") === "
   check(C.nutritionFor({ is_leftovers: true, ingredients: [] }) === null && C.nutritionFor({ servings: 4, ingredients: [{ name: "Zauberpulver", amount: "500", unit: "g" }, { name: "Salz", amount: "1", unit: "TL" }] }) === null, "Resteessen und Unbekanntes: keine Zahl statt Unsinn");
   check(C.nutritionFor({ servings: 4, ingredients: [{ name: "Bundrüebli", amount: "500", unit: "Stk" }, { name: "Butter", amount: "20", unit: "g" }] }).kcal < 300, "«500 Stk» ist ein Tippfehler für Gramm");
   check(C.cleanNutrition({ calories: "2000 kJ" }).kcal === 478 && C.cleanNutrition({ calories: "viel" }) === null && C.cleanNutrition({ calories: "450", proteinContent: "99999" }).protein === null, "Seitenangaben: kJ umgerechnet, Unsinn weg");
-  check(C.DIET_CHOICES.length === 9 && C.dietChoice({ diet: "vegi", goal: "protein" }) === "vegi:protein" && C.dietChoice({ diet: "vegan" }) === "vegan"
-    && JSON.stringify(C.parseDietChoice("fleisch:kcal")) === '{"diet":"fleisch","goal":"kcal"}' && JSON.stringify(C.parseDietChoice("vegi")) === '{"diet":"vegi","goal":""}' && C.parseDietChoice("quatsch:x").diet === "fleisch",
-    "eine Auswahl «Ernährung · Ziel» ↔ member.diet + member.goal");
+  const gmem = { diet: "vegi" };
+  C.toggleGoal(gmem, "kcal"); C.toggleGoal(gmem, "protein");
+  const both = gmem.goal;
+  C.toggleGoal(gmem, "kcal"); const one = gmem.goal;
+  C.toggleGoal(gmem, "protein");
+  check(both === "protein kcal" && one === "protein" && !("goal" in gmem) && C.goalsOf({ goal: "kcal" }).join() === "kcal" && C.goalsOf({ goal: "quatsch" }).length === 0,
+    "Ziel an/aus: proteinreich und leicht auch zusammen, ohne Ziel fällt member.goal weg");
+  check(C.nutritionTag({ kcal: 560, protein: 45 }, "protein kcal") === "proteinreich · leicht", "beide Ziele: beide Vermerke");
   check(C.nutritionTag({ kcal: 900, protein: 45 }, "protein") === "proteinreich" && C.nutritionTag({ kcal: 900, protein: 12 }, "protein") === "wenig Protein" && C.nutritionTag({ kcal: 560, protein: 12 }, "kcal") === "leicht" && C.nutritionTag({ kcal: 560, protein: 45 }, "") === "", "Ziel: proteinreich / wenig Protein / leicht – ohne Ziel kein Vermerk");
 }
 

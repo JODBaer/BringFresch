@@ -12,15 +12,12 @@
   // ---------------------------------------------------------------------------
   // Rendering: WG
   // ---------------------------------------------------------------------------
-  // Ernährung + Ziel in einer Auswahl: Fleisch / Fleisch · proteinreich / Fleisch · leicht / Vegi … (CORE.DIET_CHOICES)
-  const dietOptions = cur => app.CORE.DIET_CHOICES.map(c => `<option value="${c.value}"${c.value === cur ? " selected" : ""}>${c.label}</option>`).join("");
-  const setDiet = (m, value) => {
-    const { diet, goal } = app.CORE.parseDietChoice(value);
-    m.diet = diet;
-    if (goal) m.goal = goal; else delete m.goal;
-    return m;
-  };
-  for (const id of ["newMemberDiet", "welcomeDiet"]) if ($(id)) $(id).innerHTML = dietOptions("fleisch");
+  // Pro Person Knöpfe (Joshua 23.11., statt einer Auswahl mit 9 Möglichkeiten): Ernährung = eins von Fleisch/Vegi/Vegan,
+  // Ziel = proteinreich und/oder leicht (antippen = an/aus, CORE.toggleGoal)
+  const DIETS = [["fleisch", "Fleisch"], ["vegi", "Vegi"], ["vegan", "Vegan"]];
+  const setDiet = (m, value) => { m.diet = DIETS.some(([v]) => v === value) ? value : "fleisch"; return m; };
+  const chip = (attr, id, val, label, on, name) =>
+    `<button type="button" class="mchip" ${attr}="${esc(id)}" data-val="${val}" aria-pressed="${on}" aria-label="${esc(name)}: ${label}">${label}</button>`;
 
   function renderMembers() {
     if ($("meSelect")) {
@@ -31,8 +28,11 @@
     $("members").innerHTML = state.members.map(m => `
       <div class="member">
         <b>${esc(m.name)}</b>
-        <select data-diet="${esc(m.id)}" aria-label="Ernährung von ${esc(m.name)}">${dietOptions(app.CORE.dietChoice(m))}</select>
         <button class="icon-btn" type="button" data-remove="${esc(m.id)}" aria-label="${esc(m.name)} entfernen">✕</button>
+        <div class="mchips">
+          <span class="mgroup" role="group" aria-label="Ernährung von ${esc(m.name)}">${DIETS.map(([v, l]) => chip("data-diet", m.id, v, l, (m.diet || "fleisch") === v, m.name)).join("")}</span>
+          <span class="mgroup" role="group" aria-label="Ziel von ${esc(m.name)}">${Object.entries(app.CORE.GOAL_WORD).map(([g, w]) => chip("data-goal", m.id, g, w[0].toUpperCase() + w.slice(1), app.CORE.goalsOf(m).includes(g), m.name)).join("")}</span>
+        </div>
       </div>`).join("");
   }
 
@@ -61,14 +61,16 @@
   // ---------------------------------------------------------------------------
   // WG: Mitbewohner, Anwesenheit, Plan teilen
   // ---------------------------------------------------------------------------
-  $("members").addEventListener("change", e => {
-    const sel = e.target.closest("[data-diet]"); // Ernährung + Ziel (proteinreich / leicht), gemeinsam für die WG
-    if (!sel) return;
-    const m = state.members.find(x => x.id === sel.dataset.diet);
+  // Ernährung / Ziel antippen – gemeinsam für die WG
+  $("members").addEventListener("click", e => {
+    const c = e.target.closest("[data-diet], [data-goal]");
+    if (!c) return;
+    const m = state.members.find(x => x.id === (c.dataset.diet || c.dataset.goal));
     if (!m) return;
-    setDiet(m, sel.value);
+    if (c.dataset.diet) setDiet(m, c.dataset.val); else app.CORE.toggleGoal(m, c.dataset.val);
     saveMembers();
     app.settingsChanged();
+    renderMembers();
     refresh();
   });
 

@@ -564,26 +564,27 @@
 
   // Worauf jemand achtet (pro Mitbewohner in den WG-Einstellungen, member.goal) und was das Menü dafür ist
   const GOAL_LABEL = { "": "nichts Besonderes", kcal: "Kalorien", protein: "Proteine" };
-  // Eine Auswahl pro Person für Ernährung + Ziel (Joshua 20.11.): «Fleisch · proteinreich», «Vegi · leicht» …
-  // Gespeichert bleibt getrennt: member.diet und member.goal («protein» = proteinreich, «kcal» = leicht).
+  // Ernährung und Ziel getrennt wählbar (Joshua 23.11.: Knöpfe statt einer langen Auswahl): member.diet = eins von
+  // Fleisch/Vegi/Vegan, member.goal = keins, eins oder beide von «protein» (proteinreich) und «kcal» (leicht), mit Leerzeichen getrennt.
   const GOAL_WORD = { protein: "proteinreich", kcal: "leicht" };
-  const DIET_CHOICES = ["fleisch", "vegi", "vegan"].flatMap(d => ["", "protein", "kcal"].map(g => ({
-    value: g ? `${d}:${g}` : d, diet: d, goal: g,
-    label: `${{ fleisch: "Fleisch", vegi: "Vegi", vegan: "Vegan" }[d]}${g ? ` · ${GOAL_WORD[g]}` : ""}`,
-  })));
-  const dietChoice = m => (m && m.goal && GOAL_WORD[m.goal] ? `${m.diet}:${m.goal}` : (m && m.diet) || "fleisch");
-  function parseDietChoice(v) {
-    const [diet, goal] = String(v || "").split(":");
-    return { diet: ["fleisch", "vegi", "vegan"].includes(diet) ? diet : "fleisch", goal: GOAL_WORD[goal] ? goal : "" };
+  const goalsOf = m => String((m && m.goal) || "").split(/[\s,:+]+/).filter(g => GOAL_WORD[g]);
+  // Ziel an- oder abschalten; ohne Ziel fällt member.goal ganz weg
+  function toggleGoal(m, g, on) {
+    if (!GOAL_WORD[g]) return m;
+    const set = new Set(goalsOf(m));
+    if (on === undefined ? !set.has(g) : on) set.add(g); else set.delete(g);
+    const goal = Object.keys(GOAL_WORD).filter(k => set.has(k)).join(" ");
+    if (goal) m.goal = goal; else delete m.goal;
+    return m;
   }
   // Grenzen pro Person und Znacht, mit Extra-Fleisch/-Käse und Salat gerechnet – darum eher hoch. Katalog 19.11.:
   // Vegi ⅖ proteinreich, ¼ leicht; Fleisch-Esser bekommen an Vegi-Tagen 150 g Fleisch dazu, darum meist proteinreich.
   const PROTEIN_RICH = 40, PROTEIN_LOW = 25, KCAL_LIGHT = 650, KCAL_RICH = 1000;
   function nutritionTag(n, goal) {
     if (!n) return "";
-    if (goal === "protein") return n.protein >= PROTEIN_RICH ? "proteinreich" : n.protein < PROTEIN_LOW ? "wenig Protein" : "";
-    if (goal === "kcal") return n.kcal <= KCAL_LIGHT ? "leicht" : n.kcal >= KCAL_RICH ? "reichhaltig" : "";
-    return "";
+    const goals = goalsOf({ goal });
+    return [goals.includes("protein") ? (n.protein >= PROTEIN_RICH ? "proteinreich" : n.protein < PROTEIN_LOW ? "wenig Protein" : "") : "",
+      goals.includes("kcal") ? (n.kcal <= KCAL_LIGHT ? "leicht" : n.kcal >= KCAL_RICH ? "reichhaltig" : "") : ""].filter(Boolean).join(" · ");
   }
   const nutritionText = n => (n ? `${n.src === "seite" ? "" : "≈ "}${n.kcal} kcal · ${n.protein} g Protein` : "");
 
@@ -1357,6 +1358,6 @@
     effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, rankDays, moveDay, dayReason, carryOver,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList,
-    nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_WORD, DIET_CHOICES, dietChoice, parseDietChoice
+    nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_WORD, goalsOf, toggleGoal
   };
 })(typeof globalThis !== "undefined" ? globalThis : self);
