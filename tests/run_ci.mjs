@@ -19,7 +19,7 @@ const root = path.join(here, "..");
 const args = process.argv.slice(2);
 const PR = args.includes("--pr");
 const node = process.execPath;
-const env = { ...process.env, TZ: process.env.TZ || "Europe/Zurich" };
+const env = { ...process.env, TZ: process.env.TZ || "Europe/Zurich", PYTHONIOENCODING: "utf-8" };
 
 const jsIn = dir => readdirSync(path.join(root, dir)).filter(f => /\.(m?js)$/.test(f)).map(f => path.join(dir, f));
 const syntaxFiles = [...jsIn("static"), ...jsIn("worker/src"), "worker/test.mjs", ...jsIn("tests"), ...jsIn("tools")];
@@ -83,6 +83,10 @@ step("Abgleich (gleichzeitige Änderungen, falsche Uhr)", node, ["sync_merge.tes
 step("Worker", node, ["../worker/test.mjs"]);
 step("Release-Build (wie GitHub Pages)", node, ["release_build.test.mjs"]);
 step("Auto-Release-Regel (Fix geht raus, Funktion wartet)", node, ["release_decide.test.mjs"]);
+// Rezept-Import (Monatsabgleich, Auswahl, Ernährung) – Python ohne Netz; ohne Python (z.B. Windows ohne PATH) übersprungen
+const py = ["python3", "python"].find(p => spawnSync(p, ["--version"]).status === 0);
+if (py) step("Rezept-Import (Python, ohne Netz)", py, [path.join(root, "tools", "test_import_recipes.py")]);
+else console.log("\n=== Rezept-Import (Python) übersprungen: kein Python gefunden ===");
 
 // 3. Browser: vor dem Release alles, in der PR-Prüfung nur, was die Änderung betreffen kann
 const shotArg = args.includes("--shots") ? ["--shots"] : [];

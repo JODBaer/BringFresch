@@ -155,7 +155,8 @@ NOT_MAIN = re.compile(
     r"dessert|kuchen|torte|guetzli|gebäck|cake|muffin|biscuit|cookie|brownie|konfitüre|sirup|glace|sorbet|"
     r"getränk|drink|smoothie|punsch|bowle|zopf|\bbrot\b|brötchen|apéro|apero|dip\b|sauce\b|pesto\b|crêpe süss|"
     r"porridge|müesli|birchermüesli|frühstück|creme\b|mousse|tiramisu|guezli|weihnachtsgebäck|brunsli|mailänderli|"
-    r"chräbeli|lebkuchen|grittibänz|osterfladen|praline|konfekt|marmelade|chutney|sirup|tee\b|kompott",
+    r"chräbeli|lebkuchen|grittibänz|osterfladen|praline|konfekt|marmelade|chutney|sirup|tee\b|kompott|"
+    r"eingelegt|znüni|zvieri|lassi|^milchreis$",  # 19.11.: «Süss eingelegte Zitrusfrüchte», «Znüni-Täschli» sind kein Znacht
     re.I,
 )
 MAIN_HINT = re.compile(r"hauptgericht|hauptspeise|hauptmahlzeit|main|abendessen|mittagessen", re.I)
@@ -806,6 +807,160 @@ def cmd_nutrition():
     print(f"Nährwerte: {stats['ok']} gefunden, {stats['keine']} ohne Angaben, {stats['fehler']} Fehler → {target.relative_to(ROOT.parent)}")
 
 
+def month_season(month: int) -> str:
+    return next(s for s, ms in SEASONS.items() if month in ms)
+
+
+def pick_new(cands: list[dict], month: int, have: set[str], n: int = 3) -> list[dict]:
+    """Aus geprüften Kandidaten n neue Znacht für den Monat wählen (rein, ohne Netz – tools/test_import_recipes.py).
+    Nur was im Monat Saison hat und ein frisches Saisongemüse enthält, ≤ MAX_MIN_ADD Min., keine Doppelten (Titel/Link).
+    Reihenfolge: stärkste Saison, mit Nährwerten der Seite zuerst; gemischt: zuerst je ein vegi und ein Fleisch."""
+    season = month_season(month)
+    key = lambda t: re.sub(r"[^a-z]", "", t.lower())
+    ok, seen = [], set(have)
+    for r in cands:
+        if month not in r["season_months"] or r["season_strength"].get(season, 0) < 2 or r["prep_time_min"] > MAX_MIN_ADD or SIDE.search(r["title"]):
+            continue
+        if key(r["title"]) in seen or r["source_url"] in seen:
+            continue
+        seen |= {key(r["title"]), r["source_url"]}
+        ok.append(r)
+    ok.sort(key=lambda r: (-r["season_strength"].get(season, 0), not r.get("nutrition")))
+    veg = [r for r in ok if r["diet"] != "fleisch"]
+    meat = [r for r in ok if r["diet"] == "fleisch"]
+    pick = [lst.pop(0) for lst in (veg, meat) if lst][:n]
+    rest = sorted(veg + meat, key=lambda r: (-r["season_strength"].get(season, 0), not r.get("nutrition")))
+    return pick + rest[: n - len(pick)]
+
+
+def refresh_recipe(r: dict, page: str) -> list[str]:
+    """Rezept mit der aktuellen Seite abgleichen. Gibt die geänderten Felder zurück (leer = gleich geblieben).
+    Titel und id bleiben (Wochenwahl und Pläne speichern ids). Ernährung nur strenger («fleisch»), nie automatisch lockerer –
+    dafür gab es zu viele falsche Treffer («Peperoniwürfelchen» = Felchen); lockerer nur von Hand."""
+    x = extract(page)
+    if not x:
+        return []
+    c = classify({**x, "url": r["source_url"]}, min_servings=1 if "joelundmuriel" in r["source_url"] else 2)
+    if isinstance(c, str):
+        return []
+    changed = []
+    for k in ("servings", "prep_time_min", "ingredients", "nutrition"):
+        if c.get(k) is not None and c.get(k) != r.get(k):
+            r[k] = c[k]
+            changed.append(k)
+    if c["diet"] == "fleisch" and r["diet"] != "fleisch":
+        r["diet"] = "fleisch"
+        changed.append("diet")
+    return changed
+
+
+def cmd_monthly(n_new: int = 3, per_site: int = 15):
+    """Einmal im Monat (GitHub Actions, .github/workflows/rezepte-monat.yml; CLAUDE.md «Rezepte = ein Katalog»):
+    1. alle importierten Rezepte auf ihren Seiten abgleichen (Zutaten, Portionen, Zeit, Nährwerte); Seite weg (404/410) = Rezept weg
+    2. drei neue Znacht suchen, die im NÄCHSTEN Monat Saison haben, und einfügen.
+    Höflich: robots.txt, pro Website eine Seite nach der anderen (DELAY_S), Websites parallel. Bericht: tools/.cache/monatsbericht.md"""
+    import datetime
+    import os
+    import urllib.error
+    sys.stdout.reconfigure(encoding="utf-8")
+    today = datetime.date.today()
+    month = int(os.environ.get("MONTH") or (today.month % 12 + 1))
+    target = ROOT.parent / "static" / "recipes_imported.js"
+    src = target.read_text(encoding="utf-8")
+    recipes = json.loads(src[src.index("["):src.rindex("]") + 1])
+    lock = threading.Lock()
+    rep = {"updated": [], "gone": [], "errors": [], "added": []}
+
+    # 1. Abgleich
+    by_host: dict[str, list[dict]] = {}
+    for r in recipes:
+        if r.get("source_url"):
+            by_host.setdefault(urllib.parse.urlparse(r["source_url"]).netloc, []).append(r)
+
+    def check(lst):
+        for r in lst:
+            try:
+                if not allowed(r["source_url"]):
+                    raise RuntimeError("robots.txt")
+                changed = refresh_recipe(r, get(r["source_url"]))
+                if changed:
+                    with lock:
+                        rep["updated"].append(f"{r['title']} ({', '.join(changed)})")
+            except urllib.error.HTTPError as e:
+                with lock:
+                    (rep["gone"] if e.code in (404, 410) else rep["errors"]).append(f"{r['title']} – {e.code}")
+                if e.code in (404, 410):
+                    r["_gone"] = True
+            except Exception as e:
+                with lock:
+                    rep["errors"].append(f"{r['title']} – {str(e)[:60]}")
+            time.sleep(DELAY_S)
+
+    threads = [threading.Thread(target=check, args=(lst,)) for lst in by_host.values()]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    recipes = [r for r in recipes if not r.pop("_gone", False)]
+
+    # 2. Neue für den nächsten Monat: Stichprobe aus den Sitemaps (Zufall fest pro Monat), prüfen, auswählen
+    rnd = random.Random(f"{today.year}-{month}")
+    have = {re.sub(r"[^a-z]", "", r["title"].lower()) for r in recipes} | {r["source_url"] for r in recipes}
+    cands: list[dict] = []
+
+    def sample(site):
+        cfg = SITES[site]
+        try:
+            xml = get(cfg["sitemap"], timeout=120)
+        except Exception as e:
+            with lock:
+                rep["errors"].append(f"Sitemap {site} – {str(e)[:60]}")
+            return
+        locs = [u.strip() for u in re.findall(r"<loc>([^<]+)</loc>", xml) if re.match(cfg["match"], u.strip()) and u.strip() not in have]
+        rnd_site = random.Random(f"{today.year}-{month}-{site}")
+        good = [u for u in locs if SLUG_GOOD.search(u) and not SLUG_BAD.search(u)] or locs
+        rnd_site.shuffle(good)
+        for u in good[:per_site]:
+            time.sleep(DELAY_S)
+            try:
+                if not allowed(u):
+                    continue
+                x = extract(get(u))
+                c = classify({**x, "url": u}, min_servings=1 if site == "joelundmuriel" else 2) if x else "keine Rezeptdaten"
+                if not isinstance(c, str):
+                    with lock:
+                        cands.append(c)
+            except Exception:
+                pass
+
+    threads = [threading.Thread(target=sample, args=(s,)) for s in SITES]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    cands.sort(key=lambda r: r["source_url"])  # gleiche Reihenfolge unabhängig von den Threads
+    rnd.shuffle(cands)
+    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
+    new = pick_new(cands, month, have, n_new)
+    recipes += [{k: r[k] for k in keep if k in r} for r in new]
+    rep["added"] = [f"{r['title']} ({r['diet']}, {r['prep_time_min']} Min.{', ' + str(r['nutrition']['kcal']) + ' kcal' if r.get('nutrition') else ''}) – {r['source_url']}" for r in new]
+
+    target.write_text(src[:src.index("[")] + json.dumps(recipes, ensure_ascii=False, indent=0).replace("\n", "") + ";\n", encoding="utf-8")
+    MONTHS_DE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"]
+    lines = [f"## Rezepte-Monatsabgleich für {MONTHS_DE[month - 1]}", "",
+             f"{len(recipes)} Rezepte · {len(rep['updated'])} aktualisiert · {len(rep['gone'])} entfernt (Seite weg) · {len(rep['added'])} neu · {len(rep['errors'])} nicht erreichbar", ""]
+    for title, k in (("Neu", "added"), ("Aktualisiert", "updated"), ("Entfernt", "gone"), ("Nicht erreichbar (bleiben)", "errors")):
+        if rep[k]:
+            lines += [f"### {title}", *[f"- {x}" for x in rep[k]], ""]
+    text = "\n".join(lines)
+    CACHE.mkdir(exist_ok=True)
+    (CACHE / "monatsbericht.md").write_text(text, encoding="utf-8")
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+            f.write(text + "\n")
+    print(text)
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"discover": cmd_discover, "fetch": cmd_fetch, "build": cmd_build, "merge": cmd_merge, "add": cmd_add, "nutrition": cmd_nutrition}.get(cmd, lambda: print(__doc__))()
+    {"discover": cmd_discover, "fetch": cmd_fetch, "build": cmd_build, "merge": cmd_merge, "add": cmd_add, "nutrition": cmd_nutrition, "monthly": cmd_monthly}.get(cmd, lambda: print(__doc__))()

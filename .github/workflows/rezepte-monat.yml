@@ -1,0 +1,64 @@
+# Rezepte-Monatsabgleich (CLAUDE.md «Rezepte = ein Katalog»): einmal im Monat, am 25. früh – rechtzeitig vor dem neuen Monat
+#   1. alle importierten Rezepte mit ihren Webseiten abgleichen (Zutaten, Portionen, Zeit, Nährwerte; Seite weg = Rezept weg)
+#   2. drei neue Znacht suchen, die im nächsten Monat Saison haben, und einfügen
+#   python tools/import_recipes.py monthly  (höflich: robots.txt, 3 s zwischen den Seiten einer Website)
+# Danach die schnellen Tests (Schnappschüsse der Einkaufsliste werden neu geschrieben, weil sich der Katalog ändert);
+# nur wenn alles grün ist, kommt die Änderung auf main. Die WG bekommt sie mit dem nächsten Release (Tag v*).
+# Bericht: auf der Seite des Laufs (Summary). Von Hand: Actions → «Rezepte-Monatsabgleich» → Run workflow (Monat wählbar).
+name: Rezepte-Monatsabgleich
+
+on:
+  schedule:
+    - cron: "0 3 25 * *"
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Monat für die neuen Rezepte (1–12, leer = nächster Monat)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "rezepte-monat"
+  cancel-in-progress: false
+
+jobs:
+  monat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      TZ: Europe/Zurich
+      MONTH: ${{ github.event.inputs.month }}
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - name: Testabhängigkeiten
+        run: cd tests && npm ci
+      - name: Regeln des Imports (ohne Netz)
+        run: python3 tools/test_import_recipes.py
+      - name: Rezepte abgleichen + 3 neue für den nächsten Monat
+        run: python3 tools/import_recipes.py monthly
+      - name: Schnappschüsse neu (Katalog hat sich geändert), Cache-Version hoch
+        run: |
+          cd tests
+          node zutaten.test.js --update
+          node einkauf_snapshot.test.js --update
+          cd ..
+          node -e "const f='static/sw.js',fs=require('fs');fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/bringfrisch-cache-v(\d+)/,(m,n)=>'bringfrisch-cache-v'+(+n+1)))"
+      - name: Tests (ohne Browser)
+        run: cd tests && npm run ci -- --no-layout --no-ui
+      - name: Auf main
+        run: |
+          if git diff --quiet static/recipes_imported.js; then echo "Keine Änderung am Katalog."; exit 0; fi
+          git config user.name "obsonare-rezepte[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/recipes_imported.js static/sw.js tests/snapshots/einkauf.json tests/snapshots/vorrat_treffer.json
+          git commit -m "chore(rezepte): Monatsabgleich $(date +%Y-%m) – Rezepte mit den Webseiten abgeglichen, 3 neue für den nächsten Monat" -m "$(cat tools/.cache/monatsbericht.md)"
+          git pull --rebase origin main
+          git push origin HEAD:main
