@@ -193,6 +193,30 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – Obsonare baut 
 - [ ] **Praxistest**: eine echte Woche mit Lukas, Leonie und Jo planen, einkaufen, Feedback sammeln
 - [ ] Danach entscheiden: Mengen der Protein-Zusätze (150 g Fleisch / 100 g Käse pro Person), Rezeptauswahl, evtl. Koch-Zuteilung
 
+## Von Paprika lernen (Analyse 23.11.2026) – erst nach dem Praxistest, je einzeln
+
+Paprika (Rezept-App, einmal kaufen, kein Abo) ist kein Konkurrent von Bring!, sondern das Gegenstück: Bring! ist eine **Liste**, Paprika ist ein **Kochbuch, aus dem die Liste fällt**. Was es grossartig macht, sind sechs Prinzipien:
+1. **Ein Weg ohne Brüche**: Rezept → Plan → Einkaufsliste → Vorrat → Kochen. Jeder Schritt nimmt das Ergebnis des vorigen mit, nichts wird zweimal eingetippt.
+2. **Einfangen ohne Mühe**: eingebauter Browser, «Speichern» holt Titel, Zutaten, Schritte, Bild; geht das nicht, markiert man Text und weist ihn einem Feld zu.
+3. **Die Küche mitgedacht** (Kochansicht): Bildschirm bleibt an, Zutaten antippen = abgehakt, Schritt antippen = hervorgehoben, Zeiten im Text («10 Minuten») antippen = Timer, mehrere Timer gleichzeitig.
+4. **Merkt sich Entscheide**: einmal einer Abteilung zugeordnet, immer dort; Mengen gleicher Zutaten werden zusammengezählt; beim «Auf die Liste» ist abgewählt, was im Vorrat steht.
+5. **Wiederverwenden statt neu planen**: «Menüs» = gespeicherte Sätze von Gerichten (z.B. Lieblingswoche), mit einem Tipp in den Kalender.
+6. **Daten gehören dir**: alles offline auf dem Gerät, Sync nur als Abgleich, Export jederzeit. Keine Werbung, keine Abo-Falle.
+Schwächen (warum es die WG nicht ersetzt): für eine Person gebaut (Teilen nur über dasselbe Konto), keine Abstimmung, kein Vegi/Fleisch-Mix, keine Portionen pro Esser, Liste nicht live geteilt wie Bring!.
+
+**Haben wir schon** (Paprika-Prinzip ✓): 1 Rezept → Plan → Bring! → Vorrat · Portionen skaliert (Esser + Puffer) · Mengen zusammengezählt («Für mehrere Gerichte») · Vorrat wird beim Einkauf abgezogen · Link-Import im Worker (schema.org) · offline (PWA) + tägliche Sicherung.
+
+**Übernehmen**, in dieser Reihenfolge:
+- [ ] **Kochansicht «Heute kochen»** (Prinzip 3, grösster Gewinn): im Plan beim heutigen Tag ein Knopf → ganze Seite mit den Zutaten **schon umgerechnet auf heute** (z.B. 7 Portionen statt 4 auf der Webseite), Zeile antippen = abgehakt, Bildschirm bleibt an (Wake Lock, ohne Unterstützung einfach weglassen), Link «Rezept öffnen» für die Schritte. Eigene Rezepte zeigen auch die Schritte (`instructions`); Zeiten darin («10 Min.», «½ Std.») werden antippbar = Timer mit Ton + Vibration. Regeln (Zeit im Text finden) in `core.js`. Importierte Rezepte haben keine Schritte (nur Fakten) → nur Zutaten + Link
+- [ ] **«War gut?» nach dem Kochen** (Prinzip 4): am Tag danach im Plan kurz 👍 / 👎 pro Person, gemeinsam im Worker. 👍 hebt das Gericht in der Wochenwahl, zweimal 👎 = kommt nicht mehr in die 14. Ergänzt die Beliebtheit aus den Stimmen um das, was nach dem Essen zählt
+- [ ] **WG-Notiz pro Rezept** (Prinzip 4): ein Satz, für alle sichtbar in Wochenwahl, Plan und Kochansicht («doppelt Knoblauch», «Jo: Tofu statt Speck»). In den WG-Einstellungen gespeichert (nur Id → Text), auch für Katalog-Rezepte
+- [ ] **Zuletzt gekocht** (Prinzip 4): Plan-Verlauf behalten (nur Datum + Id pro WG) → auf der Karte «vor 2 Wochen»; die Wochenwahl nimmt nichts, was in den letzten 3 Wochen gekocht wurde
+- [ ] **Lieblingswoche speichern** (Prinzip 5, wie Paprika-«Menüs»): im Plan «Als Vorlage merken» → später «Vorlage laden» füllt die Tage (Esser bleiben, wie bei `swapDishes`). Für Wochen ohne Lust auf Wochenwahl
+- [ ] **Was geht mit dem, was da ist?** (Prinzip 4): in «Alle Rezepte» ein Filter «passt zum Vorrat / Kühlschrank» = sortiert nach Anteil der Zutaten, die schon da sind (gleicher Abgleich wie der Grundvorrat), plus Suche nach Zutat («Lauch»). Nützlich mit «Im Kühlschrank» oben
+- [ ] **Einfangen ohne Mühe** (Prinzip 2; ein eigener Browser in der App geht als PWA nicht): (a) im Formular «Eigenes Rezept» ein Feld **«Text einfügen»** (Instagram, WhatsApp, Notiz) → erste Zeile = Titel, Zeilen mit Menge = Zutaten (`parseIngredients`), Rest = Schritte, Vorschau zum Korrigieren, ohne KI und ohne Netz; (b) **Teilen an Obsonare** (`share_target` im Manifest, nur Android; iPhone: kopieren + «Text einfügen»)
+
+Bewusst nicht von Paprika: Ablaufdaten pro Artikel (zu viel Pflege; «Im Kühlschrank» rechnet grob), eigene Einkaufsliste mit Abteilungen (Bring! bleibt die Wahrheit und sortiert selbst), Nährwert-Rechner (Nährwerte kommen schon aus den Rezepten), Kalender-Ansicht über Monate (WG plant Woche für Woche), Kauf-Modell (gratis für die WG).
+
 ## Später, nur wenn nötig
 
 - Echte Kalender-Einladungen mit «Annehmen» (braucht E-Mail-Dienst)
