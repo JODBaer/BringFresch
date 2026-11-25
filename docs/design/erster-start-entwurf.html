@@ -1,0 +1,225 @@
+<title>Obsonare erster Start</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,600;8..144,800&display=swap">
+<style>
+/* Layout: links ein Handy, das man Schritt für Schritt durchtippt (Neu dabei oder Einladen), rechts kurz was neu ist und 2 Fragen. Farben wie die App. */
+:root {
+  --bg: #f4f8f0; --card: #ffffff; --fg: #18231a; --muted: #5a6a55; --line: #d6e3cc; --phone: #fbfdf9;
+  --accent: #3b6b2f; --accent-soft: #dff5d4; --on-accent: #ffffff;
+  --wa: #e7f6dc; --wa-fg: #1e3b14; --ok: #1f6f4a; --ok-soft: #d5f3e4;
+  --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a; --phone: #121a12;
+    --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d;
+    --wa: #1f3319; --wa-fg: #dcefcf; --ok: #7fe0b0; --ok-soft: #163326;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a; --phone: #121a12;
+  --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d;
+  --wa: #1f3319; --wa-fg: #dcefcf; --ok: #7fe0b0; --ok-soft: #163326;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.4; margin: 0; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.page { max-width: 1000px; margin: 0 auto; padding-block: 22px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
+.lead { margin: 4px 0 0; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--card); gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: none; padding: 8px 14px; border-radius: 999px; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.stage { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+.phone { width: 100%; max-width: 390px; justify-self: center; border-radius: 34px; border: 1px solid var(--line); background: var(--phone); overflow: hidden; box-shadow: 0 12px 40px rgba(20, 40, 20, .12); min-height: 700px; display: flex; flex-direction: column; }
+.dots { display: flex; gap: 6px; justify-content: center; padding: 18px 0 4px; }
+.dots i { width: 28px; height: 6px; border-radius: 999px; background: var(--line); }
+.dots i.on { background: var(--accent); }
+.scr { flex: 1; padding: 14px 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+.scr h2 { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.15; text-wrap: balance; }
+.scr p { margin: 0; }
+.muted { color: var(--muted); font-size: 14px; }
+.btn { border: 0; border-radius: 999px; padding: 14px 16px; font-weight: 700; background: var(--accent); color: var(--on-accent); font-size: 16px; width: 100%; }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+.link { border: 0; background: none; color: var(--muted); font-size: 14px; text-decoration: underline; padding: 4px; align-self: center; }
+.push { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+
+/* WhatsApp-Nachricht */
+.chat { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.chat small { color: var(--muted); font-size: 12px; }
+.bubble { background: var(--wa); color: var(--wa-fg); border-radius: 14px 14px 14px 4px; padding: 10px 12px; font-size: 15px; }
+.bubble a { color: inherit; font-weight: 700; word-break: break-all; }
+
+/* Wer bist du */
+.who { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.who button { border: 1px solid var(--line); background: var(--card); border-radius: 18px; padding: 16px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-weight: 700; font-size: 16px; }
+.who button .av { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 18px; }
+.who button small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.who button.new { border-style: dashed; }
+
+/* Bring! verbinden */
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.steps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+.steps li .n { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; }
+.steps li.done .n { background: var(--ok); color: var(--on-accent); }
+.copy { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.copy code { font-size: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; user-select: all; }
+.small { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; font-weight: 600; }
+.wait { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 14px; margin-top: 4px; }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+.okbox { background: var(--ok-soft); color: var(--ok); border-radius: 16px; padding: 12px 14px; font-weight: 700; }
+
+/* Erste Woche */
+.week { display: flex; flex-direction: column; gap: 8px; }
+.week div { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+.week div span { font-size: 24px; text-align: center; }
+.week div b { display: block; }
+
+/* Einladen */
+.qr { width: 160px; height: 160px; max-width: 100%; align-self: center; border-radius: 16px; background: var(--card); border: 1px solid var(--line); display: grid; place-items: center; }
+
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.box h2 { font-size: 17px; margin: 0; }
+.box ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+.box p { margin: 0; }
+.box small { color: var(--muted); }
+.opt { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.opt b { font-size: 15px; }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Erster Start in 3 Schritten</h1>
+    <p class="lead">Entwurf Schritt 1. Link aus WhatsApp antippen, Namen antippen, fertig. Zum Ausprobieren links durchtippen.</p>
+  </header>
+  <div class="seg" role="group" aria-label="Ansicht">
+    <button type="button" id="mNew" aria-pressed="true">Neu dabei</button>
+    <button type="button" id="mFirst" aria-pressed="false">Erste Person der WG</button>
+    <button type="button" id="mInvite" aria-pressed="false">Einladen</button>
+  </div>
+
+  <div class="stage">
+    <div class="phone" aria-label="Handy-Vorschau">
+      <div class="dots" id="dots" aria-hidden="true"></div>
+      <div class="scr" id="scr"></div>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h2>Was neu ist</h2>
+        <ul>
+          <li><b>Einladungslink</b> statt WG-Name und PIN abtippen. Läuft nach 7 Tagen ab.</li>
+          <li><b>Wer bist du?</b> Namen antippen. Mehr nicht.</li>
+          <li><b>Bring! verbinden</b> nur einmal, für die erste Person. Alle anderen sehen «Bring! ist verbunden ✓».</li>
+          <li>Am Schluss: <b>deine erste Woche</b> in 3 Schritten.</li>
+          <li>Jeder Schritt hat «Später». Nichts wird zweimal gefragt.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h2>Frage 1: Wie kommt der Bot zur Liste?</h2>
+        <div class="opt"><b>A · Ihr teilt die Liste mit dem Bot</b><small>Wie heute. In Bring!: Liste teilen → Adresse einfügen. Der Bot muss die Einladung annehmen. Ob er das selbst kann, prüfe ich vor dem Bauen; sonst einmal von Hand.</small></div>
+        <div class="opt"><b>B · Der Bot macht die Liste und lädt euch ein</b><small>Ihr bekommt in Bring! eine Einladung und tippt «Annehmen». Neue Liste «WG allmen», die alte bleibt. Geht nur, wenn die Bring!-Schnittstelle das erlaubt.</small></div>
+        <p><small>Mein Vorschlag: A zuerst prüfen, B als Ersatz.</small></p>
+      </div>
+      <div class="box">
+        <h2>Frage 2: «Ohne WG ausprobieren»</h2>
+        <p>Bleibt als kleiner Link unten im ersten Bildschirm. <small>Vorschlag: ja</small></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PEOPLE = [["Joshua", "Fleisch"], ["Lukas", "Fleisch"], ["Leonie", "Fleisch"], ["Jo", "Vegi"]];
+const $ = id => document.getElementById(id);
+let mode = "new", step = 0, me = null, found = false;
+const FLOW = { new: ["link", "who", "done"], first: ["link", "who", "bring", "done"], invite: ["invite"] };
+
+function dots() {
+  const f = FLOW[mode];
+  $("dots").innerHTML = f.length > 1 ? f.slice(1).map((_, i) => `<i class="${i < step ? "on" : ""}"></i>`).join("") : "";
+}
+function render() {
+  ["mNew", "mFirst", "mInvite"].forEach(id => $(id).setAttribute("aria-pressed", ({ mNew: "new", mFirst: "first", mInvite: "invite" })[id] === mode));
+  dots();
+  const s = FLOW[mode][step];
+  const S = $("scr");
+  if (s === "link") {
+    S.innerHTML = `<p class="muted">WhatsApp · WG allmen</p>
+      <div class="chat"><small>Joshua · 19:42</small>
+        <div class="bubble">Komm in unsere WG bei Obsonare 🥕<br><a href="#" id="go">jodbaer.github.io/BringFresch/#join=allmen.7k2f</a></div></div>
+      <p class="muted">Antippen öffnet Obsonare. Kein Konto, kein Passwort.</p>
+      <div class="push"><button class="btn" type="button" id="go2">Link öffnen</button>
+      <button class="link" type="button">Ich habe WG-Name und PIN</button></div>`;
+  } else if (s === "who") {
+    S.innerHTML = `<h2>Willkommen in der WG «allmen»</h2><p class="muted">Wer bist du? Antippen.</p>
+      <div class="who">${PEOPLE.map(([n, d]) => `<button type="button" data-me="${n}"><span class="av">${n.slice(0, 2)}</span>${n}<small>${d}</small></button>`).join("")}
+        <button type="button" class="new" data-me="neu"><span class="av">+</span>Ich bin neu<small>Name + Vegi/Fleisch</small></button></div>
+      <p class="muted">Mit dem Antippen bist du einverstanden mit den <u>Regeln der App</u>.</p>
+      <div class="push"><button class="link" type="button" id="skip">Ohne WG ausprobieren</button></div>`;
+  } else if (s === "bring") {
+    S.innerHTML = `<h2>Bring! verbinden</h2><p class="muted">Einmal für die ganze WG. Dann füllt Obsonare eure Liste.</p>
+      <ol class="steps">
+        <li class="done"><span class="n">1</span><div><b>Adresse kopieren</b><div class="copy"><code>allmenbot@gmail.com</code><button class="small" type="button" id="cp">Kopieren</button></div></div></li>
+        <li><span class="n">2</span><div><b>In Bring! die WG-Liste teilen</b><div class="muted">Liste → Teilen → Adresse einfügen</div><div class="copy"><button class="small" type="button">Bring! öffnen ↗</button></div></div></li>
+        <li class="${found ? "done" : ""}"><span class="n">${found ? "✓" : "3"}</span><div><b>Zurück zu Obsonare</b>${found
+          ? `<div class="okbox" style="margin-top:6px">Liste «WG» gefunden ✓</div>`
+          : `<div class="wait"><span class="spin" aria-hidden="true"></span>Obsonare sucht eure Liste …</div><div class="copy"><button class="small" type="button" id="sim">Beispiel: Liste ist da</button></div>`}</div></li>
+      </ol>
+      <div class="push"><button class="btn" type="button" id="next" ${found ? "" : "disabled style=\"opacity:.5\""}>Weiter</button><button class="link" type="button" id="later">Später</button></div>`;
+  } else if (s === "done") {
+    S.innerHTML = `<h2>Hoi ${me && me !== "neu" ? me : "du"} 👋</h2>
+      ${mode === "new" ? `<div class="okbox">Bring! ist verbunden ✓ Liste «WG»</div>` : ""}
+      <p class="muted">So läuft eure Woche:</p>
+      <div class="week">
+        <div><span aria-hidden="true">🃏</span><p><b>Wochenwahl</b><span class="muted">Antippen, was du essen willst</span></p></div>
+        <div><span aria-hidden="true">📅</span><p><b>Plan</b><span class="muted">Die Top 7 kommen auf die Tage</span></p></div>
+        <div><span aria-hidden="true">🛒</span><p><b>Bring!</b><span class="muted">Ein Knopf füllt eure Liste</span></p></div>
+      </div>
+      <div class="push"><button class="btn" type="button" id="again">Wochenwahl starten</button></div>`;
+  } else if (s === "invite") {
+    S.innerHTML = `<p class="muted">Einstellungen › WG</p><h2>Mitbewohner einladen</h2>
+      <div class="qr" aria-label="QR-Code (Beispiel)"><svg viewBox="0 0 21 21" width="130" height="130" aria-hidden="true">${qr()}</svg></div>
+      <p class="muted" style="text-align:center">Scannen oder Link senden. Gilt 7 Tage.</p>
+      <div class="push"><button class="btn" type="button">Per WhatsApp senden</button><button class="btn ghost" type="button">Link kopieren</button></div>`;
+  }
+}
+// Beispiel-Muster, kein echter QR-Code
+function qr() {
+  let s = 7, out = "";
+  const r = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  const finder = (x, y) => `<rect x="${x}" y="${y}" width="7" height="7" fill="currentColor"/><rect x="${x + 1}" y="${y + 1}" width="5" height="5" fill="var(--card)"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="currentColor"/>`;
+  for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
+    const inF = (x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12);
+    if (!inF && r() > .55) out += `<rect x="${x}" y="${y}" width="1" height="1" fill="currentColor"/>`;
+  }
+  return out + finder(0, 0) + finder(14, 0) + finder(0, 14);
+}
+$("scr").addEventListener("click", e => {
+  const t = e.target.closest("button, a");
+  if (!t) return;
+  if (t.id === "go" || t.id === "go2") { e.preventDefault(); step = 1; }
+  else if (t.dataset.me) { me = t.dataset.me; step++; }
+  else if (t.id === "sim") { found = true; }
+  else if (t.id === "next" && found) { step++; }
+  else if (t.id === "later") { step++; }
+  else if (t.id === "again") { step = 0; me = null; found = false; }
+  else if (t.id === "cp") { navigator.clipboard && navigator.clipboard.writeText("allmenbot@gmail.com").catch(() => {}); t.textContent = "Kopiert ✓"; return; }
+  else return;
+  render();
+});
+const setMode = m => { mode = m; step = 0; me = null; found = false; render(); };
+$("mNew").onclick = () => setMode("new");
+$("mFirst").onclick = () => setMode("first");
+$("mInvite").onclick = () => setMode("invite");
+render();
+</script>
