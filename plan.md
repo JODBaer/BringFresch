@@ -65,6 +65,20 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
 
 ### Schritte (je zuerst HTML-Entwurf → Joshua entscheidet → bauen → eine Person testet ohne Hilfe)
 
+- [ ] **0. Einfach & saisonal – Grundrezepte × Saisongemüse** (zuerst, Joshua 25.11.: «es hat mir keine simplen Rezepte, es ist halt schon sehr saisonal – was auch das Ziel sein soll»)
+  - Befund (Katalog 25.11.): 225 Rezepte, im November 159 in Saison, davon nur 48 «einfach» (≤ 8 Zutaten ohne Salz/Pfeffer/Öl/Wasser, ≤ 30 Min.), und die 13 Schnellen darunter sind kaum saisonal. Die importierten Rezepte haben meist 9–15 Zutaten und klingen nach Kochbuch. Joshuas Alltagsgerichte gibt es nur einzeln (Ghackets mit Hörnli) oder gar nicht (Poulet-Rahmsauce mit Reis, Gemüsepfanne mit Reis, schlichtes Ofengemüse).
+  - **Joshuas Alltag** (seine Liste 25.11.) = die ersten 6 **Grundrezepte**, je von Hand geschrieben (kein Scraping), für 4 Personen, ≤ 8 Zutaten, ≤ 30 Min. Arbeit; das **Saisongemüse setzt die App ein** (Gemüse des Monats aus `season_items`, pro Grundrezept nur passende Sorten):
+    1. **Hörnli & Ghacktes** mit Saisongemüse (Nov: Lauch · Sommer: Zucchetti · Frühling: Erbsen/Spinat), Apfelmus; vegi: Linsen oder Planted-Hack
+    2. **Maultaschen oder Gnocchi aus der Pfanne** mit Saisongemüse (Nov: Rosenkohl/Kürbis · Frühling: Spargel · Sommer: Tomaten/Zucchetti), Butter-Salbei oder Tomatensauce; vegi = Gemüse-Maultaschen/Gnocchi
+    3. **Ofengemüse vom Blech** mit 2–3 Saisongemüsen + Kartoffeln, Kräuterquark; Fleisch: Pouletschenkel oder Würste mit aufs Blech; vegi: Halloumi/Feta
+    4. **Reis mit Curry oder Rahmsauce** – eine Pfanne, zwei Saucen (Kokos-Curry / Champignon-Rahm), Saisongemüse hinein; Poulet, vegi: Kichererbsen/Tofu
+    5. **Gemüsepfanne mit Reis** (Wok): 2 Saisongemüse, Sojasauce, Ei; Fleisch: Poulet- oder Rindsstreifen, vegi: Tofu/Ei
+    6. **Café complet** (Joshua 25.11.; gibt es schon als «Schnelles», wird Grundrezept): Brot, Butter, Käse, Konfi, Milchkaffee + **Saisonfrüchte** (Nov: Äpfel/Birnen · Sommer: Beeren/Aprikosen); Fleisch: Trockenfleisch/Schinken dazu; kein Salat (`no_salad`)
+  - **Mix in der WG läuft schon**: Grundrezepte sind vegi, «Alles für alle» legt pro Fleisch-Esser 150 g Fleisch dazu (bei Hörnli/Curry/Pfanne als eigenes Fleisch statt Grillkäse: Feld `meat_addon` pro Grundrezept, z.B. Ghacktes, Poulet).
+  - **Technik**: Grundrezepte in `standalone_data.js` (`bases`: Titel-Vorlage «Hörnli & Ghacktes mit {Gemüse}», Grundzutaten, Platz für 1–3 Gemüse mit Menge, passende Sorten, `meat_addon`). `CORE.expandBases(bases, month)` macht daraus gewöhnliche Rezepte (Ids `b-<grundrezept>-<gemüse>`, `simple: true`, `season_months`) – Wochenwahl, Plan, Einkauf und Bring! arbeiten unverändert. Tests: jedes Monat ergibt pro Grundrezept ≥ 1 Variante, keine Zutat doppelt, Mengen für 4.
+  - **Wochenwahl**: mindestens **7 der 14** Karten «einfach» (`simple` oder ≤ 8 Zutaten und ≤ 30 Min.), die Aufwändigen als «fürs Wochenende» markiert. **Rezepte**: Filter «Einfach» ganz vorne, Karten zeigen «6 Zutaten · 25 Min.».
+  - Danach: weitere Grundrezepte aus der Praxis (Suppe, Wähe, Risotto, Frittata, Gratin, Rösti), je nur wenn die WG sie wirklich kocht.
+  - Zuerst HTML-Entwurf: eine Grundrezept-Karte mit den Varianten des Monats (November) und die Wochenwahl mit «einfach»-Markierung.
 - [ ] **1. Erster Start in 3 Schritten** (vor dem Praxistest)
   - **Einladungslink** statt WG-Name + PIN abtippen: in den Einstellungen «Mitbewohner einladen» → Link/QR (`…/#join=<wg>.<code>`, Code = PIN-Hash-Ticket, läuft nach 7 Tagen ab) → per WhatsApp senden. Wer ihn öffnet, landet direkt bei «Wer bist du?». Abtippen bleibt als Weg «Ich habe WG-Name und PIN».
   - **Wer bist du?** = Kacheln mit den Namen der WG (ein Tipp), «Ich bin neu» = Name + Vegi/Fleisch.
@@ -80,6 +94,8 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
   - **Foto mit KI über eine fremde App** (Entscheid Joshua 25.11.: ja, so einfach wie möglich – kein API-Schlüssel, keine Kosten, kein Bild über unseren Server): Knopf «Foto mit KI» → Obsonare **kopiert einen fertigen Prompt** und öffnet **Claude oder Gemini** (Wahl pro Handy, mit Vorbefüllung, wo die App das kann, z.B. `claude.ai/new?q=…`; sonst nur öffnen + «Prompt ist kopiert, einfügen»). Dort Foto machen (Kochbuch, Zettel, Screenshot) → die KI antwortet im festen Format → Antwort **kopieren** → zurück in Obsonare: Knopf «Einfügen» (bzw. Hinweis «Rezept in der Zwischenablage gefunden» beim Zurückkehren, ohne ungefragt zu lesen) → Vorschau → Speichern.
   - **Festes Format** (lesbar, robuster als JSON): Kopfzeile `OBSONARE-REZEPT`, dann `Titel:`, `Portionen:`, `Zeit:`, `Vegi: ja/nein`, `Zutaten:` (eine Zeile pro Zutat «200 g Lauch»), `Schritte:` (nummeriert). Der Prompt verlangt nur das, ohne Einleitung; Mengen so wie im Original, Portionen angeben. Parser in `core.js` (`parseRecipeText`), nimmt auch freien Text (dann wie «Text einfügen»). Tests mit Beispiel-Antworten von Claude und Gemini.
   - Dieselbe Vorschau dient für «Text einfügen» – ein Weg, zwei Quellen.
+  - **Reste-Rezept mit KI** (Joshua 25.11.): Knopf «Was koche ich mit …?» (im «+»-Blatt und im Vorrat) → Zutaten antippen (Vorrat-Liste, später «Im Kühlschrank», plus freies Feld «2 Rüebli, ½ Lauch, Reis») → Obsonare baut den Prompt mit allem, was es weiss: Anzahl Esser heute, wer vegi ist, **einfach** (≤ 8 Zutaten, ≤ 30 Min.), was im Grundvorrat sicher da ist (Salz, Öl, Bouillon …), «möglichst nur diese Zutaten», Antwort im Format `OBSONARE-REZEPT` → kopieren + Claude/Gemini öffnen → Antwort kopieren → «Einfügen» → Vorschau → **für heute einplanen** (Einkauf zeigt nur, was noch fehlt). Als eigenes Rezept speichern nur auf Wunsch («War gut → behalten»), sonst einmalig. Prompt-Bau in `core.js` (`leftoverPrompt`), getestet.
+  - **Instagram / TikTok** (Joshua 25.11.): **kein Bot-Konto** – Instagram verbietet automatisches Auslesen (Nutzungsbedingungen), sperrt solche Konten schnell, und ohne Anmeldung liefert ein Link kaum Inhalt; die offizielle Schnittstelle (oEmbed) braucht eine Meta-App mit Schlüssel und gibt das Rezept nicht zuverlässig her. Stattdessen derselbe Weg wie «Foto mit KI»: im Beitrag **Link kopieren** + **1–3 Screenshots** (Beschreibung mit Zutaten, ggf. Bild aus dem Video) → «Foto mit KI» (Claude/Gemini liest die Screenshots) → zurück einfügen. Obsonare erkennt den kopierten Instagram-Link und speichert ihn als **«Original ↗»** am Rezept – beim Kochen öffnet er das Video. Android zusätzlich: «Teilen → Obsonare» (`share_target`) legt den Link gleich an.
 - [ ] **6. Kochansicht «Kochen»** (aus Plan-Karte «Heute» oder Rezept-Seite): ganze Seite, Zutaten auf heute umgerechnet, antippen = abgehakt, Bildschirm bleibt an, Zeiten im Text = Timer; Schritte bei eigenen Rezepten, sonst «Rezept öffnen ↗» (Link) – Tablet quer: Zutaten links, Schritte/Webseite-Hinweis rechts. Wahl «Buch» (Obsonare-Seite) oder «Link» (Original) merkt sich pro Handy.
 - [ ] **7. Einstellungen aufräumen**: oben nur **Du** (Name, Vegi/Fleisch, Benachrichtigungen) · **WG** (Mitbewohner, einladen, Znacht-Zeit) · **Bring!** (verbunden ✓ / verbinden); Stil, Farben, Standort, Kalender, Über unter «Mehr».
 
@@ -92,7 +108,7 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
 - Bot: welcher Weg, wenn die Einladung nicht automatisch angenommen werden kann?
 - Senden: Meldung in Obsonare, WhatsApp-Link oder beides (Vorschlag: beides, Meldung zuerst)?
 - ~~Foto mit KI~~ → entschieden 25.11.: ja, über Claude/Gemini mit kopiertem Prompt (Schritt 5)
-- Reihenfolge: 1 + 2 vor dem Praxistest, 3–7 danach (Vorschlag).
+- Reihenfolge: 0 (Einfach & saisonal), dann 1 + 2 vor dem Praxistest, 3–7 danach (Vorschlag).
 
 ## Als Nächstes
 
