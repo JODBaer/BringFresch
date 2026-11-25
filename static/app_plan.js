@@ -140,7 +140,7 @@
     if (day.empty) return "Antippen oder Wochenwahl";
     const kind = day.is_leftovers ? "Reste" : day.quick ? "schnell" : day.diet === "fleisch" ? "Fleisch" : day.diet === "vegan" ? "vegan" : "vegi";
     const g = day.extra_guests || 0; // Gäste zählen in der Zahl rechts mit – hier sieht man warum
-    return `${kind} · ${day.prep_time_min || 30} Min.${g ? ` · +${g} ${g === 1 ? "Gast" : "Gäste"}` : ""}`;
+    return `${kind} · ${app.CORE.timeText(day)}${g ? ` · +${g} ${g === 1 ? "Gast" : "Gäste"}` : ""}`;
   }
 
   // Zutaten für die Portionen dieses Tages (gleiche Rechnung wie die Einkaufsliste)

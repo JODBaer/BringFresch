@@ -50,5 +50,13 @@ imp.refresh_recipe(r2, page_veg)
 check(r2["diet"] == "fleisch", "Ernährung wird nie automatisch lockerer (nur von Hand)")
 check(imp.refresh_recipe(dict(r), "<html>nichts</html>") == [], "Seite ohne Rezeptdaten: nichts ändern")
 
+# Aktive Zeit (Joshua 25.11.: «einfach» zählt nur die aktive Zeit, Ofen daneben nicht)
+r3 = {**r, "prep_time_min": 30}
+imp.refresh_recipe(r3, page.replace('"totalTime": "PT35M"', '"totalTime": "PT55M", "prepTime": "PT15M"'))
+check(r3.get("active_min") == 15 and r3["prep_time_min"] == 55, f"prepTime = aktive Zeit, totalTime bleibt total ({r3.get('active_min')}, {r3['prep_time_min']})")
+r4 = {**r}
+imp.refresh_recipe(r4, page.replace('"totalTime": "PT35M"', '"totalTime": "PT35M", "prepTime": "PT35M"'))
+check("active_min" not in r4, "aktive Zeit gleich total: kein eigenes Feld")
+
 print(f"\n{fails} FEHLER" if fails else "\nALLES OK")
 sys.exit(1 if fails else 0)

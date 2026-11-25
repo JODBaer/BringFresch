@@ -141,6 +141,185 @@ window.OBSONARE_DATA = {
       season_highlight: "Federkohl & Schweizer Lagerkartoffeln"
     }
   },
+  // Grundrezepte × Saisongemüse (Joshua 25.11., plan.md Schritt 0, Entwurf docs/design/einfach-saisonal-entwurf.html):
+  // Joshuas Alltag, von Hand geschrieben, für 4 Personen, ≤ 8 Zutaten, aktiv ≤ 30 Min. CORE.expandBases macht daraus
+  // gewöhnliche Rezepte (Id «b-<grundrezept>-<variante>»). «{v}» in Titel/Anleitung = Name der Variante; "VEG" in den
+  // Zutaten = Zutaten der Variante. Saison: «season» (Ids aus season_items, alle müssen passen) oder «months» (Obst …).
+  // meat_swap/vegi_swap = was die Fleisch-Esser bzw. Vegis statt Speck/Grillkäse dazubekommen (pro Person).
+  bases: [
+    {
+      id: "hoernli", title: "Hörnli & Ghacktes mit {v}", diet: "fleisch", active_min: 25, total_min: 25,
+      ingredients: [
+        { name: "Hörnli", amount: "400", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Rindshackfleisch", amount: "400", unit: "g", bring_cat: "Fleisch & Fisch" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        "VEG",
+        { name: "Gemüsebouillon", amount: "2", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Reibkäse", amount: "80", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Apfelmus", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" }
+      ],
+      vegi_swap: { name: "Rote Linsen", unit: "g", amount: 60, bring_cat: "Vorrat & Konserven" },
+      instructions: "Hörnli kochen. Zwiebel und {v} andünsten, Ghacktes dazu und scharf anbraten, mit Bouillon ablöschen. Für Jo die roten Linsen separat in Bouillon weich kochen. Mit den Hörnli mischen, Reibkäse drüber, Apfelmus dazu.",
+      variants: [
+        { key: "lauch", label: "Lauch", season: ["lauch"], items: [{ name: "Lauch", amount: "1", unit: "Stange", bring_cat: "Obst & Gemüse" }] },
+        { key: "ruebli", label: "Rüebli", season: ["ruebli"], items: [{ name: "Rüebli", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "zucchetti", label: "Zucchetti", season: ["zucchini"], items: [{ name: "Zucchetti", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "spinat", label: "Spinat", season: ["spinat"], items: [{ name: "Blattspinat", amount: "200", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "wirz", label: "Wirz", season: ["wirz"], items: [{ name: "Wirz", amount: "0.5", unit: "Stk", bring_cat: "Obst & Gemüse" }] }
+      ]
+    },
+    {
+      id: "gnocchi", title: "Gnocchi mit {v} aus der Pfanne", diet: "vegi", active_min: 20, total_min: 20,
+      ingredients: [
+        { name: "Gnocchi", amount: "800", unit: "g", bring_cat: "Kühlregal" },
+        "VEG",
+        { name: "Butter", amount: "40", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Salbei", amount: "1", unit: "Bund", bring_cat: "Obst & Gemüse" },
+        { name: "Sbrinz", amount: "60", unit: "g", bring_cat: "Milch & Käse" }
+      ],
+      meat_swap: { name: "Speckwürfeli", unit: "g", amount: 50, bring_cat: "Fleisch & Fisch" },
+      instructions: "{v} rüsten und in Butter anbraten, Gnocchi dazu und goldbraun braten. Salbei kurz mitbraten, Sbrinz drüber. Für die Fleisch-Esser Speckwürfeli separat knusprig braten.",
+      variants: [
+        { key: "rosenkohl", label: "Rosenkohl", months: [10, 11, 12, 1, 2], items: [{ name: "Rosenkohl", amount: "400", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "kuerbis", label: "Kürbis", season: ["kuerbis"], items: [{ name: "Kürbis", amount: "500", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "spargel", label: "grünen Spargeln", season: ["spargeln_gruen"], items: [{ name: "Grüne Spargeln", amount: "500", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "tomaten", label: "Tomaten", season: ["tomaten"], items: [{ name: "Cherrytomaten", amount: "400", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "spinat", label: "Spinat", season: ["spinat"], items: [{ name: "Blattspinat", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" }] }
+      ]
+    },
+    {
+      id: "ofen", title: "Ofengemüse mit {v}", diet: "vegi", active_min: 15, total_min: 55,
+      ingredients: [
+        { name: "Kartoffeln", amount: "800", unit: "g", bring_cat: "Obst & Gemüse" },
+        "VEG",
+        { name: "Rote Zwiebeln", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Kräuterquark", amount: "250", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Rosmarin", amount: "2", unit: "Zweige", bring_cat: "Obst & Gemüse" }
+      ],
+      meat_swap: { name: "Pouletschenkel", unit: "Stk", amount: 1, bring_cat: "Fleisch & Fisch" },
+      instructions: "Ofen auf 200 °C. Kartoffeln und {v} in Stücke schneiden, mit Zwiebeln, Öl, Rosmarin und Salz aufs Blech. Pouletschenkel für die Fleisch-Esser mit aufs Blech, Halloumi für Jo die letzten 10 Min. Insgesamt 40 Min. backen, mit Kräuterquark servieren.",
+      variants: [
+        { key: "kuerbis-randen", label: "Kürbis & Randen", season: ["kuerbis", "randen"], items: [{ name: "Kürbis", amount: "400", unit: "g", bring_cat: "Obst & Gemüse" }, { name: "Randen", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "pastinaken-sellerie", label: "Pastinaken & Sellerie", season: ["pastinaken", "sellerie"], items: [{ name: "Pastinaken", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" }, { name: "Knollensellerie", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "ruebli-randen", label: "Rüebli & Randen", season: ["ruebli", "randen"], items: [{ name: "Rüebli", amount: "400", unit: "g", bring_cat: "Obst & Gemüse" }, { name: "Randen", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "zucchetti-peperoni", label: "Zucchetti & Peperoni", season: ["zucchini", "peperoni"], items: [{ name: "Zucchetti", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }, { name: "Peperoni", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "blumenkohl-broccoli", label: "Blumenkohl & Broccoli", season: ["blumenkohl", "brokkoli"], items: [{ name: "Blumenkohl", amount: "0.5", unit: "Stk", bring_cat: "Obst & Gemüse" }, { name: "Broccoli", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }] }
+      ]
+    },
+    {
+      id: "curry", title: "Poulet-Curry mit {v} und Reis", diet: "fleisch", active_min: 25, total_min: 30,
+      ingredients: [
+        { name: "Reis", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Pouletbrust", amount: "400", unit: "g", bring_cat: "Fleisch & Fisch" },
+        "VEG",
+        { name: "Kokosmilch", amount: "2.5", unit: "dl", bring_cat: "Vorrat & Konserven" },
+        { name: "Rote Currypaste", amount: "2", unit: "EL", bring_cat: "Gewürze & Saucen" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }
+      ],
+      vegi_swap: { name: "Kichererbsen", unit: "g", amount: 120, bring_cat: "Vorrat & Konserven" },
+      instructions: "Reis kochen. Zwiebel und Currypaste anbraten, {v} dazu, mit Kokosmilch ablöschen und 10 Min. köcheln. Poulet separat anbraten und für die Fleisch-Esser dazugeben, für Jo Kichererbsen.",
+      variants: [
+        { key: "kuerbis", label: "Kürbis", season: ["kuerbis"], items: [{ name: "Kürbis", amount: "500", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "lauch-ruebli", label: "Lauch & Rüebli", season: ["lauch", "ruebli"], items: [{ name: "Lauch", amount: "1", unit: "Stange", bring_cat: "Obst & Gemüse" }, { name: "Rüebli", amount: "3", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "blumenkohl", label: "Blumenkohl", season: ["blumenkohl"], items: [{ name: "Blumenkohl", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "zucchetti-peperoni", label: "Zucchetti & Peperoni", season: ["zucchini", "peperoni"], items: [{ name: "Zucchetti", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }, { name: "Peperoni", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "spinat", label: "Spinat", season: ["spinat"], items: [{ name: "Blattspinat", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" }] }
+      ]
+    },
+    {
+      id: "rahm", title: "Poulet-Rahmsauce mit {v} und Reis", diet: "fleisch", active_min: 25, total_min: 25,
+      ingredients: [
+        { name: "Reis", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
+        { name: "Pouletgeschnetzeltes", amount: "400", unit: "g", bring_cat: "Fleisch & Fisch" },
+        "VEG",
+        { name: "Halbrahm", amount: "2", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Zwiebeln", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" },
+        { name: "Gemüsebouillon", amount: "1", unit: "dl", bring_cat: "Vorrat & Konserven" }
+      ],
+      vegi_swap: { name: "Quorn-Geschnetzeltes", unit: "g", amount: 100, bring_cat: "Kühlregal" },
+      instructions: "Reis kochen. Poulet portionenweise anbraten, herausnehmen. Zwiebel und {v} andünsten, mit Bouillon und Rahm aufkochen, Poulet zurück in die Sauce. Für Jo Quorn in einer zweiten Pfanne mit einem Teil der Sauce.",
+      variants: [
+        { key: "champignons", label: "Champignons", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], items: [{ name: "Champignons", amount: "250", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "lauch", label: "Lauch", season: ["lauch"], items: [{ name: "Lauch", amount: "1", unit: "Stange", bring_cat: "Obst & Gemüse" }] },
+        { key: "ruebli", label: "Rüebli", season: ["ruebli"], items: [{ name: "Rüebli", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "spargel", label: "Spargeln", season: ["spargeln_weiss"], items: [{ name: "Weisse Spargeln", amount: "500", unit: "g", bring_cat: "Obst & Gemüse" }] }
+      ]
+    },
+    {
+      id: "pfanne", title: "Gemüsepfanne mit {v} und Reis", diet: "vegi", active_min: 20, total_min: 25,
+      ingredients: [
+        { name: "Reis", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
+        "VEG",
+        { name: "Eier", amount: "4", unit: "Stk", bring_cat: "Kühlregal" },
+        { name: "Sojasauce", amount: "3", unit: "EL", bring_cat: "Gewürze & Saucen" },
+        { name: "Ingwer", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }
+      ],
+      meat_swap: { name: "Rindsstreifen", unit: "g", amount: 120, bring_cat: "Fleisch & Fisch" },
+      instructions: "Reis kochen. {v} in Streifen schneiden und im Wok scharf anbraten, Ingwer dazu. Eier verquirlen und mitbraten, mit Sojasauce abschmecken. Rindsstreifen für die Fleisch-Esser separat kurz anbraten.",
+      variants: [
+        { key: "ruebli-lauch", label: "Rüebli & Lauch", season: ["ruebli", "lauch"], items: [{ name: "Rüebli", amount: "3", unit: "Stk", bring_cat: "Obst & Gemüse" }, { name: "Lauch", amount: "1", unit: "Stange", bring_cat: "Obst & Gemüse" }] },
+        { key: "federkohl-rosenkohl", label: "Federkohl & Rosenkohl", season: ["federkohl"], items: [{ name: "Federkohl", amount: "200", unit: "g", bring_cat: "Obst & Gemüse" }, { name: "Rosenkohl", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "weisskabis-ruebli", label: "Weisskabis & Rüebli", season: ["weisskabis", "ruebli"], items: [{ name: "Weisskabis", amount: "0.5", unit: "Stk", bring_cat: "Obst & Gemüse" }, { name: "Rüebli", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "zucchetti-peperoni", label: "Zucchetti & Peperoni", season: ["zucchini", "peperoni"], items: [{ name: "Zucchetti", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }, { name: "Peperoni", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "broccoli-kohlrabi", label: "Broccoli & Kohlrabi", season: ["brokkoli", "kohlrabi"], items: [{ name: "Broccoli", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }, { name: "Kohlrabi", amount: "1", unit: "Stk", bring_cat: "Obst & Gemüse" }] }
+      ]
+    },
+    {
+      id: "cafe", title: "Café complet mit {v}", diet: "vegi", active_min: 10, total_min: 10, no_addons: true, no_salad: true,
+      ingredients: [
+        { name: "Bauernbrot", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" },
+        { name: "Butter", amount: "100", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Greyerzer", amount: "300", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Konfitüre", amount: "1", unit: "Glas", bring_cat: "Vorrat & Konserven" },
+        { name: "Milch", amount: "1", unit: "l", bring_cat: "Milch & Käse" },
+        "VEG",
+        { name: "Trockenfleisch (für die Fleisch-Esser)", amount: "100", unit: "g", bring_cat: "Fleisch & Fisch" }
+      ],
+      instructions: "Brot aufschneiden, Käse, Butter, Konfi und Früchte auf den Tisch, Milchkaffee dazu. Trockenfleisch für die Fleisch-Esser.",
+      variants: [
+        { key: "aepfel-birnen", label: "Äpfeln & Birnen", months: [8, 9, 10, 11, 12, 1, 2, 3], items: [{ name: "Äpfel", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }, { name: "Birnen", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "aepfel", label: "Äpfeln", months: [4, 5], items: [{ name: "Äpfel", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "beeren", label: "Beeren", months: [6, 7, 8], items: [{ name: "Beeren", amount: "300", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "aprikosen", label: "Aprikosen", months: [7, 8], items: [{ name: "Aprikosen", amount: "500", unit: "g", bring_cat: "Obst & Gemüse" }] }
+      ]
+    },
+    {
+      id: "ritter", title: "Arme Ritter mit {v}", diet: "vegi", active_min: 20, total_min: 25, no_addons: true, no_salad: true,
+      ingredients: [
+        { name: "Zopf", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" },
+        { name: "Eier", amount: "4", unit: "Stk", bring_cat: "Kühlregal" },
+        { name: "Milch", amount: "3", unit: "dl", bring_cat: "Milch & Käse" },
+        { name: "Zimtzucker", amount: "4", unit: "EL", bring_cat: "Vorrat & Konserven" },
+        { name: "Butter", amount: "40", unit: "g", bring_cat: "Milch & Käse" },
+        "VEG"
+      ],
+      instructions: "Früchte klein schneiden und mit wenig Wasser und Zucker 10 Min. zu Kompott köcheln. Zopf in Scheiben schneiden, durch Eier-Milch ziehen, in Butter goldbraun braten, im Zimtzucker wenden. Mit {v} servieren.",
+      variants: [
+        { key: "apfel", label: "Apfelkompott", months: [8, 9, 10, 11, 12, 1, 2, 3, 4, 5], items: [{ name: "Äpfel", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "birne", label: "Birnenkompott", months: [8, 9, 10, 11, 12, 1, 2, 3], items: [{ name: "Birnen", amount: "4", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "rhabarber", label: "Rhabarberkompott", season: ["rhabarber"], items: [{ name: "Rhabarber", amount: "500", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "beeren", label: "Beeren", months: [6, 7, 8], items: [{ name: "Beeren", amount: "400", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "zwetschgen", label: "Zwetschgenkompott", months: [8, 9], items: [{ name: "Zwetschgen", amount: "500", unit: "g", bring_cat: "Obst & Gemüse" }] }
+      ]
+    },
+    {
+      id: "kaese", title: "Käseschnitte mit {v}", diet: "vegi", active_min: 15, total_min: 30, no_addons: true,
+      ingredients: [
+        { name: "Brot", amount: "8", unit: "Scheiben", bring_cat: "Brot & Gebäck" },
+        { name: "Raclettekäse", amount: "300", unit: "g", bring_cat: "Milch & Käse" },
+        { name: "Milch", amount: "1", unit: "dl", bring_cat: "Milch & Käse" },
+        "VEG"
+      ],
+      instructions: "Ofen auf 220 °C. Brotscheiben mit wenig Milch beträufeln, {v} darauf, mit Raclettekäse belegen und 15 Min. überbacken.",
+      variants: [
+        { key: "lauch", label: "Lauch", season: ["lauch"], items: [{ name: "Lauch", amount: "1", unit: "Stange", bring_cat: "Obst & Gemüse" }] },
+        { key: "pilze", label: "Pilzen", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], items: [{ name: "Champignons", amount: "250", unit: "g", bring_cat: "Obst & Gemüse" }] },
+        { key: "tomaten", label: "Tomaten", season: ["tomaten"], items: [{ name: "Tomaten", amount: "3", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "birne", label: "Birne", months: [8, 9, 10, 11, 12, 1, 2, 3], items: [{ name: "Birnen", amount: "2", unit: "Stk", bring_cat: "Obst & Gemüse" }] },
+        { key: "hawaii", label: "Schinken & Ananas", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], diet: "fleisch", items: [{ name: "Ananas", amount: "1", unit: "Dose", bring_cat: "Vorrat & Konserven" }, { name: "Schinken", amount: "4", unit: "Scheiben", bring_cat: "Fleisch & Fisch" }] }
+      ]
+    }
+  ],
   recipes: [
     {
       id: "aelplermagronen",

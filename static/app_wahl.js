@@ -21,9 +21,10 @@
 
   // 14 Kandidaten: halb vegi (inkl. vegan), halb Fleisch, saisonal zuerst
   const QUICK_SLOTS = 2; // pro Woche 2 schnelle Sachen / Resteessen im Memory
-  const pickCandidates = () => CORE.pickCandidates(allRecipes(), currentMonth(), GRID_SIZE, QUICK_SLOTS);
+  const MIN_SIMPLE = 5; // mindestens 5 von 14 einfach (Joshua 25.11.)
+  const pickCandidates = () => CORE.pickCandidates(allRecipes(), currentMonth(), GRID_SIZE, QUICK_SLOTS, MIN_SIMPLE);
   // ohne Unbekanntes und ohne doppelte Gerichte, wieder auf 14 aufgefüllt
-  const cleanCandidates = ids => CORE.cleanCandidates(allRecipes(), ids, currentMonth(), GRID_SIZE, QUICK_SLOTS);
+  const cleanCandidates = ids => CORE.cleanCandidates(allRecipes(), ids, currentMonth(), GRID_SIZE, QUICK_SLOTS, MIN_SIMPLE);
   // Liste vom WG-Server mit demselben Gericht zweimal (alte Version hat beim Mischen doppelt gezogen)?
   function hasDuplicateDish(ids) {
     const known = ids.map(recipeById).filter(Boolean);
@@ -232,7 +233,7 @@
       // hinten oben Wunschtag (oder «egal») und «Doch nicht». Antippen irgendwo dreht zurück (bleibt gewählt).
       const href = recipeHref(r);
       const nt = app.nutritionOf(r); // achte ich auf Kalorien/Protein? Dann steht es auf der Karte («proteinreich», «leicht» …)
-      const meta = `${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${r.prep_time_min || 30} Min.${nt && nt.tag ? ` · <span class="ntag${/wenig|reichhaltig/.test(nt.tag) ? " warn" : ""}">${nt.tag}</span>` : ""}`;
+      const meta = `${r.is_leftovers ? "♻️ Reste" : r.quick ? "⚡ schnell" : DIET_LABEL[r.diet] || "Vegi"} · ${CORE.timeText(r)}${nt && nt.tag ? ` · <span class="ntag${/wenig|reichhaltig/.test(nt.tag) ? " warn" : ""}">${nt.tag}</span>` : ""}`;
       const band = `<span class="vband"><span class="vbt">${esc(r.title)}</span><span class="vbm">${meta}</span></span>${href
         ? `<a class="vgo" href="${esc(href)}" target="_blank" rel="noopener" aria-label="${esc(recipeLinkLabel(r))}" title="${esc(recipeLinkLabel(r))}">🌐</a>` : ""}`;
       return `
@@ -245,6 +246,7 @@
               <span class="vshade" aria-hidden="true"></span>
               ${band}
               ${on && wish != null ? `<span class="vwish">${DAYS[wish].slice(0, 2)}</span>` : ""}
+              ${CORE.isSimple(r) ? `<span class="vtag easy${on && wish != null ? " low" : ""}">einfach</span>` : CORE.timeBadge(r) ? `<span class="vtag${on && wish != null ? " low" : ""}">${CORE.timeBadge(r)}</span>` : ""}
               <span class="vv">${votersOf(id).map(m => `<span class="mini" title="${esc(m.name)}">${esc(short[m.id])}</span>`).join("")}</span>
             </div>
             <div class="vback" role="group" aria-label="${esc(r.title)}">
