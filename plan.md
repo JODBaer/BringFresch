@@ -76,7 +76,10 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
   - **Buchansicht**: eine Doppelseite pro Rezept (Handy: eine Seite), Wischen = blättern, grosses Bild, Titel, Zeit, Vegi/Fleisch, Saison. Tablet quer = links Bild, rechts Zutaten.
   - **Rezept-Seite** (aus Buch, Wochenwahl, Plan, Katalog – überall dieselbe): Zutaten schon für eure Portionen, darunter drei Knöpfe: **Einplanen** (Tag Mo–So, angezeigte Woche) · **Senden** · **Kochen**; klein «Rezept auf fooby.ch ↗».
 - [ ] **4. Senden an Mitbewohner**: auf der Rezept-Seite «Senden» → Blatt mit den Mitbewohnern (Kacheln) + «Als Link teilen (WhatsApp …)». An Mitbewohner = Meldung in Obsonare («Joshua schlägt vor: Kürbis-Risotto»), antippen öffnet die Rezept-Seite; im Hintergrund kommt es in die Wochenwahl der Woche (als Vorschlag mit Name). Link = Web-Share mit Titel, Bild, Obsonare-Link (öffnet die Rezept-Seite, ohne WG nur lesen).
-- [ ] **5. Rezepte einlesen – ein Knopf «+»** (in Rezepte, im Menü-Blatt, in der Wochenwahl): Blatt mit **Link einfügen** (erkennt einen kopierten Link selbst) · **Text einfügen** (Instagram, WhatsApp, Notiz; ohne KI) · **Foto** (Kochbuchseite; erst nach Entscheid KI/Kosten) · **Von Hand**. Danach immer dieselbe Vorschau zum Korrigieren → «Speichern & einplanen».
+- [ ] **5. Rezepte einlesen – ein Knopf «+»** (in Rezepte, im Menü-Blatt, in der Wochenwahl): Blatt mit **Link einfügen** (erkennt einen kopierten Link selbst) · **Text einfügen** (Instagram, WhatsApp, Notiz; ohne KI) · **Foto mit KI** · **Von Hand**. Danach immer dieselbe Vorschau zum Korrigieren → «Speichern & einplanen».
+  - **Foto mit KI über eine fremde App** (Entscheid Joshua 25.11.: ja, so einfach wie möglich – kein API-Schlüssel, keine Kosten, kein Bild über unseren Server): Knopf «Foto mit KI» → Obsonare **kopiert einen fertigen Prompt** und öffnet **Claude oder Gemini** (Wahl pro Handy, mit Vorbefüllung, wo die App das kann, z.B. `claude.ai/new?q=…`; sonst nur öffnen + «Prompt ist kopiert, einfügen»). Dort Foto machen (Kochbuch, Zettel, Screenshot) → die KI antwortet im festen Format → Antwort **kopieren** → zurück in Obsonare: Knopf «Einfügen» (bzw. Hinweis «Rezept in der Zwischenablage gefunden» beim Zurückkehren, ohne ungefragt zu lesen) → Vorschau → Speichern.
+  - **Festes Format** (lesbar, robuster als JSON): Kopfzeile `OBSONARE-REZEPT`, dann `Titel:`, `Portionen:`, `Zeit:`, `Vegi: ja/nein`, `Zutaten:` (eine Zeile pro Zutat «200 g Lauch»), `Schritte:` (nummeriert). Der Prompt verlangt nur das, ohne Einleitung; Mengen so wie im Original, Portionen angeben. Parser in `core.js` (`parseRecipeText`), nimmt auch freien Text (dann wie «Text einfügen»). Tests mit Beispiel-Antworten von Claude und Gemini.
+  - Dieselbe Vorschau dient für «Text einfügen» – ein Weg, zwei Quellen.
 - [ ] **6. Kochansicht «Kochen»** (aus Plan-Karte «Heute» oder Rezept-Seite): ganze Seite, Zutaten auf heute umgerechnet, antippen = abgehakt, Bildschirm bleibt an, Zeiten im Text = Timer; Schritte bei eigenen Rezepten, sonst «Rezept öffnen ↗» (Link) – Tablet quer: Zutaten links, Schritte/Webseite-Hinweis rechts. Wahl «Buch» (Obsonare-Seite) oder «Link» (Original) merkt sich pro Handy.
 - [ ] **7. Einstellungen aufräumen**: oben nur **Du** (Name, Vegi/Fleisch, Benachrichtigungen) · **WG** (Mitbewohner, einladen, Znacht-Zeit) · **Bring!** (verbunden ✓ / verbinden); Stil, Farben, Standort, Kalender, Über unter «Mehr».
 
@@ -88,7 +91,7 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
 ### Offene Entscheide (Joshua)
 - Bot: welcher Weg, wenn die Einladung nicht automatisch angenommen werden kann?
 - Senden: Meldung in Obsonare, WhatsApp-Link oder beides (Vorschlag: beides, Meldung zuerst)?
-- Foto mit KI (wenige Rappen pro Bild, Monatsgrenze) oder vorerst nur «Text einfügen»?
+- ~~Foto mit KI~~ → entschieden 25.11.: ja, über Claude/Gemini mit kopiertem Prompt (Schritt 5)
 - Reihenfolge: 1 + 2 vor dem Praxistest, 3–7 danach (Vorschlag).
 
 ## Als Nächstes
