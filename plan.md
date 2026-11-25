@@ -65,6 +65,19 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
 
 ### Schritte (je zuerst HTML-Entwurf → Joshua entscheidet → bauen → eine Person testet ohne Hilfe)
 
+- [ ] **0. Einfach & saisonal – Grundrezepte × Saisongemüse** (zuerst, Joshua 25.11.: «es hat mir keine simplen Rezepte, es ist halt schon sehr saisonal – was auch das Ziel sein soll»)
+  - Befund (Katalog 25.11.): 225 Rezepte, im November 159 in Saison, davon nur 48 «einfach» (≤ 8 Zutaten ohne Salz/Pfeffer/Öl/Wasser, ≤ 30 Min.), und die 13 Schnellen darunter sind kaum saisonal. Die importierten Rezepte haben meist 9–15 Zutaten und klingen nach Kochbuch. Joshuas Alltagsgerichte gibt es nur einzeln (Ghackets mit Hörnli) oder gar nicht (Poulet-Rahmsauce mit Reis, Gemüsepfanne mit Reis, schlichtes Ofengemüse).
+  - **Joshuas Alltag** (seine Liste 25.11.) = die ersten 5 **Grundrezepte**, je von Hand geschrieben (kein Scraping), für 4 Personen, ≤ 8 Zutaten, ≤ 30 Min. Arbeit; das **Saisongemüse setzt die App ein** (Gemüse des Monats aus `season_items`, pro Grundrezept nur passende Sorten):
+    1. **Hörnli & Ghacktes** mit Saisongemüse (Nov: Lauch · Sommer: Zucchetti · Frühling: Erbsen/Spinat), Apfelmus; vegi: Linsen oder Planted-Hack
+    2. **Maultaschen oder Gnocchi aus der Pfanne** mit Saisongemüse (Nov: Rosenkohl/Kürbis · Frühling: Spargel · Sommer: Tomaten/Zucchetti), Butter-Salbei oder Tomatensauce; vegi = Gemüse-Maultaschen/Gnocchi
+    3. **Ofengemüse vom Blech** mit 2–3 Saisongemüsen + Kartoffeln, Kräuterquark; Fleisch: Pouletschenkel oder Würste mit aufs Blech; vegi: Halloumi/Feta
+    4. **Reis mit Curry oder Rahmsauce** – eine Pfanne, zwei Saucen (Kokos-Curry / Champignon-Rahm), Saisongemüse hinein; Poulet, vegi: Kichererbsen/Tofu
+    5. **Gemüsepfanne mit Reis** (Wok): 2 Saisongemüse, Sojasauce, Ei; Fleisch: Poulet- oder Rindsstreifen, vegi: Tofu/Ei
+  - **Mix in der WG läuft schon**: Grundrezepte sind vegi, «Alles für alle» legt pro Fleisch-Esser 150 g Fleisch dazu (bei Hörnli/Curry/Pfanne als eigenes Fleisch statt Grillkäse: Feld `meat_addon` pro Grundrezept, z.B. Ghacktes, Poulet).
+  - **Technik**: Grundrezepte in `standalone_data.js` (`bases`: Titel-Vorlage «Hörnli & Ghacktes mit {Gemüse}», Grundzutaten, Platz für 1–3 Gemüse mit Menge, passende Sorten, `meat_addon`). `CORE.expandBases(bases, month)` macht daraus gewöhnliche Rezepte (Ids `b-<grundrezept>-<gemüse>`, `simple: true`, `season_months`) – Wochenwahl, Plan, Einkauf und Bring! arbeiten unverändert. Tests: jedes Monat ergibt pro Grundrezept ≥ 1 Variante, keine Zutat doppelt, Mengen für 4.
+  - **Wochenwahl**: mindestens **7 der 14** Karten «einfach» (`simple` oder ≤ 8 Zutaten und ≤ 30 Min.), die Aufwändigen als «fürs Wochenende» markiert. **Rezepte**: Filter «Einfach» ganz vorne, Karten zeigen «6 Zutaten · 25 Min.».
+  - Danach: weitere Grundrezepte aus der Praxis (Suppe, Wähe, Risotto, Frittata, Gratin, Rösti), je nur wenn die WG sie wirklich kocht.
+  - Zuerst HTML-Entwurf: eine Grundrezept-Karte mit den Varianten des Monats (November) und die Wochenwahl mit «einfach»-Markierung.
 - [ ] **1. Erster Start in 3 Schritten** (vor dem Praxistest)
   - **Einladungslink** statt WG-Name + PIN abtippen: in den Einstellungen «Mitbewohner einladen» → Link/QR (`…/#join=<wg>.<code>`, Code = PIN-Hash-Ticket, läuft nach 7 Tagen ab) → per WhatsApp senden. Wer ihn öffnet, landet direkt bei «Wer bist du?». Abtippen bleibt als Weg «Ich habe WG-Name und PIN».
   - **Wer bist du?** = Kacheln mit den Namen der WG (ein Tipp), «Ich bin neu» = Name + Vegi/Fleisch.
@@ -93,7 +106,7 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
 - Bot: welcher Weg, wenn die Einladung nicht automatisch angenommen werden kann?
 - Senden: Meldung in Obsonare, WhatsApp-Link oder beides (Vorschlag: beides, Meldung zuerst)?
 - ~~Foto mit KI~~ → entschieden 25.11.: ja, über Claude/Gemini mit kopiertem Prompt (Schritt 5)
-- Reihenfolge: 1 + 2 vor dem Praxistest, 3–7 danach (Vorschlag).
+- Reihenfolge: 0 (Einfach & saisonal), dann 1 + 2 vor dem Praxistest, 3–7 danach (Vorschlag).
 
 ## Als Nächstes
 
