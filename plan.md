@@ -46,6 +46,21 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – Obsonare baut 
 
 ## UX: einfach von Anfang an (Plan 25.11.2026, Joshua)
 
+**Auf einen Blick** (kurz, Bild: `docs/design/obsonare-einfach-ueberblick.html`) – 8 Änderungen, eine nach der anderen:
+
+| # | Was | Heute | Neu | Wann |
+|---|---|---|---|---|
+| 0 | Einfache Rezepte | Kochbuch-Rezepte, 9–15 Zutaten | 6 Alltags-Gerichte, Gemüse vom Monat kommt von selbst | **jetzt** |
+| 1 | Erster Start | WG-Name + PIN abtippen, Bring! versteckt | Link aus WhatsApp → Namen antippen → fertig | vor WG-Test |
+| 2 | Was jetzt? | Pop-up, Punkte, Hinweise überall | eine Karte oben im Plan | vor WG-Test |
+| 3 | Rezepte wie ein Buch | Liste | blättern, je Rezept: Einplanen · Senden · Kochen | nach WG-Test |
+| 4 | Rezept senden | geht nicht | an Mitbewohner: Meldung oder WhatsApp | nach WG-Test |
+| 5 | Einlesen | nur Link, versteckt | ein «+»: Link, Text, Foto, Reste – mit Lieblings-KI | nach WG-Test |
+| 6 | Kochen | Link öffnen, selber rechnen | Zutaten für heute, abhaken, Timer, Tablet | nach WG-Test |
+| 7 | Einstellungen | eine lange Seite | oben Du · WG · Bring!, Rest unter «Mehr» | nach WG-Test |
+
+Jeder Schritt: Entwurf → Joshua sagt ja → bauen → jemand testet.
+
 Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erklären lassen**. Der Weg der WG ist immer derselbe – **stöbern → wählen → planen → einkaufen → kochen** – und die App zeigt jederzeit genau den nächsten Schritt. Vorbild: ein schönes Kochbuch, aus dem die Einkaufsliste von selbst fällt (siehe «Von Paprika lernen»).
 
 ### Leitsätze (gelten für jeden neuen Bildschirm)
