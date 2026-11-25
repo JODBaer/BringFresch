@@ -72,6 +72,10 @@ h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
 .sheet .how { font-size: 12.5px; color: var(--muted); margin: 0; }
 .sites { display: flex; flex-wrap: wrap; gap: 6px; }
 .sites a { font-size: 13px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 5px 10px; text-decoration: none; }
+.sorts { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.sorts button { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 6px 11px; font-size: 13px; font-weight: 700; }
+.sorts button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.card .tag.p { top: auto; bottom: 30px; right: 5px; background: var(--card); color: var(--fg); }
 .more { grid-column: 1 / -1; border: 1px dashed var(--line); background: none; border-radius: 12px; padding: 8px; font-weight: 700; color: var(--accent); }
 
 /* Plan */
@@ -142,6 +146,23 @@ const SECS = [
   { k: "schnell", t: "Schnelles & Reste", n: 13, items: [] },
 ];
 // Add-on «Saison»: dasselbe Rezept, das Gemüse/Obst vom Monat kommt dazu (im Plan änderbar). Keine eigenen Karten pro Gemüse.
+// Für die Sortierung: Hauptgemüse, Protein (g), aktive Min., Saison jetzt (1/0)
+const META = { "Hörnli & Ghacktes": ["Lauch", 34, 20, 1], "Gnocchi aus der Pfanne": ["Rosenkohl", 14, 15, 1], "Ofengemüse": ["Kürbis", 12, 15, 1], "Poulet-Curry": ["Kürbis", 38, 25, 1], "Poulet-Rahmsauce": ["Champignons", 36, 20, 1], "Gemüsepfanne": ["Rüebli", 11, 20, 1], "Café complet": ["Äpfel", 18, 10, 1], "Arme Ritter": ["Äpfel", 15, 15, 1], "Käseschnitte": ["Lauch", 24, 10, 1],
+  "Omas Älplermagronen": ["Kartoffeln", 22, 35, 1], "Linsen-Dal": ["Rüebli", 19, 20, 1], "Pizza vom Blech": ["Peperoni", 20, 30, 0], "Kürbisrisotto": ["Kürbis", 13, 40, 1], "Kartoffelgratin": ["Kartoffeln", 15, 75, 1], "Lauchwähe": ["Lauch", 17, 35, 1], "Randen-Salat": ["Randen", 9, 15, 1], "Rösti mit Spiegelei": ["Kartoffeln", 21, 25, 1], "Käsesuppe": ["Zwiebeln", 23, 30, 0] };
+const SORTS = [["herkunft", "Herkunft"], ["az", "A–Z"], ["saison", "Saison"], ["schnell", "Schnell"], ["protein", "💪 Protein"], ["gemuese", "🥬 Hauptgemüse"]];
+let sort = "herkunft";
+try { sort = localStorage.getItem("rv_sort") || sort; } catch (e) {}
+function sections() {
+  if (sort === "herkunft") return SECS;
+  const all = SECS.flatMap(x => x.items).filter(([t]) => META[t]);
+  const by = (k, f) => { const m = new Map(); all.forEach(it => { const g = f(it); m.has(g) || m.set(g, []); m.get(g).push(it); }); return [...m].map(([t, items]) => ({ k: k + t, t, n: items.length, items })); };
+  const M = t => META[t[0]];
+  if (sort === "az") return [{ k: "az", t: "Alle A–Z", n: all.length, items: [...all].sort((a, b) => a[0].localeCompare(b[0], "de")) }];
+  if (sort === "protein") return [{ k: "pr", t: "Proteinreichste zuerst", n: all.length, items: [...all].sort((a, b) => M(b)[1] - M(a)[1]) }];
+  if (sort === "saison") return by("sa", it => M(it)[3] ? "Jetzt Saison" : "Gerade nicht Saison").sort((a, b) => a.t < b.t ? -1 : 1);
+  if (sort === "schnell") { const order = ["≤ 15 Min. aktiv", "≤ 30 Min. aktiv", "länger"]; return by("sc", it => M(it)[2] <= 15 ? order[0] : M(it)[2] <= 30 ? order[1] : order[2]).sort((a, b) => order.indexOf(a.t) - order.indexOf(b.t)); }
+  return by("ge", it => M(it)[0]).sort((a, b) => b.n - a.n || a.t.localeCompare(b.t, "de"));
+}
 const ADDON = { "Hörnli & Ghacktes": "+ Lauch", "Gnocchi aus der Pfanne": "+ Rosenkohl", "Ofengemüse": "+ Kürbis & Randen", "Poulet-Curry": "+ Kürbis", "Poulet-Rahmsauce": "+ Champignons", "Gemüsepfanne": "+ Rüebli & Lauch", "Café complet": "+ Äpfel & Birnen", "Arme Ritter": "+ Apfelkompott", "Käseschnitte": "+ Lauch", "Lauchwähe": "+ Speck (Fleisch)", "Kürbisrisotto": "+ Salbei-Butter" };
 let tab = "rez", open = { einfach: 1, eigene: 0, swissmilk: 1 }, flipped = null, addOpen = false, more = {};
 let plan = [["Hörnli & Ghacktes mit Lauch", "Joshua, Lukas, Leonie, Jo"], ["Kürbis-Curry mit Reis", "alle"], ["Gnocchi mit Rosenkohl", "alle ausser Jo"], ["Käseschnitte mit Pilzen", "alle"], ["Ofengemüse Kürbis & Randen", "alle"], ["Lauchwähe", "Lukas, Leonie"], ["Café complet mit Äpfeln", "alle"]];
@@ -156,6 +177,7 @@ const SIDE = {
       <li>Karte antippen = umdrehen, Tag antippen = einplanen (wie heute).</li>
       <li><b>Rezepte bleiben Rezepte</b>: «Hörnli &amp; Ghacktes» ist eine Karte, nicht fünf. Saisonal wird es durch ein <b>Add-on</b> (🥬 + Lauch im November), das sich jeden Monat selbst wählt und im Plan änderbar ist. Alle Rezepte haben denselben Aufbau.</li>
       <li>Oben immer sichtbar: Suche und <b>«+ Einfügen»</b>.</li>
+      <li><b>Ordnen</b> unter der Suche: Herkunft · A–Z · Saison · Schnell · 💪 Protein · 🥬 Hauptgemüse. Die Abschnitte richten sich danach (z.B. «Kürbis», «Lauch» …). Die Wahl bleibt gemerkt (pro Handy).</li>
       <li>Pro Abschnitt <b>6 Karten</b>, darunter «Alle 41 zeigen».</li>
       <li>«+ Einfügen»: oben direkt das <b>Link-Feld</b> (einfügen, «Holen»), mit kurzer Anleitung. Darunter <b>Rezept suchen bei</b> Fooby · Swissmilk · Betty Bossi · Migusto (öffnet die Seite, Link teilen, zurück). Dann Text · <b>Foto mit KI</b> · Von Hand, je mit einem Satz, wie es geht. Foto mit KI kommt mit Schritt 5.</li>
       <li>«Rezept suchen», «Rezepte holen» und die Saison-Liste wandern nach unten bzw. ins «+».</li></ul></div>`,
@@ -185,12 +207,13 @@ function render() {
         <div class="full"><p class="how" style="margin-bottom:5px">Rezept suchen bei:</p><div class="sites"><a href="https://fooby.ch/de/rezepte.html" target="_blank" rel="noopener">Fooby ↗</a><a href="https://www.swissmilk.ch/de/rezepte-kochideen/" target="_blank" rel="noopener">Swissmilk ↗</a><a href="https://www.bettybossi.ch/de/rezepte/" target="_blank" rel="noopener">Betty Bossi ↗</a><a href="https://migusto.migros.ch/de/rezepte" target="_blank" rel="noopener">Migusto ↗</a></div></div>
         <button type="button"><span aria-hidden="true">📋</span>Text<small>aus WhatsApp oder Notiz kopieren und einfügen</small></button><button type="button"><span aria-hidden="true">📷</span>Foto mit KI<small>Prompt wird kopiert, ${ki} öffnet sich, Antwort zurück einfügen</small></button><button type="button" class="full"><span aria-hidden="true">✍️</span>Von Hand<small>Titel, Zutaten, Zeit selbst eintragen</small></button></div>` : ""}
       <input class="search" type="search" id="q" placeholder="Suchen: Titel oder Zutat" aria-label="Rezepte durchsuchen">
-      ${SECS.map(s => `<div class="sec" data-open="${open[s.k] ? 1 : 0}"><button type="button" data-sec="${s.k}">${s.t} <small>${s.n}</small><i aria-hidden="true">›</i></button>
-        ${open[s.k] ? `<div class="grid3">${(s.items.length ? s.items : [["Beispiel", "🍽️", 0], ["Beispiel", "🍽️", 0], ["Beispiel", "🍽️", 0]]).slice(0, more[s.k] ? 99 : 6).map(([t, e, k], i) => {
+      <div class="sorts" role="group" aria-label="Ordnen nach">${SORTS.map(([k, l]) => `<button type="button" data-sort="${k}" aria-pressed="${sort === k}">${l}</button>`).join("")}</div>
+      ${sections().map(s => `<div class="sec" data-open="${(open[s.k] ?? sort !== "herkunft") ? 1 : 0}"><button type="button" data-sec="${s.k}">${s.t} <small>${s.n}</small><i aria-hidden="true">›</i></button>
+        ${(open[s.k] ?? sort !== "herkunft") ? `<div class="grid3">${(s.items.length ? s.items : [["Beispiel", "🍽️", 0], ["Beispiel", "🍽️", 0], ["Beispiel", "🍽️", 0]]).slice(0, more[s.k] ? 99 : 6).map(([t, e, k], i) => {
           const id = s.k + i;
           return flipped === id
             ? `<button class="card back" type="button" data-card="${id}"><b>${t}</b><small>6 Zutaten · 25 Min.</small>${ADDON[t] ? `<span class="addon">🥬 ${ADDON[t]}</span>` : ""}<span class="mini7">${DAYS.map(d => `<span>${d}</span>`).join("")}</span></button>`
-            : `<button class="card" type="button" data-card="${id}"><span class="e" aria-hidden="true">${e}</span>${k === 1 ? '<span class="tag">einfach</span>' : typeof k === "string" ? `<span class="tag t">${k}</span>` : ""}<b>${t}</b></button>`;
+            : `<button class="card" type="button" data-card="${id}"><span class="e" aria-hidden="true">${e}</span>${k === 1 ? '<span class="tag">einfach</span>' : typeof k === "string" ? `<span class="tag t">${k}</span>` : ""}${sort === "protein" && META[t] ? `<span class="tag p">${META[t][1]} g</span>` : sort === "schnell" && META[t] ? `<span class="tag p">${META[t][2]}′</span>` : ""}<b>${t}</b></button>`;
         }).join("")}${s.n > 6 && !more[s.k] ? `<button class="more" type="button" data-more="${s.k}">Alle ${s.n} zeigen</button>` : ""}</div>` : ""}</div>`).join("")}`;
   } else if (tab === "plan") {
     S.innerHTML = `<div class="ttl"><h2>KW 48</h2></div><p class="hint">Antippen = aufklappen · lange drücken = verschieben</p>
@@ -217,7 +240,8 @@ $("scr").addEventListener("click", e => {
   if (!t) return;
   if (t.id === "add") addOpen = !addOpen;
   else if (t.dataset.more) more[t.dataset.more] = 1;
-  else if (t.dataset.sec) open[t.dataset.sec] = !open[t.dataset.sec];
+  else if (t.dataset.sort) { sort = t.dataset.sort; try { localStorage.setItem("rv_sort", sort); } catch (e) {} }
+  else if (t.dataset.sec) open[t.dataset.sec] = !(open[t.dataset.sec] ?? sort !== "herkunft");
   else if (t.dataset.card) flipped = flipped === t.dataset.card ? null : t.dataset.card;
   else if (t.dataset.diet) { const [i, k] = t.dataset.diet.split(":"); members[i].d = k; }
   else if (t.dataset.goal) { const [i, k] = t.dataset.goal.split(":"); const g = members[i].g; g.includes(k) ? g.splice(g.indexOf(k), 1) : g.push(k); }
