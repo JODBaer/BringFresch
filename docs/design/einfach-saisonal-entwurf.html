@@ -1,0 +1,204 @@
+<title>Einfach im November</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,600;8..144,800&display=swap">
+<style>
+/* Layout: links ein Handy (Rezepte «Einfach im November» oder Wochenwahl, oben umschaltbar), rechts wenig Text: was neu ist, 2 Fragen. Farben wie die App. */
+:root {
+  --bg: #f4f8f0; --card: #ffffff; --fg: #18231a; --muted: #5a6a55; --line: #d6e3cc; --phone: #fbfdf9;
+  --accent: #3b6b2f; --accent-soft: #dff5d4; --on-accent: #ffffff;
+  --veg: #a2560f; --veg-soft: #ffe9d2; --easy: #1f6f4a; --easy-soft: #d5f3e4;
+  --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a; --phone: #121a12;
+    --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d;
+    --veg: #ffb36b; --veg-soft: #3a2614; --easy: #7fe0b0; --easy-soft: #163326;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a; --phone: #121a12;
+  --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d;
+  --veg: #ffb36b; --veg-soft: #3a2614; --easy: #7fe0b0; --easy-soft: #163326;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.4; margin: 0; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.page { max-width: 1000px; margin: 0 auto; padding-block: 22px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
+.lead { margin: 4px 0 0; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--card); gap: 2px; }
+.seg button { border: 0; background: none; padding: 8px 16px; border-radius: 999px; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.stage { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+/* Handy */
+.phone { width: 100%; max-width: 390px; justify-self: center; border-radius: 34px; border: 1px solid var(--line); background: var(--phone); overflow: hidden; box-shadow: 0 12px 40px rgba(20, 40, 20, .12); }
+.ph-head { padding: 20px 18px 6px; }
+.ph-head small { color: var(--muted); font-size: 13px; }
+.ph-head h3 { margin: 2px 0 0; font-size: 22px; font-weight: 800; }
+.ph-body { padding: 8px 14px 22px; display: flex; flex-direction: column; gap: 12px; min-height: 620px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 600; }
+.chip[aria-pressed="true"] { background: var(--easy); border-color: var(--easy); color: var(--on-accent); }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.base { border: 1px solid var(--line); background: var(--card); border-radius: 18px; padding: 12px; text-align: left; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.base .ic { font-size: 30px; line-height: 1; }
+.base b { font-size: 15px; line-height: 1.2; }
+.base small { color: var(--muted); font-size: 12.5px; }
+.vegs { display: flex; gap: 4px; flex-wrap: wrap; }
+.veg { font-size: 11.5px; padding: 2px 7px; border-radius: 999px; background: var(--veg-soft); color: var(--veg); font-weight: 600; }
+
+/* Detail */
+.back { border: 0; background: none; color: var(--accent); font-weight: 600; padding: 0; align-self: flex-start; }
+.hero { border-radius: 20px; background: var(--accent-soft); display: grid; place-items: center; font-size: 64px; aspect-ratio: 16 / 9; max-width: 100%; }
+.dtitle { font-size: 22px; font-weight: 800; margin: 0; line-height: 1.15; text-wrap: balance; }
+.facts { display: flex; gap: 6px; flex-wrap: wrap; }
+.fact { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--easy-soft); color: var(--easy); font-weight: 600; }
+.lbl { font-size: 12.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 4px 0 -4px; }
+.vpick { display: flex; gap: 6px; flex-wrap: wrap; }
+.vpick button { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
+.vpick button[aria-pressed="true"] { background: var(--veg); border-color: var(--veg); color: var(--on-accent); }
+.ing { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.ing li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line); font-size: 15px; }
+.ing li:first-child { border-top: 0; }
+.ing li .q { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ing li.slot { background: var(--veg-soft); }
+.ing li.slot span:last-child { color: var(--veg); font-weight: 700; }
+.who { font-size: 13.5px; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: 14px; padding: 9px 12px; }
+.btn { border: 0; border-radius: 999px; padding: 14px 16px; font-weight: 700; background: var(--accent); color: var(--on-accent); font-size: 16px; }
+
+/* Wochenwahl */
+.wgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.wcard { position: relative; border-radius: 14px; background: var(--accent-soft); aspect-ratio: 1; max-width: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 6px; overflow: hidden; }
+.wcard .e { position: absolute; top: 8px; left: 0; right: 0; text-align: center; font-size: 26px; }
+.wcard span.t { font-size: 11.5px; font-weight: 700; line-height: 1.15; background: var(--card); border-radius: 8px; padding: 3px 5px; }
+.wcard .easy { position: absolute; top: 5px; right: 5px; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 999px; background: var(--easy); color: var(--on-accent); }
+.wcard .we { position: absolute; top: 5px; right: 5px; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: var(--card); color: var(--muted); }
+.count { font-size: 14px; color: var(--muted); }
+.count b { color: var(--easy); }
+
+/* Rechts */
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.box h2 { font-size: 17px; margin: 0; }
+.box ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+.box p { margin: 0; }
+.box small { color: var(--muted); }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Einfach im November</h1>
+    <p class="lead">Entwurf Schritt 0: 8 Alltags-Gerichte, das Gemüse vom Monat kommt von selbst. Antippen zum Ausprobieren.</p>
+  </header>
+  <div class="seg" role="group" aria-label="Ansicht">
+    <button type="button" id="vRez" aria-pressed="true">Rezepte</button>
+    <button type="button" id="vWahl" aria-pressed="false">Wochenwahl</button>
+  </div>
+
+  <div class="stage">
+    <div class="phone" aria-label="Handy-Vorschau">
+      <div class="ph-head"><small id="phSub">Rezepte</small><h3 id="phTitle">Einfach im November</h3></div>
+      <div class="ph-body" id="ph"></div>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h2>Was neu ist</h2>
+        <ul>
+          <li>Ganz vorne in Rezepte: <b>«Einfach»</b>. 8 Karten, eine pro Alltags-Gericht.</li>
+          <li>Auf jeder Karte steht das <b>Gemüse vom Monat</b>. Im Dezember wechselt es von selbst.</li>
+          <li>Antippen: Gemüse wählen, Zutaten für 4, <b>Einplanen</b>.</li>
+          <li>Wochenwahl: mindestens <b>5 von 14</b> Karten mit «einfach».</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h2>Entschieden</h2>
+        <p><b>1.</b> Aufwändige Rezepte zeigen die Zeit: <b>«&gt; 1 h»</b>, «&gt; 1,5 h», «&gt; 2 h».</p>
+        <p><b>2.</b> «Schnelles» (Pizza, Nuggets …) bleibt, 2 pro Woche wie heute.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASES = [
+  { id: "hoernli", t: "Hörnli & Ghacktes", ic: "🍝", min: 25, n: 6, vegs: ["Lauch", "Rüebli", "Federkohl"],
+    ing: [["300 g", "Hörnli"], ["400 g", "Ghacktes (Rind)"], ["{v}", "{V}"], ["1", "Zwiebel"], ["2 dl", "Bouillon"], ["1 Glas", "Apfelmus"]],
+    amt: { Lauch: "1 Stange", Rüebli: "4", Federkohl: "200 g" }, vegi: "Jo (vegi): rote Linsen statt Ghacktes" },
+  { id: "gnocchi", t: "Gnocchi aus der Pfanne", ic: "🥔", min: 20, n: 5, vegs: ["Rosenkohl", "Kürbis"],
+    ing: [["800 g", "Gnocchi"], ["{v}", "{V}"], ["40 g", "Butter"], ["8", "Salbeiblätter"], ["60 g", "Sbrinz"]],
+    amt: { Rosenkohl: "400 g", Kürbis: "500 g" }, vegi: "Fleisch-Esser: + Speckwürfeli" },
+  { id: "ofen", t: "Ofengemüse vom Blech", ic: "🥕", min: 15, n: 6, vegs: ["Kürbis & Randen", "Pastinaken & Sellerie"],
+    ing: [["800 g", "Kartoffeln"], ["{v}", "{V}"], ["3 EL", "Öl"], ["250 g", "Kräuterquark"], ["1 Bund", "Petersilie"]],
+    amt: { "Kürbis & Randen": "600 g", "Pastinaken & Sellerie": "600 g" }, vegi: "Fleisch-Esser: Pouletschenkel mit aufs Blech · Jo: Halloumi" },
+  { id: "curry", t: "Reis mit Curry", ic: "🍛", min: 25, n: 6, vegs: ["Kürbis", "Lauch & Rüebli"],
+    ing: [["300 g", "Reis"], ["{v}", "{V}"], ["2,5 dl", "Kokosmilch"], ["2 EL", "Currypaste"], ["1", "Zwiebel"]],
+    amt: { Kürbis: "500 g", "Lauch & Rüebli": "500 g" }, vegi: "Fleisch-Esser: Poulet · Jo: Kichererbsen" },
+  { id: "pfanne", t: "Gemüsepfanne mit Reis", ic: "🥢", min: 20, n: 6, vegs: ["Rüebli & Lauch", "Federkohl & Rosenkohl"],
+    ing: [["300 g", "Reis"], ["{v}", "{V}"], ["4", "Eier"], ["3 EL", "Sojasauce"], ["1 Stück", "Ingwer"]],
+    amt: { "Rüebli & Lauch": "500 g", "Federkohl & Rosenkohl": "500 g" }, vegi: "Fleisch-Esser: Rindsstreifen · Jo: Tofu" },
+  { id: "cafe", t: "Café complet", ic: "☕", min: 10, n: 6, vegs: ["Äpfel & Birnen"],
+    ing: [["1", "Brot"], ["250 g", "Käse"], ["", "Butter, Konfi"], ["{v}", "{V}"], ["1 l", "Milch"], ["", "Kaffee"]],
+    amt: { "Äpfel & Birnen": "4" }, vegi: "Fleisch-Esser: Trockenfleisch" },
+  { id: "ritter", t: "Arme Ritter", ic: "🍞", min: 20, n: 5, vegs: ["Apfel", "Birne"],
+    ing: [["8 Scheiben", "Zopf vom Vortag"], ["4", "Eier"], ["3 dl", "Milch"], ["", "Zimtzucker"], ["{v}", "{V}-Kompott"]],
+    amt: { Apfel: "4", Birne: "4" }, vegi: "alle gleich, kein Extra-Fleisch" },
+  { id: "kaese", t: "Käseschnitte", ic: "🧀", min: 20, n: 5, vegs: ["Lauch", "Pilze", "Hawaii"],
+    ing: [["8 Scheiben", "Brot"], ["300 g", "Raclettekäse"], ["{v}", "{V}"], ["1 dl", "Weisswein oder Milch"], ["", "Nüsslisalat"]],
+    amt: { Lauch: "1 Stange", Pilze: "250 g", Hawaii: "Schinken + Ananas" }, vegi: "Jo: ohne Schinken" },
+];
+const WAHL = [
+  ["Hörnli & Ghacktes mit Lauch", "🍝", 1], ["Kürbis-Curry mit Reis", "🍛", 1], ["Rindshuft-Kürbis-Pfanne", "🥩", 0],
+  ["Gnocchi mit Rosenkohl", "🥔", 1], ["Zürcher Geschnetzeltes mit Rösti", "🍲", 0], ["Ofengemüse: Kürbis & Randen", "🥕", 1],
+  ["Lauch-Schinken-Rollen", "🥬", 0], ["Käseschnitte mit Pilzen", "🧀", 1], ["Massaman-Curry", "🍛", 0],
+  ["Kartoffelgratin", "🥔", "> 1 h"], ["Gemüsepfanne Rüebli & Lauch", "🥢", 1], ["Reispfanne mit Schweinsgeschnetzeltem", "🍖", "> 1 h"],
+  ["Fertigpizza", "🍕", 2], ["Fischstäbli", "🐟", 2],
+];
+let view = "rez", open = null, pick = {};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function render() {
+  $("vRez").setAttribute("aria-pressed", view === "rez");
+  $("vWahl").setAttribute("aria-pressed", view === "wahl");
+  if (view === "wahl") {
+    $("phSub").textContent = "Wochenwahl · KW 49"; $("phTitle").textContent = "14 Gerichte";
+    const n = WAHL.filter(w => w[2] === 1).length;
+    $("ph").innerHTML = `<p class="count"><b>${n} einfach</b> · mindestens 5 von 14</p>
+      <div class="wgrid">${WAHL.map(([t, e, k]) => `<div class="wcard"><span class="e" aria-hidden="true">${e}</span>${k === 1 ? '<span class="easy">einfach</span>' : typeof k === "string" ? `<span class="we">${k}</span>` : ""}<span class="t">${esc(t)}</span></div>`).join("")}</div>`;
+    return;
+  }
+  if (!open) {
+    $("phSub").textContent = "Rezepte"; $("phTitle").textContent = "Einfach im November";
+    $("ph").innerHTML = `<div class="chips"><button class="chip" type="button" aria-pressed="true">Einfach</button><button class="chip" type="button">Saison</button><button class="chip" type="button">Alle</button><button class="chip" type="button">Meine</button></div>
+      <div class="grid">${BASES.map(b => `<button class="base" type="button" data-b="${b.id}"><span class="ic" aria-hidden="true">${b.ic}</span><b>${esc(b.t)}</b><small>${b.n} Zutaten · ${b.min} Min.</small><span class="vegs">${b.vegs.map(v => `<span class="veg">${esc(v)}</span>`).join("")}</span></button>`).join("")}</div>`;
+    return;
+  }
+  const b = BASES.find(x => x.id === open), v = pick[b.id] || b.vegs[0];
+  const title = b.id === "cafe" ? `${b.t} mit ${v}` : b.id === "ritter" ? `${b.t} mit ${v}kompott` : b.id === "kaese" && v === "Hawaii" ? "Käseschnitte Hawaii" : `${b.t} mit ${v}`;
+  $("phSub").textContent = "Einfach im November"; $("phTitle").textContent = "";
+  $("ph").innerHTML = `<button class="back" type="button" id="back">‹ Alle einfachen</button>
+    <div class="hero" aria-hidden="true">${b.ic}</div>
+    <h4 class="dtitle">${esc(title)}</h4>
+    <div class="facts"><span class="fact">${b.n} Zutaten</span><span class="fact">${b.min} Min.</span><span class="fact">für 4</span></div>
+    <p class="lbl">Gemüse vom Monat</p>
+    <div class="vpick">${b.vegs.map(x => `<button type="button" data-v="${esc(x)}" aria-pressed="${x === v}">${esc(x)}</button>`).join("")}</div>
+    <ul class="ing">${b.ing.map(([q, n]) => q === "{v}" || n.includes("{V}") ? `<li class="slot"><span class="q">${esc(b.amt[v] || "")}</span><span>${esc(n.replace("{V}", v))}</span></li>` : `<li><span class="q">${esc(q)}</span><span>${esc(n)}</span></li>`).join("")}</ul>
+    <p class="who">${esc(b.vegi)}</p>
+    <button class="btn" type="button">Einplanen</button>`;
+}
+$("ph").addEventListener("click", e => {
+  const card = e.target.closest("[data-b]"); if (card) { open = card.dataset.b; render(); return; }
+  const v = e.target.closest("[data-v]"); if (v) { pick[open] = v.dataset.v; render(); return; }
+  if (e.target.closest("#back")) { open = null; render(); }
+});
+$("vRez").onclick = () => { view = "rez"; render(); };
+$("vWahl").onclick = () => { view = "wahl"; render(); };
+render();
+</script>
