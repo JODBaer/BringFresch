@@ -1,0 +1,291 @@
+<title>Obsonare Review 25.11.</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,600;8..144,800&display=swap">
+<style>
+/* Layout: links ein Handy mit drei Reitern (Rezepte, Plan, Einstellungen) wie nach dem Review, rechts pro Reiter was sich ändert. Farben wie die App. */
+:root {
+  --bg: #f4f8f0; --card: #ffffff; --fg: #18231a; --muted: #5a6a55; --line: #d6e3cc; --phone: #fbfdf9;
+  --accent: #3b6b2f; --accent-soft: #dff5d4; --on-accent: #ffffff; --easy: #1f6f4a; --drag: #b25e00;
+  --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a; --phone: #121a12;
+    --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d; --easy: #7fe0b0; --drag: #ffb44d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a; --phone: #121a12;
+  --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d; --easy: #7fe0b0; --drag: #ffb44d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.4; margin: 0; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.page { max-width: 1000px; margin: 0 auto; padding-block: 22px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
+.lead { margin: 4px 0 0; color: var(--muted); }
+.stage { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.phone { width: 100%; max-width: 390px; justify-self: center; border-radius: 34px; border: 1px solid var(--line); background: var(--phone); overflow: hidden; box-shadow: 0 12px 40px rgba(20, 40, 20, .12); height: 760px; display: flex; flex-direction: column; }
+.scr { flex: 1; overflow-y: auto; padding: 16px 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.nav { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); background: var(--card); }
+.nav button { border: 0; background: none; padding: 10px 0 12px; font-size: 12.5px; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.nav button span { font-size: 20px; }
+.nav button[aria-current="page"] { color: var(--accent); }
+.ttl { display: flex; align-items: center; gap: 8px; }
+.ttl h2 { margin: 0; font-size: 24px; font-weight: 800; flex: 1; }
+.plus { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 999px; padding: 9px 14px; font-weight: 700; font-size: 15px; }
+.search { width: 100%; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 10px 12px; font: inherit; color: var(--fg); }
+
+/* Rezepte = Alle Rezepte */
+.sec { border-top: 1px solid var(--line); }
+.sec > button { width: 100%; border: 0; background: none; display: flex; align-items: center; gap: 8px; padding: 10px 2px; font-weight: 800; font-size: 15.5px; text-align: left; }
+.sec > button small { color: var(--muted); font-weight: 400; font-size: 13px; flex: 1; }
+.sec > button i { font-style: normal; color: var(--muted); transition: transform .2s; }
+.sec[data-open="1"] > button i { transform: rotate(90deg); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; padding-bottom: 10px; }
+.card { aspect-ratio: 3 / 4; max-width: 100%; border-radius: 12px; background: var(--accent-soft); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 5px; border: 0; text-align: left; }
+.card .e { position: absolute; top: 18%; left: 0; right: 0; text-align: center; font-size: 30px; }
+.card b { font-size: 11px; line-height: 1.15; background: var(--card); border-radius: 7px; padding: 3px 5px; display: block; }
+.card .tag { position: absolute; top: 5px; right: 5px; font-size: 9.5px; font-weight: 800; border-radius: 999px; padding: 1px 6px; background: var(--easy); color: var(--on-accent); }
+.card .tag.t { background: var(--card); color: var(--muted); }
+.card.back { background: var(--card); border: 1px solid var(--line); justify-content: flex-start; gap: 4px; }
+.card.back b { background: none; padding: 0; font-size: 11.5px; }
+.card.back small { font-size: 10px; color: var(--muted); }
+.addon { font-size: 9.5px; font-weight: 700; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 1px 6px; align-self: flex-start; }
+.mini7 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: auto; }
+.mini7 span { font-size: 9.5px; font-weight: 700; text-align: center; border: 1px solid var(--line); border-radius: 5px; padding: 2px 0; }
+
+/* Einfügen-Blatt */
+.sheet { border: 1px solid var(--line); background: var(--card); border-radius: 18px; padding: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.sheet button { border: 1px solid var(--line); background: var(--bg); border-radius: 14px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 700; font-size: 14px; }
+.sheet button span { font-size: 24px; }
+.sheet button small { font-weight: 400; font-size: 11.5px; color: var(--muted); text-align: center; }
+.sheet .full { grid-column: 1 / -1; }
+.linkrow { display: flex; gap: 6px; }
+.linkrow input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px; font: inherit; color: var(--fg); }
+.sheet .linkrow button { flex-direction: row; padding: 10px 14px; background: var(--accent); color: var(--on-accent); border: 0; }
+.sheet .how { font-size: 12.5px; color: var(--muted); margin: 0; }
+.sites { display: flex; flex-wrap: wrap; gap: 6px; }
+.sites a { font-size: 13px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 5px 10px; text-decoration: none; }
+.sorts { display: flex; gap: 6px; align-items: stretch; }
+.sorts .search { flex: 1; min-width: 0; }
+.ord { flex: none; display: flex; align-items: center; gap: 4px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); border-radius: 12px; padding: 0 8px; font-weight: 800; }
+.ord select { border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; font-weight: 800; max-width: 128px; padding: 8px 0; }
+.ord select option { color: #1b1b1b; background: #fff; }
+.card .tag.p { top: auto; bottom: 30px; right: 5px; background: var(--card); color: var(--fg); }
+.more { grid-column: 1 / -1; border: 1px dashed var(--line); background: none; border-radius: 12px; padding: 8px; font-weight: 700; color: var(--accent); }
+
+/* Plan */
+.day { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+.day .d { font-weight: 800; color: var(--muted); font-size: 14px; }
+.day .t { font-weight: 700; font-size: 15px; min-width: 0; }
+.day .n { font-size: 12.5px; color: var(--muted); }
+.day .ing { grid-column: 2 / -1; font-size: 13px; color: var(--muted); padding-top: 4px; }
+.day.lift { border: 2px dashed var(--drag); animation: wiggle .25s ease-in-out infinite alternate; }
+.day.over { background: var(--accent-soft); }
+@keyframes wiggle { from { transform: rotate(-.6deg); } to { transform: rotate(.6deg); } }
+@media (prefers-reduced-motion: reduce) { .day.lift { animation: none; } }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* Einstellungen */
+.mlist { background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.mrow { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line); }
+.mrow:first-child { border-top: 0; }
+.av { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
+.mrow .nm { border: 0; background: none; text-align: left; font-weight: 700; padding: 0; min-width: 0; }
+.bub { display: flex; gap: 4px; }
+.bub button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); font-size: 16px; display: grid; place-items: center; padding: 0; opacity: .45; }
+.bub button[aria-pressed="true"] { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
+.bub .sep { width: 1px; background: var(--line); margin: 4px 2px; }
+.kis { display: flex; gap: 6px; flex-wrap: wrap; }
+.kis button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 13px; font-weight: 600; font-size: 14px; }
+.kis button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.legend { font-size: 12.5px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.edit { background: var(--card); border: 1px solid var(--accent); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.edit input { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; background: var(--bg); color: var(--fg); }
+.row2 { display: flex; gap: 8px; }
+.row2 button { flex: 1; border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 8px; font-weight: 600; }
+
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.box h2 { font-size: 17px; margin: 0; }
+.box ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+.box small { color: var(--muted); }
+.box.now { border: 2px solid var(--accent); }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Review 25.11.: Rezepte, Plan, Einstellungen</h1>
+    <p class="lead">Entwurf zu deinem Review der Test-App. Unten im Handy zwischen den drei Reitern wechseln und ausprobieren.</p>
+  </header>
+  <div class="stage">
+    <div class="phone" aria-label="Handy-Vorschau">
+      <div class="scr" id="scr"></div>
+      <nav class="nav" aria-label="Reiter">
+        <button type="button" data-tab="rez" aria-current="page"><span aria-hidden="true">📖</span>Rezepte</button>
+        <button type="button" data-tab="plan"><span aria-hidden="true">📅</span>Plan</button>
+        <button type="button" data-tab="set"><span aria-hidden="true">⚙️</span>Einstellungen</button>
+      </nav>
+    </div>
+    <div class="side" id="side"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const DAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const SECS = [
+  { k: "einfach", t: "Einfach im November", n: 9, items: [["Hörnli & Ghacktes", "🍝", 1], ["Gnocchi aus der Pfanne", "🥔", 1], ["Ofengemüse", "🥕", 1], ["Poulet-Curry", "🍛", 1], ["Poulet-Rahmsauce", "🍲", 1], ["Gemüsepfanne", "🥢", 1], ["Café complet", "☕", 1], ["Arme Ritter", "🍞", 1], ["Käseschnitte", "🧀", 1]] },
+  { k: "eigene", t: "Eigene", n: 3, items: [["Omas Älplermagronen", "🧀", 0], ["Linsen-Dal", "🍛", 1], ["Pizza vom Blech", "🍕", 0]] },
+  { k: "swissmilk", t: "Swissmilk", n: 41, items: [["Kürbisrisotto", "🎃", 0], ["Kartoffelgratin", "🥔", "> 1 h"], ["Lauchwähe", "🥧", 0], ["Randen-Salat", "🥗", 1], ["Rösti mit Spiegelei", "🍳", 1], ["Käsesuppe", "🥣", 0]] },
+  { k: "fooby", t: "Fooby", n: 38, items: [] }, { k: "bb", t: "Betty Bossi", n: 52, items: [] }, { k: "migusto", t: "Migusto", n: 44, items: [] },
+  { k: "schnell", t: "Schnelles & Reste", n: 13, items: [] },
+];
+// Add-on «Saison»: dasselbe Rezept, das Gemüse/Obst vom Monat kommt dazu (im Plan änderbar). Keine eigenen Karten pro Gemüse.
+// Für die Sortierung: Hauptgemüse, Protein (g), aktive Min., Saison jetzt (1/0)
+const META = { "Hörnli & Ghacktes": ["Lauch", 34, 20, 1], "Gnocchi aus der Pfanne": ["Rosenkohl", 14, 15, 1], "Ofengemüse": ["Kürbis", 12, 15, 1], "Poulet-Curry": ["Kürbis", 38, 25, 1], "Poulet-Rahmsauce": ["Champignons", 36, 20, 1], "Gemüsepfanne": ["Rüebli", 11, 20, 1], "Café complet": ["Äpfel", 18, 10, 1], "Arme Ritter": ["Äpfel", 15, 15, 1], "Käseschnitte": ["Lauch", 24, 10, 1],
+  "Omas Älplermagronen": ["Kartoffeln", 22, 35, 1], "Linsen-Dal": ["Rüebli", 19, 20, 1], "Pizza vom Blech": ["Peperoni", 20, 30, 0], "Kürbisrisotto": ["Kürbis", 13, 40, 1], "Kartoffelgratin": ["Kartoffeln", 15, 75, 1], "Lauchwähe": ["Lauch", 17, 35, 1], "Randen-Salat": ["Randen", 9, 15, 1], "Rösti mit Spiegelei": ["Kartoffeln", 21, 25, 1], "Käsesuppe": ["Zwiebeln", 23, 30, 0] };
+const SORTS = [["herkunft", "Herkunft"], ["az", "A–Z"], ["saison", "Saison"], ["schnell", "Schnell"], ["protein", "💪 Protein"], ["gemuese", "🥬 Hauptgemüse"]];
+let sort = "herkunft";
+try { sort = localStorage.getItem("rv_sort") || sort; } catch (e) {}
+function sections() {
+  if (sort === "herkunft") return SECS;
+  const all = SECS.flatMap(x => x.items).filter(([t]) => META[t]);
+  const by = (k, f) => { const m = new Map(); all.forEach(it => { const g = f(it); m.has(g) || m.set(g, []); m.get(g).push(it); }); return [...m].map(([t, items]) => ({ k: k + t, t, n: items.length, items })); };
+  const M = t => META[t[0]];
+  if (sort === "az") return [{ k: "az", t: "Alle A–Z", n: all.length, items: [...all].sort((a, b) => a[0].localeCompare(b[0], "de")) }];
+  if (sort === "protein") return [{ k: "pr", t: "Proteinreichste zuerst", n: all.length, items: [...all].sort((a, b) => M(b)[1] - M(a)[1]) }];
+  if (sort === "saison") return by("sa", it => M(it)[3] ? "Jetzt Saison" : "Gerade nicht Saison").sort((a, b) => a.t < b.t ? -1 : 1);
+  if (sort === "schnell") { const order = ["≤ 15 Min. aktiv", "≤ 30 Min. aktiv", "länger"]; return by("sc", it => M(it)[2] <= 15 ? order[0] : M(it)[2] <= 30 ? order[1] : order[2]).sort((a, b) => order.indexOf(a.t) - order.indexOf(b.t)); }
+  return by("ge", it => M(it)[0]).sort((a, b) => b.n - a.n || a.t.localeCompare(b.t, "de"));
+}
+const ADDON = { "Hörnli & Ghacktes": "+ Lauch", "Gnocchi aus der Pfanne": "+ Rosenkohl", "Ofengemüse": "+ Kürbis & Randen", "Poulet-Curry": "+ Kürbis", "Poulet-Rahmsauce": "+ Champignons", "Gemüsepfanne": "+ Rüebli & Lauch", "Café complet": "+ Äpfel & Birnen", "Arme Ritter": "+ Apfelkompott", "Käseschnitte": "+ Lauch", "Lauchwähe": "+ Speck (Fleisch)", "Kürbisrisotto": "+ Salbei-Butter" };
+let tab = "rez", open = { einfach: 1, eigene: 0, swissmilk: 1 }, flipped = null, addOpen = false, more = {};
+let plan = [["Hörnli & Ghacktes mit Lauch", "Joshua, Lukas, Leonie, Jo"], ["Kürbis-Curry mit Reis", "alle"], ["Gnocchi mit Rosenkohl", "alle ausser Jo"], ["Käseschnitte mit Pilzen", "alle"], ["Ofengemüse Kürbis & Randen", "alle"], ["Lauchwähe", "Lukas, Leonie"], ["Café complet mit Äpfeln", "alle"]];
+let expanded = 0, lift = null, over = null;
+const members = [{ n: "Joshua", d: "f", g: ["p"] }, { n: "Lukas", d: "f", g: [] }, { n: "Leonie", d: "f", g: ["k"] }, { n: "Jo", d: "v", g: ["p"] }];
+let editing = null, ki = "ChatGPT";
+
+const SIDE = {
+  rez: `<div class="box now"><h2>Rezepte = wie «Alle Rezepte»</h2><ul>
+      <li>Ein Reiter, eine Ansicht: <b>3 Karten pro Zeile</b>, wie heute in «Alle Rezepte».</li>
+      <li>Abschnitte <b>ausklappbar</b>: Einfach im November (offen), Eigene, Swissmilk, Fooby … Antippen = auf/zu.</li>
+      <li>Karte antippen = umdrehen, Tag antippen = einplanen (wie heute).</li>
+      <li><b>Rezepte bleiben Rezepte</b>: «Hörnli &amp; Ghacktes» ist eine Karte, nicht fünf. Saisonal wird es durch ein <b>Add-on</b> (🥬 + Lauch im November), das sich jeden Monat selbst wählt und im Plan änderbar ist. Alle Rezepte haben denselben Aufbau.</li>
+      <li>Oben immer sichtbar: Suche und <b>«+ Einfügen»</b>.</li>
+      <li><b>Ordnen ⇅</b> als Dropdown neben der Suche: Herkunft · A–Z · Saison · Schnell · 💪 Protein · 🥬 Hauptgemüse. Die Abschnitte richten sich danach (z.B. «Kürbis», «Lauch» …). Die Wahl bleibt gemerkt (pro Handy).</li>
+      <li>Pro Abschnitt <b>6 Karten</b>, darunter «Alle 41 zeigen».</li>
+      <li>«+ Einfügen»: oben direkt das <b>Link-Feld</b> (einfügen, «Holen»), mit kurzer Anleitung. Darunter <b>Rezept suchen bei</b> Fooby · Swissmilk · Betty Bossi · Migusto (öffnet die Seite, Link teilen, zurück). Dann Text · <b>Foto mit KI</b> · Von Hand, je mit einem Satz, wie es geht. Foto mit KI kommt mit Schritt 5.</li>
+      <li>«Rezept suchen», «Rezepte holen» und die Saison-Liste wandern nach unten bzw. ins «+».</li></ul></div>`,
+  plan: `<div class="box now"><h2>Plan: antippen und verschieben</h2><ul>
+      <li><b>Rezept antippen</b> = Tag klappt auf, genau wie beim Tag selbst.</li>
+      <li><b>Lange drücken</b> = Karte hebt sich und wackelt (wie Apps auf dem iPhone-Homescreen).</li>
+      <li><b>Ziehen</b> auf einen anderen Tag = die zwei Gerichte tauschen. Esser und Gäste bleiben am Tag.</li>
+      <li><b>Nur das Verschieben ist neu.</b> Das Gericht wandert unverändert (gleicher Link, gleiche Zutaten, gleiches Add-on), am Plan sonst ändert sich nichts (gleiche Menge, Zeit, Puffer, Aussehen).</li>
+      <li>Loslassen ausserhalb = nichts passiert. Danach 6 s «Rückgängig».</li></ul>
+      <small>Im Entwurf: lange drücken (oder mit der Maus gedrückt halten), dann auf einen anderen Tag ziehen.</small></div>`,
+  set: `<div class="box now"><h2>Einstellungen: alle auf einer Liste</h2><ul>
+      <li>Alle Mitbewohner untereinander, eine Zeile pro Person.</li>
+      <li>Daneben <b>Bubbles mit Piktogrammen</b>: 🥩 Fleisch · 🥦 Vegi · 🌱 Vegan, dann 💪 proteinreich · 🪶 leicht. Antippen = an/aus.</li>
+      <li><b>Namen antippen</b> = umbenennen oder entfernen.</li>
+      <li>«+ Mitbewohner» unten in der Liste.</li>
+      <li><b>Lieblings-KI</b> unter «Du»: ChatGPT · Claude · Gemini · andere (pro Handy).</li></ul></div>`,
+};
+
+function render() {
+  document.querySelectorAll(".nav button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === tab ? "page" : "false"));
+  $("side").innerHTML = SIDE[tab];
+  const S = $("scr");
+  if (tab === "rez") {
+    S.innerHTML = `<div class="ttl"><h2>Rezepte</h2><button class="plus" type="button" id="add">+ Einfügen</button></div>
+      ${addOpen ? `<div class="sheet">
+        <div class="full"><div class="linkrow"><input type="url" placeholder="Link einfügen: fooby.ch/…, instagram.com/…" aria-label="Rezept-Link"><button type="button">Holen</button></div></div>
+        <p class="how full">Auf der Rezeptseite oder in Instagram «Teilen» → «Link kopieren» → hier einfügen. Obsonare holt Titel, Zutaten und Zeit.</p>
+        <div class="full"><p class="how" style="margin-bottom:5px">Rezept suchen bei:</p><div class="sites"><a href="https://fooby.ch/de/rezepte.html" target="_blank" rel="noopener">Fooby ↗</a><a href="https://www.swissmilk.ch/de/rezepte-kochideen/" target="_blank" rel="noopener">Swissmilk ↗</a><a href="https://www.bettybossi.ch/de/rezepte/" target="_blank" rel="noopener">Betty Bossi ↗</a><a href="https://migusto.migros.ch/de/rezepte" target="_blank" rel="noopener">Migusto ↗</a></div></div>
+        <button type="button"><span aria-hidden="true">📋</span>Text<small>aus WhatsApp oder Notiz kopieren und einfügen</small></button><button type="button"><span aria-hidden="true">📷</span>Foto mit KI<small>Prompt wird kopiert, ${ki} öffnet sich, Antwort zurück einfügen</small></button><button type="button" class="full"><span aria-hidden="true">✍️</span>Von Hand<small>Titel, Zutaten, Zeit selbst eintragen</small></button></div>` : ""}
+      <div class="sorts"><input class="search" type="search" id="q" placeholder="Suchen: Titel oder Zutat" aria-label="Rezepte durchsuchen">
+      <label class="ord"><span aria-hidden="true">⇅</span><select id="ord" aria-label="Ordnen nach">${SORTS.map(([k, l]) => `<option value="${k}"${sort === k ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
+      ${sections().map(s => `<div class="sec" data-open="${(open[s.k] ?? sort !== "herkunft") ? 1 : 0}"><button type="button" data-sec="${s.k}">${s.t} <small>${s.n}</small><i aria-hidden="true">›</i></button>
+        ${(open[s.k] ?? sort !== "herkunft") ? `<div class="grid3">${(s.items.length ? s.items : [["Beispiel", "🍽️", 0], ["Beispiel", "🍽️", 0], ["Beispiel", "🍽️", 0]]).slice(0, more[s.k] ? 99 : 6).map(([t, e, k], i) => {
+          const id = s.k + i;
+          return flipped === id
+            ? `<button class="card back" type="button" data-card="${id}"><b>${t}</b><small>6 Zutaten · 25 Min.</small>${ADDON[t] ? `<span class="addon">🥬 ${ADDON[t]}</span>` : ""}<span class="mini7">${DAYS.map(d => `<span>${d}</span>`).join("")}</span></button>`
+            : `<button class="card" type="button" data-card="${id}"><span class="e" aria-hidden="true">${e}</span>${k === 1 ? '<span class="tag">einfach</span>' : typeof k === "string" ? `<span class="tag t">${k}</span>` : ""}${sort === "protein" && META[t] ? `<span class="tag p">${META[t][1]} g</span>` : sort === "schnell" && META[t] ? `<span class="tag p">${META[t][2]}′</span>` : ""}<b>${t}</b></button>`;
+        }).join("")}${s.n > 6 && !more[s.k] ? `<button class="more" type="button" data-more="${s.k}">Alle ${s.n} zeigen</button>` : ""}</div>` : ""}</div>`).join("")}`;
+  } else if (tab === "plan") {
+    S.innerHTML = `<div class="ttl"><h2>KW 48</h2></div><p class="hint">Antippen = aufklappen · lange drücken = verschieben</p>
+      ${plan.map(([t, e], i) => `<div class="day${lift === i ? " lift" : ""}${over === i && lift !== i ? " over" : ""}" data-day="${i}">
+        <span class="d">${DAYS[i]}</span><span class="t">${t}</span><span class="n">${e === "alle" ? "4" : e.split(",").length}</span>
+        ${expanded === i && lift === null ? `<span class="ing">400 g Hörnli · 1 Stange Lauch · 400 g Ghacktes · 1 Glas Apfelmus …<br>Esser: ${e}</span>` : ""}</div>`).join("")}`;
+  } else {
+    S.innerHTML = `<div class="ttl"><h2>Einstellungen</h2></div>
+      <p class="label" style="margin:0;font-weight:800">WG allmen · Mitbewohner</p>
+      <div class="mlist">${members.map((m, i) => `<div class="mrow"><span class="av">${m.n.slice(0, 2)}</span><button class="nm" type="button" data-edit="${i}">${m.n}</button>
+        <span class="bub">${[["f", "🥩", "Fleisch"], ["v", "🥦", "Vegi"], ["g", "🌱", "Vegan"]].map(([k, ic, l]) => `<button type="button" data-diet="${i}:${k}" aria-pressed="${m.d === k}" aria-label="${l}" title="${l}">${ic}</button>`).join("")}<span class="sep"></span>${[["p", "💪", "proteinreich"], ["k", "🪶", "leicht"]].map(([k, ic, l]) => `<button type="button" data-goal="${i}:${k}" aria-pressed="${m.g.includes(k)}" aria-label="${l}" title="${l}">${ic}</button>`).join("")}</span></div>
+        ${editing === i ? `<div class="edit" style="margin:0 10px 10px"><input id="nm" value="${m.n}" aria-label="Name"><div class="row2"><button type="button" id="save">Speichern</button><button type="button" id="del">Entfernen</button></div></div>` : ""}`).join("")}
+        <div class="mrow"><span class="av">+</span><button class="nm" type="button" style="color:var(--accent)">Mitbewohner hinzufügen</button><span></span></div></div>
+      <p class="label" style="margin:6px 0 0;font-weight:800">Du · Lieblings-KI</p>
+      <div class="kis" role="group" aria-label="Lieblings-KI">${["ChatGPT", "Claude", "Gemini", "andere"].map(k => `<button type="button" data-ki="${k}" aria-pressed="${ki === k}">${k}</button>`).join("")}</div>
+      <p class="hint">Für «Foto mit KI», Instagram und Reste-Rezepte. Obsonare kopiert den Prompt und öffnet diese App.</p>
+      <p class="legend"><span>🥩 Fleisch</span><span>🥦 Vegi</span><span>🌱 Vegan</span><span>💪 proteinreich</span><span>🪶 leicht</span></p>`;
+  }
+}
+
+document.querySelector(".nav").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) { tab = b.dataset.tab; render(); } });
+$("scr").addEventListener("change", e => {
+  if (e.target.id !== "ord") return;
+  sort = e.target.value; try { localStorage.setItem("rv_sort", sort); } catch (err) {}
+  render();
+});
+$("scr").addEventListener("click", e => {
+  const t = e.target.closest("button, .day");
+  if (!t) return;
+  if (t.id === "add") addOpen = !addOpen;
+  else if (t.dataset.more) more[t.dataset.more] = 1;
+  else if (t.dataset.sort) { sort = t.dataset.sort; try { localStorage.setItem("rv_sort", sort); } catch (e) {} }
+  else if (t.dataset.sec) open[t.dataset.sec] = !(open[t.dataset.sec] ?? sort !== "herkunft");
+  else if (t.dataset.card) flipped = flipped === t.dataset.card ? null : t.dataset.card;
+  else if (t.dataset.diet) { const [i, k] = t.dataset.diet.split(":"); members[i].d = k; }
+  else if (t.dataset.goal) { const [i, k] = t.dataset.goal.split(":"); const g = members[i].g; g.includes(k) ? g.splice(g.indexOf(k), 1) : g.push(k); }
+  else if (t.dataset.ki) ki = t.dataset.ki;
+  else if (t.dataset.edit) editing = editing === +t.dataset.edit ? null : +t.dataset.edit;
+  else if (t.id === "save") { members[editing].n = $("nm").value.trim() || members[editing].n; editing = null; }
+  else if (t.id === "del") { members.splice(editing, 1); editing = null; }
+  else if (t.classList.contains("day") && !moved) expanded = expanded === +t.dataset.day ? null : +t.dataset.day;
+  else return;
+  render();
+});
+
+// Plan: lange drücken = heben, ziehen = auf anderen Tag, loslassen = tauschen
+let timer = null, moved = false;
+$("scr").addEventListener("pointerdown", e => {
+  const d = e.target.closest(".day"); if (!d) return;
+  moved = false;
+  timer = setTimeout(() => { lift = +d.dataset.day; over = lift; render(); }, 450);
+});
+$("scr").addEventListener("pointermove", e => {
+  if (lift === null) return;
+  moved = true;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const d = el && el.closest(".day");
+  const o = d ? +d.dataset.day : null;
+  if (o !== over) { over = o; render(); }
+});
+const end = () => {
+  clearTimeout(timer);
+  if (lift !== null) {
+    if (over !== null && over !== lift) { [plan[lift][0], plan[over][0]] = [plan[over][0], plan[lift][0]]; }
+    lift = null; over = null; render();
+    setTimeout(() => { moved = false; }, 50);
+  }
+};
+$("scr").addEventListener("pointerup", end);
+$("scr").addEventListener("pointercancel", end);
+render();
+</script>
