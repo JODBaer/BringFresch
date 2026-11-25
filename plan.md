@@ -44,6 +44,56 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – Obsonare baut 
 - [ ] **Bot vergisst eben gesetzte Artikel**, wenn Bring! kurz noch den alten Stand liefert → kann sie nicht mehr wegnehmen (Rückgängig, Live-Test-Reste). Lösung muss «gekauft» (Bring! «recently») von «noch alt gelesen» unterscheiden (erster Versuch zurückgenommen, brach «gekauft und von jemand anderem neu eingetragen»)
 - [ ] Bring!-Batch: ob Mengen ändern im Batch allein wirkt, ist offen (Live-Test zeigt «mixed», Ergebnis stimmt dank Nachschicken). Live-Beweis in `stage_live.mjs` eingebaut (16.11.): 60 Artikel in einem Durchgang + Zeile «INFO Batch-Mengen: wirkt allein / braucht Nachschicken» im Log von `stage.yml`. Ergebnis Live-Lauf 16.11. (stage.yml, grün): 60 Artikel in einem Batch gesetzt (ok, Modus batch); Mengen per Batch ändern braucht Nachschicken (mixed, Endergebnis stimmt); Wegnehmen von 60: erster Aufruf nur 45, Rest im zweiten Aufruf
 
+## UX: einfach von Anfang an (Plan 25.11.2026, Joshua)
+
+Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erklären lassen**. Der Weg der WG ist immer derselbe – **stöbern → wählen → planen → einkaufen → kochen** – und die App zeigt jederzeit genau den nächsten Schritt. Vorbild: ein schönes Kochbuch, aus dem die Einkaufsliste von selbst fällt (siehe «Von Paprika lernen»).
+
+### Leitsätze (gelten für jeden neuen Bildschirm)
+1. **Ein nächster Schritt.** Jede Seite hat genau einen Hauptknopf; alles andere ist kleiner oder unter «Mehr».
+2. **Nichts suchen.** Jede häufige Aufgabe ist vom Start aus mit höchstens 2 Tipps erreichbar (Rezept einplanen, Bring! füllen, heute kochen, Rezept senden).
+3. **Vorschlagen statt fragen.** Die App füllt aus, was sie weiss (Tag, Portionen, Esser, Liste); man korrigiert nur.
+4. **Sprache der WG.** «Znacht», «Wer isst mit?», «Auf Bring!» – keine Technik («Server», «Sync», «PIN» nur wo nötig).
+5. **Ein Ding pro Bildschirm.** Blätter (unten) für kurze Entscheide, ganze Seiten für Lesen/Kochen.
+6. **Küche mitgedacht.** Grosse Schrift und Ziele, Bildschirm bleibt an, Tablet quer = zwei Spalten.
+
+### Momente der WG (für wen wir gestalten)
+- **Neu dabei** (Leonie bekommt einen Link): in 1 Minute drin, ohne PIN abtippen.
+- **Planer am Sonntag** (Joshua): Wochenwahl anstossen, Plan übernehmen, Bring! füllen – 3 Tipps.
+- **Stöbern auf dem Sofa**: im Buch blättern, «das will ich», an jemanden senden.
+- **Im Laden**: Bring! ist die Liste (Obsonare nicht nötig).
+- **In der Küche** (Handy oder Tablet): Zutaten für heute, abhaken, Timer, Rezept daneben.
+
+### Schritte (je zuerst HTML-Entwurf → Joshua entscheidet → bauen → eine Person testet ohne Hilfe)
+
+- [ ] **1. Erster Start in 3 Schritten** (vor dem Praxistest)
+  - **Einladungslink** statt WG-Name + PIN abtippen: in den Einstellungen «Mitbewohner einladen» → Link/QR (`…/#join=<wg>.<code>`, Code = PIN-Hash-Ticket, läuft nach 7 Tagen ab) → per WhatsApp senden. Wer ihn öffnet, landet direkt bei «Wer bist du?». Abtippen bleibt als Weg «Ich habe WG-Name und PIN».
+  - **Wer bist du?** = Kacheln mit den Namen der WG (ein Tipp), «Ich bin neu» = Name + Vegi/Fleisch.
+  - **Bring! verbinden** nur, solange die WG noch keine Liste hat (sonst «Bring! ist verbunden ✓ Liste «WG»»): Bildschirm mit 3 nummerierten Schritten und Knopf «Adresse kopieren» (`allmenbot@gmail.com`), «Bring! öffnen»; die App fragt alle paar Sekunden nach und wählt die Liste selbst, sobald der Bot sie sieht. **Abklären vor dem Entwurf:** kann der Worker eine Einladung im Bot-Konto selbst annehmen (Bring!-API)? Wenn nicht: Bot legt die Liste selbst an und lädt die Mitbewohner ein (sie nehmen in ihrer eigenen Bring!-App an), oder die erste Person nimmt einmalig im Bot-Konto an (heute). Ziel: **niemand muss sich ins Bot-Konto einloggen.**
+  - Fortschritt oben als 3 Punkte, jeder Schritt überspringbar («Später»), nichts davon wieder fragen.
+- [ ] **2. «Nächster Schritt»-Karte im Plan**: oben eine Karte, die je nach Stand wechselt – «Wochenwahl starten» → «2 von 4 haben gewählt · anstupsen» → «Plan übernehmen» → «Bring! füllen (12 Sachen)» → am Kochtag «Heute: Kürbis-Risotto · Kochen». Ersetzt verstreute Hinweise (Pop-up, roter Punkt, Chips). Erste Woche zusätzlich ein kurzer Satz, was als Nächstes passiert.
+- [ ] **3. Rezepte = ein Buch** (Reiter «Rezepte» neu ordnen)
+  - Oben drei Einstiege: **Stöbern** (Buch, Saison zuerst) · **Meine** (eigene + geteilte) · **Saison** (Gemüse des Monats). Suche immer oben («Lauch», «schnell», «vegi»).
+  - **Buchansicht**: eine Doppelseite pro Rezept (Handy: eine Seite), Wischen = blättern, grosses Bild, Titel, Zeit, Vegi/Fleisch, Saison. Tablet quer = links Bild, rechts Zutaten.
+  - **Rezept-Seite** (aus Buch, Wochenwahl, Plan, Katalog – überall dieselbe): Zutaten schon für eure Portionen, darunter drei Knöpfe: **Einplanen** (Tag Mo–So, angezeigte Woche) · **Senden** · **Kochen**; klein «Rezept auf fooby.ch ↗».
+- [ ] **4. Senden an Mitbewohner**: auf der Rezept-Seite «Senden» → Blatt mit den Mitbewohnern (Kacheln) + «Als Link teilen (WhatsApp …)». An Mitbewohner = Meldung in Obsonare («Joshua schlägt vor: Kürbis-Risotto»), antippen öffnet die Rezept-Seite; im Hintergrund kommt es in die Wochenwahl der Woche (als Vorschlag mit Name). Link = Web-Share mit Titel, Bild, Obsonare-Link (öffnet die Rezept-Seite, ohne WG nur lesen).
+- [ ] **5. Rezepte einlesen – ein Knopf «+»** (in Rezepte, im Menü-Blatt, in der Wochenwahl): Blatt mit **Link einfügen** (erkennt einen kopierten Link selbst) · **Text einfügen** (Instagram, WhatsApp, Notiz; ohne KI) · **Foto mit KI** · **Von Hand**. Danach immer dieselbe Vorschau zum Korrigieren → «Speichern & einplanen».
+  - **Foto mit KI über eine fremde App** (Entscheid Joshua 25.11.: ja, so einfach wie möglich – kein API-Schlüssel, keine Kosten, kein Bild über unseren Server): Knopf «Foto mit KI» → Obsonare **kopiert einen fertigen Prompt** und öffnet **Claude oder Gemini** (Wahl pro Handy, mit Vorbefüllung, wo die App das kann, z.B. `claude.ai/new?q=…`; sonst nur öffnen + «Prompt ist kopiert, einfügen»). Dort Foto machen (Kochbuch, Zettel, Screenshot) → die KI antwortet im festen Format → Antwort **kopieren** → zurück in Obsonare: Knopf «Einfügen» (bzw. Hinweis «Rezept in der Zwischenablage gefunden» beim Zurückkehren, ohne ungefragt zu lesen) → Vorschau → Speichern.
+  - **Festes Format** (lesbar, robuster als JSON): Kopfzeile `OBSONARE-REZEPT`, dann `Titel:`, `Portionen:`, `Zeit:`, `Vegi: ja/nein`, `Zutaten:` (eine Zeile pro Zutat «200 g Lauch»), `Schritte:` (nummeriert). Der Prompt verlangt nur das, ohne Einleitung; Mengen so wie im Original, Portionen angeben. Parser in `core.js` (`parseRecipeText`), nimmt auch freien Text (dann wie «Text einfügen»). Tests mit Beispiel-Antworten von Claude und Gemini.
+  - Dieselbe Vorschau dient für «Text einfügen» – ein Weg, zwei Quellen.
+- [ ] **6. Kochansicht «Kochen»** (aus Plan-Karte «Heute» oder Rezept-Seite): ganze Seite, Zutaten auf heute umgerechnet, antippen = abgehakt, Bildschirm bleibt an, Zeiten im Text = Timer; Schritte bei eigenen Rezepten, sonst «Rezept öffnen ↗» (Link) – Tablet quer: Zutaten links, Schritte/Webseite-Hinweis rechts. Wahl «Buch» (Obsonare-Seite) oder «Link» (Original) merkt sich pro Handy.
+- [ ] **7. Einstellungen aufräumen**: oben nur **Du** (Name, Vegi/Fleisch, Benachrichtigungen) · **WG** (Mitbewohner, einladen, Znacht-Zeit) · **Bring!** (verbunden ✓ / verbinden); Stil, Farben, Standort, Kalender, Über unter «Mehr».
+
+### Erfolg messen (beim Praxistest)
+- Jemand Neues ist ohne Hilfe in **unter 2 Minuten** drin und hat gewählt.
+- Planer braucht für «Wahl → Plan → Bring!» **unter 1 Minute**.
+- Niemand fragt «wo finde ich …?» – jede solche Frage = Punkt für die nächste Runde.
+
+### Offene Entscheide (Joshua)
+- Bot: welcher Weg, wenn die Einladung nicht automatisch angenommen werden kann?
+- Senden: Meldung in Obsonare, WhatsApp-Link oder beides (Vorschlag: beides, Meldung zuerst)?
+- ~~Foto mit KI~~ → entschieden 25.11.: ja, über Claude/Gemini mit kopiertem Prompt (Schritt 5)
+- Reihenfolge: 1 + 2 vor dem Praxistest, 3–7 danach (Vorschlag).
+
 ## Als Nächstes
 
 - [x] **Markt-Ansicht übersichtlicher** (erledigt 18.11., v1.13.0) (Joshua 17.11., nach v1.12.0): nach **Art** gruppieren (Hofläden, Bio-Läden, Wochenmärkte, Spezialmärkte, Automaten), pro Ort Link + «Route»; **Radius vergrössern**; Öffnungszeiten **klein pro Ort** (Mo–So in einer Zeile) statt Liste pro Wochentag – heute steht z.B. ein 24-h-Hofladen 7× da, das ist unübersichtlich.
