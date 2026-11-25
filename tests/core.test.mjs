@@ -96,6 +96,51 @@ check(C.assignDays(["x"], week, ms, votes).x === 0, "ohne Wunschtag: Tag, an dem
   check(C.carryOver(null, ms).length === 0, "ohne Wahl der Vorwoche: nichts");
 }
 
+// Einfach & saisonal (Schritt 0, Joshua 25.11.): Grundrezepte × Saisongemüse, aktive Zeit
+{
+  await import("file:///" + path.join(root, "standalone_data.js").replace(/\\/g, "/"));
+  const D = globalThis.OBSONARE_DATA;
+  const B = C.expandBases(D.bases, D.season_items);
+  check(D.bases.length >= 9 && B.length === D.bases.reduce((n, b) => n + b.variants.length, 0), `Grundrezepte ausgeklappt (${D.bases.length} Grundrezepte, ${B.length} Varianten)`);
+  check(new Set(B.map(r => r.id)).size === B.length && B.every(r => /^b-[a-z]+-[a-z-]+$/.test(r.id)), "Ids eindeutig und stabil (b-<grundrezept>-<variante>)");
+  check(B.every(r => r.servings === 4 && C.ingredientCount(r) <= 8 && C.activeMin(r) <= 30 && C.isSimple(r)), "jede Variante: für 4, höchstens 8 Zutaten, höchstens 30 Min. aktiv, einfach");
+  check(B.every(r => !/\{v\}/.test(r.title + r.instructions) && r.ingredients.every(i => i && i.name && i.amount)), "Titel/Anleitung ohne Platzhalter, jede Zutat mit Name und Menge");
+  check(B.every(r => new Set(r.ingredients.map(i => i.name)).size === r.ingredients.length), "keine Zutat doppelt in einer Variante");
+  for (let m = 1; m <= 12; m++) {
+    const empty = D.bases.filter(b => !C.baseVariants(B, b.id, m).length).map(b => b.id);
+    check(empty.length <= 2, `Monat ${m}: fast jedes Grundrezept hat eine Variante mit Saison${empty.length ? ` (ohne: ${empty.join(", ")})` : ""}`);
+  }
+  const nov = r => r.season_months.includes(11);
+  check(nov(B.find(r => r.id === "b-hoernli-lauch")) && !nov(B.find(r => r.id === "b-hoernli-zucchetti")), "Saison aus season_items: Lauch im November ja, Zucchetti nein");
+  check(C.baseMonths({ season: ["kuerbis", "randen"] }, D.season_items).join() === "8,9,10,11,12,1,2".split(",").map(Number).sort((a, b) => a - b).join(), "zwei Gemüse: nur Monate, in denen beide Saison haben");
+  check(C.sameDish(B.find(r => r.id === "b-hoernli-lauch"), B.find(r => r.id === "b-hoernli-ruebli")), "zwei Varianten desselben Grundrezepts = dasselbe Gericht (nie beide in der Wochenwahl)");
+  // aktive Zeit: Ofen daneben zählt nicht
+  const ofen = B.find(r => r.id === "b-ofen-kuerbis-randen");
+  check(C.timeText(ofen) === "15 Min. aktiv · 55 Min. total" && C.isSimple(ofen), `aktiv + total: ${C.timeText(ofen)}`);
+  check(C.timeText({ prep_time_min: 25 }) === "25 Min." && C.activeMin({ prep_time_min: 70 }) === 70, "ohne aktive Zeit gilt total (Rezeptseiten liefern meist nur das)");
+  check(C.timeBadge({ prep_time_min: 70 }) === "> 1 h" && C.timeBadge({ active_min: 95, prep_time_min: 120 }) === "> 1,5 h" && C.timeBadge({ active_min: 130 }) === "> 2 h" && C.timeBadge({ active_min: 40, prep_time_min: 180 }) === "", "Zeit-Abzeichen nach aktiver Zeit: > 1 h / > 1,5 h / > 2 h, langes Schmoren allein nicht");
+  check(!C.isSimple({ quick: true, prep_time_min: 10, ingredients: [] }) && C.isSimple({ prep_time_min: 30, ingredients: Array(8).fill({ name: "x" }).map((x, i) => ({ name: "z" + i })) }) && !C.isSimple({ prep_time_min: 30, ingredients: Array(9).fill(0).map((x, i) => ({ name: "z" + i })) }), "einfach = ≤ 8 Zutaten und ≤ 30 Min. aktiv; Schnelles zählt separat");
+  check(C.ingredientCount({ ingredients: [{ name: "Salz" }, { name: "Pfeffer" }, { name: "Olivenöl" }, { name: "Lauch" }] }) === 1, "Salz, Pfeffer, Öl zählen nicht als Zutat");
+  // Einkauf: Fleisch-Esser bekommen bei Grundrezepten ihr eigenes Fleisch statt Speck/Steak
+  const ofenDay = { ...ofen, eaters: ["a", "b"], leftover_buffer: 0, extra_guests: 0 };
+  const sl = C.shoppingList({ plan: [ofenDay], members, staples: [], bringItems: [] });
+  check(sl.some(i => /Pouletschenkel/.test(i.name)) && !sl.some(i => /Speckwürfeli \/ Rindssteak/.test(i.name)) && sl.some(i => /Grillkäse/.test(i.name)), "Ofengemüse: Pouletschenkel für Fleisch-Esser statt Speck, Grillkäse für Vegi");
+  const cafeDay = { ...B.find(r => r.base_id === "cafe"), eaters: ["a", "b"], leftover_buffer: 0, extra_guests: 0 };
+  const sc = C.shoppingList({ plan: [cafeDay], members, staples: [], bringItems: [] });
+  check(!sc.some(i => /Grillkäse|Speckwürfeli|Nüsslisalat/.test(i.name)), "Café complet: kein Extra-Fleisch, kein Grillkäse, kein Salat");
+  // Wochenwahl: mindestens 5 von 14 einfach
+  const all = [...B, ...D.recipes];
+  for (const seed of [1, 2, 3]) {
+    let s = seed; const rnd = Math.random; Math.random = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+    const ids = C.pickCandidates(all, 11, 14, 2, 5);
+    Math.random = rnd;
+    const rs = ids.map(id => all.find(r => String(r.id) === id));
+    check(ids.length === 14 && rs.filter(C.isSimple).length >= 5 && rs.filter(r => r.base_id).every((r, i, a) => a.findIndex(o => o.base_id === r.base_id) === i), `Wochenwahl (Lauf ${seed}): 14 Gerichte, ≥ 5 einfach, jedes Grundrezept höchstens einmal`);
+  }
+  const fixed = C.cleanCandidates(all, D.recipes.filter(r => !r.quick && !C.isSimple(r)).slice(0, 6).map(r => String(r.id)), 11, 14, 2, 5);
+  check(fixed.length === 14 && fixed.map(id => all.find(r => String(r.id) === id)).filter(C.isSimple).length >= 5, "Auffüllen einer alten Liste: auch dann ≥ 5 einfach");
+}
+
 // Grundvorrat mit Mengen (Variante C)
 const leerSt = C.shoppingList({ plan: [day], members, staples: [{ name: "Weissmehl", keywords: ["mehl"], in_stock: false }], bringItems: [] });
 check(!leerSt.some(i => i.from.includes("Grundvorrat")) && !leerSt.find(i => i.name === "Weissmehl").isStaple, "leerer Grundvorrat: Zutat steht unter «Kaufen», aber der Artikel kommt nicht von selbst auf die Liste");

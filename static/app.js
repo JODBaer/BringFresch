@@ -239,8 +239,10 @@
   // Rezepte & Wochenplan
   // ---------------------------------------------------------------------------
   // gleicher Bestand für alle WGs: Katalog + eigene + geteilte der anderen WGs (Stimmen bleiben pro WG)
+  // Grundrezepte × Saisongemüse (Schritt 0 «Einfach & saisonal»): einmal beim Laden zu gewöhnlichen Rezepten
+  const BASE_RECIPES = CORE.expandBases(DATA.bases, DATA.season_items);
   function allRecipesFull() {
-    return [...(DATA.recipes || []), ...(window.OBSONARE_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
+    return [...BASE_RECIPES, ...(DATA.recipes || []),...(window.OBSONARE_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
   }
   // Für Listen, Suche, Wochenwahl: ohne Doppelte (gleicher Link = ein Rezept, CORE.uniqueRecipes). Nach ID suchen: recipeById (volle Liste).
   function allRecipes() {

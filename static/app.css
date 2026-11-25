@@ -257,6 +257,10 @@ dialog.full .sheet { max-height: 100vh; height: 100%; }
 .vcard.on .days-l { color: var(--fg); }
 .vcard .vv { position: absolute; top: 8px; left: 8px; right: 40px; display: flex; gap: 3px; flex-wrap: wrap; }
 .vcard .vv .mini { background: rgba(255, 255, 255, .92); color: #1d2a17; }
+/* «einfach» oder aktive Zeit «> 1 h» (Schritt 0 Einfach & saisonal); unter dem Wunschtag, wenn beide da sind */
+.vcard .vtag { position: absolute; top: 8px; right: 8px; background: rgba(255, 255, 255, .92); color: #1d2a17; font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 99px; }
+.vcard .vtag.easy { background: var(--accent); color: var(--on-accent); }
+.vcard .vtag.low { top: 30px; }
 .vcard .vwish { position: absolute; top: 8px; right: 8px; background: rgba(255, 255, 255, .92); color: #1d2a17; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 99px; }
 .vcard .days-pick { flex-wrap: wrap; gap: 3px; }
 .vcard .days-pick button { flex: 1 0 calc((100% - 9px) / 4); padding: 5px 0; }
@@ -1044,3 +1048,28 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .recipe-head .recipe-txt { flex: 1 1 auto; min-width: 0; }
 .recipe-txt small.nutri { display: block; margin-top: 2px; }
 .opt:has(.othumb) { grid-template-columns: auto 1fr auto; }
+
+/* =====================================================================
+   Einfach im <Monat> (Schritt 0 «Einfach & saisonal», Entwurf docs/design/einfach-saisonal-entwurf.html)
+   ===================================================================== */
+.easy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.easy-card { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 16px; padding: 12px; text-align: left; display: flex; flex-direction: column; gap: 5px; min-width: 0; font: inherit; }
+.easy-card .ic { font-size: 28px; line-height: 1; }
+.easy-card b { font-size: 15px; line-height: 1.2; }
+.easy-card small { color: var(--muted); font-size: 12px; }
+.easy-vegs { display: flex; gap: 4px; flex-wrap: wrap; }
+.easy-vegs span { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--fg); }
+.easy-variants { display: flex; gap: 6px; flex-wrap: wrap; }
+.easy-variants button { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 12px; padding: 8px 12px; font: inherit; font-size: 14px; font-weight: 600; }
+.easy-variants button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.easy-ing { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.easy-ing li { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 14.5px; }
+.easy-ing li:first-child { border-top: 0; }
+.easy-ing li .q { color: var(--muted); font-variant-numeric: tabular-nums; }
+.easy-ing li.veg { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-weight: 600; }
+.easy-who { padding: 0; }
+.easy-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.easy-days button { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 10px; padding: 7px 0 5px; font: inherit; font-size: 13px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.easy-days button small { font-size: 9.5px; font-weight: 400; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: 2px; }
+.easy-days button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.easy-days button[aria-pressed="true"] small { color: var(--on-accent); }

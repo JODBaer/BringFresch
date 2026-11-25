@@ -162,7 +162,7 @@
             ${app.imgSpan(r, "rthumb")}
             <div class="recipe-txt">
               <b>${esc(r.title)}</b>${pop[r.id] ? ` <span class="likes" title="Stimmen eurer Wochenwahlen">♥ ${pop[r.id]}</span>` : ""}
-              <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${r.prep_time_min || 30} Min.${inSeason(r) ? "" : " · nicht Saison"}${r.shared_from ? " · geteilt" : custom && r.shared === false ? " · nur unsere WG" : ""}</small>
+              <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${CORE.timeText(r)}${CORE.isSimple(r) ? " · einfach" : ""}${inSeason(r) ? "" : " · nicht Saison"}${r.shared_from ? " · geteilt" : custom && r.shared === false ? " · nur unsere WG" : ""}</small>
               ${nh ? `<small class="nutri">${nh}</small>` : ""}
             </div>
             ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : `🔎 Auf ${esc(searchName())} suchen`}</a>` : ""}

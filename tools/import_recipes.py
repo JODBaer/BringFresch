@@ -327,7 +327,7 @@ def recipe_from_jsonld(page: str) -> dict | None:
 
 class MicrodataRecipe(HTMLParser):
     """Liest itemprop-Felder (Swissmilk nutzt Microdata statt JSON-LD)."""
-    WANT = {"recipeYield", "recipeIngredient", "totalTime", "recipeCategory", "keywords", "calories", "proteinContent", "fatContent", "carbohydrateContent"}
+    WANT = {"recipeYield", "recipeIngredient", "totalTime", "prepTime", "recipeCategory", "keywords", "calories", "proteinContent", "fatContent", "carbohydrateContent"}
     VOID = {"meta", "link", "img", "br", "input", "hr", "source"}
 
     def __init__(self):
@@ -381,6 +381,7 @@ def recipe_from_microdata(page: str) -> dict | None:
         "recipeYield": (d.get("recipeYield") or [""])[0] or (lambda m: f"{m.group(1)} Personen" if m else "")(re.search(r"numberOfPersons&quot;:\s*&quot;(\d+)", page)),
         "recipeIngredient": [x for x in d.get("recipeIngredient", []) if x],
         "totalTime": (d.get("totalTime") or [""])[0],
+        "prepTime": (d.get("prepTime") or [""])[0],
         "recipeCategory": d.get("recipeCategory", []),
         "keywords": ", ".join(d.get("keywords", [])),
         "nutrition": {k: d[k][0] for k in ("calories", "proteinContent", "fatContent", "carbohydrateContent") if d.get(k)},
@@ -448,6 +449,7 @@ def extract(page: str) -> dict | None:
         "yield": as_text(r.get("recipeYield")),
         "ingredients": [html.unescape(as_text(i)) for i in (r.get("recipeIngredient") or [])],
         "totalTime": as_text(r.get("totalTime")),
+        "prepTime": as_text(r.get("prepTime")),  # aktive Zeit (Rüsten/Kochen): «einfach» zählt nur sie (Joshua 25.11.)
         "category": as_text(r.get("recipeCategory")),
         "keywords": as_text(r.get("keywords")),
         "diet": as_text(r.get("suitableForDiet")),
@@ -557,6 +559,8 @@ def classify(raw: dict, min_servings: int = 2) -> dict | str:
     if not min_servings <= servings <= 8:
         return f"Portionen unklar ({raw.get('yield')})"
     minutes = iso_minutes(raw.get("totalTime", ""))
+    active = iso_minutes(raw.get("prepTime", ""))
+    active = active if active and (not minutes or active < minutes) else 0  # nur wenn kürzer als total, sonst sagt es nichts
     if minutes and minutes > 120:
         return f"zu lang ({minutes} Min.)"
     ingredients = [i for i in (parse_ingredient(l) for l in lines) if i]
@@ -611,6 +615,7 @@ def classify(raw: dict, min_servings: int = 2) -> dict | str:
         "diet": diet,
         "servings": servings,
         "prep_time_min": minutes or 30,
+        **({"active_min": active} if active else {}),
         "primary_vegetables": veg_found,
         "ingredients": ingredients,
         "season_months": sorted(months),
@@ -690,7 +695,7 @@ def cmd_merge():
         chosen = [r for r in data["recipes"] if r["id"] in ids]
     else:
         chosen = [r for r in data["recipes"] if r["proposed"]]
-    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
+    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "active_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
     out = [{k: r[k] for k in keep if k in r} for r in sorted(chosen, key=lambda r: r["title"])]
     target = ROOT.parent / "static" / "recipes_imported.js"
     target.write_text(
@@ -716,7 +721,7 @@ def cmd_add(per_site: int = 12):
     src = target.read_text(encoding="utf-8")
     existing = json.loads(src[src.index("["):src.rindex("]") + 1])
     have = {re.sub(r"[^a-z]", "", r["title"].lower()) for r in existing} | {r["source_url"] for r in existing}
-    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
+    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "active_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
     added = []
     # ohne Angabe die neuen Seiten; mit Namen auch die grossen (Joshua 19.11.: mehr Rezepte, am liebsten mit Nährwerten)
     only = [a for a in sys.argv[2:] if a in SITES]
@@ -844,7 +849,7 @@ def refresh_recipe(r: dict, page: str) -> list[str]:
     if isinstance(c, str):
         return []
     changed = []
-    for k in ("servings", "prep_time_min", "ingredients", "nutrition"):
+    for k in ("servings", "prep_time_min", "active_min", "ingredients", "nutrition"):
         if c.get(k) is not None and c.get(k) != r.get(k):
             r[k] = c[k]
             changed.append(k)
@@ -940,7 +945,7 @@ def cmd_monthly(n_new: int = 3, per_site: int = 15):
         t.join()
     cands.sort(key=lambda r: r["source_url"])  # gleiche Reihenfolge unabhängig von den Threads
     rnd.shuffle(cands)
-    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
+    keep = ("id", "source_url", "title", "category", "diet", "servings", "prep_time_min", "active_min", "primary_vegetables", "ingredients", "season_months", "nutrition")
     new = pick_new(cands, month, have, n_new)
     recipes += [{k: r[k] for k in keep if k in r} for r in new]
     rep["added"] = [f"{r['title']} ({r['diet']}, {r['prep_time_min']} Min.{', ' + str(r['nutrition']['kcal']) + ' kcal' if r.get('nutrition') else ''}) – {r['source_url']}" for r in new]

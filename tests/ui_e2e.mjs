@@ -917,6 +917,32 @@ await step(A, "Rezepte & Saison: Monat wechseln zeigt andere Saison", async () =
   await choose(A, "#monthSelect", "11");
 });
 
+await step(A, "Einfach im November: Grundrezepte oben in Rezepte, Gemüse wählen, Zeit aktiv/total, Tag = einplanen, Rückgängig", async () => {
+  await goTab(A, "season");
+  expect((await text(A, "#easyMonth")) === "November", "Monat fehlt");
+  const n = await A.page.$$eval("#easyGrid .easy-card", l => l.length);
+  expect(n >= 8, `nur ${n} Grundrezepte`);
+  await tap(A, '#easyGrid [data-base="hoernli"]');
+  await until(A, () => document.getElementById("easyDialog").open && /^Hörnli & Ghacktes mit /.test(document.getElementById("easyTitle").textContent), "Blatt geht nicht auf");
+  expect(!(await A.page.$('#easyVariants [data-variant="b-hoernli-zucchetti"]')), "Zucchetti im November angeboten");
+  await tap(A, '#easyVariants [data-variant="b-hoernli-ruebli"]');
+  await until(A, () => document.getElementById("easyTitle").textContent === "Hörnli & Ghacktes mit Rüebli" && /Rüebli/.test(document.querySelector("#easyIng li.veg").textContent), "Gemüse wechselt nicht");
+  expect(/Vegi|Lea|Jo|Grillkäse|Linsen/.test(await text(A, "#easyWho")), "Hinweis Fleisch/Vegi fehlt");
+  await clearToasts(A);
+  await tap(A, '#easyDays [data-day="0"]');
+  await toastIs(A, /Mo: Hörnli & Ghacktes mit Rüebli/);
+  expect(await A.page.evaluate(() => window.BF_APP.state.plan[0].id === "b-hoernli-ruebli"), "Montag nicht eingeplant");
+  expect((await A.page.$eval('#easyDays [data-day="0"]', b => b.getAttribute("aria-pressed"))) === "true", "Montag nicht markiert");
+  await shot(A, "10b-einfach");
+  await dialogNoHScroll(A, "easyDialog");
+  await tap(A, ".toast button");
+  await until(A, () => window.BF_APP.state.plan[0].id !== "b-hoernli-ruebli", "Rückgängig wirkt nicht");
+  await closeDialog(A, "easyDialog");
+  await tap(A, '#easyGrid [data-base="ofen"]');
+  await until(A, () => /15 Min\. aktiv · 55 Min\. total/.test(document.getElementById("easySub").textContent), "aktive + totale Zeit fehlt");
+  await closeDialog(A, "easyDialog");
+});
+
 await step(A, "Alle Rezepte: Knopf bei «Meine Rezepte», Karten nach Herkunft und Saison, Tag wählen = einplanen, Rückgängig, Suche", async () => {
   await goTab(A, "season");
   await tap(A, "#allRecipesBtn");

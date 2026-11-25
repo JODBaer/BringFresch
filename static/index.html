@@ -71,6 +71,10 @@
 
     <!-- 3. Saison -->
     <section class="tab" id="tab-season" hidden>
+      <!-- Einfach & saisonal (Schritt 0, Joshua 25.11.): Grundrezepte mit dem Gemüse vom Monat (app_einfach.js) -->
+      <p class="label">Einfach im <span id="easyMonth"></span> <small>wenig Zutaten · ≤ 30 Min. aktiv</small></p>
+      <div class="easy-grid" id="easyGrid"></div>
+
       <p class="label">Rezept suchen</p>
       <div class="card set-hero">
         <p class="hint" style="padding:0">Gemüse unten antippen = «Spinat Rezept» kopiert und hier eingesetzt. Ergänzen (z.B. Risotto) und suchen.</p>
@@ -375,6 +379,24 @@
   </dialog>
 
   <!-- Alle Rezepte: kleine Memory-Karten nach Herkunft und Saison, Karte antippen = Tag wählen -->
+  <dialog id="easyDialog" class="full">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2 id="easyTitle"></h2><p id="easySub"></p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body">
+        <p class="label" style="padding:0">Gemüse vom Monat</p>
+        <div class="easy-variants" id="easyVariants" role="group" aria-label="Gemüse wählen"></div>
+        <ul class="easy-ing" id="easyIng"></ul>
+        <p class="hint easy-who" id="easyWho"></p>
+        <p class="hint" style="padding:0" id="easySteps"></p>
+        <p class="label" style="padding:0">Einplanen <small id="easyWeek"></small></p>
+        <div class="easy-days" id="easyDays" role="group" aria-label="Tag wählen"></div>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="allDialog" class="full">
     <div class="sheet">
       <div class="sheet-head">
@@ -599,6 +621,7 @@
   <script src="app_rezepte.js"></script>
   <script src="app_wahl.js"></script>
   <script src="app_alle.js"></script>
+  <script src="app_einfach.js"></script>
   <script src="app_sync.js"></script>
   <script src="app_einstellungen.js"></script>
   <script src="app_push.js"></script>

@@ -288,7 +288,9 @@
       const meat = present.filter(m => m.diet === "fleisch").length;
       const vegi = present.filter(m => m.diet === "vegi").length;
       const vegan = present.filter(m => m.diet === "vegan").length;
-      if (meat > 0 && day.diet !== "fleisch" && !day.no_addons) add("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meat, "Fleisch & Fisch", day.title);
+      const meatSwap = day.meat_swap; // Grundrezepte: z.B. Pouletschenkel aufs Blech statt Speck/Steak
+      if (meat > 0 && day.diet !== "fleisch" && meatSwap) add(meatSwap.name, meatSwap.unit, meatSwap.amount * meat, meatSwap.bring_cat, day.title);
+      else if (meat > 0 && day.diet !== "fleisch" && !day.no_addons) add("Schweizer Speckwürfeli / Rindssteak", "g", 150 * meat, "Fleisch & Fisch", day.title);
       const swap = day.vegi_swap; // z.B. Vegi-Nuggets statt Grillkäse
       if (vegi > 0 && swap) add(swap.name, swap.unit, swap.amount * vegi, swap.bring_cat, day.title);
       else if (vegi > 0 && !day.no_addons) add("Schweizer Grillkäse / Halloumi", "g", 100 * vegi, "Milch & Käse", day.title);
@@ -549,7 +551,9 @@
       base = s.v; cover = s.cover; src = "schätzung";
     }
     const add = (v, g) => { base = base.map((x, i) => x + v[i] * g / 100); };
-    if (diet === "fleisch" && r.diet !== "fleisch" && !r.no_addons) add(ADDON_MEAT, 150);
+    const meatSwap = r.meat_swap && r.meat_swap.name ? nutrientOf(cleanIngredient(r.meat_swap.name).name) : null;
+    if (diet === "fleisch" && r.diet !== "fleisch" && meatSwap) add(meatSwap.v, gramsOf(r.meat_swap, meatSwap) || 0);
+    else if (diet === "fleisch" && r.diet !== "fleisch" && !r.no_addons && !r.meat_swap) add(ADDON_MEAT, 150);
     if (diet && diet !== "fleisch") {
       const swap = r.vegi_swap;
       if (swap && swap.name) {
@@ -676,7 +680,56 @@
     } catch (e) { return raw.toLowerCase().replace(/^https?:\/\/(www\.)?/, "").replace(/[#?].*$/, "").replace(/\/+$/, ""); }
   }
   const sameLink = (a, b) => !!a && !!b && canonicalUrl(a) === canonicalUrl(b);
-  const sameDish = (a, b) => String(a.id) === String(b.id) || (!!dishKey(a) && dishKey(a) === dishKey(b)) || sameLink(a.source_url, b.source_url);
+  // Varianten desselben Grundrezepts (Hörnli & Ghacktes mit Lauch / mit Rüebli) gelten als dasselbe Gericht
+  const sameDish = (a, b) => String(a.id) === String(b.id) || (!!dishKey(a) && dishKey(a) === dishKey(b)) || sameLink(a.source_url, b.source_url) || (!!a.base_id && a.base_id === b.base_id);
+
+  // ---------------------------------------------------------------------------
+  // Einfach & saisonal (Joshua 25.11., plan.md Schritt 0): Grundrezepte × Saisongemüse, aktive Zeit
+  // ---------------------------------------------------------------------------
+  const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  // Monate einer Variante: «months» von Hand, sonst alle Gemüse aus «season» (season_items) zugleich in Saison
+  function baseMonths(variant, seasonItems) {
+    if (Array.isArray(variant.months)) return variant.months.slice().sort((a, b) => a - b);
+    const sets = (variant.season || []).map(id => {
+      const s = (seasonItems || []).find(x => x.id === id);
+      return s ? [...(s.field_months || []), ...(s.storage_months || [])] : [];
+    });
+    return sets.length ? ALL_MONTHS.filter(m => sets.every(set => set.includes(m))) : ALL_MONTHS.slice();
+  }
+  // Grundrezepte → gewöhnliche Rezepte (Id «b-<grundrezept>-<variante>»), die Plan, Einkauf und Wochenwahl unverändert nehmen
+  function expandBases(bases, seasonItems) {
+    const out = [];
+    (bases || []).forEach(b => (b.variants || []).forEach(v => {
+      const fill = t => String(t || "").replace(/\{v\}/g, v.label);
+      const r = {
+        id: `b-${b.id}-${v.key}`, base_id: b.id, variant_key: v.key, variant_label: v.label,
+        title: fill(b.title), category: "einfach", diet: v.diet || b.diet, servings: b.servings || DEFAULT_SERVINGS,
+        prep_time_min: b.total_min || b.active_min, active_min: b.active_min, simple: true,
+        ingredients: (b.ingredients || []).flatMap(i => (i === "VEG" ? v.items : [i]).map(x => ({ ...x }))),
+        instructions: fill(b.instructions), season_months: baseMonths(v, seasonItems), primary_vegetables: []
+      };
+      if (b.vegi_swap) r.vegi_swap = { ...b.vegi_swap };
+      if (b.meat_swap) r.meat_swap = { ...b.meat_swap };
+      if (b.no_addons) r.no_addons = true;
+      if (b.no_salad) r.no_salad = true;
+      out.push(r);
+    }));
+    return out;
+  }
+  // Varianten eines Grundrezepts, die in diesem Monat Saison haben (für «Einfach im November»)
+  const baseVariants = (recipes, baseId, month) => recipes.filter(r => r.base_id === baseId && inSeason(r, month));
+  const COUNT_SKIP = /^(salz|pfeffer|öl|olivenöl|rapsöl|wasser|leitungswasser)\b/i;
+  const ingredientCount = r => (r.ingredients || []).filter(i => !COUNT_SKIP.test(String((i && i.name) || i).trim())).length;
+  // aktive Zeit (Rüsten, Kochen am Herd); ohne Angabe gilt die ganze Zeit (prep_time_min = total, so liefern es die Rezeptseiten)
+  const activeMin = r => (Number(r.active_min) > 0 ? Number(r.active_min) : Number(r.prep_time_min) || 30);
+  const totalMin = r => Math.max(activeMin(r), Number(r.prep_time_min) || 0);
+  // einfach = Grundrezept oder höchstens 8 Zutaten und höchstens 30 Min. aktiv (Ofen-/Kochzeit daneben zählt nicht); Schnelles hat seinen eigenen Platz
+  const isSimple = r => !!r && !r.quick && !r.is_leftovers && (r.simple === true || (activeMin(r) <= 30 && ingredientCount(r) <= 8));
+  // Aufwändige zeigen ihre aktive Zeit statt eines Worts (Joshua 25.11.: «> 1 h», «> 1,5 h», «> 2 h»)
+  const timeBadge = r => { const a = activeMin(r); return a > 120 ? "> 2 h" : a > 90 ? "> 1,5 h" : a > 60 ? "> 1 h" : ""; };
+  const minText = m => `${m} Min.`;
+  // «15 Min. aktiv · 55 Min. total» – nur eine Zahl, wenn beides gleich ist
+  const timeText = r => { const a = activeMin(r), t = totalMin(r); return t > a ? `${minText(a)} aktiv · ${minText(t)} total` : minText(a); };
   // Rezeptliste ohne Doppelte: gleicher Link = ein Rezept; eigene Rezepte (is_custom) gehen vor (evtl. angepasst);
   // eigene ohne Link mit gleichem Titel = ein Rezept (das zuletzt gespeicherte). Reihenfolge bleibt.
   function uniqueRecipes(list) {
@@ -690,25 +743,27 @@
     const keep = new Set(winner.values());
     return list.filter(r => keep.has(r));
   }
-  function backupRecipe(all, group, excludeIds, quick, month) {
+  // pred (z.B. isSimple): nur passende Rezepte und nur solche mit Saison – sonst null, dann greift der normale Weg
+  function backupRecipe(all, group, excludeIds, quick, month, pred) {
     const taken = all.filter(r => excludeIds.includes(String(r.id)));
-    const free = all.filter(r => !excludeIds.includes(String(r.id)) && !taken.some(t => sameDish(t, r)) && !!r.quick === !!quick);
+    const free = all.filter(r => !excludeIds.includes(String(r.id)) && !taken.some(t => sameDish(t, r)) && !!r.quick === !!quick && (!pred || pred(r)));
     const tiers = [
       free.filter(r => inSeason(r, month) && dietGroup(r) === group),
       free.filter(r => inSeason(r, month)),
-      free.filter(r => dietGroup(r) === group),
-      free
+      ...(pred ? [] : [free.filter(r => dietGroup(r) === group), free])
     ];
     const tier = tiers.find(t => t.length) || [];
     return tier[Math.floor(Math.random() * tier.length)];
   }
-  // Die Gerichte der Wochenwahl: abwechselnd vegi / Fleisch, die letzten «quickSlots» sind Schnelles & Reste, nie doppelt
-  function pickCandidates(all, month, gridSize, quickSlots) {
+  // Die Gerichte der Wochenwahl: abwechselnd vegi / Fleisch, die letzten «quickSlots» sind Schnelles & Reste, nie doppelt;
+  // die ersten «minSimple» sind einfach (Joshua 25.11.: mindestens 5 von 14)
+  function pickCandidates(all, month, gridSize, quickSlots, minSimple = 0) {
     const ids = [];
     for (let i = 0; i < gridSize; i++) {
       const quick = i >= gridSize - quickSlots;
       const group = i % 2 === 0 ? "vegi" : "fleisch";
-      const r = backupRecipe(all, group, ids, quick, month) || backupRecipe(all, group, ids, !quick, month);
+      const simple = !quick && i < minSimple ? backupRecipe(all, group, ids, false, month, isSimple) : null;
+      const r = simple || backupRecipe(all, group, ids, quick, month) || backupRecipe(all, group, ids, !quick, month);
       if (!r) break;
       ids.push(String(r.id));
     }
@@ -716,7 +771,7 @@
   }
   // Gespeicherte Wochenwahl reparieren: unbekannte und doppelte Gerichte weg (auch alte Listen vom WG-Server,
   // die noch aus der Zeit vor dem Mischen-Fix stammen), dann wieder auf gridSize auffüllen
-  function cleanCandidates(all, ids, month, gridSize, quickSlots) {
+  function cleanCandidates(all, ids, month, gridSize, quickSlots, minSimple = 0) {
     const out = [];
     (ids || []).forEach(id => {
       const r = all.find(x => String(x.id) === String(id));
@@ -727,7 +782,9 @@
       const quick = quickCount() < quickSlots;
       const vegi = out.filter(id => dietGroup(all.find(x => String(x.id) === id)) === "vegi").length;
       const group = vegi * 2 < out.length ? "vegi" : "fleisch";
-      const r = backupRecipe(all, group, out, quick, month) || backupRecipe(all, group, out, !quick, month);
+      const needSimple = !quick && out.filter(id => isSimple(all.find(x => String(x.id) === id))).length < minSimple;
+      const simple = needSimple ? backupRecipe(all, group, out, false, month, isSimple) : null;
+      const r = simple || backupRecipe(all, group, out, quick, month) || backupRecipe(all, group, out, !quick, month);
       if (!r) break;
       out.push(String(r.id));
     }
@@ -1355,7 +1412,7 @@
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
-    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, rankDays, moveDay, dayReason, carryOver,
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, expandBases, baseMonths, baseVariants, isSimple, activeMin, totalMin, timeBadge, timeText, ingredientCount, rankDays, moveDay, dayReason, carryOver,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList,
     nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_WORD, goalsOf, toggleGoal
