@@ -122,6 +122,7 @@ h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
         <h2>Entschieden</h2>
         <p><b>1.</b> Aufwändige Rezepte zeigen die Zeit: <b>«&gt; 1 h»</b>, «&gt; 1,5 h», «&gt; 2 h».</p>
         <p><b>2.</b> «Schnelles» (Pizza, Nuggets …) bleibt, 2 pro Woche wie heute.</p>
+        <p><b>3.</b> «Einfach» zählt die <b>aktive</b> Zeit (≤ 30 Min.). Ofen- oder Kochzeit daneben ist egal. Angezeigt werden beide: «15 Min. aktiv · 55 Min. total».</p>
       </div>
     </div>
   </div>
@@ -135,7 +136,7 @@ const BASES = [
   { id: "gnocchi", t: "Gnocchi aus der Pfanne", ic: "🥔", min: 20, n: 5, vegs: ["Rosenkohl", "Kürbis"],
     ing: [["800 g", "Gnocchi"], ["{v}", "{V}"], ["40 g", "Butter"], ["8", "Salbeiblätter"], ["60 g", "Sbrinz"]],
     amt: { Rosenkohl: "400 g", Kürbis: "500 g" }, vegi: "Fleisch-Esser: + Speckwürfeli" },
-  { id: "ofen", t: "Ofengemüse vom Blech", ic: "🥕", min: 15, n: 6, vegs: ["Kürbis & Randen", "Pastinaken & Sellerie"],
+  { id: "ofen", t: "Ofengemüse vom Blech", ic: "🥕", min: 15, tot: 55, n: 6, vegs: ["Kürbis & Randen", "Pastinaken & Sellerie"],
     ing: [["800 g", "Kartoffeln"], ["{v}", "{V}"], ["3 EL", "Öl"], ["250 g", "Kräuterquark"], ["1 Bund", "Petersilie"]],
     amt: { "Kürbis & Randen": "600 g", "Pastinaken & Sellerie": "600 g" }, vegi: "Fleisch-Esser: Pouletschenkel mit aufs Blech · Jo: Halloumi" },
   { id: "curry", t: "Reis mit Curry", ic: "🍛", min: 25, n: 6, vegs: ["Kürbis", "Lauch & Rüebli"],
@@ -150,7 +151,7 @@ const BASES = [
   { id: "ritter", t: "Arme Ritter", ic: "🍞", min: 20, n: 5, vegs: ["Apfel", "Birne"],
     ing: [["8 Scheiben", "Zopf vom Vortag"], ["4", "Eier"], ["3 dl", "Milch"], ["", "Zimtzucker"], ["{v}", "{V}-Kompott"]],
     amt: { Apfel: "4", Birne: "4" }, vegi: "alle gleich, kein Extra-Fleisch" },
-  { id: "kaese", t: "Käseschnitte", ic: "🧀", min: 20, n: 5, vegs: ["Lauch", "Pilze", "Hawaii"],
+  { id: "kaese", t: "Käseschnitte", ic: "🧀", min: 15, tot: 30, n: 5, vegs: ["Lauch", "Pilze", "Hawaii"],
     ing: [["8 Scheiben", "Brot"], ["300 g", "Raclettekäse"], ["{v}", "{V}"], ["1 dl", "Weisswein oder Milch"], ["", "Nüsslisalat"]],
     amt: { Lauch: "1 Stange", Pilze: "250 g", Hawaii: "Schinken + Ananas" }, vegi: "Jo: ohne Schinken" },
 ];
@@ -163,6 +164,8 @@ const WAHL = [
 ];
 let view = "rez", open = null, pick = {};
 const $ = id => document.getElementById(id);
+const hm = m => m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? " " + (m % 60) : ""}` : `${m} Min.`;
+const timeText = b => b.tot && b.tot > b.min ? `${b.min} Min. aktiv · ${hm(b.tot)} total` : `${b.min} Min.`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 function render() {
   $("vRez").setAttribute("aria-pressed", view === "rez");
@@ -177,7 +180,7 @@ function render() {
   if (!open) {
     $("phSub").textContent = "Rezepte"; $("phTitle").textContent = "Einfach im November";
     $("ph").innerHTML = `<div class="chips"><button class="chip" type="button" aria-pressed="true">Einfach</button><button class="chip" type="button">Saison</button><button class="chip" type="button">Alle</button><button class="chip" type="button">Meine</button></div>
-      <div class="grid">${BASES.map(b => `<button class="base" type="button" data-b="${b.id}"><span class="ic" aria-hidden="true">${b.ic}</span><b>${esc(b.t)}</b><small>${b.n} Zutaten · ${b.min} Min.</small><span class="vegs">${b.vegs.map(v => `<span class="veg">${esc(v)}</span>`).join("")}</span></button>`).join("")}</div>`;
+      <div class="grid">${BASES.map(b => `<button class="base" type="button" data-b="${b.id}"><span class="ic" aria-hidden="true">${b.ic}</span><b>${esc(b.t)}</b><small>${b.n} Zutaten · ${timeText(b)}</small><span class="vegs">${b.vegs.map(v => `<span class="veg">${esc(v)}</span>`).join("")}</span></button>`).join("")}</div>`;
     return;
   }
   const b = BASES.find(x => x.id === open), v = pick[b.id] || b.vegs[0];
@@ -186,7 +189,7 @@ function render() {
   $("ph").innerHTML = `<button class="back" type="button" id="back">‹ Alle einfachen</button>
     <div class="hero" aria-hidden="true">${b.ic}</div>
     <h4 class="dtitle">${esc(title)}</h4>
-    <div class="facts"><span class="fact">${b.n} Zutaten</span><span class="fact">${b.min} Min.</span><span class="fact">für 4</span></div>
+    <div class="facts"><span class="fact">${b.n} Zutaten</span><span class="fact">${b.min} Min. aktiv</span>${b.tot && b.tot > b.min ? `<span class="fact">${hm(b.tot)} total</span>` : ""}<span class="fact">für 4</span></div>
     <p class="lbl">Gemüse vom Monat</p>
     <div class="vpick">${b.vegs.map(x => `<button type="button" data-v="${esc(x)}" aria-pressed="${x === v}">${esc(x)}</button>`).join("")}</div>
     <ul class="ing">${b.ing.map(([q, n]) => q === "{v}" || n.includes("{V}") ? `<li class="slot"><span class="q">${esc(b.amt[v] || "")}</span><span>${esc(n.replace("{V}", v))}</span></li>` : `<li><span class="q">${esc(q)}</span><span>${esc(n)}</span></li>`).join("")}</ul>
