@@ -21,7 +21,7 @@ body.xray-all #syncBtn,
 body.xray-all #shopFab,
 body.xray-all #tab-shop .seg button,
 body.xray-all #shopSort,
-body.xray-all #allRecipesBtn,
+body.xray-all #addRecipeBtn,
 body.xray-all #quickLinkBtn {
   outline: 1.5px dashed rgba(63, 122, 63, 0.75) !important;
   outline-offset: 1px !important;

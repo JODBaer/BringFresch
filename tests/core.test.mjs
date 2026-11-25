@@ -100,22 +100,30 @@ check(C.assignDays(["x"], week, ms, votes).x === 0, "ohne Wunschtag: Tag, an dem
 {
   await import("file:///" + path.join(root, "standalone_data.js").replace(/\\/g, "/"));
   const D = globalThis.OBSONARE_DATA;
-  const B = C.expandBases(D.bases, D.season_items);
-  check(D.bases.length >= 9 && B.length === D.bases.reduce((n, b) => n + b.variants.length, 0), `Grundrezepte ausgeklappt (${D.bases.length} Grundrezepte, ${B.length} Varianten)`);
-  check(new Set(B.map(r => r.id)).size === B.length && B.every(r => /^b-[a-z]+-[a-z-]+$/.test(r.id)), "Ids eindeutig und stabil (b-<grundrezept>-<variante>)");
-  check(B.every(r => r.servings === 4 && C.ingredientCount(r) <= 8 && C.activeMin(r) <= 30 && C.isSimple(r)), "jede Variante: für 4, höchstens 8 Zutaten, höchstens 30 Min. aktiv, einfach");
+  const B = C.expandBases(D.bases, D.season_items, 11);
+  check(D.bases.length >= 9 && B.length === D.bases.length, `Rezepte bleiben Rezepte: ein Rezept pro Grundrezept (${B.length})`);
+  check(new Set(B.map(r => r.id)).size === B.length && B.every(r => /^b-[a-z]+$/.test(r.id)), "Ids eindeutig und stabil (b-<grundrezept>)");
+  check(B.every(r => r.servings === 4 && C.ingredientCount(r) <= 8 && C.activeMin(r) <= 30 && C.isSimple(r)), "jedes Grundrezept: für 4, höchstens 8 Zutaten, höchstens 30 Min. aktiv, einfach");
   check(B.every(r => !/\{v\}/.test(r.title + r.instructions) && r.ingredients.every(i => i && i.name && i.amount)), "Titel/Anleitung ohne Platzhalter, jede Zutat mit Name und Menge");
-  check(B.every(r => new Set(r.ingredients.map(i => i.name)).size === r.ingredients.length), "keine Zutat doppelt in einer Variante");
+  check(B.every(r => r.addons && r.addons.season.length >= 2 && !/ mit$/.test(r.title)), "Saison = Add-on mit mehreren Gemüsen, Titel ohne Gemüse");
+  const hoernli = B.find(r => r.id === "b-hoernli");
+  check(hoernli.title === "Hörnli & Ghacktes" && hoernli.season_label === "Lauch" && hoernli.ingredients.some(i => i.name === "Lauch"), `November: Hörnli mit Lauch (${hoernli.season_label})`);
+  const choices = C.seasonChoices(hoernli, 11).map(o => o.key);
+  check(choices.includes("lauch") && !choices.includes("zucchetti"), `Gemüse zur Wahl im November: Lauch ja, Zucchetti nein (${choices})`);
+  const ruebli = C.withSeason(hoernli, "ruebli", 11);
+  check(ruebli.id === "b-hoernli" && ruebli.title === "Hörnli & Ghacktes mit Rüebli" && ruebli.ingredients.some(i => i.name === "Rüebli") && !ruebli.ingredients.some(i => i.name === "Lauch") && !ruebli.addons, "Gemüse wechseln: gleiches Rezept, andere Zutat, Titel mit Gemüse");
+  check(C.seasonChoices(hoernli, 7).some(o => o.key === "zucchetti") && C.seasonChoices(hoernli, 7).some(o => o.key === C.withSeason(hoernli, null, 7).season_key), "im Juli: Zucchetti zur Wahl, das Add-on nimmt selbst ein Gemüse mit Saison");
+  check(JSON.stringify(C.legacyBaseId("b-hoernli-lauch")) === '{"id":"b-hoernli","key":"lauch"}' && !C.legacyBaseId("b-xyz-lauch") && !C.legacyBaseId("b-hoernli"), "alte Ids (b-hoernli-lauch) bleiben lesbar");
   for (let m = 1; m <= 12; m++) {
-    const empty = D.bases.filter(b => !C.baseVariants(B, b.id, m).length).map(b => b.id);
-    check(empty.length <= 2, `Monat ${m}: fast jedes Grundrezept hat eine Variante mit Saison${empty.length ? ` (ohne: ${empty.join(", ")})` : ""}`);
+    const empty = B.filter(r => !C.seasonChoices(r, m).length).map(r => r.base_id);
+    check(empty.length <= 2, `Monat ${m}: fast jedes Grundrezept hat ein Gemüse mit Saison${empty.length ? ` (ohne: ${empty.join(", ")})` : ""}`);
   }
-  const nov = r => r.season_months.includes(11);
-  check(nov(B.find(r => r.id === "b-hoernli-lauch")) && !nov(B.find(r => r.id === "b-hoernli-zucchetti")), "Saison aus season_items: Lauch im November ja, Zucchetti nein");
+  check(B.every(r => r.addons.season.every(o => { const v = C.withSeason(r, o.key, 11); return new Set(v.ingredients.map(i => i.name)).size === v.ingredients.length && C.ingredientCount(v) <= 8; })), "jedes Gemüse: keine Zutat doppelt, ≤ 8 Zutaten");
   check(C.baseMonths({ season: ["kuerbis", "randen"] }, D.season_items).join() === "8,9,10,11,12,1,2".split(",").map(Number).sort((a, b) => a - b).join(), "zwei Gemüse: nur Monate, in denen beide Saison haben");
-  check(C.sameDish(B.find(r => r.id === "b-hoernli-lauch"), B.find(r => r.id === "b-hoernli-ruebli")), "zwei Varianten desselben Grundrezepts = dasselbe Gericht (nie beide in der Wochenwahl)");
+  check(C.recipeFilter(hoernli, { simple: true, quick: true }) && !C.recipeFilter(hoernli, { vegi: true }) && C.recipeFilter(hoernli, { veg: "Lauch" }) && !C.recipeFilter(hoernli, { veg: "Kürbis" }) && !C.recipeFilter({ prep_time_min: 45, diet: "vegi", ingredients: [] }, { quick: true }), "Filter: einfach, ≤ 30 Min., vegi, Hauptgemüse");
+  check(C.sameDish(hoernli, ruebli), "Grundrezept mit anderem Gemüse = dasselbe Gericht (nie zweimal in der Wochenwahl)");
   // aktive Zeit: Ofen daneben zählt nicht
-  const ofen = B.find(r => r.id === "b-ofen-kuerbis-randen");
+  const ofen = C.withSeason(B.find(r => r.id === "b-ofen"), "kuerbis-randen", 11);
   check(C.timeText(ofen) === "15 Min. aktiv · 55 Min. total" && C.isSimple(ofen), `aktiv + total: ${C.timeText(ofen)}`);
   check(C.timeText({ prep_time_min: 25 }) === "25 Min." && C.activeMin({ prep_time_min: 70 }) === 70, "ohne aktive Zeit gilt total (Rezeptseiten liefern meist nur das)");
   check(C.timeBadge({ prep_time_min: 70 }) === "> 1 h" && C.timeBadge({ active_min: 95, prep_time_min: 120 }) === "> 1,5 h" && C.timeBadge({ active_min: 130 }) === "> 2 h" && C.timeBadge({ active_min: 40, prep_time_min: 180 }) === "", "Zeit-Abzeichen nach aktiver Zeit: > 1 h / > 1,5 h / > 2 h, langes Schmoren allein nicht");

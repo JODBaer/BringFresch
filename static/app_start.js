@@ -48,6 +48,7 @@
     });
     document.querySelector("main").scrollTop = 0;
     if (name === "plan") app.fitDensity();
+    if (name === "season" && app.renderRecipes) app.renderRecipes(); // Rezepte: Karten erst beim Öffnen zeichnen
   }
 
   // Navigation: Symbole animieren, Tab zeigen (auch «Einstellungen» direkt als Seite)

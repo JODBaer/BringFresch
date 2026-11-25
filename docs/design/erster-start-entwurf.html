@@ -64,6 +64,14 @@ h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
 .who button.new { border-style: dashed; }
 
 /* Bring! verbinden */
+.fld { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.fld input { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 12px; padding: 11px 12px; font: inherit; font-size: 16px; font-weight: 400; }
+.dchips { display: flex; gap: 6px; }
+.dchips button { flex: 1; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 12px; padding: 10px 4px; font: inherit; font-weight: 700; }
+.dchips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.big2 { display: flex; flex-direction: column; gap: 10px; }
+.big2 button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.big2 button small { font-weight: 400; font-size: 13px; opacity: .85; }
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .steps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
 .steps li .n { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; }
@@ -117,8 +125,10 @@ h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
       <div class="box">
         <h2>Was neu ist</h2>
         <ul>
+          <li><b>Erster Bildschirm ohne Link</b>: zwei grosse Knöpfe <b>Neue WG gründen</b> und <b>Ich habe einen Link / PIN</b>. Gründen ist nicht mehr in den Einstellungen versteckt (dort bleibt es zusätzlich).</li>
           <li><b>Einladungslink</b> statt WG-Name und PIN abtippen. Läuft nach 7 Tagen ab.</li>
           <li><b>Wer bist du?</b> Namen antippen. Mehr nicht.</li>
+          <li><b>Erste Person</b>: WG gründen (WG-Name, dein Name, Fleisch/Vegi) → Bring! verbinden → Mitbewohner einladen → erste Woche.</li>
           <li><b>Bring! verbinden</b> nur einmal, für die erste Person. Alle anderen sehen «Bring! ist verbunden ✓».</li>
           <li>Am Schluss: <b>deine erste Woche</b> in 3 Schritten.</li>
           <li>Jeder Schritt hat «Später». Nichts wird zweimal gefragt.</li>
@@ -142,7 +152,8 @@ h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
 const PEOPLE = [["Joshua", "Fleisch"], ["Lukas", "Fleisch"], ["Leonie", "Fleisch"], ["Jo", "Vegi"]];
 const $ = id => document.getElementById(id);
 let mode = "new", step = 0, me = null, found = false;
-const FLOW = { new: ["link", "who", "done"], first: ["link", "who", "bring", "done"], invite: ["invite"] };
+const FLOW = { new: ["link", "who", "done"], first: ["start", "found", "bring", "invite", "done"], invite: ["invite"] };
+let diet = "Fleisch", wgName = "allmen";
 
 function dots() {
   const f = FLOW[mode];
@@ -153,7 +164,19 @@ function render() {
   dots();
   const s = FLOW[mode][step];
   const S = $("scr");
-  if (s === "link") {
+  if (s === "start") {
+    S.innerHTML = `<h2>Obsonare 🥕</h2><p class="muted">Zusammen planen, was die WG diese Woche isst.</p>
+      <div class="push big2"><button class="btn" type="button" id="found">Neue WG gründen<small>Du bist die erste Person</small></button>
+      <button class="btn ghost" type="button" id="haveLink">Ich habe einen Link / PIN<small>Jemand aus der WG hat dich eingeladen</small></button>
+      <button class="link" type="button" id="skip">Ohne WG ausprobieren</button></div>`;
+  } else if (s === "found") {
+    S.innerHTML = `<h2>Neue WG gründen</h2><p class="muted">Drei Angaben, mehr nicht.</p>
+      <label class="fld">Name der WG<input id="wgName" value="${wgName}" autocomplete="off"></label>
+      <label class="fld">Dein Name<input id="myName" value="${me || ""}" placeholder="z.B. Joshua" autocomplete="off"></label>
+      <div class="fld">Du isst<div class="dchips" role="group" aria-label="Ernährung">${["Fleisch", "Vegi", "Vegan"].map(d => `<button type="button" data-diet="${d}" aria-pressed="${diet === d}">${d}</button>`).join("")}</div></div>
+      <p class="muted">Mit «WG gründen» bist du einverstanden mit den <u>Regeln der App</u>. Die PIN macht Obsonare selbst.</p>
+      <div class="push"><button class="btn" type="button" id="create">WG gründen</button></div>`;
+  } else if (s === "link") {
     S.innerHTML = `<p class="muted">WhatsApp · WG allmen</p>
       <div class="chat"><small>Joshua · 19:42</small>
         <div class="bubble">Komm in unsere WG bei Obsonare 🥕<br><a href="#" id="go">jodbaer.github.io/BringFresch/#join=allmen.7k2f</a></div></div>
@@ -177,7 +200,7 @@ function render() {
       </ol>
       <div class="push"><button class="btn" type="button" id="next" ${found ? "" : "disabled style=\"opacity:.5\""}>Weiter</button><button class="link" type="button" id="later">Später</button></div>`;
   } else if (s === "done") {
-    S.innerHTML = `<h2>Hoi ${me && me !== "neu" ? me : "du"} 👋</h2>
+    S.innerHTML = `<h2>Hoi ${me && me !== "neu" ? me : "du"} 👋</h2>${mode === "first" ? `<div class="okbox">WG «${wgName}» gegründet ✓</div>` : ""}
       ${mode === "new" ? `<div class="okbox">Bring! ist verbunden ✓ Liste «WG»</div>` : ""}
       <p class="muted">So läuft eure Woche:</p>
       <div class="week">
@@ -187,10 +210,10 @@ function render() {
       </div>
       <div class="push"><button class="btn" type="button" id="again">Wochenwahl starten</button></div>`;
   } else if (s === "invite") {
-    S.innerHTML = `<p class="muted">Einstellungen › WG</p><h2>Mitbewohner einladen</h2>
+    S.innerHTML = `<p class="muted">${mode === "first" ? "Schritt 3 von 3" : "Einstellungen › WG"}</p><h2>Mitbewohner einladen</h2>
       <div class="qr" aria-label="QR-Code (Beispiel)"><svg viewBox="0 0 21 21" width="130" height="130" aria-hidden="true">${qr()}</svg></div>
       <p class="muted" style="text-align:center">Scannen oder Link senden. Gilt 7 Tage.</p>
-      <div class="push"><button class="btn" type="button">Per WhatsApp senden</button><button class="btn ghost" type="button">Link kopieren</button></div>`;
+      <div class="push"><button class="btn" type="button">Per WhatsApp senden</button><button class="btn ghost" type="button">Link kopieren</button>${mode === "first" ? `<button class="link" type="button" id="later">Weiter</button>` : ""}</div>`;
   }
 }
 // Beispiel-Muster, kein echter QR-Code
@@ -207,17 +230,22 @@ function qr() {
 $("scr").addEventListener("click", e => {
   const t = e.target.closest("button, a");
   if (!t) return;
+  if (t.id === "found") { step = 1; return render(); }
+  if (t.id === "haveLink") { mode = "new"; step = 0; return render(); }
+  if (t.dataset.diet) { diet = t.dataset.diet; me = $("myName").value.trim() || me; wgName = $("wgName").value.trim() || wgName; return render(); }
+  if (t.id === "create") { me = $("myName").value.trim() || "du"; wgName = $("wgName").value.trim() || wgName; step = 2; return render(); }
   if (t.id === "go" || t.id === "go2") { e.preventDefault(); step = 1; }
   else if (t.dataset.me) { me = t.dataset.me; step++; }
   else if (t.id === "sim") { found = true; }
   else if (t.id === "next" && found) { step++; }
   else if (t.id === "later") { step++; }
   else if (t.id === "again") { step = 0; me = null; found = false; }
+  else if (t.id === "skip") { step = FLOW[mode].length - 1; }
   else if (t.id === "cp") { navigator.clipboard && navigator.clipboard.writeText("allmenbot@gmail.com").catch(() => {}); t.textContent = "Kopiert ✓"; return; }
   else return;
   render();
 });
-const setMode = m => { mode = m; step = 0; me = null; found = false; render(); };
+const setMode = m => { mode = m; step = 0; me = null; found = false; diet = "Fleisch"; wgName = "allmen"; render(); };
 $("mNew").onclick = () => setMode("new");
 $("mFirst").onclick = () => setMode("first");
 $("mInvite").onclick = () => setMode("invite");

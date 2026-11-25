@@ -243,8 +243,10 @@ d.querySelector("#catalogList [data-assign]").click();
 check(d.getElementById("voteDialog").open && !d.getElementById("catalogDialog").open, "zurück in der Wochenwahl nach Hinzufügen");
 d.getElementById("voteApplyBtn").click();
 const pl = plan0();
-check(pl[4].title === t1, `Wunschtag Fr wird respektiert (${pl[4].title})`);
-check(pl.some(x => x.title === t0), "Top-Gericht ist im Plan");
+// Grundrezept: im Plan mit Gemüse («Hörnli & Ghacktes mit Lauch»), in der Wahl der Rezept-Titel → über die Id vergleichen
+const isDish = (x, t) => x.title === t || (w.BF_APP.recipeById(x.id) || {}).title === t;
+check(isDish(pl[4], t1), `Wunschtag Fr wird respektiert (${pl[4].title})`);
+check(pl.some(x => isDish(x, t0)), "Top-Gericht ist im Plan");
 check(!d.getElementById("voteDialog").open, "Wochenwahl schliesst nach Übernahme");
 
 // 8. Plan-Link round trip

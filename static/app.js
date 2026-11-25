@@ -239,8 +239,8 @@
   // Rezepte & Wochenplan
   // ---------------------------------------------------------------------------
   // gleicher Bestand für alle WGs: Katalog + eigene + geteilte der anderen WGs (Stimmen bleiben pro WG)
-  // Grundrezepte × Saisongemüse (Schritt 0 «Einfach & saisonal»): einmal beim Laden zu gewöhnlichen Rezepten
-  const BASE_RECIPES = CORE.expandBases(DATA.bases, DATA.season_items);
+  // Grundrezepte (Schritt 0 «Einfach & saisonal»): ein Rezept pro Grundrezept, Gemüse vom Monat als Add-on «Saison»
+  const BASE_RECIPES = CORE.expandBases(DATA.bases, DATA.season_items, currentMonth());
   function allRecipesFull() {
     return [...BASE_RECIPES, ...(DATA.recipes || []),...(window.OBSONARE_IMPORTED || []), ...((importer && importer.customRecipes) || []), ...sharedRecipes()];
   }
@@ -273,6 +273,8 @@
 
   function makeDay(recipe, dayIdx, previous) {
     const prev = previous || {};
+    // Grundrezept: mit dem Gemüse vom Monat (oder dem schon gewählten, wenn dasselbe Rezept bleibt)
+    if (recipe && recipe.addons) recipe = CORE.withSeason(recipe, prev.base_id === recipe.base_id ? prev.season_key : null, currentMonth());
     return {
       ...recipe,
       day: DAYS[dayIdx],
@@ -310,7 +312,11 @@
       if (day.leftover_buffer === undefined) day.leftover_buffer = DEFAULT_BUFFER;
       if (!day.extra_guests) day.extra_guests = 0;
       // Rezeptdaten aus der aktuellen Datenbank nachziehen (Korrekturen an Zutaten wirken auch auf gespeicherte Pläne)
-      const fresh = day.id != null && allRecipesFull().find(r => String(r.id) === String(day.id));
+      let fresh = day.id != null && allRecipesFull().find(r => String(r.id) === String(day.id));
+      // Grundrezept: mit dem Gemüse des Tages; alte Ids «b-hoernli-lauch» (Schritt 0) werden zu «b-hoernli» + Lauch
+      const old = !fresh && CORE.legacyBaseId(day.id);
+      if (old) fresh = BASE_RECIPES.find(r => r.id === old.id);
+      if (fresh && fresh.addons) fresh = CORE.withSeason(fresh, old ? old.key : day.season_key, currentMonth());
       if (fresh) {
         const { eaters, leftover_buffer, extra_guests, time, time_by } = day;
         plan[idx] = { ...fresh, day: DAYS[idx], eaters, leftover_buffer, extra_guests, ...(time ? { time, time_by } : {}) };
@@ -342,7 +348,13 @@
     notify();
   }
 
-  const recipeById = id => allRecipesFull().find(r => String(r.id) === String(id));
+  // alte Ids der Gemüse-Karten («b-hoernli-lauch», Schritt 0) bleiben lesbar: Grundrezept mit diesem Gemüse, alte Id
+  const recipeById = id => {
+    const r = allRecipesFull().find(x => String(x.id) === String(id));
+    if (r) return r;
+    const old = CORE.legacyBaseId(id), base = old && BASE_RECIPES.find(x => x.id === old.id);
+    return base ? { ...CORE.withSeason(base, old.key, currentMonth()), id: String(id) } : undefined;
+  };
   const { dietGroup } = CORE;
 
   const nextWeekKey = () => weekKey(plusWeek());
