@@ -1,0 +1,203 @@
+<title>Obsonare wird einfach</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,600;8..144,800&display=swap">
+<style>
+/* Layout: eine Spalte, oben ein Streifen mit allen Schritten (wo stehen wir), darunter pro Schritt eine Karte mit «Heute» und «Neu» in je einem Satz. Farben wie die App: Hellgrün + Pistazie. */
+:root {
+  --bg: #f4f8f0; --card: #ffffff; --fg: #18231a; --muted: #5a6a55; --line: #d6e3cc;
+  --accent: #3b6b2f; --accent-soft: #dff5d4; --on-accent: #ffffff;
+  --old: #8a7a6a; --old-soft: #f3ede6; --now: #b25e00; --now-soft: #ffeccf;
+  --display: "Roboto Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: "Roboto Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a;
+    --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d;
+    --old: #c2b2a0; --old-soft: #2a241e; --now: #ffb44d; --now-soft: #3a2a12;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a;
+  --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d;
+  --old: #c2b2a0; --old-soft: #2a241e; --now: #ffb44d; --now-soft: #3a2a12;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.45; margin: 0; overflow-x: hidden; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.page { max-width: 680px; margin: 0 auto; padding-block: 24px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 22px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1.1; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lead { margin: 6px 0 0; color: var(--muted); font-size: 18px; }
+.lead b { color: var(--fg); }
+
+/* Streifen: alle Schritte auf einen Blick */
+.strip { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+.strip a { text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); min-width: 0; }
+.strip a span.dot { width: 100%; height: 8px; border-radius: 999px; background: var(--line); }
+.strip a.now span.dot { background: var(--now); }
+.strip a.before span.dot { background: var(--accent); }
+.strip a b { font-size: 15px; color: var(--fg); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; }
+
+/* Karten */
+.steps { display: flex; flex-direction: column; gap: 14px; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 14px; scroll-margin-top: 16px; }
+.step.now { border: 2px solid var(--now); }
+.num { grid-row: span 4; width: 44px; height: 44px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 22px; }
+.step.now .num { background: var(--now-soft); color: var(--now); }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.head h2 { font-family: var(--display); font-size: 20px; font-weight: 800; margin: 0; }
+.when { font-size: 12.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.step.now .when { background: var(--now-soft); color: var(--now); }
+.when.later { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: baseline; min-width: 0; }
+.tag { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.tag.old { color: var(--old); }
+.tag.new { color: var(--accent); }
+.row p { margin: 0; }
+.row.old p { color: var(--muted); }
+details { grid-column: 2; font-size: 15px; color: var(--muted); }
+details summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 14.5px; padding-block: 4px; }
+details ul { margin: 6px 0 2px; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+
+/* Unten */
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.box h2 { font-family: var(--display); font-size: 19px; margin: 0; }
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 15px; }
+.flow span { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 6px 12px; font-weight: 600; }
+.flow em { color: var(--muted); font-style: normal; }
+.ask { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ask li { padding: 10px 12px; border-radius: 14px; background: var(--now-soft); }
+.ask li b { display: block; }
+.ask li small { color: var(--muted); font-size: 14px; }
+@media (max-width: 420px) { .strip a { font-size: 10px; } h1 { font-size: 26px; } }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Obsonare wird einfach</h1>
+    <p class="lead"><b>8 Änderungen.</b> Eine nach der anderen. Jede bekommt zuerst einen Entwurf, den du anschaust.</p>
+  </header>
+
+  <nav class="strip" aria-label="Alle Schritte">
+    <a href="#s0" class="now"><span class="dot"></span><b>0</b>Rezepte</a>
+    <a href="#s1" class="before"><span class="dot"></span><b>1</b>Start</a>
+    <a href="#s2" class="before"><span class="dot"></span><b>2</b>Karte</a>
+    <a href="#s3"><span class="dot"></span><b>3</b>Buch</a>
+    <a href="#s4"><span class="dot"></span><b>4</b>Senden</a>
+    <a href="#s5"><span class="dot"></span><b>5</b>Einlesen</a>
+    <a href="#s6"><span class="dot"></span><b>6</b>Kochen</a>
+    <a href="#s7"><span class="dot"></span><b>7</b>Aufräumen</a>
+  </nav>
+  <div class="legend"><span><i style="background:var(--now)"></i>Jetzt</span><span><i style="background:var(--accent)"></i>Vor dem WG-Test</span><span><i style="background:var(--line)"></i>Nach dem WG-Test</span></div>
+
+  <div class="steps">
+    <article class="step now" id="s0">
+      <div class="num">0</div>
+      <div class="head"><h2>Einfache Rezepte</h2><span class="when">Jetzt</span></div>
+      <div class="row old"><span class="tag old">Heute</span><p>Viele Kochbuch-Rezepte mit 9–15 Zutaten.</p></div>
+      <div class="row"><span class="tag new">Neu</span><p>6 Alltags-Gerichte. Das Gemüse vom Monat kommt von selbst rein.</p></div>
+      <details><summary>Welche 6?</summary><ul>
+        <li>Hörnli &amp; Ghacktes (jetzt mit Lauch)</li>
+        <li>Maultaschen oder Gnocchi aus der Pfanne</li>
+        <li>Ofengemüse vom Blech</li>
+        <li>Reis mit Curry oder Rahmsauce</li>
+        <li>Gemüsepfanne mit Reis</li>
+        <li>Café complet mit Äpfeln/Birnen</li>
+        <li>Wochenwahl: mindestens 7 von 14 sind einfach</li>
+      </ul></details>
+    </article>
+
+    <article class="step" id="s1">
+      <div class="num">1</div>
+      <div class="head"><h2>Erster Start</h2><span class="when">Vor dem WG-Test</span></div>
+      <div class="row old"><span class="tag old">Heute</span><p>WG-Name und PIN abtippen. Bring! versteckt.</p></div>
+      <div class="row"><span class="tag new">Neu</span><p>Link aus WhatsApp antippen, Namen antippen, fertig.</p></div>
+      <details><summary>Und Bring!?</summary><ul>
+        <li>3 kurze Schritte mit «Adresse kopieren» und «Bring! öffnen»</li>
+        <li>Die App findet die Liste selbst</li>
+        <li>Ziel: niemand muss sich ins Bot-Konto einloggen</li>
+      </ul></details>
+    </article>
+
+    <article class="step" id="s2">
+      <div class="num">2</div>
+      <div class="head"><h2>Was jetzt?</h2><span class="when">Vor dem WG-Test</span></div>
+      <div class="row old"><span class="tag old">Heute</span><p>Pop-up, roter Punkt, Hinweise an vielen Orten.</p></div>
+      <div class="row"><span class="tag new">Neu</span><p>Eine Karte oben im Plan sagt, was jetzt dran ist.</p></div>
+      <details><summary>Zum Beispiel</summary><ul>
+        <li>«Wochenwahl starten»</li>
+        <li>«2 von 4 haben gewählt · anstupsen»</li>
+        <li>«Bring! füllen (12 Sachen)»</li>
+        <li>«Heute: Hörnli &amp; Ghacktes · Kochen»</li>
+      </ul></details>
+    </article>
+
+    <article class="step" id="s3">
+      <div class="num">3</div>
+      <div class="head"><h2>Rezepte wie ein Buch</h2><span class="when later">Nach dem WG-Test</span></div>
+      <div class="row old"><span class="tag old">Heute</span><p>Eine Liste zum Durchsuchen.</p></div>
+      <div class="row"><span class="tag new">Neu</span><p>Blättern wie im Kochbuch. Jedes Rezept hat 3 Knöpfe.</p></div>
+      <details><summary>Welche Knöpfe?</summary><ul>
+        <li>Einplanen (Tag antippen)</li>
+        <li>Senden</li>
+        <li>Kochen</li>
+      </ul></details>
+    </article>
+
+    <article class="step" id="s4">
+      <div class="num">4</div>
+      <div class="head"><h2>Rezept senden</h2><span class="when later">Nach dem WG-Test</span></div>
+      <div class="row old"><span class="tag old">Heute</span><p>Geht nicht.</p></div>
+      <div class="row"><span class="tag new">Neu</span><p>Rezept an Leonie schicken: als Meldung oder über WhatsApp.</p></div>
+    </article>
+
+    <article class="step" id="s5">
+      <div class="num">5</div>
+      <div class="head"><h2>Rezepte einlesen</h2><span class="when later">Nach dem WG-Test</span></div>
+      <div class="row old"><span class="tag old">Heute</span><p>Nur ein Link, und der ist versteckt.</p></div>
+      <div class="row"><span class="tag new">Neu</span><p>Ein «+»-Knopf. Deine Lieblings-KI hilft dabei.</p></div>
+      <details><summary>Was geht mit «+»?</summary><ul>
+        <li>Link einfügen</li>
+        <li>Text einfügen (Instagram, WhatsApp)</li>
+        <li>Foto vom Kochbuch → ChatGPT, Claude oder Gemini → zurück</li>
+        <li>Reste: «Was koche ich mit Lauch und Reis?»</li>
+      </ul></details>
+    </article>
+
+    <article class="step" id="s6">
+      <div class="num">6</div>
+      <div class="head"><h2>Kochen</h2><span class="when later">Nach dem WG-Test</span></div>
+      <div class="row old"><span class="tag old">Heute</span><p>Rezept-Link öffnen und selber umrechnen.</p></div>
+      <div class="row"><span class="tag new">Neu</span><p>Zutaten schon für heute. Abhaken, Timer, Bildschirm bleibt an.</p></div>
+      <details><summary>Auf dem Tablet</summary><ul>
+        <li>Links Zutaten, rechts die Schritte</li>
+        <li>Oder das Original-Rezept (Link, Video)</li>
+      </ul></details>
+    </article>
+
+    <article class="step" id="s7">
+      <div class="num">7</div>
+      <div class="head"><h2>Einstellungen aufräumen</h2><span class="when later">Nach dem WG-Test</span></div>
+      <div class="row old"><span class="tag old">Heute</span><p>Eine lange Seite.</p></div>
+      <div class="row"><span class="tag new">Neu</span><p>Oben nur: Du · WG · Bring!. Der Rest unter «Mehr».</p></div>
+    </article>
+  </div>
+
+  <section class="box">
+    <h2>So läuft jeder Schritt</h2>
+    <div class="flow"><span>Entwurf</span><em>→</em><span>du sagst ja</span><em>→</em><span>bauen</span><em>→</em><span>jemand testet</span></div>
+  </section>
+
+  <section class="box">
+    <h2>Deine 2 offenen Fragen</h2>
+    <ul class="ask">
+      <li><b>Bring!-Bot:</b><small>Falls der Bot Einladungen nicht selbst annehmen kann: Soll der Bot die Liste anlegen und euch einladen?</small></li>
+      <li><b>Senden:</b><small>Als Meldung in Obsonare, über WhatsApp oder beides? (Vorschlag: beides)</small></li>
+    </ul>
+  </section>
+</div>
