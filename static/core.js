@@ -696,28 +696,58 @@
     });
     return sets.length ? ALL_MONTHS.filter(m => sets.every(set => set.includes(m))) : ALL_MONTHS.slice();
   }
-  // Grundrezepte → gewöhnliche Rezepte (Id «b-<grundrezept>-<variante>»), die Plan, Einkauf und Wochenwahl unverändert nehmen
-  function expandBases(bases, seasonItems) {
-    const out = [];
-    (bases || []).forEach(b => (b.variants || []).forEach(v => {
-      const fill = t => String(t || "").replace(/\{v\}/g, v.label);
-      const r = {
-        id: `b-${b.id}-${v.key}`, base_id: b.id, variant_key: v.key, variant_label: v.label,
-        title: fill(b.title), category: "einfach", diet: v.diet || b.diet, servings: b.servings || DEFAULT_SERVINGS,
-        prep_time_min: b.total_min || b.active_min, active_min: b.active_min, simple: true,
-        ingredients: (b.ingredients || []).flatMap(i => (i === "VEG" ? v.items : [i]).map(x => ({ ...x }))),
-        instructions: fill(b.instructions), season_months: baseMonths(v, seasonItems), primary_vegetables: []
-      };
-      if (b.vegi_swap) r.vegi_swap = { ...b.vegi_swap };
-      if (b.meat_swap) r.meat_swap = { ...b.meat_swap };
-      if (b.no_addons) r.no_addons = true;
-      if (b.no_salad) r.no_salad = true;
-      out.push(r);
-    }));
-    return out;
+  // Rezepte bleiben Rezepte (Joshua 25.11.): EIN Rezept pro Grundrezept (Id «b-<grundrezept>», Titel = «name»), das Gemüse
+  // vom Monat ist ein Add-on «Saison» (recipe.addons.season). Im Plan steht das Rezept mit dem gewählten Gemüse (withSeason).
+  const BASES = new Map(); // Grundrezept-Id → { b, opts } (Vorlagen mit {v}/VEG; bleiben hier, nicht in jedem Plan-Tag)
+  const seasonOf = (recipe, opts, month) => (month ? opts.filter(o => o.months.includes(month)) : opts);
+  // Gemüse zur Wahl in diesem Monat (ohne Monat: alle)
+  function seasonChoices(recipe, month) {
+    const base = recipe && BASES.get(recipe.base_id);
+    return base ? seasonOf(recipe, base.opts, month).map(o => ({ key: o.key, label: o.label })) : [];
   }
-  // Varianten eines Grundrezepts, die in diesem Monat Saison haben (für «Einfach im November»)
-  const baseVariants = (recipes, baseId, month) => recipes.filter(r => r.base_id === baseId && inSeason(r, month));
+  // Rezept mit dem Gemüse «key» (sonst das erste, das im Monat Saison hat, sonst das erste überhaupt)
+  function withSeason(recipe, key, month) {
+    const base = recipe && BASES.get(recipe.base_id);
+    if (!base) return recipe;
+    const { b, opts } = base;
+    const v = opts.find(o => o.key === key) || seasonOf(recipe, opts, month)[0] || opts[0];
+    const fill = t => String(t || "").replace(/\{v\}/g, v.label);
+    const { addons, ...rest } = recipe;
+    return {
+      ...rest, title: fill(b.title), diet: v.diet || b.diet, season_key: v.key, season_label: v.label,
+      ingredients: (b.ingredients || []).flatMap(i => (i === "VEG" ? v.items : [i]).map(x => ({ ...x }))),
+      instructions: fill(b.instructions)
+    };
+  }
+  // alte Ids aus Schritt 0 («b-hoernli-lauch», noch in Wochenwahl/Plan): → { id: "b-hoernli", key: "lauch" }
+  function legacyBaseId(id) {
+    const m = /^b-([a-z]+)-(.+)$/.exec(String(id || ""));
+    return m && BASES.has(m[1]) ? { id: `b-${m[1]}`, key: m[2] } : null;
+  }
+  // Grundrezepte → ein gewöhnliches Rezept pro Grundrezept (Saison = alle Monate, in denen ein Gemüse passt),
+  // Zutaten mit dem Gemüse von «month»; Plan, Einkauf und Wochenwahl nehmen es unverändert
+  function expandBases(bases, seasonItems, month) {
+    return (bases || []).filter(b => (b.variants || []).length).map(b => {
+      const opts = b.variants.map(v => ({ ...v, months: baseMonths(v, seasonItems) }));
+      BASES.set(b.id, { b, opts });
+      const skel = {
+        id: `b-${b.id}`, base_id: b.id, category: "einfach", servings: b.servings || DEFAULT_SERVINGS,
+        prep_time_min: b.total_min || b.active_min, active_min: b.active_min, simple: true,
+        season_months: ALL_MONTHS.filter(m => opts.some(o => o.months.includes(m))), primary_vegetables: []
+      };
+      if (b.vegi_swap) skel.vegi_swap = { ...b.vegi_swap };
+      if (b.meat_swap) skel.meat_swap = { ...b.meat_swap };
+      if (b.no_addons) skel.no_addons = true;
+      if (b.no_salad) skel.no_salad = true;
+      const r = withSeason(skel, null, month);
+      return { ...r, title: b.name || r.title, addons: { season: opts.map(o => ({ key: o.key, label: o.label, months: o.months })) } };
+    });
+  }
+  // Gemüse eines Grundrezepts, die in diesem Monat Saison haben, je als fertiges Rezept (für die Rezept-Karte)
+  const baseVariants = (recipes, baseId, month) => {
+    const r = recipes.find(x => x.base_id === baseId && x.addons);
+    return r ? seasonChoices(r, month).map(o => withSeason(r, o.key, month)) : [];
+  };
   const COUNT_SKIP = /^(salz|pfeffer|öl|olivenöl|rapsöl|wasser|leitungswasser)\b/i;
   const ingredientCount = r => (r.ingredients || []).filter(i => !COUNT_SKIP.test(String((i && i.name) || i).trim())).length;
   // aktive Zeit (Rüsten, Kochen am Herd); ohne Angabe gilt die ganze Zeit (prep_time_min = total, so liefern es die Rezeptseiten)
@@ -1066,6 +1096,51 @@
         inSeason: g.recipes.filter(r => inSeason(r, month)).length
       }));
   }
+  // Reiter Rezepte «Ordnen» (Joshua 25.11., Entwurf docs/design/review-2511-entwurf.html): Abschnitte je nach Wahl.
+  // herkunft = «Einfach» (Grundrezepte mit Saison) zuerst, dann wie «Alle Rezepte»; vegName(x) = Anzeigename eines Gemüses
+  const RECIPE_SORTS = [["herkunft", "Herkunft"], ["az", "A–Z"], ["saison", "Saison"], ["schnell", "Schnell"], ["protein", "Protein"], ["gemuese", "Hauptgemüse"]];
+  // Feiner filtern (Joshua 25.11.), mit jeder Ordnung kombinierbar: f = { simple, quick, protein, vegi, veg }; diet = «Ich bin»
+  const RECIPE_FILTERS = [["simple", "einfach"], ["quick", "≤ 30 Min."], ["protein", "💪 proteinreich"], ["vegi", "🥦 vegi"]];
+  const mainVeg = (r, vegName = x => x) => r.season_label || ((r.primary_vegetables || [])[0] ? vegName(r.primary_vegetables[0]) : "");
+  function recipeFilter(r, f, diet, vegName = x => x) {
+    if (!f) return true;
+    if (f.simple && !isSimple(r)) return false;
+    if (f.quick && activeMin(r) > 30) return false;
+    if (f.vegi && r.diet === "fleisch") return false;
+    if (f.veg && mainVeg(r, vegName) !== f.veg) return false;
+    if (f.protein && nutritionTag(nutritionFor(r, diet), "protein") !== "proteinreich") return false;
+    return true;
+  }
+  function recipeGroups(recipes, mode, month, vegName = x => x) {
+    const byTitle = (a, b) => String(a.title).localeCompare(String(b.title), "de");
+    const bucket = (list, keyOf, order) => {
+      const m = new Map();
+      list.forEach(r => { const k = keyOf(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); });
+      return [...m].map(([label, rs]) => ({ key: `${mode}:${label}`, label, recipes: rs })).sort(order);
+    };
+    if (mode === "az") return [{ key: "az", label: "Alle A–Z", recipes: recipes.slice().sort(byTitle) }];
+    if (mode === "protein") {
+      const p = new Map(recipes.map(r => [r, (nutritionFor(r) || {}).protein]));
+      return [{ key: "protein", label: "Proteinreichste zuerst", recipes: recipes.slice().sort((a, b) => ((p.get(b) ?? -1) - (p.get(a) ?? -1)) || byTitle(a, b)) }];
+    }
+    if (mode === "saison") {
+      const order = ["Jetzt Saison", "Gerade nicht Saison"];
+      return bucket(recipes.slice().sort(byTitle), r => order[inSeason(r, month) ? 0 : 1], (a, b) => order.indexOf(a.label) - order.indexOf(b.label));
+    }
+    if (mode === "schnell") {
+      const order = ["≤ 15 Min. aktiv", "≤ 30 Min. aktiv", "≤ 60 Min. aktiv", "länger"];
+      const slot = r => { const a = activeMin(r); return order[a <= 15 ? 0 : a <= 30 ? 1 : a <= 60 ? 2 : 3]; };
+      return bucket(recipes.slice().sort((a, b) => activeMin(a) - activeMin(b) || byTitle(a, b)), slot, (a, b) => order.indexOf(a.label) - order.indexOf(b.label));
+    }
+    if (mode === "gemuese") {
+      const none = "Ohne Gemüse";
+      const veg = r => mainVeg(r, vegName) || none;
+      return bucket(recipes.slice().sort(byTitle), veg, (a, b) => (a.label === none) - (b.label === none) || b.recipes.length - a.recipes.length || a.label.localeCompare(b.label, "de"));
+    }
+    const easy = recipes.filter(r => r.base_id && inSeason(r, month)).sort(byTitle);
+    const rest = groupBySource(recipes.filter(r => !easy.includes(r)), month);
+    return [...(easy.length ? [{ key: "einfach", label: "Einfach", recipes: easy }] : []), ...rest];
+  }
 
   // ---------------------------------------------------------------------------
   // Hofläden & Märkte (Daten aus OpenStreetMap, static/hoflaeden.js): Öffnungszeiten, Entfernung
@@ -1412,7 +1487,7 @@
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
-    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, expandBases, baseMonths, baseVariants, isSimple, activeMin, totalMin, timeBadge, timeText, ingredientCount, rankDays, moveDay, dayReason, carryOver,
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, expandBases, baseMonths, baseVariants, seasonChoices, withSeason, legacyBaseId, RECIPE_SORTS, recipeGroups, RECIPE_FILTERS, recipeFilter, mainVeg, isSimple, activeMin, totalMin, timeBadge, timeText, ingredientCount, rankDays, moveDay, dayReason, carryOver,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList,
     nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_WORD, goalsOf, toggleGoal

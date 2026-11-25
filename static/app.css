@@ -887,6 +887,8 @@ button, a, label, summary, [role="button"], .item, .btile, .qt, .vrow, .dchip { 
 .mswap-l { font-size: 12px; font-weight: 700; color: var(--muted); margin-right: 2px; }
 .mswap-d { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; min-width: 40px; min-height: 34px; padding: 4px 10px; font: 700 13px var(--font); cursor: pointer; }
 .mswap-d:active { background: color-mix(in srgb, var(--accent) 25%, var(--surface)); }
+.mseason-d[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+#mseason[hidden] { display: none; }
 
 /* «Suchen auf Swissmilk ▾» – Vermerk zum Umschalten wie die Suchmaschine im Browser */
 .search-site { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted, inherit); margin: 6px 0; }
@@ -1050,26 +1052,35 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .opt:has(.othumb) { grid-template-columns: auto 1fr auto; }
 
 /* =====================================================================
-   Einfach im <Monat> (Schritt 0 «Einfach & saisonal», Entwurf docs/design/einfach-saisonal-entwurf.html)
+   Reiter Rezepte = wie «Alle Rezepte» (Joshua 25.11., Entwurf docs/design/review-2511-entwurf.html)
+   3 Karten pro Zeile, Abschnitte ausklappbar, «Alle zeigen», Ordnen, «+ Einfügen», Add-on «Saison»
    ===================================================================== */
-.easy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.easy-card { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 16px; padding: 12px; text-align: left; display: flex; flex-direction: column; gap: 5px; min-width: 0; font: inherit; }
-.easy-card .ic { font-size: 28px; line-height: 1; }
-.easy-card b { font-size: 15px; line-height: 1.2; }
-.easy-card small { color: var(--muted); font-size: 12px; }
-.easy-vegs { display: flex; gap: 4px; flex-wrap: wrap; }
-.easy-vegs span { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--fg); }
-.easy-variants { display: flex; gap: 6px; flex-wrap: wrap; }
-.easy-variants button { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 12px; padding: 8px 12px; font: inherit; font-size: 14px; font-weight: 600; }
-.easy-variants button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.easy-ing { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.easy-ing li { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 14.5px; }
-.easy-ing li:first-child { border-top: 0; }
-.easy-ing li .q { color: var(--muted); font-variant-numeric: tabular-nums; }
-.easy-ing li.veg { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-weight: 600; }
-.easy-who { padding: 0; }
-.easy-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.easy-days button { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 10px; padding: 7px 0 5px; font: inherit; font-size: 13px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
-.easy-days button small { font-size: 9.5px; font-weight: 400; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: 2px; }
-.easy-days button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.easy-days button[aria-pressed="true"] small { color: var(--on-accent); }
+.rz-head { display: flex; align-items: center; gap: 10px; padding: 4px 2px 0; }
+.rz-head h2 { margin: 0; flex: 1; font-size: 24px; font-weight: 800; }
+.rz-add { flex: 0 0 auto; width: auto; margin: 0; padding: 9px 14px; border-radius: 999px; }
+.rz-sort { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--fg); border-radius: 12px; padding: 0 8px; font-weight: 800; }
+.rz-sort select { border: 0; background: none; color: var(--fg); font: inherit; font-size: 14px; font-weight: 700; max-width: 124px; padding: 9px 0; margin: 0; width: auto; }
+.rz-filters { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
+.rz-filters button, .rz-veg { flex: 0 0 auto; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.rz-filters button[aria-pressed="true"], .rz-veg.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.rz-veg { padding: 0 6px; display: flex; align-items: center; }
+.rz-veg select { border: 0; background: none; color: inherit; font: inherit; padding: 6px 0; margin: 0; width: auto; max-width: 150px; }
+.all-sub { display: flex; align-items: center; gap: 8px; }
+.all-sub .hint { flex: 1; padding: 0; margin: 0; }
+#tab-season .agrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.asec { border-top: 1px solid var(--line); }
+.asec-h { width: 100%; border: 0; background: none; color: var(--fg); display: flex; align-items: center; gap: 8px; padding: 10px 2px; font: inherit; font-weight: 800; font-size: 15.5px; text-align: left; cursor: pointer; }
+.asec-h small { color: var(--muted); font-weight: 600; font-size: 12.5px; flex: 1; }
+.asec-h i { font-style: normal; color: var(--muted); transition: transform .2s; }
+.asec[data-open="true"] .asec-h i { transform: rotate(90deg); }
+.asec .agrid { padding-bottom: 10px; }
+.acard.off .vfront { filter: saturate(.55); }
+.amore { grid-column: 1 / -1; border: 1px dashed var(--line); background: none; color: var(--fg); border-radius: 12px; padding: 8px; font: inherit; font-weight: 700; cursor: pointer; }
+.acard .ab-addon { border: 0; border-radius: 999px; padding: 2px 6px; font: inherit; font-size: 10px; font-weight: 700; background: color-mix(in srgb, var(--accent) 22%, var(--surface)); color: var(--fg); align-self: flex-start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.add-link { display: flex; flex-direction: column; gap: 8px; }
+.add-ways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.add-ways button { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 14px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; font: inherit; font-weight: 700; font-size: 14px; min-width: 0; cursor: pointer; }
+.add-ways button span { font-size: 22px; }
+.add-ways button small { font-weight: 400; font-size: 11px; color: var(--muted); text-align: center; }
+.add-ways button:disabled { opacity: .55; cursor: default; }
+

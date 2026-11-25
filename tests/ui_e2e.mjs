@@ -917,46 +917,25 @@ await step(A, "Rezepte & Saison: Monat wechseln zeigt andere Saison", async () =
   await choose(A, "#monthSelect", "11");
 });
 
-await step(A, "Einfach im November: Grundrezepte oben in Rezepte, Gemüse wählen, Zeit aktiv/total, Tag = einplanen, Rückgängig", async () => {
+await step(A, "Rezepte = Alle Rezepte: Einfach im November oben, 3 pro Zeile, 6 + «Alle zeigen», zuklappen, Tag wählen = einplanen, Rückgängig, Suche", async () => {
   await goTab(A, "season");
-  expect((await text(A, "#easyMonth")) === "November", "Monat fehlt");
-  const n = await A.page.$$eval("#easyGrid .easy-card", l => l.length);
-  expect(n >= 8, `nur ${n} Grundrezepte`);
-  await tap(A, '#easyGrid [data-base="hoernli"]');
-  await until(A, () => document.getElementById("easyDialog").open && /^Hörnli & Ghacktes mit /.test(document.getElementById("easyTitle").textContent), "Blatt geht nicht auf");
-  expect(!(await A.page.$('#easyVariants [data-variant="b-hoernli-zucchetti"]')), "Zucchetti im November angeboten");
-  await tap(A, '#easyVariants [data-variant="b-hoernli-ruebli"]');
-  await until(A, () => document.getElementById("easyTitle").textContent === "Hörnli & Ghacktes mit Rüebli" && /Rüebli/.test(document.querySelector("#easyIng li.veg").textContent), "Gemüse wechselt nicht");
-  expect(/Vegi|Lea|Jo|Grillkäse|Linsen/.test(await text(A, "#easyWho")), "Hinweis Fleisch/Vegi fehlt");
-  await clearToasts(A);
-  await tap(A, '#easyDays [data-day="0"]');
-  await toastIs(A, /Mo: Hörnli & Ghacktes mit Rüebli/);
-  expect(await A.page.evaluate(() => window.BF_APP.state.plan[0].id === "b-hoernli-ruebli"), "Montag nicht eingeplant");
-  expect((await A.page.$eval('#easyDays [data-day="0"]', b => b.getAttribute("aria-pressed"))) === "true", "Montag nicht markiert");
-  await shot(A, "10b-einfach");
-  await dialogNoHScroll(A, "easyDialog");
-  await tap(A, ".toast button");
-  await until(A, () => window.BF_APP.state.plan[0].id !== "b-hoernli-ruebli", "Rückgängig wirkt nicht");
-  await closeDialog(A, "easyDialog");
-  await tap(A, '#easyGrid [data-base="ofen"]');
-  await until(A, () => /15 Min\. aktiv · 55 Min\. total/.test(document.getElementById("easySub").textContent), "aktive + totale Zeit fehlt");
-  await closeDialog(A, "easyDialog");
-});
-
-await step(A, "Alle Rezepte: Knopf bei «Meine Rezepte», Karten nach Herkunft und Saison, Tag wählen = einplanen, Rückgängig, Suche", async () => {
-  await goTab(A, "season");
-  await tap(A, "#allRecipesBtn");
-  await dialogNoHScroll(A, "allDialog");
-  const groups = await A.page.$$eval("#allList .asrc h3", l => l.map(h => h.firstChild.textContent.trim()));
-  const web = groups.filter(g => g !== "Eigene Rezepte" && g !== "Andere WGs");
-  expect(web[0] === "Swissmilk" && web.includes("Fooby") && web.indexOf("Klassiker") === web.length - 1 && groups.indexOf("Eigene Rezepte") <= 0, `Herkunft-Reihenfolge: ${groups.join(", ")}`);
-  // in jeder Herkunft: erst Saison, dann «Gerade nicht Saison» am Schluss
-  expect(await A.page.$$eval("#allList .asrc", l => l.every(s => !s.querySelector(".agrid.off") || s.lastElementChild.classList.contains("off"))), "Nicht-Saison nicht am Schluss der Herkunft");
-  const all = await A.page.$$eval("#allList .acard", l => l.length);
-  expect(all > 100, `zu wenige Rezepte: ${all}`);
-  expect(await A.page.$eval("#allList .acard", c => c.getBoundingClientRect().width < 140), "Karten nicht klein");
+  await noHScroll(A, "Rezepte");
+  const heads = await A.page.$$eval("#allList .asec-h", l => l.map(h => h.firstChild.textContent.trim()));
+  expect(heads[0] === "Einfach im November", `erster Abschnitt: ${heads[0]}`);
+  const web = heads.filter(g => !/^Einfach|^Eigene Rezepte|^Andere WGs/.test(g));
+  expect(web[0] === "Swissmilk" && web.includes("Fooby") && web.indexOf("Klassiker") === web.length - 1, `Herkunft-Reihenfolge: ${heads.join(", ")}`);
+  expect(await A.page.$$eval("#allList .asec", l => l.every(x => x.querySelectorAll(".acard").length <= 6)), "mehr als 6 Karten in einem Abschnitt");
+  const sw = '#allList .asec[data-src="swissmilk"]';
+  const rows = await A.page.$$eval(`${sw} .acard`, l => new Set(l.map(c => Math.round(c.getBoundingClientRect().top))).size);
+  expect(rows === 2, `3 Karten pro Zeile: ${rows} Zeilen für 6 Karten`);
+  await tap(A, `${sw} .amore`);
+  await until(A, x => document.querySelectorAll(`${x} .acard`).length > 6, "«Alle zeigen» klappt nicht", sw);
+  await tap(A, `${sw} .asec-h`);
+  await until(A, x => document.querySelector(x).dataset.open === "false" && !document.querySelector(`${x} .acard`), "Abschnitt klappt nicht zu", sw);
+  await tap(A, `${sw} .asec-h`);
+  await until(A, x => document.querySelectorAll(`${x} .acard`).length > 0, "Abschnitt klappt nicht auf", sw);
   const before = await text(A, '.prow[data-i="2"] .t');
-  const rid = await A.page.$eval("#allList .agrid .acard", c => c.dataset.id);
+  const rid = await A.page.$eval(`${sw} .acard`, c => c.dataset.id);
   const card = `#allList .acard[data-id="${rid}"]`;
   const title = await A.page.$eval(`${card} .vbt`, e => e.textContent);
   await tap(A, `${card} .vfront`);
@@ -981,9 +960,73 @@ await step(A, "Alle Rezepte: Knopf bei «Meine Rezepte», Karten nach Herkunft u
   await until(A, c => document.querySelector(`${c} .vwish`)?.textContent.includes("Do"), "Rückgängig nach Abwählen klappt nicht", card);
   await typeInto(A, "#allSearch", "Kürbis");
   await until(A, () => { const c = [...document.querySelectorAll("#allList .acard")]; return c.length > 0 && c.length < 40; }, "Suche filtert nicht");
-  expect(await A.page.$$eval('.websearch[data-ws="allSearch"] a', a => a.length >= 2 && a.some(x => /google\.com/.test(x.href))), "«Im Web suchen» bei Alle Rezepte fehlt");
+  expect(await A.page.$$eval('.websearch[data-ws="allSearch"] a', a => a.length >= 2 && a.some(x => /google\.com/.test(x.href))), "«Im Web suchen» bei Rezepte fehlt");
   await shot(A, "10b-alle-rezepte");
-  await closeDialog(A, "allDialog");
+  await A.page.$eval("#allSearch", e => { e.value = ""; e.dispatchEvent(new Event("input", { bubbles: true })); });
+});
+
+await step(A, "Rezepte bleiben Rezepte: Grundrezept = eine Karte, Add-on Saison wechselt das Gemüse, im Plan änderbar", async () => {
+  await goTab(A, "season");
+  const day0 = await A.page.evaluate(() => JSON.stringify(window.BF_APP.state.plan[0]));
+  expect((await A.page.$$eval('#allList .acard[data-id^="b-hoernli"]', l => l.length)) === 1, "Hörnli steht mehr als einmal da");
+  const ho = '#allList .acard[data-id="b-hoernli"]';
+  expect((await A.page.$eval(`${ho} .vbt`, e => e.textContent)) === "Hörnli & Ghacktes", "Titel ohne Gemüse erwartet");
+  await tap(A, '#allList .asec[data-src="einfach"] .amore');
+  await until(A, () => !!document.querySelector('#allList .acard[data-id="b-ofen"]'), "«Alle 9 zeigen» bei Einfach fehlt");
+  expect(/15′ · 55′ total/.test(await A.page.$eval('#allList .acard[data-id="b-ofen"] .vbm', e => e.textContent)), "aktive + totale Zeit fehlt beim Ofengemüse");
+  await tap(A, `${ho} .vfront`);
+  await until(A, c => document.querySelector(c)?.classList.contains("open"), "Karte dreht nicht um", ho);
+  const addon0 = await text(A, `${ho} .ab-addon`);
+  expect(/^🥬 \+ /.test(addon0) && !/Zucchetti/.test(addon0), `Add-on Saison: ${addon0}`);
+  await tap(A, `${ho} .ab-addon`);
+  await until(A, ([c, a]) => document.querySelector(`${c} .ab-addon`).textContent !== a, "Gemüse wechselt nicht", [ho, addon0]);
+  const veg = (await text(A, `${ho} .ab-addon`)).replace("🥬 + ", "");
+  await clearToasts(A);
+  await tap(A, `${ho} [data-day="0"]`);
+  await toastIs(A, new RegExp(`^Mo: Hörnli & Ghacktes mit ${veg}`));
+  expect(await A.page.evaluate(v => { const d = window.BF_APP.state.plan[0]; return d.id === "b-hoernli" && d.season_label === v; }, veg), "Montag nicht mit dem Gemüse eingeplant");
+  await goTab(A, "plan");
+  await tap(A, '.prow[data-i="0"] .t');
+  await until(A, () => !document.getElementById("mseason").hidden, "Gemüse-Wahl im Menü-Blatt fehlt");
+  const other = await A.page.$eval('#mseason [aria-pressed="false"]', b => b.dataset.season);
+  await clearToasts(A);
+  await tap(A, `#mseason [data-season="${other}"]`);
+  await until(A, k => window.BF_APP.state.plan[0].season_key === k && window.BF_APP.state.plan[0].id === "b-hoernli", "Gemüse im Plan nicht gewechselt", other);
+  await tap(A, ".toast button");
+  await until(A, v => window.BF_APP.state.plan[0].season_label === v, "Rückgängig (Gemüse) klappt nicht", veg);
+  await A.page.evaluate(d => { const app = window.BF_APP; app.state.plan[0] = JSON.parse(d); app.savePlan(); app.refresh(); }, day0);
+});
+
+await step(A, "Rezepte ordnen: Hauptgemüse, Schnell, gemerkt; «+ Einfügen» mit Link, Rezeptseiten, Text, von Hand", async () => {
+  await goTab(A, "season");
+  await choose(A, "#recipeSort", "schnell");
+  await until(A, () => document.querySelector("#allList .asec-h")?.firstChild.textContent.trim() === "≤ 15 Min. aktiv", "Schnell: erster Abschnitt nicht ≤ 15 Min.");
+  expect(await A.page.evaluate(() => /schnell/.test(localStorage.getItem("bringfrisch_recipe_sort"))), "Ordnen nicht gemerkt");
+  await choose(A, "#recipeSort", "gemuese");
+  await until(A, () => { const h = [...document.querySelectorAll("#allList .asec-h")].map(x => x.firstChild.textContent.trim()); return h.length >= 3 && !h.includes("Swissmilk"); }, "Hauptgemüse: keine Gemüse-Abschnitte");
+  await shot(A, "10c-rezepte-gemuese");
+  await choose(A, "#recipeSort", "herkunft");
+  await until(A, () => document.querySelector("#allList .asec-h")?.firstChild.textContent.trim() === "Einfach im November", "zurück zu Herkunft klappt nicht");
+  // feiner filtern: «vegi» + Hauptgemüse, mit jeder Ordnung kombinierbar
+  const n0 = parseInt(await text(A, "#allCount"), 10);
+  await tap(A, '#recipeFilters [data-filter="vegi"]');
+  await until(A, n => parseInt(document.getElementById("allCount").textContent, 10) < n && !document.querySelector('#allList .acard[data-id="b-hoernli"]'), "Filter vegi wirkt nicht", n0);
+  const veg = await A.page.$eval("#recipeVeg option:nth-child(2)", o => o.value);
+  await choose(A, "#recipeVeg", veg);
+  await until(A, () => document.querySelector(".rz-veg").classList.contains("on") && parseInt(document.getElementById("allCount").textContent, 10) > 0, "Gemüse-Filter wirkt nicht");
+  await shot(A, "10e-rezepte-filter");
+  await choose(A, "#recipeVeg", "");
+  await tap(A, '#recipeFilters [data-filter="vegi"]');
+  await until(A, n => parseInt(document.getElementById("allCount").textContent, 10) === n, "Filter lassen sich nicht ausschalten", n0);
+  await tap(A, "#addRecipeBtn");
+  await until(A, () => document.getElementById("addDialog").open, "«+ Einfügen» geht nicht auf");
+  expect(await A.page.$eval("#addDialog #quickLink", e => !!e.offsetParent), "Link-Feld fehlt im Einfügen-Blatt");
+  expect((await A.page.$$eval("#addDialog #recipeSites a.btile", a => a.length)) >= 4, "Rezeptseiten fehlen im Einfügen-Blatt");
+  await dialogNoHScroll(A, "addDialog");
+  await shot(A, "10d-einfuegen");
+  await tap(A, "#addHandBtn");
+  await until(A, () => document.getElementById("recipeDialog").open && !document.getElementById("addDialog").open, "Von Hand öffnet das Formular nicht");
+  await closeDialog(A, "recipeDialog");
 });
 
 await step(A, "Saison: Bilder, Hochdeutsch; Gemüse antippen = «… Rezept» kopiert, ergänzen, Suchen-Link", async () => {
@@ -1747,8 +1790,10 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   await closeDialog(B, "catalogDialog");
 });
 
-await step(B, "Rezepte-Tab: Webseiten zum Stöbern, eigene Webseite hinzufügen/entfernen", async () => {
+await step(B, "Rezepte-Tab: «+ Einfügen» zeigt Webseiten zum Stöbern, eigene Webseite hinzufügen/entfernen", async () => {
   await goTab(B, "season");
+  await tap(B, "#addRecipeBtn");
+  await until(B, () => document.getElementById("addDialog").open, "«+ Einfügen» geht nicht auf");
   const n = await B.page.$$eval("#recipeSites a.btile", a => a.length);
   expect(n >= 5, `nur ${n} Rezept-Webseiten`);
   expect(await B.page.$eval("#recipeSites a.btile", a => a.target === "_blank" && a.href.startsWith("https://")), "Webseite öffnet nicht in neuem Tab");
@@ -1760,11 +1805,14 @@ await step(B, "Rezepte-Tab: Webseiten zum Stöbern, eigene Webseite hinzufügen/
   expect(await B.page.$eval("#recipeSites [data-site-del]", b => b.previousElementSibling.href === "https://kochblog.example.ch/rezepte"), "https:// nicht ergänzt");
   await tap(B, "#recipeSites [data-site-del]");
   await until(B, () => !document.querySelector("#recipeSites [data-site-del]"), "eigene Webseite nicht entfernt");
+  await closeDialog(B, "addDialog");
 });
 
 await step(B, "Rezepte-Tab: Link einfügen → Zutaten geholt, Personen anpassen, nur speichern; dann bearbeiten (Plan rechnet neu)", async () => {
   await goTab(B, "season");
   await clearToasts(B);
+  await tap(B, "#addRecipeBtn");
+  await until(B, () => document.getElementById("addDialog").open, "«+ Einfügen» geht nicht auf");
   await typeInto(B, "#quickLink", RECIPE_URL);
   await tap(B, "#quickLinkBtn");
   await until(B, () => document.getElementById("recipeDialog").open, "Formular geht nicht auf");

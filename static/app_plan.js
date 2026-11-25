@@ -397,6 +397,12 @@
     // Gericht auf einen anderen Tag verschieben (tauschen): Esser, Gäste und Zeit bleiben am Tag
     $("mswap").innerHTML = `<span class="mswap-l">Tauschen mit</span>` + DAYS.map((d, j) => j === idx ? "" :
       `<button type="button" class="mswap-d" data-swap="${j}" title="${esc(state.plan[j] ? state.plan[j].title : "")}">${esc(d.slice(0, 2))}</button>`).join("");
+    // Grundrezept: Add-on «Saison» – Gemüse wechseln (Rezept, Esser, Gäste bleiben)
+    const base = !day.empty && day.base_id ? allRecipes().find(r => r.base_id === day.base_id && r.addons) : null;
+    const choices = base ? app.CORE.seasonChoices(base, currentMonth()) : [];
+    $("mseason").hidden = choices.length < 2;
+    $("mseason").innerHTML = choices.length < 2 ? "" : `<span class="mswap-l">🥬 Gemüse</span>` + choices.map(o =>
+      `<button type="button" class="mswap-d mseason-d" data-season="${esc(o.key)}" aria-pressed="${o.key === day.season_key}">${esc(o.label)}</button>`).join("");
     $("msearch").value = "";
     sheetOptions();
     $("mlist").scrollTop = 0;
@@ -456,6 +462,21 @@
     toast(`${DAYS[a].slice(0, 2)} ↔ ${DAYS[j].slice(0, 2)} getauscht`, {
       label: "Rückgängig",
       run: () => { state.plan.splice(0, 7, ...before); savePlan(); refresh(); toast("Rückgängig gemacht"); }
+    });
+  });
+  $("mseason").addEventListener("click", e => {
+    const b = e.target.closest("[data-season]");
+    if (!b) return;
+    const idx = sheetDay, previous = state.plan[idx];
+    const base = allRecipes().find(r => r.base_id === previous.base_id && r.addons);
+    if (!base) return;
+    state.plan[idx] = makeDay(app.CORE.withSeason(base, b.dataset.season, currentMonth()), idx, previous);
+    savePlan();
+    refresh();
+    closeMenuSheet();
+    toast(`${DAYS[idx].slice(0, 2)}: ${state.plan[idx].title}`, {
+      label: "Rückgängig",
+      run: () => { state.plan[idx] = previous; savePlan(); refresh(); toast("Rückgängig gemacht"); }
     });
   });
   $("msearch").addEventListener("input", sheetOptions);

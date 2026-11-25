@@ -76,11 +76,7 @@
     } else if (target === "season") {
       clickTab("season");
     } else if (target === "all") {
-      clickTab("season");
-      setTimeout(() => {
-        const ab = document.getElementById("allRecipesBtn");
-        if (ab) ab.click();
-      }, 50);
+      clickTab("season"); // Rezepte = alle Karten direkt im Reiter
     } else if (target === "recipe") {
       clickTab("season");
       setTimeout(() => {
@@ -161,7 +157,7 @@
     else if (t.closest("#compareDialog")) { screen = "compare"; elKey = "compare-send"; }
     else if (t.closest("#stapleItemDialog")) { screen = "stapleItem"; elKey = "staple-item-qty"; }
     else if (t.closest("#staplesDialog")) { screen = "staples"; elKey = "staples-tile"; }
-    else if (t.closest("#allDialog")) { screen = "all"; elKey = "all-flip"; }
+    else if (t.closest("#allList")) { screen = "all"; elKey = "all-flip"; }
     else if (t.closest("#recipeDialog")) { screen = "recipe"; elKey = "recipe-save"; }
     else if (t.closest("#welcomeDialog")) { screen = "welcome"; elKey = "welcome-join"; }
     else if (t.closest("#weekChip")) { screen = "plan"; elKey = "plan-weekchip"; }
@@ -175,8 +171,7 @@
     else if (t.closest("#tab-shop .seg")) { screen = "shop"; elKey = "shop-seg"; }
     else if (t.closest("#shopSort")) { screen = "shop"; elKey = "shop-sort"; }
     else if (t.closest("#shopList")) { screen = "shop"; elKey = "shop-row"; }
-    else if (t.closest("#allRecipesBtn")) { screen = "all"; elKey = "all-flip"; }
-    else if (t.closest("#quickLinkBtn") || t.closest("#myRecipeNewBtn")) { screen = "season"; elKey = "season-link"; }
+    else if (t.closest("#quickLinkBtn") || t.closest("#myRecipeNewBtn") || t.closest("#addRecipeBtn")) { screen = "season"; elKey = "season-link"; }
     else if (t.closest("#fieldGrid") || t.closest("#storageGrid")) { screen = "season"; elKey = "season-veg"; }
     else if (t.closest("#bringListSelect") || t.closest("#bringListField")) { screen = "wg"; elKey = "wg-bringlist"; }
     else if (t.closest("#members") || t.closest("#addMemberForm") || t.closest("#meSelect")) { screen = "wg"; elKey = "wg-members"; }

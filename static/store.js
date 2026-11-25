@@ -36,6 +36,7 @@
     SHARED_RECIPES_KEY: "bringfrisch_shared_recipes", // Rezepte der anderen WGs (Zwischenspeicher von /recipes/shared, offline da)
     POPULAR_KEY: "bringfrisch_popular",            // Beliebtheit dieser WG (Zwischenspeicher von /popular: Stimmen pro Woche)
     SHOP_SORT_KEY: "bringfrisch_shop_sort",        // Einkauf/Vorrat: "rezept" (nach Gericht) oder "kat" (nach Kategorie wie in Bring!)
+    RECIPE_SORT_KEY: "bringfrisch_recipe_sort",    // Reiter Rezepte «Ordnen»: herkunft · az · saison · schnell · protein · gemuese (CORE.RECIPE_SORTS)
     HOF_GEO_KEY: "bringfrisch_hof_geo",            // Hofläden: Standort verwenden ja/nein (nur die Zustimmung, nie der Standort selbst)
     SEARCH_SITE_KEY: "bringfrisch_search_site",    // «Rezept suchen auf»: swissmilk | fooby | google
     PUSH_KEY: "bringfrisch_push"                   // Benachrichtigungen: { on, id, prefs: { voted, nudge, market }, remind } – Abo dieses Handys

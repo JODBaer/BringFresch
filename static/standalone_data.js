@@ -143,12 +143,13 @@ window.OBSONARE_DATA = {
   },
   // Grundrezepte × Saisongemüse (Joshua 25.11., plan.md Schritt 0, Entwurf docs/design/einfach-saisonal-entwurf.html):
   // Joshuas Alltag, von Hand geschrieben, für 4 Personen, ≤ 8 Zutaten, aktiv ≤ 30 Min. CORE.expandBases macht daraus
-  // gewöhnliche Rezepte (Id «b-<grundrezept>-<variante>»). «{v}» in Titel/Anleitung = Name der Variante; "VEG" in den
+  // EIN Rezept pro Grundrezept (Id «b-<grundrezept>», Titel «name») mit dem Add-on «Saison» (Joshua 25.11.: Rezepte bleiben
+  // Rezepte): die Varianten sind das Gemüse vom Monat, im Plan änderbar (CORE.withSeason). «{v}» in Titel/Anleitung = Gemüse; "VEG" in den
   // Zutaten = Zutaten der Variante. Saison: «season» (Ids aus season_items, alle müssen passen) oder «months» (Obst …).
   // meat_swap/vegi_swap = was die Fleisch-Esser bzw. Vegis statt Speck/Grillkäse dazubekommen (pro Person).
   bases: [
     {
-      id: "hoernli", title: "Hörnli & Ghacktes mit {v}", diet: "fleisch", active_min: 25, total_min: 25,
+      id: "hoernli", name: "Hörnli & Ghacktes", title: "Hörnli & Ghacktes mit {v}", diet: "fleisch", active_min: 25, total_min: 25,
       ingredients: [
         { name: "Hörnli", amount: "400", unit: "g", bring_cat: "Vorrat & Konserven" },
         { name: "Rindshackfleisch", amount: "400", unit: "g", bring_cat: "Fleisch & Fisch" },
@@ -169,7 +170,7 @@ window.OBSONARE_DATA = {
       ]
     },
     {
-      id: "gnocchi", title: "Gnocchi mit {v} aus der Pfanne", diet: "vegi", active_min: 20, total_min: 20,
+      id: "gnocchi", name: "Gnocchi aus der Pfanne", title: "Gnocchi mit {v} aus der Pfanne", diet: "vegi", active_min: 20, total_min: 20,
       ingredients: [
         { name: "Gnocchi", amount: "800", unit: "g", bring_cat: "Kühlregal" },
         "VEG",
@@ -188,7 +189,7 @@ window.OBSONARE_DATA = {
       ]
     },
     {
-      id: "ofen", title: "Ofengemüse mit {v}", diet: "vegi", active_min: 15, total_min: 55,
+      id: "ofen", name: "Ofengemüse", title: "Ofengemüse mit {v}", diet: "vegi", active_min: 15, total_min: 55,
       ingredients: [
         { name: "Kartoffeln", amount: "800", unit: "g", bring_cat: "Obst & Gemüse" },
         "VEG",
@@ -207,7 +208,7 @@ window.OBSONARE_DATA = {
       ]
     },
     {
-      id: "curry", title: "Poulet-Curry mit {v} und Reis", diet: "fleisch", active_min: 25, total_min: 30,
+      id: "curry", name: "Poulet-Curry mit Reis", title: "Poulet-Curry mit {v} und Reis", diet: "fleisch", active_min: 25, total_min: 30,
       ingredients: [
         { name: "Reis", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
         { name: "Pouletbrust", amount: "400", unit: "g", bring_cat: "Fleisch & Fisch" },
@@ -227,7 +228,7 @@ window.OBSONARE_DATA = {
       ]
     },
     {
-      id: "rahm", title: "Poulet-Rahmsauce mit {v} und Reis", diet: "fleisch", active_min: 25, total_min: 25,
+      id: "rahm", name: "Poulet-Rahmsauce mit Reis", title: "Poulet-Rahmsauce mit {v} und Reis", diet: "fleisch", active_min: 25, total_min: 25,
       ingredients: [
         { name: "Reis", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
         { name: "Pouletgeschnetzeltes", amount: "400", unit: "g", bring_cat: "Fleisch & Fisch" },
@@ -246,7 +247,7 @@ window.OBSONARE_DATA = {
       ]
     },
     {
-      id: "pfanne", title: "Gemüsepfanne mit {v} und Reis", diet: "vegi", active_min: 20, total_min: 25,
+      id: "pfanne", name: "Gemüsepfanne mit Reis", title: "Gemüsepfanne mit {v} und Reis", diet: "vegi", active_min: 20, total_min: 25,
       ingredients: [
         { name: "Reis", amount: "300", unit: "g", bring_cat: "Vorrat & Konserven" },
         "VEG",
@@ -265,7 +266,7 @@ window.OBSONARE_DATA = {
       ]
     },
     {
-      id: "cafe", title: "Café complet mit {v}", diet: "vegi", active_min: 10, total_min: 10, no_addons: true, no_salad: true,
+      id: "cafe", name: "Café complet", title: "Café complet mit {v}", diet: "vegi", active_min: 10, total_min: 10, no_addons: true, no_salad: true,
       ingredients: [
         { name: "Bauernbrot", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" },
         { name: "Butter", amount: "100", unit: "g", bring_cat: "Milch & Käse" },
@@ -284,7 +285,7 @@ window.OBSONARE_DATA = {
       ]
     },
     {
-      id: "ritter", title: "Arme Ritter mit {v}", diet: "vegi", active_min: 20, total_min: 25, no_addons: true, no_salad: true,
+      id: "ritter", name: "Arme Ritter", title: "Arme Ritter mit {v}", diet: "vegi", active_min: 20, total_min: 25, no_addons: true, no_salad: true,
       ingredients: [
         { name: "Zopf", amount: "1", unit: "Stk", bring_cat: "Brot & Gebäck" },
         { name: "Eier", amount: "4", unit: "Stk", bring_cat: "Kühlregal" },
@@ -303,7 +304,7 @@ window.OBSONARE_DATA = {
       ]
     },
     {
-      id: "kaese", title: "Käseschnitte mit {v}", diet: "vegi", active_min: 15, total_min: 30, no_addons: true,
+      id: "kaese", name: "Käseschnitte", title: "Käseschnitte mit {v}", diet: "vegi", active_min: 15, total_min: 30, no_addons: true,
       ingredients: [
         { name: "Brot", amount: "8", unit: "Scheiben", bring_cat: "Brot & Gebäck" },
         { name: "Raclettekäse", amount: "300", unit: "g", bring_cat: "Milch & Käse" },

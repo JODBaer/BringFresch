@@ -71,9 +71,18 @@
 
     <!-- 3. Saison -->
     <section class="tab" id="tab-season" hidden>
-      <!-- Einfach & saisonal (Schritt 0, Joshua 25.11.): Grundrezepte mit dem Gemüse vom Monat (app_einfach.js) -->
-      <p class="label">Einfach im <span id="easyMonth"></span> <small>wenig Zutaten · ≤ 30 Min. aktiv</small></p>
-      <div class="easy-grid" id="easyGrid"></div>
+      <!-- Rezepte = wie «Alle Rezepte» (Joshua 25.11., Entwurf docs/design/review-2511-entwurf.html, app_alle.js):
+           3 Karten pro Zeile, Abschnitte ausklappbar (6 Karten, «Alle zeigen»), Ordnen, «+ Einfügen» -->
+      <div class="rz-head"><h2>Rezepte</h2><button class="btn dark rz-add" type="button" id="addRecipeBtn">+ Einfügen</button></div>
+      <div class="all-bar">
+        <input type="search" id="allSearch" placeholder="Suchen: Titel oder Zutat" autocomplete="off" aria-label="Rezepte durchsuchen">
+        <label class="rz-sort" title="Ordnen"><span aria-hidden="true">⇅</span><select id="recipeSort" aria-label="Ordnen nach"></select></label>
+      </div>
+      <div class="rz-filters" id="recipeFilters" role="group" aria-label="Filter"></div>
+      <div class="websearch" data-ws="allSearch" hidden></div>
+      <div class="all-sub"><p class="hint" id="allSubtitle"></p><span class="seg all-weeks" id="allWeeks" role="group" aria-label="Woche" hidden></span></div>
+      <div id="allList"></div>
+      <p class="hint" id="allCount"></p>
 
       <p class="label">Rezept suchen</p>
       <div class="card set-hero">
@@ -85,22 +94,7 @@
         </div>
       </div>
 
-      <p class="label">Rezepte holen</p>
-      <div class="card set-hero">
-        <p class="hint" style="padding:0">Auf einer Rezept-Webseite stöbern, Link kopieren und hier einfügen.</p>
-        <div class="set-inline">
-          <input type="text" inputmode="url" autocomplete="off" id="quickLink" placeholder="https://… einfügen" aria-label="Rezept-Link">
-          <button class="btn dark" type="button" id="quickLinkBtn">Holen</button>
-        </div>
-        <div class="btiles" id="recipeSites"></div>
-        <form class="set-inline" id="siteForm" hidden>
-          <input type="text" id="siteName" placeholder="Name" aria-label="Name der Webseite" required>
-          <input type="text" inputmode="url" id="siteUrl" placeholder="https://…" aria-label="Adresse der Webseite" required>
-          <button class="btn dark" type="submit">+</button>
-        </form>
-      </div>
-
-      <p class="label label-act"><span>Meine Rezepte</span><button class="alllink" type="button" id="allRecipesBtn">Alle Rezepte ansehen ›</button><small id="myRecipesCount"></small></p>
+      <p class="label label-act"><span>Meine Rezepte</span><small id="myRecipesCount"></small></p>
       <div class="card" id="myRecipes"></div>
       <button class="btn" type="button" id="myRecipeNewBtn">+ Rezept von Hand</button>
 
@@ -308,6 +302,7 @@
       <input id="msearch" type="search" placeholder="Menü suchen oder eintippen" autocomplete="off" enterkeyhint="done" aria-controls="mlist" aria-label="Menü suchen oder eintippen"></label>
     <div class="websearch" data-ws="msearch" hidden></div>
     <div class="mswap" id="mswap" role="group" aria-label="Gericht mit einem anderen Tag tauschen"></div>
+    <div class="mswap" id="mseason" role="group" aria-label="Gemüse vom Monat wählen" hidden></div>
     <div class="mlist" id="mlist" role="listbox" aria-label="Menüs"></div>
   </div>
 
@@ -378,39 +373,34 @@
     </div>
   </dialog>
 
-  <!-- Alle Rezepte: kleine Memory-Karten nach Herkunft und Saison, Karte antippen = Tag wählen -->
-  <dialog id="easyDialog" class="full">
+  <!-- «+ Einfügen» (Joshua 25.11.): Link direkt, Rezeptseiten, Text, Foto mit KI (später), von Hand -->
+  <dialog id="addDialog">
     <div class="sheet">
       <div class="sheet-head">
-        <div><h2 id="easyTitle"></h2><p id="easySub"></p></div>
+        <div><h2>Rezept einfügen</h2><p>Link, Text oder von Hand</p></div>
         <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
       </div>
       <div class="sheet-body">
-        <p class="label" style="padding:0">Gemüse vom Monat</p>
-        <div class="easy-variants" id="easyVariants" role="group" aria-label="Gemüse wählen"></div>
-        <ul class="easy-ing" id="easyIng"></ul>
-        <p class="hint easy-who" id="easyWho"></p>
-        <p class="hint" style="padding:0" id="easySteps"></p>
-        <p class="label" style="padding:0">Einplanen <small id="easyWeek"></small></p>
-        <div class="easy-days" id="easyDays" role="group" aria-label="Tag wählen"></div>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="allDialog" class="full">
-    <div class="sheet">
-      <div class="sheet-head">
-        <div><h2>Alle Rezepte</h2><p id="allSubtitle"></p></div>
-        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
-      </div>
-      <div class="sheet-body">
-        <div class="all-bar">
-          <input type="search" id="allSearch" placeholder="Suchen: Titel oder Zutat" autocomplete="off" aria-label="Rezepte durchsuchen">
-          <span class="seg all-weeks" id="allWeeks" role="group" aria-label="Woche" hidden></span>
+        <div class="add-link">
+          <p class="label" style="padding:0">🔗 Link</p>
+          <div class="set-inline">
+            <input type="text" inputmode="url" autocomplete="off" id="quickLink" placeholder="https://… einfügen" aria-label="Rezept-Link">
+            <button class="btn dark" type="button" id="quickLinkBtn">Holen</button>
+          </div>
+          <p class="hint" style="padding:0">Auf der Rezeptseite oder in Instagram «Teilen» → «Link kopieren» → hier einfügen. Obsonare holt Titel, Zutaten und Zeit.</p>
+          <p class="label" style="padding:0">Rezept suchen bei <small>öffnet die Seite, dort Link kopieren</small></p>
+          <div class="btiles" id="recipeSites"></div>
+          <form class="set-inline" id="siteForm" hidden>
+            <input type="text" id="siteName" placeholder="Name" aria-label="Name der Webseite" required>
+            <input type="text" inputmode="url" id="siteUrl" placeholder="https://…" aria-label="Adresse der Webseite" required>
+            <button class="btn dark" type="submit">+</button>
+          </form>
         </div>
-        <div class="websearch" data-ws="allSearch" hidden></div>
-        <p class="hint" style="padding:0" id="allCount"></p>
-        <div id="allList"></div>
+        <div class="add-ways">
+          <button type="button" id="addTextBtn"><span aria-hidden="true">📋</span>Text<small>aus WhatsApp oder Notiz kopieren und einfügen</small></button>
+          <button type="button" id="addPhotoBtn" disabled><span aria-hidden="true">📷</span>Foto mit KI<small>kommt bald</small></button>
+          <button type="button" id="addHandBtn"><span aria-hidden="true">✍️</span>Von Hand<small>Titel, Zutaten, Zeit selbst eintragen</small></button>
+        </div>
       </div>
     </div>
   </dialog>
@@ -621,7 +611,6 @@
   <script src="app_rezepte.js"></script>
   <script src="app_wahl.js"></script>
   <script src="app_alle.js"></script>
-  <script src="app_einfach.js"></script>
   <script src="app_sync.js"></script>
   <script src="app_einstellungen.js"></script>
   <script src="app_push.js"></script>

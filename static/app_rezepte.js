@@ -279,6 +279,7 @@
     $("recipeShared").checked = !(edit && edit.shared === false); // Standard: geteilt
     $("recipeDialog").showModal();
     $("catalogDialog").close();
+    if ($("addDialog").open) $("addDialog").close(); // «+ Einfügen» → Formular
     if (link) { $("recipeUrl").value = link; fetchRecipeLink(true); }
   }
   $("newRecipeBtn").onclick = () => openRecipeForm();
