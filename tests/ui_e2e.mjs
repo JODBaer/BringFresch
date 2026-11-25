@@ -1453,7 +1453,8 @@ await step(B, "7 Gerichte übernehmen: Wunschtag Mi, Plan geändert, roter Punkt
   await tap(B, "#voteApplyBtn");
   await toastIs(B, /Plan übernommen/);
   expect(!(await isOpen(B, "voteDialog")), "Wochenwahl bleibt offen");
-  const plan = await titles(B);
+  // Grundrezept steht im Plan mit Gemüse («Gnocchi mit Rosenkohl …»), in der Wahl mit Rezept-Titel → Titel aus dem Katalog
+  const plan = await B.page.evaluate(() => window.BF_APP.state.plan.map(d => (window.BF_APP.recipeById(d.id) || d).title));
   expect(plan[2] === cand[0], `Mittwoch: ${plan[2]} statt ${cand[0]}`);
   expect([cand[1], cand[3]].every(t => plan.includes(t)), "gewählte Gerichte fehlen im Plan");
   expect(!(await B.page.$eval("#openVoteBtn", b => b.classList.contains("due"))), "roter Punkt noch da");
