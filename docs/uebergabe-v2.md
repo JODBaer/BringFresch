@@ -17,6 +17,19 @@ Die Versionsnummer kommt beim Release aus dem Tag (`build_site.mjs`); von Hand i
 - **«Memory-Kachel-Bug»** meinte nur «Alle Rezepte» (behoben). Die Wochenwahl bleibt, wie sie ist.
 - **Schriftzug oben**: Das Design von «BringFrisch» gefällt Joshua, aber das Wort «Obsonare» muss hinein. Die genaue Gestaltung entscheidet er später (als HTML-Entwurf zeigen). **Entschieden 19.11.:** Titel (Schriftzug oben, `.brand`) = **«FerObsonia»** (z.B. `Fer<em>Obsonia</em>` wie bisher `Bring<em>Frisch</em>`); Name der App bleibt **«Obsonare»** (`<title>`, `manifest.json`, Homescreen, Texte). Noch nicht umgesetzt.
 
+## Ideen aus dem App-Vergleich Paprika · Choosy · Bring! (19.11.2026) – erst nach dem Praxistest
+
+Ergebnis: Keine der drei Apps deckt die WG ab. Paprika = Kochbuch für eine Person (kein Teilen im Haushalt, kein Instagram-Import, Sync pro Plattform). Choosy = Haushalt mit KI-Vorschlägen, aber ohne Abstimmung, ohne Bring!, Vorrat nur in Premium (7.99 €/Monat). Bring! = Liste, Planen nur in Premium. Was Obsonare allein kann: Wochenwahl mit Stimmen, ½ vegi / ½ Fleisch, Esser pro Tag + Puffer, gemeinsamer Vorrat, Bring!-Bot, Schweizer Saison.
+Übernehmen, in dieser Reihenfolge, je einzeln:
+
+1. **Rezept aus Text** (das grösste Loch): Im Formular «Eigenes Rezept» ein Feld «Text einfügen» (Instagram-Beschriftung, WhatsApp, Notiz). Regeln in `core.js`: erste Zeile = Titel, Zeilen mit Menge/Einheit = Zutaten (`parseIngredients` gibt es schon), Rest = Schritte; Vorschau zum Korrigieren vor dem Speichern. Ohne KI, ohne Netz.
+2. **Teilen an Obsonare**: `share_target` im Manifest (Android: Instagram → Teilen → Obsonare füllt das Formular mit Link + Text). iPhone kann das bei Web-Apps nicht → dort Kopieren + «Text einfügen».
+3. **Instagram-Link im Worker**: bei öffentlichen Beiträgen die Beschriftung aus `og:description` lesen und durch 1 schicken. Unsicher (Instagram sperrt Bots oft), deshalb erst nach 1+2 und nur als Versuch.
+4. **Kochzeit pro Wochentag** (wie Choosy): z.B. Mo–Do «schnell», Wochenende «aufwendig»; die Wochenwahl setzt Gerichte entsprechend. Passt zu `time`/Znacht-Zeit.
+5. **Reste geplant** (wie die mehrtägigen Menüs von Paprika): beim Gericht «gibt Reste für morgen» → Folgetag automatisch «Resteessen».
+
+Bewusst nicht: KI für Geschmack oder Import (Kosten, erfindet Zutaten, wie im Test von WKIE gesehen), Ablaufdaten im Vorrat (zu viel Pflege für eine WG), Lieferdienste.
+
 ## Neu seit v1.10.0 (Text für die WG)
 
 **Obsonare** – BringFrisch heisst jetzt Obsonare. Eure Daten, die Verbindung zum WG-Server und das Kalender-Abo laufen einfach weiter.
