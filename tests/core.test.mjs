@@ -319,6 +319,7 @@ check(C.qtyLevels({ pack: 10 }).map(l => l[1]).join() === "0,1,5,10", "Leer / Fa
 
 // Kochen (Plan-Ansicht): Stück auf halbe genau, Einkauf ganz (Joshua 18.11.)
 check(C.formatCookAmount(0.5, "Stk", "Zwiebel", 0.5) === "½ Stk", "1 Zwiebel für 4, gekocht für 2 = ½ Stk");
+check(C.formatAmount(2.5, "") === "" && C.formatCookAmount(2.5, "", "Butter", 2.5) === "", "ohne Einheit = nach Bedarf: keine Zahl («Butter 2.5», Joshua 27.11.)");
 check(C.formatCookAmount(1.5, "Stange", "Lauch", 1.5) === "1½ Stange", "Lauch: 1½ Stange statt 1.5 Stange (Joshua 27.11.)");
 check(C.formatCookAmount(1.5, "Stk", "Zwiebel", 1.5) === "1½ Stk" && C.formatCookAmount(0.75, "EL", "Öl", 0.75) === "1 EL", "1½ Stk; ¾ EL wird 1 EL (nur halbe)");
 check(C.formatCookAmount(3, "Stk", "Ei", 1.5) === "3 Stk" && C.formatCookAmount(0.1, "Stk", "Ei", 0.1) === "½ Stk", "ganze Zahl bleibt ganz, kleinste Menge ½");

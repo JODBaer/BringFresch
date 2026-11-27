@@ -65,6 +65,9 @@
 
   function formatAmount(amount, unit) {
     const u = (unit || "").trim();
+    // ohne Einheit = «nach Bedarf» (Rezeptseite ohne Menge, z.B. «Butter zum Dämpfen»; Import setzt dann 1 ohne Einheit):
+    // keine Zahl zeigen statt «2.5» (Joshua 27.11.)
+    if (!u) return "";
     const lu = u.toLowerCase();
     if (lu === "g" || lu === "ml") {
       if (amount >= 1000) {
@@ -84,6 +87,7 @@
   const TO_TASTE = /^(salz|pfeffer|salz und pfeffer|salz, pfeffer|muskat|einige|etwas|wenig|nach belieben|wenige|1 prise)\b/i;
   function formatCookAmount(amount, unit, name, scale) {
     const u = (unit || "").trim();
+    if (!u) return ""; // nach Bedarf (siehe formatAmount)
     if (!COUNT_UNITS.test(u.toLowerCase())) return formatAmount(amount, u);
     if (name && TO_TASTE.test(String(name).trim()) && scale > 0) amount = amount / scale; // Rezeptmenge lassen
     const q = Math.max(0.5, Math.round(amount * 2) / 2);
@@ -231,7 +235,7 @@
     }
     return [...groups.values()].map(g => {
       const parts = [...g.amounts].map(([u, a]) =>
-        u === "g" && a >= 1000 ? formatAmount(a / 1000, "kg") : u === "dl" && a >= 10 ? formatAmount(a / 10, "l") : formatAmount(a, u));
+        u === "g" && a >= 1000 ? formatAmount(a / 1000, "kg") : u === "dl" && a >= 10 ? formatAmount(a / 10, "l") : formatAmount(a, u)).filter(Boolean); // ohne Einheit = nach Bedarf, keine Zahl
       return { name: g.name, spec: [parts.join(" + "), ...g.extra].filter(Boolean).join(", "), from: [...g.from] };
     });
   }
