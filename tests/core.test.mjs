@@ -111,6 +111,9 @@ check(C.assignDays(["x"], week, ms, votes).x === 0, "ohne Wunschtag: Tag, an dem
   const choices = C.seasonChoices(hoernli, 11).map(o => o.key);
   check(choices.includes("lauch") && !choices.includes("zucchetti"), `Gemüse zur Wahl im November: Lauch ja, Zucchetti nein (${choices})`);
   const ruebli = C.withSeason(hoernli, "ruebli", 11);
+  const zwei = C.withSeason(hoernli, "lauch+ruebli", 11);
+  check(zwei.title === "Hörnli & Ghacktes mit Lauch & Rüebli" && zwei.season_key === "lauch+ruebli" && zwei.ingredients.some(i => i.name === "Lauch" && i.amount === "0.75") && zwei.ingredients.some(i => i.name === "Rüebli" && i.amount === "3"), `zwei Gemüse zugleich, je ¾ (${zwei.title})`);
+  check(C.toggleSeasonKey("lauch", "ruebli") === "lauch+ruebli" && C.toggleSeasonKey("lauch+ruebli", "lauch") === "ruebli" && C.toggleSeasonKey("lauch", "lauch") === "lauch", "Gemüse an/aus, mindestens eins bleibt");
   check(ruebli.id === "b-hoernli" && ruebli.title === "Hörnli & Ghacktes mit Rüebli" && ruebli.ingredients.some(i => i.name === "Rüebli") && !ruebli.ingredients.some(i => i.name === "Lauch") && !ruebli.addons, "Gemüse wechseln: gleiches Rezept, andere Zutat, Titel mit Gemüse");
   check(C.seasonChoices(hoernli, 7).some(o => o.key === "zucchetti") && C.seasonChoices(hoernli, 7).some(o => o.key === C.withSeason(hoernli, null, 7).season_key), "im Juli: Zucchetti zur Wahl, das Add-on nimmt selbst ein Gemüse mit Saison");
   check(JSON.stringify(C.legacyBaseId("b-hoernli-lauch")) === '{"id":"b-hoernli","key":"lauch"}' && !C.legacyBaseId("b-xyz-lauch") && !C.legacyBaseId("b-hoernli"), "alte Ids (b-hoernli-lauch) bleiben lesbar");

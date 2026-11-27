@@ -345,7 +345,11 @@ const dayTitle = (P, i) => text(P, `.prow[data-i="${i}"] .t`);
 // offener Tag ohne Menü öffnet das Blatt gleich
 async function openMenu(P, i) {
   const row = `.prow[data-i="${i}"]`;
-  if (!(await P.page.$eval(row, r => r.classList.contains("open") || r.classList.contains("unplanned")))) await tap(P, `${row} .pday`);
+  // aufklappen; ein Tipp direkt nach dem Scrollen zählt als Scrollen (Schutz in der App) – dann nochmals, wie ein Mensch
+  for (let k = 0; k < 3 && !(await P.page.$eval(row, r => r.classList.contains("open") || r.classList.contains("unplanned"))); k++) {
+    await tap(P, `${row} .pday`);
+    await sleep(250);
+  }
   if (await P.page.$eval(row, r => r.classList.contains("unplanned"))) { if (!(await P.page.evaluate(() => document.getElementById("msheet").classList.contains("show")))) await tap(P, `${row} .t`); return; }
   await until(P, r => document.querySelector(r).classList.contains("open"), "Tag klappt beim Antippen des Gerichts nicht auf", row);
   await tap(P, `${row} .links [data-pick]`);
@@ -1026,14 +1030,22 @@ await step(A, "Rezepte bleiben Rezepte: Grundrezept = eine Karte, Add-on Saison 
   await toastIs(A, new RegExp(`^Mo: Hörnli & Ghacktes mit ${veg}`));
   expect(await A.page.evaluate(v => { const d = window.BF_APP.state.plan[0]; return d.id === "b-hoernli" && d.season_label === v; }, veg), "Montag nicht mit dem Gemüse eingeplant");
   await goTab(A, "plan");
-  await openMenu(A, 0);
-  await until(A, () => !document.getElementById("mseason").hidden, "Gemüse-Wahl im Menü-Blatt fehlt");
-  const other = await A.page.$eval('#mseason [aria-pressed="false"]', b => b.dataset.season);
+  // Joshua 27.11.: Gemüse direkt im aufgeklappten Plan-Tag, mehrere zugleich («Rüebli noch drauf tun»)
+  if (!(await A.page.$eval('.prow[data-i="0"]', r => r.classList.contains("open")))) await tap(A, '.prow[data-i="0"] .pday');
+  await until(A, () => document.querySelectorAll('.prow[data-i="0"] .vegpick [data-veg]').length > 1, "Gemüse-Wahl im Plan-Tag fehlt");
+  const cur = await A.page.evaluate(() => window.BF_APP.state.plan[0].season_key);
+  const other = await A.page.$eval('.prow[data-i="0"] .vegpick [aria-pressed="false"]', b => b.dataset.veg);
   await clearToasts(A);
-  await tap(A, `#mseason [data-season="${other}"]`);
-  await until(A, k => window.BF_APP.state.plan[0].season_key === k && window.BF_APP.state.plan[0].id === "b-hoernli", "Gemüse im Plan nicht gewechselt", other);
+  await tap(A, `.prow[data-i="0"] .vegpick [data-veg="${other}"]`);
+  await until(A, k => { const d = window.BF_APP.state.plan[0]; return d.season_key === k && d.id === "b-hoernli" && / & /.test(d.title); }, "zweites Gemüse nicht dazugekommen", `${cur}+${other}`);
+  expect(await A.page.$eval('.prow[data-i="0"]', r => r.querySelectorAll('.vegpick [aria-pressed="true"]').length === 2 && r.querySelectorAll(".ing li").length >= 8), "beide Gemüse in den Zutaten des Tages");
   await tap(A, ".toast button");
   await until(A, v => window.BF_APP.state.plan[0].season_label === v, "Rückgängig (Gemüse) klappt nicht", veg);
+  // im Menü-Blatt dieselbe Wahl
+  await openMenu(A, 0);
+  await until(A, () => !document.getElementById("mseason").hidden, "Gemüse-Wahl im Menü-Blatt fehlt");
+  await tap(A, "#msheetClose");
+  await until(A, () => !document.getElementById("msheet").classList.contains("show"), "Menü-Blatt schliesst nicht");
   await A.page.evaluate(d => { const app = window.BF_APP; app.state.plan[0] = JSON.parse(d); app.savePlan(); app.refresh(); }, day0);
 });
 

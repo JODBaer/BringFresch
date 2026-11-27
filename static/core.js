@@ -709,19 +709,31 @@
     const base = recipe && BASES.get(recipe.base_id);
     return base ? seasonOf(recipe, base.opts, month).map(o => ({ key: o.key, label: o.label })) : [];
   }
-  // Rezept mit dem Gemüse «key» (sonst das erste, das im Monat Saison hat, sonst das erste überhaupt)
+  // Rezept mit dem Gemüse «key» (sonst das erste, das im Monat Saison hat, sonst das erste überhaupt).
+  // Mehrere Gemüse zugleich (Joshua 27.11.: «Rüebli einfach noch drauf tun», nicht entweder-oder): key = «lauch+ruebli»;
+  // dann je etwas weniger pro Gemüse (zusammen 1½-mal so viel Gemüse wie mit einem), Titel «… mit Lauch & Rüebli».
   function withSeason(recipe, key, month) {
     const base = recipe && BASES.get(recipe.base_id);
     if (!base) return recipe;
     const { b, opts } = base;
-    const v = opts.find(o => o.key === key) || seasonOf(recipe, opts, month)[0] || opts[0];
-    const fill = t => String(t || "").replace(/\{v\}/g, v.label);
+    const picked = [...new Set(String(key || "").split("+"))].map(k => opts.find(o => o.key === k)).filter(Boolean);
+    const vs = picked.length ? picked : [seasonOf(recipe, opts, month)[0] || opts[0]];
+    const label = vs.length > 1 ? vs.slice(0, -1).map(v => v.label).join(", ") + " & " + vs[vs.length - 1].label : vs[0].label;
+    const f = vs.length > 1 ? 1.5 / vs.length : 1;
+    const scaled = x => { const a = parseFloat(x.amount); return f === 1 || !Number.isFinite(a) ? { ...x } : { ...x, amount: String(Math.round(a * f * 100) / 100) }; };
+    const fill = t => String(t || "").replace(/\{v\}/g, label);
     const { addons, ...rest } = recipe;
     return {
-      ...rest, title: fill(b.title), diet: v.diet || b.diet, season_key: v.key, season_label: v.label,
-      ingredients: (b.ingredients || []).flatMap(i => (i === "VEG" ? v.items : [i]).map(x => ({ ...x }))),
+      ...rest, title: fill(b.title), diet: vs[0].diet || b.diet, season_key: vs.map(v => v.key).join("+"), season_label: label,
+      ingredients: (b.ingredients || []).flatMap(i => (i === "VEG" ? vs.flatMap(v => v.items).map(scaled) : [{ ...i }])),
       instructions: fill(b.instructions)
     };
+  }
+  // Gemüse an/aus (mehrere möglich, mindestens eins): «lauch» + «ruebli» → «lauch+ruebli»; letztes bleibt
+  function toggleSeasonKey(cur, key) {
+    const set = String(cur || "").split("+").filter(Boolean);
+    const next = set.includes(key) ? set.filter(k => k !== key) : [...set, key];
+    return (next.length ? next : set).join("+");
   }
   // alte Ids aus Schritt 0 («b-hoernli-lauch», noch in Wochenwahl/Plan): → { id: "b-hoernli", key: "lauch" }
   function legacyBaseId(id) {
@@ -1506,7 +1518,7 @@
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
-    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, expandBases, baseMonths, baseVariants, seasonChoices, withSeason, legacyBaseId, RECIPE_SORTS, recipeGroups, RECIPE_FILTERS, recipeFilter, mainVeg, isSimple, activeMin, totalMin, timeBadge, timeText, ingredientCount, rankDays, moveDay, dayReason, carryOver,
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, expandBases, baseMonths, baseVariants, seasonChoices, withSeason, toggleSeasonKey, legacyBaseId, RECIPE_SORTS, recipeGroups, RECIPE_FILTERS, recipeFilter, mainVeg, isSimple, activeMin, totalMin, timeBadge, timeText, ingredientCount, rankDays, moveDay, dayReason, carryOver,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList,
     nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_WORD, goalsOf, toggleGoal
