@@ -165,7 +165,7 @@
               <small>${DIET_LABEL[r.diet] || "Vegi"} · ${r.servings || DEFAULT_SERVINGS} Port. · ${CORE.timeText(r)}${CORE.isSimple(r) ? " · einfach" : ""}${inSeason(r) ? "" : " · nicht Saison"}${r.shared_from ? " · geteilt" : custom && r.shared === false ? " · nur unsere WG" : ""}</small>
               ${nh ? `<small class="nutri">${nh}</small>` : ""}
             </div>
-            ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : `🔎 Auf ${esc(searchName())} suchen`}</a>` : ""}
+            ${recipeHref(r) ? `<a class="pill" href="${esc(recipeHref(r))}" target="_blank" rel="noopener">${r.source_url ? "🌐 Rezept" : "🔎 Auf Google suchen"}</a>` : ""}
           </div>
           <div class="row">
             <button class="btn dark" type="button" data-assign="${esc(r.id)}">${actionLabel}</button>

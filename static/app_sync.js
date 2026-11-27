@@ -217,8 +217,10 @@
       startY = e.touches[0].clientY;
       dist = 0;
     }, { passive: true });
+    const reset = () => { ptr.style.transition = "transform .2s, opacity .2s"; ptr.style.transform = ""; ptr.style.opacity = "0"; setTimeout(() => { ptr.style.transition = ""; }, 220); };
     window.addEventListener("touchmove", e => {
       if (startY === null) return;
+      if (app.dragging) { startY = null; dist = 0; return reset(); } // Plan verschieben nach unten ist kein Herunterziehen (Issue #29)
       dist = Math.max(0, e.touches[0].clientY - startY);
       if (dist > 8 && app.tapStart) app.tapStart.moved = true;
       ptr.style.transform = `translateY(${Math.min(dist, 120) * 0.8 - 48}px) scale(${Math.min(1, 0.6 + dist / 200)}) rotate(${dist * 3}deg)`;
@@ -227,8 +229,8 @@
     window.addEventListener("touchend", () => {
       if (startY === null) return;
       startY = null;
-      if (dist > 70) runPullSync();
-      else { ptr.style.transition = "transform .2s, opacity .2s"; ptr.style.transform = ""; ptr.style.opacity = "0"; setTimeout(() => { ptr.style.transition = ""; }, 220); }
+      if (dist > 70 && !app.dragging && !app.justDragged) runPullSync();
+      else reset();
       dist = 0;
     });
   })();

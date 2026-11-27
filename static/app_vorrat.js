@@ -124,7 +124,7 @@
       return;
     }
     const { plan, vor } = compareRows();
-    const mk = app.shopMarked || new Set();
+    const mk = app.markedBring ? app.markedBring() : new Set();
     // vorgemerkt? dann genau das; sonst wie bisher alles aus dem Plan und der knappe Vorrat
     const n = anyMarked() ? plan.filter(x => !x.on && mk.has(x.name)).length + vor.filter(x => !x.on && markedV.has(x.i)).length
       : plan.filter(x => !x.on).length + vor.filter(x => x.knapp && !x.on).length;
@@ -210,7 +210,13 @@
   // ---------------------------------------------------------------------------
   let cmp = null; // { plan: [...], vor: [...], sel: Set }
   function compareRows() {
-    const plan = bringPayload(state.shopping.filter(it => !it.isStaple)).map(d => ({ key: "p:" + d.name, name: d.name, spec: d.spec, on: onBringNow(d.name) }));
+    // Vorgemerkte Zeilen zählen allein: teilen sich zwei Zeilen einen Bring!-Namen (Grillkäse + Gruyère = «Käse»),
+    // geht nur die Menge der vorgemerkten mit
+    const own = state.shopping.filter(it => !it.isStaple);
+    const mkSet = app.shopMarked || new Set(), mkB = app.markedBring ? app.markedBring() : new Set();
+    const nameOf = it => bringPayload([it])[0].name;
+    const src = mkSet.size ? own.filter(it => mkSet.has(it.name) || !mkB.has(nameOf(it))) : own;
+    const plan = bringPayload(src).map(d => ({ key: "p:" + d.name, name: d.name, spec: d.spec, on: onBringNow(d.name) }));
     const seen = new Set();
     const vor = state.staples.map((st, i) => ({ st, i })).filter(({ st, i }) => isKnapp(st) || oftLeer(st, thisWeek()) || markedV.has(i))
       .filter(({ st }) => { const k = stapleTarget(st).toLowerCase(); return !seen.has(k) && seen.add(k); })
@@ -220,7 +226,7 @@
   }
   function openCompare() {
     const { plan, vor } = compareRows();
-    const mk = app.shopMarked || new Set(); // in «Kaufen» vorgemerkt? dann genau das vorwählen (Plan und Vorrat)
+    const mk = app.markedBring ? app.markedBring() : new Set(); // in «Kaufen» vorgemerkt? dann genau das vorwählen (Plan und Vorrat)
     const pre = anyMarked() ? [...plan.filter(p => mk.has(p.name)), ...vor.filter(v => markedV.has(v.i))] : [...plan, ...vor.filter(v => v.knapp)];
     cmp = { plan, vor, sel: new Set(pre.filter(x => !x.on).map(x => x.key)) };
     renderCompare();
@@ -273,7 +279,10 @@
       if (sent.length) saveStaples();
       app.setBringList(await app.api("/bring/list"));
       $("compareDialog").close();
-      if (app.shopMarked) items.forEach(x => app.shopMarked.delete(x.name)); // gesendet: Vormerkung erledigt
+      if (app.shopMarked) { // gesendet: Vormerkung erledigt (Zeilen, deren Bring!-Name mitging)
+        const sentNames = new Set(items.map(x => x.name.toLowerCase()));
+        state.shopping.filter(it => sentNames.has(bringPayload([it])[0].name.toLowerCase())).forEach(it => app.shopMarked.delete(it.name));
+      }
       picked.filter(x => x.i != null).forEach(x => markedV.delete(x.i));
       refresh();
       const undo = async () => {

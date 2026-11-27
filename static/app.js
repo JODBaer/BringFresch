@@ -157,7 +157,7 @@
   const searchKey = () => CORE.searchSite(load(SEARCH_SITE_KEY, "swissmilk"));
   const searchName = () => CORE.SEARCH_SITES[searchKey()].name;
   function recipeLinkLabel(r) {
-    if (!r.source_url) return `Auf ${searchName()} suchen ↗`;
+    if (!r.source_url) return "Auf Google suchen ↗";
     let h = "";
     try { h = new URL(r.source_url).hostname.replace(/^www\./, ""); } catch (e) { /* kein Link */ }
     const site = { "fooby.ch": "Fooby", "bettybossi.ch": "Betty Bossi", "migusto.migros.ch": "Migusto", "swissmilk.ch": "Swissmilk" }[h] || h;
@@ -165,8 +165,8 @@
   }
   function recipeHref(r) {
     if (r.source_url) return r.source_url;
-    if (!r.title || r.empty || r.quick || r.is_leftovers) return "";
-    return CORE.searchHref(searchKey(), r.title);
+    if (!r.title || r.empty || r.is_leftovers) return "";
+    return CORE.searchHref("google", r.title); // ohne eigenen Link: Titel direkt bei Google suchen (Joshua 27.11.)
   }
 
   // Fleisch/Fisch in Titel oder Zutaten? (Zeilen mit Vegi-Ersatz wie «Vegi-Hack», «planted» zählen nicht)
