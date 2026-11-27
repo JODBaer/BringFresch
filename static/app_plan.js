@@ -457,20 +457,80 @@
       run: () => { state.plan[idx] = previous; savePlan(); refresh(); toast("Rückgängig gemacht"); }
     });
   }
-  $("mswap").addEventListener("click", e => {
-    const b = e.target.closest("[data-swap]");
-    if (!b) return;
-    const a = sheetDay, j = +b.dataset.swap;
+  // Zwei Gerichte tauschen (Menü-Blatt «Tauschen mit» oder lange drücken + ziehen): Esser, Gäste, Zeit bleiben am Tag
+  function swapDays(a, j) {
     const before = state.plan.slice();
     state.plan.splice(0, 7, ...app.CORE.swapDishes(state.plan, a, j));
     savePlan();
     refresh();
-    closeMenuSheet();
     toast(`${DAYS[a].slice(0, 2)} ↔ ${DAYS[j].slice(0, 2)} getauscht`, {
       label: "Rückgängig",
       run: () => { state.plan.splice(0, 7, ...before); savePlan(); refresh(); toast("Rückgängig gemacht"); }
     });
+  }
+  $("mswap").addEventListener("click", e => {
+    const b = e.target.closest("[data-swap]");
+    if (!b) return;
+    const a = sheetDay;
+    closeMenuSheet();
+    swapDays(a, +b.dataset.swap);
   });
+
+  // Plan verschieben (Review Joshua 25.11., nur diese Funktion): Gericht lange drücken = es hebt sich und wackelt
+  // (wie Apps auf dem iPhone-Homescreen), auf einen anderen Tag ziehen und loslassen = die zwei Gerichte tauschen.
+  // Loslassen daneben = nichts. Das Gericht wandert unverändert (swapDishes), sonst bleibt der Plan, wie er ist.
+  (function dragSwap() {
+    const HOLD = 450;
+    let timer = null, start = null, from = -1, over = -1;
+    const rows = () => [...$("days").children];
+    const mark = () => rows().forEach((r, k) => { r.classList.toggle("lift", k === from); r.classList.toggle("over", k === over && k !== from); });
+    function cancel() { clearTimeout(timer); timer = null; start = null; }
+    function finish(drop) {
+      const a = from, j = over;
+      from = -1; over = -1;
+      app.dragging = false;
+      app.justDragged = true; // der Klick nach dem Loslassen öffnet kein Menü-Blatt
+      setTimeout(() => { app.justDragged = false; }, 80);
+      mark();
+      if (drop && a >= 0 && j >= 0 && j !== a) swapDays(a, j);
+    }
+    $("days").addEventListener("pointerdown", e => {
+      const dish = e.target.closest(".dish");
+      if (!dish || e.button > 0 || state.plan.length !== 7) return;
+      const row = dish.closest(".prow");
+      start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        if (!start) return;
+        from = +row.dataset.i;
+        over = from;
+        app.dragging = true;
+        mark();
+        if (navigator.vibrate) try { navigator.vibrate(15); } catch (err) { /* ohne Vibration */ }
+      }, HOLD);
+    });
+    document.addEventListener("pointermove", e => {
+      if (!start || e.pointerId !== start.id) return;
+      if (!app.dragging) { if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) cancel(); return; } // Scrollen, kein Halten
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const r = el && el.closest("#days > .prow");
+      const o = r ? +r.dataset.i : -1;
+      if (o !== over) { over = o; mark(); }
+    });
+    const end = e => {
+      if (!start || (e && e.pointerId !== start.id)) return;
+      const was = app.dragging;
+      cancel();
+      if (was) finish(e && e.type === "pointerup");
+    };
+    document.addEventListener("pointerup", end);
+    document.addEventListener("pointercancel", end);
+    // Während des Ziehens nicht scrollen, kein Kontextmenü; der Klick nach dem Loslassen öffnet kein Menü-Blatt
+    $("days").addEventListener("touchmove", e => { if (app.dragging) e.preventDefault(); }, { passive: false });
+    $("days").addEventListener("contextmenu", e => { if (start || app.dragging) e.preventDefault(); });
+    $("days").addEventListener("click", e => { if (app.justDragged) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  })();
   $("mseason").addEventListener("click", e => {
     const b = e.target.closest("[data-season]");
     if (!b) return;
@@ -543,6 +603,7 @@
     }, { passive: true });
     $("days").addEventListener("touchend", e => {
       if (sx === null) return;
+      if (app.dragging || app.justDragged) { sx = null; return; }
       const t = e.changedTouches[0];
       const dx = t.clientX - sx, dy = t.clientY - sy;
       sx = null;

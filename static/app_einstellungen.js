@@ -16,8 +16,27 @@
   // Ziel = proteinreich und/oder leicht (antippen = an/aus, CORE.toggleGoal)
   const DIETS = [["fleisch", "Fleisch"], ["vegi", "Vegi"], ["vegan", "Vegan"]];
   const setDiet = (m, value) => { m.diet = DIETS.some(([v]) => v === value) ? value : "fleisch"; return m; };
+  // Mitbewohner kompakt (Review Joshua 25.11.): eine Zeile pro Person, Bubbles mit Piktogrammen (antippen = an/aus),
+  // Namen antippen = umbenennen oder entfernen
+  const ICON = { fleisch: "🥩", vegi: "🥦", vegan: "🌱", protein: "💪", kcal: "🪶" };
   const chip = (attr, id, val, label, on, name) =>
-    `<button type="button" class="mchip" ${attr}="${esc(id)}" data-val="${val}" aria-pressed="${on}" aria-label="${esc(name)}: ${label}">${label}</button>`;
+    `<button type="button" class="mchip" ${attr}="${esc(id)}" data-val="${val}" aria-pressed="${on}" aria-label="${esc(name)}: ${label}" title="${label}">${ICON[val] || label}</button>`;
+  let editingMember = null, removeArmed = null;
+  // Lieblings-KI (pro Handy, Review Joshua 25.11.): für «Foto mit KI», Instagram und Reste-Rezepte
+  const AI_KEY = window.BF_STORE.KEYS.AI_KEY;
+  const AIS = [["chatgpt", "ChatGPT"], ["claude", "Claude"], ["gemini", "Gemini"], ["andere", "andere"]];
+  function renderAi() {
+    const cur = load(AI_KEY, "chatgpt");
+    $("aiPick").innerHTML = AIS.map(([v, l]) => `<button type="button" class="mchip" data-ai="${v}" aria-pressed="${v === cur}">${l}</button>`).join("");
+  }
+  $("aiPick").addEventListener("click", e => {
+    const b = e.target.closest("[data-ai]");
+    if (!b) return;
+    save(AI_KEY, b.dataset.ai);
+    renderAi();
+    toast(`Lieblings-KI: ${b.textContent} ✓`);
+  });
+  renderAi();
 
   function renderMembers() {
     if ($("meSelect")) {
@@ -25,15 +44,23 @@
       const cur = state.members.some(m => m.id === me) ? me : "";
       $("meSelect").innerHTML = (cur ? "" : `<option value="" selected>– wählen –</option>`) + state.members.map(m => `<option value="${esc(m.id)}"${m.id === cur ? " selected" : ""}>${esc(m.name)}</option>`).join("");
     }
+    const short = initialsMap();
     $("members").innerHTML = state.members.map(m => `
       <div class="member">
-        <b>${esc(m.name)}</b>
-        <button class="icon-btn" type="button" data-remove="${esc(m.id)}" aria-label="${esc(m.name)} entfernen">✕</button>
-        <div class="mchips">
+        <span class="mav" aria-hidden="true">${esc(short[m.id] || m.name.slice(0, 2))}</span>
+        <button class="mname" type="button" data-edit="${esc(m.id)}" aria-expanded="${editingMember === m.id}" aria-label="${esc(m.name)} umbenennen oder entfernen">${esc(m.name)}</button>
+        <span class="mchips">
           <span class="mgroup" role="group" aria-label="Ernährung von ${esc(m.name)}">${DIETS.map(([v, l]) => chip("data-diet", m.id, v, l, (m.diet || "fleisch") === v, m.name)).join("")}</span>
+          <span class="msep" aria-hidden="true"></span>
           <span class="mgroup" role="group" aria-label="Ziel von ${esc(m.name)}">${Object.entries(app.CORE.GOAL_WORD).map(([g, w]) => chip("data-goal", m.id, g, w[0].toUpperCase() + w.slice(1), app.CORE.goalsOf(m).includes(g), m.name)).join("")}</span>
-        </div>
+        </span>
+        ${editingMember === m.id ? `<form class="medit" data-rename="${esc(m.id)}">
+          <input type="text" value="${esc(m.name)}" aria-label="Name von ${esc(m.name)}" maxlength="40" required>
+          <button class="btn dark" type="submit">Speichern</button>
+          <button class="btn" type="button" data-remove="${esc(m.id)}">${removeArmed === m.id ? "Entfernen?" : "Entfernen"}</button>
+        </form>` : ""}
       </div>`).join("");
+    $("memberLegend").textContent = "🥩 Fleisch · 🥦 Vegi · 🌱 Vegan · 💪 proteinreich · 🪶 leicht";
   }
 
   function renderAttendance() {
@@ -74,16 +101,42 @@
     refresh();
   });
 
+  // Namen antippen = Bearbeiten auf/zu; Speichern = umbenennen (gemeinsam für die WG)
+  $("members").addEventListener("click", e => {
+    const b = e.target.closest("[data-edit]");
+    if (!b) return;
+    editingMember = editingMember === b.dataset.edit ? null : b.dataset.edit;
+    removeArmed = null;
+    renderMembers();
+  });
+  $("members").addEventListener("submit", e => {
+    const f = e.target.closest("[data-rename]");
+    if (!f) return;
+    e.preventDefault();
+    const m = state.members.find(x => x.id === f.dataset.rename);
+    const name = f.querySelector("input").value.trim();
+    editingMember = null;
+    if (m && name && name !== m.name) {
+      m.name = name;
+      saveMembers();
+      app.settingsChanged();
+    }
+    renderMembers();
+    refresh();
+  });
+
   $("members").addEventListener("click", e => {
     const b = e.target.closest("[data-remove]");
     if (!b) return;
     if (state.members.length <= 1) return toast("Mindestens eine Person braucht es");
-    if (b.dataset.armed !== "1") {
-      b.dataset.armed = "1";
+    if (removeArmed !== b.dataset.remove) { // Nachfrage, bleibt auch beim Neuzeichnen stehen
+      removeArmed = b.dataset.remove;
       b.textContent = "Entfernen?";
       return;
     }
     const id = b.dataset.remove;
+    editingMember = null;
+    removeArmed = null;
     state.members = state.members.filter(m => m.id !== id);
     [state.plan, otherPlan()].filter(Boolean).forEach(p => p.forEach(d => { d.eaters = d.eaters.filter(x => x !== id); }));
     saveMembers();

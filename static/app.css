@@ -78,9 +78,18 @@ button.item { width: 100%; background: none; border-left: 0; border-right: 0; bo
 .news p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
 
 /* WG */
-.member { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
-.mchips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; }
-.mgroup { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+/* Mitbewohner kompakt (Review 25.11.): Kreis · Name · Bubbles 🥩 🥦 🌱 | 💪 🪶 */
+.member { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+.mav { width: 32px; height: 32px; border-radius: 50%; background: var(--line); color: var(--fg); display: grid; place-items: center; font: 750 12.5px var(--font); }
+.mname { border: 0; background: none; color: var(--fg); text-align: left; padding: 6px 0; font: 700 14.5px var(--font); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.mchips { display: flex; align-items: center; gap: 4px; }
+.msep { width: 1px; align-self: stretch; background: var(--line); margin: 4px 2px; }
+.mgroup { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.mchips .mchip { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; font-size: 15px; opacity: .45; }
+.mchips .mchip[aria-pressed="true"] { opacity: 1; background: transparent; border: 2px solid var(--accent); color: var(--fg); }
+.medit { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.mlegend { padding: 0 12px 10px; font-size: 12px; }
+#aiRow { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .mchip { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 5px 11px; font: 600 13px var(--font); cursor: pointer; }
 .mchip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .member:first-child { border-top: 0; }
@@ -91,7 +100,7 @@ select, input[type="text"], input[type="url"], input[type="search"], input[type=
 textarea { min-height: 120px; resize: vertical; font-family: var(--mono); font-size: 13px; }
 .member select { width: auto; padding: 6px 8px; font-size: 13px; }
 .icon-btn { border: 0; background: none; color: var(--muted); font-size: 16px; padding: 6px; }
-.add-member { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+.add-member { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 8px 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
 .add-member select { width: auto; }
 .table-wrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
@@ -1085,3 +1094,10 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .add-ways button small { font-weight: 400; font-size: 11px; color: var(--muted); text-align: center; }
 .add-ways button:disabled { opacity: .55; cursor: default; }
 
+
+/* Plan verschieben (Review 25.11.): lange drücken = Gericht hebt sich und wackelt, Ziel-Tag umrandet */
+#days .dish { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+#days .prow.lift { position: relative; z-index: 2; box-shadow: 0 10px 28px rgba(0,0,0,.22); animation: bf-wiggle .26s ease-in-out infinite alternate; }
+#days .prow.over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+@keyframes bf-wiggle { from { transform: scale(1.02) rotate(-.6deg); } to { transform: scale(1.02) rotate(.6deg); } }
+@media (prefers-reduced-motion: reduce) { #days .prow.lift { animation: none; transform: scale(1.02); } }

@@ -132,9 +132,14 @@
           <label for="meSelect">Du bist<small>Nur auf diesem Handy · dein Kreis im Plan ist umrandet</small></label>
           <select id="meSelect"></select>
         </div>
+        <div class="set-row" id="aiRow">
+          <span>Deine Lieblings-KI<small>Nur auf diesem Handy · für «Foto mit KI» und Reste-Rezepte: Obsonare kopiert den Prompt und öffnet diese App</small></span>
+          <div class="mgroup" id="aiPick" role="group" aria-label="Lieblings-KI"></div>
+        </div>
         <div id="members"></div>
         <form class="add-member" id="addMemberForm">
-          <input type="text" id="newMemberName" placeholder="Name" aria-label="Name" required>
+          <span class="mav" aria-hidden="true">+</span>
+          <input type="text" id="newMemberName" placeholder="Mitbewohner hinzufügen" aria-label="Name" required>
           <select id="newMemberDiet" aria-label="Ernährung">
             <option value="fleisch">Fleisch</option>
             <option value="vegi">Vegi</option>
@@ -142,6 +147,7 @@
           </select>
           <button class="btn dark" type="submit">+</button>
         </form>
+        <p class="hint mlegend" id="memberLegend"></p>
       </div>
 
       <button class="btn dark" type="button" id="settingsSaveBtn">Speichern &amp; an alle senden</button>
