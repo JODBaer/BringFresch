@@ -39,6 +39,7 @@
     RECIPE_SORT_KEY: "bringfrisch_recipe_sort",    // Reiter Rezepte «Ordnen»: herkunft · az · saison · schnell · protein · gemuese (CORE.RECIPE_SORTS)
     HOF_GEO_KEY: "bringfrisch_hof_geo",            // Hofläden: Standort verwenden ja/nein (nur die Zustimmung, nie der Standort selbst)
     SEARCH_SITE_KEY: "bringfrisch_search_site",    // «Rezept suchen auf»: swissmilk | fooby | google
+    AI_KEY: "bringfrisch_fav_ai",                  // Lieblings-KI für «Foto mit KI» / Reste-Rezept: chatgpt | claude | gemini | andere (Joshua 25.11.)
     PUSH_KEY: "bringfrisch_push"                   // Benachrichtigungen: { on, id, prefs: { voted, nudge, market }, remind } – Abo dieses Handys
   };
   // Schlüssel mit Zusatz

@@ -1089,7 +1089,13 @@ await step(A, "Einstellungen → Standort: an (aus den Hofläden), «Ausschalten
   expect(await A.page.evaluate(() => localStorage.getItem("bringfrisch_hof_geo") === "false"), "Zustimmung nicht zurückgenommen");
 });
 
-await step(A, "Mitbewohner: hinzufügen (Vegi), Ernährung (Vegan) + Ziele (proteinreich, leicht) antippen, entfernen", async () => {
+await step(A, "Du: Lieblings-KI wählen (pro Handy)", async () => {
+  expect(await A.page.$eval('#aiPick [aria-pressed="true"]', b => b.dataset.ai) === "chatgpt", "Standard sollte ChatGPT sein");
+  await tap(A, '#aiPick [data-ai="claude"]');
+  await until(A, () => localStorage.getItem("bringfrisch_fav_ai") === '"claude"' && document.querySelector('#aiPick [data-ai="claude"]').getAttribute("aria-pressed") === "true", "Lieblings-KI nicht gespeichert");
+});
+
+await step(A, "Mitbewohner kompakt: hinzufügen (Vegi), Bubbles Vegan + proteinreich + leicht, Namen antippen = umbenennen, entfernen", async () => {
   await typeInto(A, "#newMemberName", "Mia");
   await choose(A, "#newMemberDiet", "vegi");
   await tap(A, '#addMemberForm button[type="submit"]');
@@ -1100,8 +1106,19 @@ await step(A, "Mitbewohner: hinzufügen (Vegi), Ernährung (Vegan) + Ziele (prot
   await tap(A, '#members .member:last-child [data-goal][data-val="kcal"]');
   await tap(A, '#members .member:last-child [data-goal][data-val="protein"]');
   await until(A, () => { const m = JSON.parse(localStorage.getItem("bringfrisch_members")).find(m => m.name === "Mia") || {}; return m.diet === "vegan" && m.goal === "protein kcal"; }, "«Vegan» + proteinreich + leicht nicht gespeichert");
-  expect(await A.page.$$eval('#members .member:last-child [aria-pressed="true"]', l => l.map(b => b.textContent).join()) === "Vegan,Proteinreich,Leicht", "Knöpfe zeigen die Wahl nicht");
+  expect(await A.page.$$eval('#members .member:last-child [aria-pressed="true"]', l => l.map(b => b.title + b.textContent).join()) === "Vegan🌱,Proteinreich💪,Leicht🪶", "Bubbles zeigen die Wahl nicht");
   expect(await A.page.$$eval("#members .member", rows => rows.every(r => r.scrollWidth <= r.clientWidth + 1)), "Mitbewohner-Zeile ist zu breit");
+  // kompakt: eine Zeile pro Person (Kreis, Name, Bubbles nebeneinander)
+  expect(await A.page.$$eval("#members .member", rows => rows.every(r => r.getBoundingClientRect().height < 60)), "Mitbewohner-Zeile ist nicht kompakt");
+  // Namen antippen = umbenennen
+  await tap(A, "#members .member:last-child [data-edit]");
+  await until(A, () => document.querySelector("#members .member:last-child .medit input"), "Bearbeiten geht nicht auf");
+  await typeInto(A, "#members .member:last-child .medit input", "Mia R.");
+  await tap(A, '#members .member:last-child .medit button[type="submit"]');
+  await until(A, () => JSON.parse(localStorage.getItem("bringfrisch_members")).some(m => m.name === "Mia R.") && !document.querySelector("#members .medit"), "Umbenennen nicht gespeichert");
+  // entfernen: Namen antippen → «Entfernen» → «Entfernen?»
+  await tap(A, "#members .member:last-child [data-edit]");
+  await until(A, () => document.querySelector("#members .member:last-child [data-remove]"), "«Entfernen» fehlt");
   await tap(A, "#members .member:last-child [data-remove]");
   await until(A, () => document.querySelector("#members .member:last-child [data-remove]").textContent === "Entfernen?", "Nachfrage fehlt");
   await tap(A, "#members .member:last-child [data-remove]");
@@ -1906,6 +1923,36 @@ await step(B, "Geteilte Rezepte: eigene gehen standardmässig an alle WGs, Rezep
   await until(B, () => document.getElementById("recipeDialog").open && document.getElementById("recipeShared").checked, "«Mit allen WGs teilen» nicht vorgewählt");
   await shot(B, "09b-rezept-teilen");
   await closeDialog(B, "recipeDialog");
+});
+
+await step(B, "Plan verschieben: Gericht lange drücken (hebt sich, wackelt), auf anderen Tag ziehen = tauschen, Esser bleiben; «Rückgängig»", async () => {
+  await goTab(B, "plan");
+  const t2 = await text(B, '.prow[data-i="2"] .t'), t4 = await text(B, '.prow[data-i="4"] .t');
+  const eaters = () => B.page.$$eval("#days .prow", rows => rows.map(r => [...r.querySelectorAll(".av")].map(a => a.getAttribute("aria-pressed")).join("")).join("|"));
+  const e0 = await eaters();
+  const box = async sel => { const b = await (await B.page.$(sel)).boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
+  const [x1, y1] = await box('.prow[data-i="2"] .t');
+  const [x2, y2] = await box('.prow[data-i="4"] .t');
+  const t = B.page.touchscreen;
+  await t.touchStart(x1, y1);
+  await sleep(650);
+  expect(await B.page.$eval('.prow[data-i="2"]', r => r.classList.contains("lift") && getComputedStyle(r).animationName === "bf-wiggle"), "Gericht hebt sich nicht / wackelt nicht");
+  for (let k = 1; k <= 10; k++) { await t.touchMove(x1 + (x2 - x1) * k / 10, y1 + (y2 - y1) * k / 10); await sleep(15); }
+  expect(await B.page.$eval('.prow[data-i="4"]', r => r.classList.contains("over")), "Ziel-Tag nicht markiert");
+  await t.touchEnd();
+  await until(B, ([a, b]) => document.querySelector('.prow[data-i="2"] .t').textContent.trim() === b && document.querySelector('.prow[data-i="4"] .t').textContent.trim() === a && !document.querySelector("#days .lift, #days .over"), "Mi ↔ Fr nicht getauscht", [t2, t4]);
+  expect(!(await B.page.$eval("#msheet", m => m.classList.contains("show"))), "Menü-Blatt nach dem Ziehen offen");
+  expect((await eaters()) === e0, "Esser sind mitgewandert");
+  await toastIs(B, /Mi ↔ Fr getauscht/);
+  await tap(B, ".toast button");
+  await until(B, ([a, b]) => document.querySelector('.prow[data-i="2"] .t').textContent.trim() === a && document.querySelector('.prow[data-i="4"] .t').textContent.trim() === b, "Rückgängig stellt nicht her", [t2, t4]);
+  // daneben loslassen = nichts
+  await t.touchStart(x1, y1);
+  await sleep(650);
+  await t.touchMove(x1, 4);
+  await t.touchEnd();
+  await sleep(150);
+  expect((await text(B, '.prow[data-i="2"] .t')) === t2, "Loslassen daneben hat etwas geändert");
 });
 
 await step(B, "Menü tauschen (Blatt «Tauschen mit»), Einkauf nach Gericht, Katalog nach Beliebtheit", async () => {
