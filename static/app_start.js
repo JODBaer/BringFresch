@@ -100,8 +100,10 @@
   refresh();
   app.fitDensity();
   app.markWahl();
+  const join = !fromLink && app.CORE.parseJoin(location.hash); // Einladungslink (app_einladen.js)
   const welcome = !app.connected() && !fromLink && !load(WELCOME_KEY, false);
-  if (welcome) app.openWelcome();
+  if (join) app.joinFromLink(join);
+  else if (welcome) app.openWelcome();
   else if (app.openFromUrl()) { /* aus einer Benachrichtigung geöffnet (app_push.js) */ }
   else if (app.wahlDue()) setTimeout(app.openWahlPop, 500);
   if (fromLink) toast("Wochenplan aus Link übernommen");

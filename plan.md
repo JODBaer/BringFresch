@@ -103,7 +103,7 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
   - **Rezepte bleiben Rezepte** (Joshua 25.11., ersetzt die Varianten-Karten aus Schritt 0): alle Rezepte haben denselben Aufbau; «Hörnli & Ghacktes» ist **ein** Rezept, nicht fünf. Saisonal wird es durch ein **Add-on «Saison»** (🥬 + Lauch im November): pro Rezept eine Liste passender Gemüse/Früchte mit Monaten, die App wählt jeden Monat selbst, im Plan änderbar (gespeichert am Tag, Einkauf nimmt die Zutaten des gewählten Add-ons). Die anderen Zusätze (Extra-Fleisch, Vegi-Ersatz, Salat) werden genauso Add-ons. Umbau: `bases` → normale Rezepte mit `addons`, Ids `b-<grundrezept>` (alte `b-<grundrezept>-<variante>` im Plan weiter lesbar), «Einfach im November» = erster Abschnitt in Rezepte, keine eigene Kachel-Ansicht.
   - **Lieblings-KI** in den Einstellungen unter «Du» (Joshua 25.11.): ChatGPT · Claude · Gemini · andere, pro Handy.
   - **Plan**: Rezept antippen = Tag klappt auf (wie der Tag); **lange drücken = heben und wackeln, auf anderen Tag ziehen = tauschen** (wie Apps auf dem iPhone-Homescreen; `swapDishes`, Esser/Gäste bleiben am Tag), danach «Rückgängig». **Nur diese Funktion ändern** (Joshua): das Gericht wandert unverändert (Link, Zutaten, Add-on), sonst bleibt der Plan wie er ist.
-- [ ] **1. Erster Start in 3 Schritten** (vor dem Praxistest)
+- [x] **1. Erster Start in 3 Schritten** (vor dem Praxistest) – gebaut 27.11.: Einladungslink (PIN nur verschlüsselt beim WG-Server, 7 Tage), «Wer bist du?» als Kacheln, «Bring! verbinden» nur ohne Liste (Weg A), «Hoi …» mit der ersten Woche. **Noch offen**: QR-Code, «Neue WG gründen» in der App (heute `tools/new_wg.mjs`), ob der Bot Einladungen selbst annehmen kann.
   - **Einladungslink** statt WG-Name + PIN abtippen: in den Einstellungen «Mitbewohner einladen» → Link/QR (`…/#join=<wg>.<code>`, Code = PIN-Hash-Ticket, läuft nach 7 Tagen ab) → per WhatsApp senden. Wer ihn öffnet, landet direkt bei «Wer bist du?». Abtippen bleibt als Weg «Ich habe WG-Name und PIN».
   - **Wer bist du?** = Kacheln mit den Namen der WG (ein Tipp), «Ich bin neu» = Name + Vegi/Fleisch.
   - **Bring! verbinden** nur, solange die WG noch keine Liste hat (sonst «Bring! ist verbunden ✓ Liste «WG»»): Bildschirm mit 3 nummerierten Schritten und Knopf «Adresse kopieren» (`allmenbot@gmail.com`), «Bring! öffnen»; die App fragt alle paar Sekunden nach und wählt die Liste selbst, sobald der Bot sie sieht. **Abklären vor dem Entwurf:** kann der Worker eine Einladung im Bot-Konto selbst annehmen (Bring!-API)? Wenn nicht: Bot legt die Liste selbst an und lädt die Mitbewohner ein (sie nehmen in ihrer eigenen Bring!-App an), oder die erste Person nimmt einmalig im Bot-Konto an (heute). Ziel: **niemand muss sich ins Bot-Konto einloggen.**
@@ -129,7 +129,7 @@ Ziel: Wer Obsonare zum ersten Mal öffnet, muss **nichts suchen und nichts erkl�
 - Niemand fragt «wo finde ich …?» – jede solche Frage = Punkt für die nächste Runde.
 
 ### Offene Entscheide (Joshua)
-- Bot: welcher Weg, wenn die Einladung nicht automatisch angenommen werden kann?
+- ~~Bot~~ → entschieden 27.11.: Weg A (Liste in Bring! mit dem Bot teilen); ob der Bot selbst annehmen kann, noch prüfen.
 - Senden: Meldung in Obsonare, WhatsApp-Link oder beides (Vorschlag: beides, Meldung zuerst)?
 - ~~Foto mit KI~~ → entschieden 25.11.: ja, über die Lieblings-KI (ChatGPT, Claude, Gemini …) mit kopiertem Prompt (Schritt 5)
 - Reihenfolge: 0 (Einfach & saisonal), dann 1 + 2 vor dem Praxistest, 3–7 danach (Vorschlag).

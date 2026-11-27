@@ -148,6 +148,10 @@
           <button class="btn dark" type="submit">+</button>
         </form>
         <p class="hint mlegend" id="memberLegend"></p>
+        <div class="set-row set-line" id="inviteRow" hidden>
+          <span>Mitbewohner einladen<small>Link per WhatsApp senden – kein WG-Name, kein PIN abtippen</small></span>
+          <button class="btn dark" type="button" id="inviteBtn">Einladen</button>
+        </div>
       </div>
 
       <button class="btn dark" type="button" id="settingsSaveBtn">Speichern &amp; an alle senden</button>
@@ -526,13 +530,15 @@
     </div>
   </dialog>
 
-  <!-- Erster Start: WG verbinden, dann «Wer bist du?» -->
+  <!-- Erster Start in 3 Schritten (Entwurf docs/design/erster-start-entwurf.html): Einladungslink oder WG-Name + PIN,
+       «Wer bist du?», Bring! verbinden (nur ohne Liste), deine erste Woche (app_einladen.js) -->
   <dialog id="welcomeDialog" class="full">
     <div class="sheet">
       <div class="sheet-body">
+        <div class="wdots" id="welcomeDots" aria-hidden="true"></div>
         <form class="welcome" id="welcomeJoin">
           <h2>Willkommen bei Obsonare 🥕</h2>
-          <p>Einmal den Namen eurer WG und den PIN eingeben – dann seht ihr alle denselben Plan und dieselbe Bring!-Liste.</p>
+          <p>Am einfachsten: den <b>Einladungslink</b> aus der WG antippen – dann bist du gleich drin. Sonst hier den Namen eurer WG und den PIN eingeben.</p>
           <label class="field">WG-Name
             <input type="text" id="welcomeWg" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z.B. sonnenhof">
           </label>
@@ -546,7 +552,7 @@
         </form>
         <div class="welcome" id="welcomeWho" hidden>
           <p class="welcome-ok" id="welcomeOk"></p>
-          <h2>Wer bist du?</h2>
+          <h2 id="welcomeWhoTitle">Wer bist du?</h2>
           <p id="welcomeWhoText">Damit deine Stimmen und dein Plan zu dir gehören. Später änderbar.</p>
           <div class="welcome-who" id="welcomeMembers"></div>
           <form class="welcome" id="welcomeAdd" style="padding:0;gap:10px">
@@ -560,6 +566,49 @@
             </select>
             <button class="btn dark" type="submit">Das bin ich</button>
           </form>
+          <p class="legal">Mit dem Antippen akzeptierst du die <a href="rechtliches.html#nutzung">Nutzungsbedingungen</a> und den <a href="rechtliches.html#datenschutz">Datenschutz</a>.</p>
+        </div>
+        <div class="welcome" id="welcomeBring" hidden>
+          <h2>Bring! verbinden</h2>
+          <p>Einmal für die ganze WG. Dann füllt Obsonare eure Einkaufsliste.</p>
+          <ol class="wsteps">
+            <li><span class="n">1</span><div><b>Adresse kopieren</b><div class="wcopy"><code>allmenbot@gmail.com</code><button class="btn" type="button" id="welcomeBotCopy">Kopieren</button></div></div></li>
+            <li><span class="n">2</span><div><b>In Bring! die WG-Liste teilen</b><small>Liste → Teilen → Adresse einfügen</small><div class="wcopy"><a class="btn" id="welcomeBringOpen" target="_blank" rel="noopener">Bring! öffnen ↗</a></div></div></li>
+            <li><span class="n">3</span><div><b>Zurück zu Obsonare</b><small id="welcomeBringState" role="status"></small><div class="wcopy" id="welcomeBringPick"></div></div></li>
+          </ol>
+          <p class="hint" style="padding:0">Sieht der Bot die Liste nicht, muss er die Einladung einmal annehmen – das macht Joshua.</p>
+          <button class="btn primary" type="button" id="welcomeBringNext" disabled>Weiter</button>
+          <button class="linkish" type="button" id="welcomeBringLater">Später</button>
+        </div>
+        <div class="welcome" id="welcomeDone" hidden>
+          <h2 id="welcomeHello">Hoi 👋</h2>
+          <p class="welcome-ok" id="welcomeDoneOk" hidden></p>
+          <p>So läuft eure Woche:</p>
+          <div class="wweek">
+            <div><span aria-hidden="true">🃏</span><p><b>Wochenwahl</b><small>Antippen, was du essen willst</small></p></div>
+            <div><span aria-hidden="true">📅</span><p><b>Plan</b><small>Die Top 7 kommen auf die Tage</small></p></div>
+            <div><span aria-hidden="true">🛒</span><p><b>Bring!</b><small>Ein Knopf füllt eure Liste</small></p></div>
+          </div>
+          <button class="btn primary" type="button" id="welcomeVoteBtn">Wochenwahl starten</button>
+          <button class="linkish" type="button" id="welcomeDoneBtn">Zum Plan</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Mitbewohner einladen (Einstellungen): Link gilt 7 Tage (app_einladen.js) -->
+  <dialog id="inviteDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h2>Mitbewohner einladen</h2><p>Link antippen = gleich in der WG. Gilt 7 Tage.</p></div>
+        <button class="icon-btn" type="button" data-close aria-label="Schliessen">✕</button>
+      </div>
+      <div class="sheet-body">
+        <p class="invite-link" id="inviteLink"></p>
+        <div class="invite-actions" id="inviteActions" hidden>
+          <a class="btn primary" id="inviteWa" target="_blank" rel="noopener">Per WhatsApp senden</a>
+          <button class="btn" type="button" id="inviteShare">Teilen …</button>
+          <button class="btn" type="button" id="inviteCopy">Link kopieren</button>
         </div>
       </div>
     </div>
@@ -620,6 +669,7 @@
   <script src="app_alle.js"></script>
   <script src="app_sync.js"></script>
   <script src="app_einstellungen.js"></script>
+  <script src="app_einladen.js"></script>
   <script src="app_push.js"></script>
   <script src="app_theme.js"></script>
   <script src="app_start.js"></script>

@@ -331,6 +331,11 @@ W1.document.getElementById("welcomeName").value = "Mia";
 W1.document.getElementById("welcomeDiet").value = "vegi";
 W1.document.getElementById("welcomeAdd").dispatchEvent(new W1.Event("submit", { cancelable: true }));
 await wait(2500);
+// danach: «Bring! verbinden» (zweite WG hat noch keine Liste) → «Später» → «Hoi Mia» → «Zum Plan»
+check(!W1.document.getElementById("welcomeBring").hidden && W1.document.getElementById("welcomeBringNext").disabled, "zweite WG ohne Liste: Schritt «Bring! verbinden», Weiter erst mit Liste");
+W1.document.getElementById("welcomeBringLater").click();
+check(!W1.document.getElementById("welcomeDone").hidden && /Hoi Mia/.test(W1.document.getElementById("welcomeHello").textContent), "«Später» → «Hoi Mia 👋» mit der ersten Woche");
+W1.document.getElementById("welcomeDoneBtn").click();
 const shSettings = JSON.parse(store.get("w:sonnenhof:settings") || "{}").settings || {};
 check(!W1.document.getElementById("welcomeDialog").open && shSettings.members && shSettings.members.map(m => m.name).join() === "Mia", `erste Person der zweiten WG: nur Mia (${(shSettings.members || []).map(m => m.name)})`);
 check(JSON.parse(W1.localStorage.getItem("bringfrisch_sync")).wg === "Sonnenhof" && JSON.parse(W1.localStorage.getItem("bringfrisch_terms")).version, "WG-Name gemerkt, Bedingungen akzeptiert (mit Datum)");
@@ -341,9 +346,11 @@ const W2 = phone(null, null, { fresh: true });
 await wait(300);
 await join(W2, "sonnenhof", "135790");
 const btns = [...W2.document.querySelectorAll("#welcomeMembers [data-me]")];
-check(btns.map(b => b.textContent).join() === "Mia", "zweites Handy der zweiten WG: «Wer bist du?» zeigt Mia");
+check(btns.map(b => b.querySelector("b").textContent).join() === "Mia" && W2.document.getElementById("welcomeNewBtn"), "zweites Handy der zweiten WG: «Wer bist du?» zeigt Mia als Kachel + «Ich bin neu»");
 btns[0].click();
 await wait(300);
+W2.document.getElementById("welcomeBringLater").click();
+W2.document.getElementById("welcomeDoneBtn").click();
 check(!W2.document.getElementById("welcomeDialog").open && JSON.parse(W2.localStorage.getItem("bringfrisch_me")) === shSettings.members[0].id, "angetippt = «Ich bin» gespeichert");
 
 check(errors.length === 0, "keine JS-Fehler " + errors.join(" | "));

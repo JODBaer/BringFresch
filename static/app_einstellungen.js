@@ -61,6 +61,7 @@
         </form>` : ""}
       </div>`).join("");
     $("memberLegend").textContent = "🥩 Fleisch · 🥦 Vegi · 🌱 Vegan · 💪 proteinreich · 🪶 leicht";
+    $("inviteRow").hidden = !app.connected();
   }
 
   function renderAttendance() {
@@ -205,23 +206,32 @@
   const TERMS_VERSION = "2026-11";
   function openWelcome() {
     $("welcomeJoin").hidden = false;
-    $("welcomeWho").hidden = true;
+    ["welcomeWho", "welcomeBring", "welcomeDone"].forEach(id => { $(id).hidden = true; });
+    $("welcomeDots").innerHTML = "";
     $("welcomeWg").value = state.sync.wg || "";
     $("welcomeStatus").textContent = "";
     $("welcomeDialog").showModal();
   }
-  function closeWelcome() {
+  // pop: Wochenwahl-Pop-up danach (nicht nach «Fertig», dort steht der nächste Schritt schon)
+  function closeWelcome({ pop = true } = {}) {
     save(WELCOME_KEY, true);
     $("welcomeDialog").close();
     renderSyncSettings();
+    renderMembers();
     refresh();
     app.markWahl();
-    if (app.wahlDue()) setTimeout(app.openWahlPop, 400);
+    if (app.connected()) app.pullShared(); // Stand der WG holen (setzt auch «Verbunden ✓»)
+    if (pop && app.wahlDue()) setTimeout(app.openWahlPop, 400);
   }
   $("welcomeJoin").addEventListener("submit", async e => {
     e.preventDefault();
-    const wg = $("welcomeWg").value.trim(), pin = $("welcomePin").value.trim(), status = $("welcomeStatus");
-    if (!wg || !pin) return (status.textContent = "Bitte WG-Name und PIN eingeben");
+    const wg = $("welcomeWg").value.trim(), pin = $("welcomePin").value.trim();
+    if (!wg || !pin) return ($("welcomeStatus").textContent = "Bitte WG-Name und PIN eingeben");
+    await connectWelcome(wg, pin);
+  });
+  // Verbinden (Formular oder Einladungslink, app_einladen.js): bei Erfolg weiter zu «Wer bist du?»
+  async function connectWelcome(wg, pin) {
+    const status = $("welcomeStatus");
     const before = state.sync;
     state.sync = { url: state.sync.url || DEFAULT_SYNC_URL, pin, wg };
     status.textContent = "Verbinde …";
@@ -254,21 +264,27 @@
     }
     welcomeFresh = fresh;
     renderWelcomeWho();
-    $("welcomeJoin").hidden = true;
-    $("welcomeWho").hidden = false;
-  });
+    app.showWelcomeStep("who");
+  }
   let welcomeFresh = false;
+  // «Wer bist du?» = Kacheln mit den Namen der WG (ein Tipp), «Ich bin neu» = Name + Vegi/Fleisch
   function renderWelcomeWho() {
+    const name = (state.sync.wg || "").replace(/^./, c => c.toUpperCase());
+    $("welcomeWhoTitle").textContent = name ? `Willkommen in der WG «${name}»` : "Willkommen in eurer WG";
     $("welcomeWhoText").textContent = welcomeFresh
       ? "Eure WG ist noch leer – trag dich als Erste:r ein. Die anderen kommen dazu, wenn sie sich verbinden."
-      : "Damit deine Stimmen zu dir gehören. Später änderbar.";
-    $("welcomeMembers").innerHTML = welcomeFresh ? "" : state.members.map(m => `<button class="btn" type="button" data-me="${esc(m.id)}">${esc(m.name)}</button>`).join("");
+      : "Wer bist du? Antippen.";
+    const short = initialsMap();
+    $("welcomeMembers").innerHTML = welcomeFresh ? "" : state.members.map(m => `<button class="wtile" type="button" data-me="${esc(m.id)}"><span class="mav" aria-hidden="true">${esc(short[m.id] || m.name.slice(0, 2))}</span><b>${esc(m.name)}</b><small>${esc(DIET_LABEL[m.diet || "fleisch"] || "")}</small></button>`).join("")
+      + `<button class="wtile new" type="button" id="welcomeNewBtn"><span class="mav" aria-hidden="true">+</span><b>Ich bin neu</b><small>Name + Vegi/Fleisch</small></button>`;
+    $("welcomeAdd").hidden = !welcomeFresh;
   }
   $("welcomeMembers").addEventListener("click", e => {
+    if (e.target.closest("#welcomeNewBtn")) { $("welcomeAdd").hidden = false; $("welcomeName").focus(); return; }
     const b = e.target.closest("[data-me]");
     if (!b) return;
     save(ME_KEY, b.dataset.me);
-    closeWelcome();
+    app.afterWho();
     app.pullShared();
   });
   $("welcomeAdd").addEventListener("submit", async e => {
@@ -286,7 +302,7 @@
     save(SETTINGS_UPDATED_KEY, Date.now());
     await app.pushSettingsNow();
     savePlan();
-    closeWelcome();
+    app.afterWho();
     app.pullShared();
   });
   $("welcomeSkip").onclick = () => closeWelcome();
@@ -444,5 +460,5 @@
   setTimeout(() => checkUpdate(true), 4000); // beim Start leise nachsehen
   if (DONATE_URL) { $("donateLink").href = DONATE_URL; $("donateRow").hidden = false; }
 
-  Object.assign(app, { renderMembers, renderAttendance, renderSyncSettings, openWelcome });
+  Object.assign(app, { renderMembers, renderAttendance, renderSyncSettings, openWelcome, closeWelcome, connectWelcome });
 })();

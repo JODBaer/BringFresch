@@ -1981,6 +1981,21 @@ await step(B, "Menü tauschen (Blatt «Tauschen mit»), Einkauf nach Gericht, Ka
   await closeDialog(B, "catalogDialog");
 });
 
+let inviteLink = "";
+await step(B, "Mitbewohner einladen: Link erstellen (PIN nur verschlüsselt beim WG-Server), WhatsApp + Kopieren", async () => {
+  await goTab(B, "wg");
+  await tap(B, "#inviteBtn");
+  await until(B, () => document.getElementById("inviteDialog").open && /#join=/.test(document.getElementById("inviteLink").textContent) && !document.getElementById("inviteActions").hidden, "Einladungslink wird nicht erstellt");
+  inviteLink = await text(B, "#inviteLink");
+  const invKeys = [...kv.keys()].filter(k => k.startsWith("inv:"));
+  expect(invKeys.length === 1 && !kv.get(invKeys[0]).includes(PIN), "Einladung beim WG-Server fehlt oder enthält den PIN");
+  expect(/^https:\/\/wa\.me\/\?text=/.test(await B.page.$eval("#inviteWa", a => a.href)) && decodeURIComponent(await B.page.$eval("#inviteWa", a => a.href)).includes(inviteLink), "WhatsApp-Link enthält die Einladung nicht");
+  await tap(B, "#inviteCopy");
+  await until(B, l => window.__clip === l, "Link nicht kopiert", inviteLink);
+  await shot(B, "12-einladen");
+  await closeDialog(B, "inviteDialog");
+});
+
 await step(B, "Navigation: jeder Tab, kein seitliches Scrollen; keine JS-Fehler, nichts ins Internet", async () => {
   for (const t of ["shop", "season", "wg", "plan"]) { await goTab(B, t); await noHScroll(B, t); await shot(B, `10-${t}`); }
   expect(B.errors.length === 0, B.errors.join(" | "));
@@ -2096,18 +2111,24 @@ await step(D, "Erster Start: WG-Name + PIN, falscher PIN zeigt Fehler, dann «We
   await typeInto(D, "#welcomePin", PIN);
   await tap(D, '#welcomeJoin button[type="submit"]');
   await until(D, () => !document.getElementById("welcomeWho").hidden && document.querySelectorAll("#welcomeMembers [data-me]").length > 1, "«Wer bist du?» fehlt");
+  expect(await D.page.$$eval("#welcomeMembers .wtile", t => t.length > 2 && t.every(x => x.querySelector(".mav")) && t[t.length - 1].id === "welcomeNewBtn"), "Kacheln mit Kreis + «Ich bin neu» fehlen");
   await shot(D, "02-wer-bist-du");
-  const id = await D.page.$eval("#welcomeMembers [data-me]:last-child", b => b.dataset.me);
-  await tap(D, "#welcomeMembers [data-me]:last-child");
+  const id = await D.page.$$eval("#welcomeMembers [data-me]", b => b[b.length - 1].dataset.me);
+  await tap(D, `#welcomeMembers [data-me="${id}"]`);
+  // WG hat schon eine Liste: kein «Bring! verbinden», direkt «Hoi …» mit «Bring! ist verbunden ✓»
+  await until(D, () => !document.getElementById("welcomeDone").hidden && /Bring! ist verbunden ✓/.test(document.getElementById("welcomeDoneOk").textContent), "Schritt «Hoi …» mit Bring! verbunden fehlt");
+  expect(await D.page.$$eval("#welcomeDots i.on", d => d.length) === 3, "Fortschritt: 3 Punkte");
+  await shot(D, "02b-erste-woche");
+  await tap(D, "#welcomeDoneBtn");
   await until(D, () => !document.getElementById("welcomeDialog").open, "Willkommen bleibt offen");
   expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_me"))) === id, "«Ich bin» nicht gespeichert");
   expect(await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_sync")).wg === "WG1" && !!JSON.parse(localStorage.getItem("bringfrisch_terms")).at), "WG-Name/Zustimmung nicht gemerkt");
   await until(D, () => document.getElementById("syncStatus").textContent === "Verbunden ✓", "nicht verbunden");
 });
 await step(D, "Du bist: eigener Kreis umrandet; Zeit pro Tag ändern gilt für alle (mit Name); Kalender nur meine Abende", async () => {
-  await until(D, () => !document.getElementById("wpop").hidden, "nach dem Willkommen kommt die Wochenwahl nicht");
-  await tap(D, "#wlater");
-  await until(D, () => document.getElementById("wpop").hidden && !document.getElementById("wscrim").classList.contains("show"), "Pop-up bleibt");
+  // «Zum Plan»: kein Pop-up mehr (der Schritt «Hoi …» hat die Woche schon erklärt), roter Punkt bleibt
+  await sleep(600);
+  expect(await D.page.evaluate(() => document.getElementById("wpop").hidden && document.getElementById("openVoteBtn").classList.contains("due")), "nach «Zum Plan»: Pop-up offen oder roter Punkt fehlt");
   const me = await D.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_me")));
   expect((await count(D, '.prow[data-i="0"] .av.me')) === 1 && (await D.page.$eval('.prow[data-i="0"] .av.me', b => b.dataset.member)) === me, "eigener Kreis nicht umrandet");
   await tap(D, '.prow[data-i="0"] .pday');
@@ -2142,6 +2163,27 @@ await step(D, "Einstellungen: kleine Links, Datenschutz öffnet die Seite Rechtl
   expect(D.errors.length === 0, D.errors.join(" | "));
 });
 await D.context.close();
+
+// ---------------------------------------------------------------------------------------------
+// Ablauf E: Android, ganz neues Handy, öffnet den Einladungslink aus WhatsApp – kein WG-Name, kein PIN
+// ---------------------------------------------------------------------------------------------
+if (inviteLink) {
+  const E = await phone({ name: "E-android-einladung", os: "android", scheme: "light", now: "2026-11-10T12:00:00", preset: { bringfrisch_welcome: "false" }, url: inviteLink.replace(/^https?:\/\/[^/]+\//, BASE) });
+  await step(E, "Einladungslink öffnen: direkt «Wer bist du?» (Kacheln), Namen antippen, «Hoi …», verbunden; Link aus der Adresszeile weg", async () => {
+    await until(E, () => document.getElementById("welcomeDialog").open && !document.getElementById("welcomeWho").hidden && document.querySelectorAll("#welcomeMembers [data-me]").length > 1, "Link führt nicht direkt zu «Wer bist du?»", null, 10000);
+    expect(!(await E.page.evaluate(() => location.hash)), "#join bleibt in der Adresszeile");
+    await shot(E, "01-einladung-wer-bist-du");
+    await tap(E, "#welcomeMembers [data-me]");
+    await until(E, () => !document.getElementById("welcomeDone").hidden, "Schritt «Hoi …» fehlt");
+    await tap(E, "#welcomeDoneBtn");
+    await until(E, () => !document.getElementById("welcomeDialog").open, "Willkommen bleibt offen");
+    const sync = await E.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_sync")));
+    expect(sync && sync.pin === PIN && !!(await E.page.evaluate(() => localStorage.getItem("bringfrisch_terms"))), "nicht verbunden oder Zustimmung fehlt");
+    await until(E, () => document.getElementById("syncStatus").textContent === "Verbunden ✓", "nicht verbunden");
+    expect(E.errors.length === 0, E.errors.join(" | "));
+  });
+  await E.context.close();
+}
 
 await browser.close();
 server.close();

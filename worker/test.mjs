@@ -413,6 +413,24 @@ check(!(await (await sh("/recipes/shared")).json()).recipes.some(x => x.title ==
 r = await call("/recipes/shared", { pin: "0000" });
 check(r.status === 401, "geteilte Rezepte nur mit PIN");
 }
+// 7c. Einladungslink: Box (verschlüsselter PIN) nur mit PIN ablegen, ohne PIN abholen; 7 Tage, falsche id = 404
+{
+  const id = "a".repeat(64), sid = "b".repeat(64);
+  r = await call("/invite", { method: "POST", pin: "0000", body: { id, iv: "x", box: "y" } });
+  check(r.status === 401, "Einladung anlegen nur mit PIN");
+  r = await call("/invite", { method: "POST", body: { id: "kurz", iv: "x", box: "y" } });
+  check(r.status === 400, "Einladung mit ungültiger id abgelehnt");
+  r = await call("/invite", { method: "POST", body: { id, iv: "iv1", box: "box1" } });
+  check(r.status === 200 && kvOpts.get(`inv:${id}`).expirationTtl === 7 * 86400 && !store.get(`inv:${id}`).includes("1234"), "Einladung abgelegt: 7 Tage, ohne PIN im Speicher");
+  r = await call(`/join/${id}`, { pin: null });
+  let j = await r.json();
+  check(r.status === 200 && j.box === "box1" && j.iv === "iv1" && j.wg === "", `Einladung ohne PIN abholen (erste WG: ohne Namen, ${JSON.stringify(j.wg)})`);
+  r = await call(`/join/${"c".repeat(64)}`, { pin: null });
+  check(r.status === 404, "unbekannte Einladung -> 404");
+  await sh("/invite", { method: "POST", body: { id: sid, iv: "iv2", box: "box2" } });
+  j = await (await call(`/join/${sid}`, { pin: null })).json();
+  check(j.wg === "sonnenhof", "Einladung der zweiten WG nennt ihren Namen");
+}
 env.MAIN_WG = "Bärenhaus";
 r = await call("/wg", { wg: "barenhaus" });
 check(r.status === 200 && (await r.json()).main, "erste WG geht auch mit ihrem Namen (Umlaute egal)");
