@@ -360,7 +360,8 @@
     const current = state.plan[sheetDay] ? String(state.plan[sheetDay].id) : null;
     const all = allRecipes().filter(r => String(r.id) !== current && app.CORE.recipeMatches(r, f, dayMeta(r))); // gleiche Suchregel wie Katalog/«Alle Rezepte»
     const optHTML = r => `<button type="button" class="opt" role="option" data-id="${esc(r.id)}">${app.imgSpan(r, "othumb")}<span><span class="n">${esc(r.title)}</span><small>${esc(dayMeta(r))}${inSeason(r) ? "" : " · nicht Saison"}</small></span>${counts[r.id] ? `<span class="pop">♥ ${counts[r.id]}×</span>` : ""}</button>`;
-    let h = "";
+    // Neues Rezept direkt von hier (Joshua 18.11.): öffnet sofort das Formular, nach dem Speichern gilt es für diesen Tag
+    let h = `<button type="button" class="opt opt-new" role="option" data-recipe-new="1"><span><span class="n">＋ Neues Rezept</span><small>Link einfügen oder von Hand</small></span></button>`;
     if (!f) {
       const popular = all.filter(r => counts[r.id]).sort((a, b) => counts[b.id] - counts[a.id]).slice(0, 4);
       const rest = all.filter(r => !popular.includes(r)).sort((a, b) => (inSeason(b) - inSeason(a)) || a.title.localeCompare(b.title, "de"));
@@ -424,6 +425,12 @@
       closeMenuSheet();
       state.catalogMode = "day";
       return app.openCatalog(idx);
+    }
+    if (btn.dataset.recipeNew) {
+      closeMenuSheet();
+      state.catalogMode = "day";
+      state.catalogDay = idx;
+      return app.openRecipeForm();
     }
     if (btn.dataset.link) {
       closeMenuSheet();

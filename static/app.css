@@ -673,6 +673,7 @@ html.dark.glass .bnav button[aria-current="page"] { background: rgba(255,255,255
 .glass .opt .pop { background: rgba(220,60,60,.14); color: #b32626; }
 html.dark.glass .opt, html.dark.glass .msearch { background: rgba(255,255,255,.12); } html.dark.glass .opt .pop { color: #ffb4b4; }
 .opt.more-link { grid-template-columns: 1fr; text-align: center; color: var(--primary); font-weight: 700; }
+.opt.opt-new .n { color: var(--primary); }
 
 /* ---------- Hinweis unten (Snackbar) ---------- */
 .toast {
