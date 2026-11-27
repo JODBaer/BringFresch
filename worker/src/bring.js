@@ -114,7 +114,7 @@ export async function bringLists(env) {
     }));
     lists = lists.filter((l, i) => !taken[i]);
   }
-  return { active: s.listUuid, lists };
+  return { active: s.listUuid, lists: lists.map(l => ({ ...l, test: isTest(l) })) }; // test = Spielwiese, die App wählt sie nie selbst
 }
 
 // WG wählt in der App, in welche Bring!-Liste geschrieben wird (gilt für alle Handys)

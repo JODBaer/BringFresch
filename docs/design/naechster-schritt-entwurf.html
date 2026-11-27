@@ -1,0 +1,154 @@
+<title>Obsonare Nächster Schritt</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Entwurf Schritt 2 (plan.md): eine Karte oben im Plan, die je nach Stand der Woche wechselt.
+   Links ein Handy mit dem Plan (7 Tage bleiben sichtbar), oben Umschalter für den Stand, rechts was neu ist und 3 Fragen. */
+:root {
+  --bg: #f4f8f0; --card: #ffffff; --fg: #18231a; --muted: #5a6a55; --line: #d6e3cc; --phone: #fbfdf9;
+  --accent: #3b6b2f; --accent-soft: #dff5d4; --on-accent: #ffffff; --warn: #8a5a00; --warn-soft: #fff1d6;
+  --font: "Roboto Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a; --phone: #121a12;
+    --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d; --warn: #ffcf70; --warn-soft: #3a2d10;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f150f; --card: #182118; --fg: #e4eedd; --muted: #a8b9a0; --line: #2c3a2a; --phone: #121a12;
+  --accent: #93e07f; --accent-soft: #233a20; --on-accent: #10200d; --warn: #ffcf70; --warn-soft: #3a2d10;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.4; margin: 0; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.page { max-width: 1000px; margin: 0 auto; padding-block: 22px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 26px; font-weight: 800; margin: 0; text-wrap: balance; }
+.lead { margin: 4px 0 0; color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { border: 1px solid var(--line); background: var(--card); padding: 8px 13px; border-radius: 999px; font-weight: 600; font-size: 14px; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.stage { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+.phone { width: 100%; max-width: 390px; justify-self: center; border-radius: 34px; border: 1px solid var(--line); background: var(--phone); overflow: hidden; box-shadow: 0 12px 40px rgba(20, 40, 20, .12); display: flex; flex-direction: column; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 18px 6px; }
+.top b { font-size: 20px; font-weight: 800; }
+.cal { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; position: relative; }
+.cal.due::after { content: ""; position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 50%; background: #d33; }
+.scr { padding: 6px 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+
+/* die Karte: eine Zeile + ein Knopf, damit alle 7 Tage sichtbar bleiben */
+.next { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--accent-soft); border-radius: 18px; padding: 10px 10px 10px 12px; }
+.next .ic { font-size: 22px; text-align: center; }
+.next > span:nth-child(2) { min-width: 0; }
+.next b { display: block; font-size: 15px; line-height: 1.2; }
+.next small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.25; }
+.next .go { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 999px; padding: 9px 13px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.next .bar { grid-column: 2 / 4; height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.next .bar i { display: block; height: 100%; background: var(--accent); }
+.first { font-size: 12.5px; color: var(--muted); padding: 0 6px; }
+.sec { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 6px 0; font-weight: 800; font-size: 14px; }
+.sec small { color: var(--muted); font-weight: 500; }
+.day { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; }
+.day .d { font-weight: 800; color: var(--muted); font-size: 13px; }
+.day .t { font-weight: 650; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day .n { font-weight: 800; }
+.day.today { border: 2px solid var(--accent); }
+.day.empty .t { color: var(--muted); font-weight: 500; }
+.nav { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); padding: 10px 0 16px; text-align: center; font-size: 12px; color: var(--muted); }
+.nav span:first-child { color: var(--accent); font-weight: 700; }
+
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.box h2 { font-size: 17px; margin: 0; }
+.box ul, .box ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+.box small { color: var(--muted); }
+.opt { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.opt b { display: block; }
+.box.now { border: 2px solid var(--accent); }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Nächster Schritt – eine Karte statt vieler Hinweise</h1>
+    <p class="lead">Entwurf Schritt 2. Oben im Plan steht immer genau ein nächster Schritt. Stand oben umschalten.</p>
+  </header>
+  <div class="seg" role="group" aria-label="Stand der Woche" id="seg"></div>
+
+  <div class="stage">
+    <div class="phone" aria-label="Handy-Vorschau">
+      <div class="top"><b>KW 48</b><span class="cal" id="cal" aria-label="Wochenwahl">📅</span></div>
+      <div class="scr" id="scr"></div>
+      <div class="nav" aria-hidden="true"><span>Plan</span><span>Einkauf</span><span>Rezepte</span><span>WG</span></div>
+    </div>
+
+    <div class="side">
+      <div class="box now" id="explain"></div>
+      <div class="box">
+        <h2>Was neu ist</h2>
+        <ul>
+          <li><b>Eine Karte</b> oben im Plan: was als Nächstes dran ist, mit einem Knopf.</li>
+          <li>Sie <b>ersetzt</b> das Pop-up «Wochenwahl starten», den roten Punkt am 📅 und den Chip «✓ in Bring!».</li>
+          <li><b>Eine Zeile + Knopf</b>: alle 7 Tage bleiben sichtbar (auch auf dem kleinen iPhone).</li>
+          <li>In der <b>ersten Woche</b> steht darunter ein kurzer Satz, was danach passiert.</li>
+          <li>Ab Donnerstag gilt die Karte für die <b>nächste Woche</b> (wie heute der rote Punkt).</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h2>Frage 1: Pop-up beim Öffnen</h2>
+        <div class="opt"><b>A · Pop-up fällt weg</b><small>Die Karte reicht. Ruhiger beim Öffnen.</small></div>
+        <div class="opt"><b>B · Pop-up bleibt einmal pro Woche</b><small>Nur beim ersten Öffnen der neuen Woche, danach nur die Karte.</small></div>
+        <p><small>Vorschlag: A.</small></p>
+      </div>
+      <div class="box">
+        <h2>Frage 2: Wenn alles erledigt ist</h2>
+        <div class="opt"><b>A · Karte verschwindet</b><small>Mehr Platz für die Tage, bis zum Kochtag.</small></div>
+        <div class="opt"><b>B · Karte zeigt «Heute: Gericht · Kochen»</b><small>Am Kochtag immer da (die Kochansicht kommt mit Schritt 6, bis dahin «Rezept öffnen ↗»).</small></div>
+        <p><small>Vorschlag: A, ausser am Kochtag B.</small></p>
+      </div>
+      <div class="box">
+        <h2>Frage 3: Wer sieht «Plan übernehmen» und «Bring! füllen»?</h2>
+        <div class="opt"><b>A · Alle</b><small>Wer zuerst tippt, übernimmt. Die anderen sehen danach den nächsten Schritt.</small></div>
+        <div class="opt"><b>B · Nur wer gewählt hat</b><small>Wer noch nicht gewählt hat, sieht «Du bist dran».</small></div>
+        <p><small>Vorschlag: A.</small></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const PLAN = ["Hörnli & Ghacktes mit Lauch", "Kürbis-Risotto", "Ofengemüse vom Blech", "Gnocchi aus der Pfanne", "Curry mit Rosenkohl", "Käseschnitte", "Resteessen"];
+const STATES = [
+  { k: "wahl", l: "Neue Woche", ic: "🃏", t: "Wochenwahl für KW 48", s: "Noch niemand hat gewählt", go: "Starten", empty: true, due: true,
+    x: "Montag oder ab Donnerstag für die nächste Woche: niemand hat gewählt. Der Knopf öffnet die Wochenwahl (heute: Pop-up + roter Punkt)." },
+  { k: "warten", l: "2 von 4 gewählt", ic: "⏳", t: "2 von 4 haben gewählt", s: "Noch offen: Lukas, Jo", go: "Anstupsen", bar: 50, empty: true,
+    x: "Ich habe gewählt, andere noch nicht. Knopf = anstupsen (wie heute in der Wochenwahl). Wer selbst noch nicht gewählt hat, sieht «Du bist dran · Wählen»." },
+  { k: "uebernehmen", l: "Alle gewählt", ic: "✅", t: "Alle haben gewählt", s: "Top 7 auf die Tage legen", go: "Übernehmen", empty: true,
+    x: "Alle haben gewählt. Ein Tipp legt die Top 7 auf die Tage (wie «7 Gerichte übernehmen»), mit Rückgängig." },
+  { k: "bring", l: "Plan steht", ic: "🛒", t: "Bring! füllen", s: "12 Sachen für diese Woche", go: "Füllen",
+    x: "Der Plan steht, auf Bring! fehlt noch etwas. Knopf = dieselbe Gegenüberstellung wie unten rechts im Einkauf." },
+  { k: "heute", l: "Kochtag", ic: "🍳", t: "Heute: Kürbis-Risotto", s: "für 6 · 19:00 · 35 Min. aktiv", go: "Kochen", today: 1,
+    x: "Alles erledigt, heute wird gekocht. Knopf = Kochansicht (Schritt 6); bis dahin öffnet er das Rezept." },
+  { k: "erste", l: "Erste Woche", ic: "🃏", t: "Wochenwahl für KW 48", s: "Antippen, was du essen willst", go: "Starten", empty: true, first: true,
+    x: "Wie «Neue Woche», aber in der allerersten Woche mit einem kurzen Satz darunter." },
+];
+let cur = 0;
+const $ = id => document.getElementById(id);
+function render() {
+  const st = STATES[cur];
+  $("seg").innerHTML = STATES.map((s, i) => `<button type="button" data-i="${i}" aria-pressed="${i === cur}">${s.l}</button>`).join("");
+  $("cal").classList.toggle("due", false);
+  $("scr").innerHTML = `<div class="next"><span class="ic" aria-hidden="true">${st.ic}</span><span><b>${st.t}</b><small>${st.s}</small></span><button class="go" type="button">${st.go}</button>${st.bar ? `<span class="bar"><i style="width:${st.bar}%"></i></span>` : ""}</div>
+    ${st.first ? `<p class="first">Danach: die Top 7 kommen auf die Tage, ein Knopf füllt Bring!.</p>` : ""}
+    <div class="sec"><span>Wochenplan</span><small>Tag = Menü · Gericht = wechseln</small></div>
+    ${DAYS.map((d, i) => `<div class="day${st.today === i ? " today" : ""}${st.empty ? " empty" : ""}"><span class="d">${d}</span><span class="t">${st.empty ? "noch offen" : PLAN[i]}</span><span class="n">${st.empty ? "" : 6}</span></div>`).join("")}`;
+  $("explain").innerHTML = `<h2>${st.l}</h2><p style="margin:0">${st.x}</p>`;
+}
+$("seg").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (b) { cur = +b.dataset.i; render(); } });
+render();
+</script>

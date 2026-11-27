@@ -1101,3 +1101,30 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 #days .prow.over { outline: 2px dashed var(--accent); outline-offset: -2px; }
 @keyframes bf-wiggle { from { transform: scale(1.02) rotate(-.6deg); } to { transform: scale(1.02) rotate(.6deg); } }
 @media (prefers-reduced-motion: reduce) { #days .prow.lift { animation: none; transform: scale(1.02); } }
+
+/* Erster Start (Schritt 1): Punkte, Kacheln «Wer bist du?», Bring!-Schritte, erste Woche; Einladen */
+.wdots { display: flex; justify-content: center; gap: 6px; min-height: 8px; padding-top: max(10px, env(safe-area-inset-top)); }
+.wdots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.wdots i.on { background: var(--accent); }
+.welcome-who { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.wtile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface, transparent); color: var(--fg); font: inherit; cursor: pointer; }
+.wtile .mav { width: 44px; height: 44px; font-size: 15px; }
+.wtile b { font-size: 16px; }
+.wtile small { color: var(--muted); font-size: 12.5px; }
+.wtile.new { border-style: dashed; }
+.wsteps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.wsteps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; }
+.wsteps .n { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-weight: 800; }
+.wsteps small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+.wcopy { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.wcopy code { font-size: 13.5px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.wspin { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); vertical-align: -1px; animation: wspin 1s linear infinite; }
+@keyframes wspin { to { transform: rotate(360deg); } }
+.wweek { display: flex; flex-direction: column; gap: 10px; }
+.wweek div { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; }
+.wweek span { font-size: 24px; text-align: center; }
+.wweek p { margin: 0; display: flex; flex-direction: column; color: var(--fg); }
+.wweek small { color: var(--muted); }
+.invite-link { word-break: break-all; font-size: 13.5px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; margin: 0; }
+.invite-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.invite-actions .btn { text-align: center; text-decoration: none; }

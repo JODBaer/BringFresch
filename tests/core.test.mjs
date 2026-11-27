@@ -392,5 +392,15 @@ check(C.formatAmount(0.5, "Stk") === "1 Stk" && C.formatAmount(1.5, "Stk") === "
   check(C.nutritionTag({ kcal: 900, protein: 45 }, "protein") === "proteinreich" && C.nutritionTag({ kcal: 900, protein: 12 }, "protein") === "wenig Protein" && C.nutritionTag({ kcal: 560, protein: 12 }, "kcal") === "leicht" && C.nutritionTag({ kcal: 560, protein: 45 }, "") === "", "Ziel: proteinreich / wenig Protein / leicht – ohne Ziel kein Vermerk");
 }
 
+// Einladungslink: …/#join=<wg>.<code>, erste WG ohne Namen, alles andere = kein Link
+{
+  const link = C.inviteLink("https://jodbaer.github.io/BringFresch/static/#plan=x", "sonnenhof", "Ab-_0123456789xyzAB");
+  check(link === "https://jodbaer.github.io/BringFresch/static/#join=sonnenhof.Ab-_0123456789xyzAB", `Einladungslink ohne alten #-Teil (${link})`);
+  const p = C.parseJoin(new URL(link).hash);
+  check(p && p.wg === "sonnenhof" && p.code === "Ab-_0123456789xyzAB", "Einladungslink lesen");
+  check(C.parseJoin("#join=.Ab-_0123456789xyzAB").wg === "", "erste WG: Link ohne WG-Namen");
+  check(C.parseJoin("#join=x.kurz") === null && C.parseJoin("#plan=abc") === null && C.parseJoin("") === null, "kein Einladungslink: null");
+}
+
 console.log(fails ? `\n${fails} FEHLER` : "\nALLES OK");
 process.exit(fails ? 1 : 0);

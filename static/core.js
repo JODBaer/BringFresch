@@ -1481,7 +1481,20 @@
       .sort((a, b) => (b.fav - a.fav) || a.km - b.km).slice(0, limit);
   }
 
+  // Einladungslink (Schritt 1): `…/#join=<wg>.<code>`; erste WG ohne Namen = `#join=.<code>`. Code = base64url, mind. 16 Zeichen
+  function inviteLink(pageUrl, wg, code) {
+    return String(pageUrl).replace(/#.*$/, "") + "#join=" + encodeURIComponent(wg || "") + "." + code;
+  }
+  function parseJoin(hash) {
+    const m = /^#join=([^.#]*)\.([A-Za-z0-9_-]{16,64})$/.exec(String(hash || ""));
+    if (!m) return null;
+    let wg = "";
+    try { wg = decodeURIComponent(m[1]); } catch (e) { return null; }
+    return { wg, code: m[2] };
+  }
+
   root.BF_CORE = {
+    inviteLink, parseJoin,
     wallClock, isQuiet, QUIET_FROM, QUIET_TO, voteMessage, openDays, marketDue, bringReminder, searchFarms,
     parseHours, openState, hoursText, distKm, farmKey, farmPlaces, farmWeek, farmGroups, nearestFarm, favFarm, routeUrl, seasonVeg, kmlExport, kmlLayers, specialWhen, nthWeekday, specialDays, specialUpcoming,
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,

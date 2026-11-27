@@ -4,6 +4,8 @@
 // (PIN = Secret WG_PIN, Daten ohne Präfix wie bisher). Weitere WGs stehen in KV unter wgs:<name>
 // (PIN nur als Hash, angelegt mit tools/new_wg.mjs), ihre Daten unter w:<name>:… – jede WG sieht nur ihre eigenen.
 //   GET  /wg                          -> { name, main }  (Name der verbundenen WG)
+//   POST /invite {id, iv, box}        -> { ok, exp }  (Einladungslink: verschlüsselter PIN, 7 Tage; einladung.js)
+//   GET  /join/:id                    -> { wg, iv, box, exp }  (ohne PIN: Einladung abholen)
 //
 // Endpunkte (alle ausser /health und /cal brauchen den Header X-WG-PIN):
 //   GET  /health                      -> { ok: true }
@@ -40,6 +42,7 @@
 // WG-Server: «Home-test» (TEST_LIST_NAME) gehört immer der Test-Version und ist für keine WG wählbar
 // KV-Binding: WG
 
+import { createInvite, joinInvite } from "./einladung.js";
 import { body, corsHeaders, httpError, json } from "./http.js";
 import { requireWg, scoped } from "./auth.js";
 import { backup, countWeek, getPopular, getWeek, putDoc } from "./speicher.js";
@@ -90,6 +93,10 @@ async function route(request, env, url) {
 
   const remind = path.match(/^\/erinnerung\/([\w-]+)$/);
   if (remind && method === "GET") return remindShortcut(env, remind[1]);
+
+  // Einladungslink öffnen: ohne WG und PIN, liefert nur die verschlüsselte Box (einladung.js)
+  const join = path.match(/^\/join\/([a-f0-9]{64})$/);
+  if (join && method === "GET") return joinInvite(env, join[1]);
 
   const wg = await requireWg(request, env);
   env = { ...env, WG: scoped(env.WG, wg.prefix), RAW: env.WG, WG_CTX: wg };
@@ -186,6 +193,7 @@ async function route(request, env, url) {
     if (!wg.calToken) throw httpError(500, "CAL_TOKEN nicht eingerichtet");
     return json({ url: `${url.origin}/cal/${wg.calToken.trim()}.ics` });
   }
+  if (path === "/invite" && method === "POST") return json(await createInvite(env, await body(request)));
   if (path === "/wg" && method === "GET") return json({ name: wg.name, main: wg.main });
   // Test-Freigabe aus der Test-App (nur mit Secret RELEASE_TOKEN, also nur auf dem Test-Server)
   if (path.startsWith("/release/")) return release(request, env, path, url);
