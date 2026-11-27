@@ -452,6 +452,13 @@
     app.openCatalog(0);
   };
 
+  // Neues Rezept direkt in die Wochenwahl (Joshua 18.11.): Formular, nach dem Speichern steht es unter den Gerichten
+  $("voteNewBtn").onclick = () => {
+    state.catalogMode = "vote";
+    $("voteDialog").close();
+    app.openRecipeForm();
+  };
+
   // Faire Tagesverteilung: Gericht auf Tag, an dem seine Fans zuhause sind (+2 je Fan), Wunschtag +3
   const assignDays = recipeIds => CORE.assignDays(recipeIds, state.plan, state.members, state.vote.votes);
 

@@ -265,7 +265,7 @@
     copying = !!copyOf;
     const base = edit || copyOf;
     $("recipeFormTitle").textContent = edit ? "Rezept bearbeiten" : copyOf ? "Rezept anpassen (eigene Kopie)" : "Eigenes Rezept";
-    $("recipeSubmitBtn").textContent = state.catalogMode === "save" ? "Speichern" : "Speichern & einplanen";
+    $("recipeSubmitBtn").textContent = state.catalogMode === "save" ? "Speichern" : state.catalogMode === "vote" ? "Speichern & zur Wochenwahl" : "Speichern & einplanen";
     $("recipeServingsHint").textContent = "Die Zutaten unten gelten für so viele Personen; Obsonare rechnet dann für eure Esser um.";
     $("recipeServings").value = base ? base.servings || DEFAULT_SERVINGS : DEFAULT_SERVINGS;
     if (base) {

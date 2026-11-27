@@ -557,12 +557,12 @@ await step(A, "Rezept-Katalog: Gericht einplanen, «Zufällig», mit ✕ schlies
   await closeDialog(A, "catalogDialog");
 });
 
-await step(A, "Eigenes Rezept von Hand: Titel aus Link, Formular, Speichern & einplanen, Mengen umgerechnet", async () => {
+await step(A, "Eigenes Rezept direkt aus dem Menü-Blatt («＋ Neues Rezept»): Titel aus Link, Formular, Speichern & einplanen, Mengen umgerechnet", async () => {
   await tap(A, '.prow[data-i="5"] .t');
-  await tap(A, "#mlist [data-catalog]");
-  await until(A, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
-  await tap(A, "#newRecipeBtn");
-  await until(A, () => document.getElementById("recipeDialog").open && !document.getElementById("catalogDialog").open, "Rezept-Formular geht nicht auf");
+  await until(A, () => document.querySelector("#mlist .opt") && document.querySelector("#mlist .opt").dataset.recipeNew === "1", "«＋ Neues Rezept» steht nicht zuoberst im Menü-Blatt");
+  await tap(A, "#mlist [data-recipe-new]");
+  await until(A, () => document.getElementById("recipeDialog").open && !document.getElementById("msheet").classList.contains("show"), "Rezept-Formular geht nicht auf");
+  expect((await text(A, "#recipeSubmitBtn")) === "Speichern & einplanen", "Knopf sollte «Speichern & einplanen» heissen");
   // ohne WG-Server: Titel wird aus dem Link abgeleitet
   await typeInto(A, "#recipeUrl", "https://www.bettybossi.ch/de/rezepte/rezept/lauch-gratin");
   await tap(A, "#recipeServings"); // Feld verlassen -> «change»
@@ -1258,6 +1258,12 @@ await step(A, "Einstellungen: Wochenwahl öffnen → «Einfach zufällig planen�
   await A.page.evaluate(() => { document.getElementById("setMore").open = true; });
   await tap(A, "#setVoteBtn");
   await until(A, () => document.getElementById("voteDialog").open && document.querySelectorAll("#voteGrid .vcard").length === 14, "Wochenwahl geht nicht auf");
+  // «＋ Neues Rezept» öffnet das Formular direkt; Schliessen ohne Speichern führt zurück in die Wochenwahl
+  await tap(A, "#voteNewBtn");
+  await until(A, () => document.getElementById("recipeDialog").open && !document.getElementById("voteDialog").open, "Rezept-Formular aus der Wochenwahl geht nicht auf");
+  expect((await text(A, "#recipeSubmitBtn")) === "Speichern & zur Wochenwahl", `Knopf: ${await text(A, "#recipeSubmitBtn")}`);
+  await closeDialog(A, "recipeDialog");
+  await until(A, () => document.getElementById("voteDialog").open, "nach dem Schliessen nicht zurück in der Wochenwahl");
   await clearToasts(A);
   await tap(A, "#voteRandomBtn");
   await toastIs(A, /Neue Woche geplant/);
