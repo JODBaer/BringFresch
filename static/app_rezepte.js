@@ -396,6 +396,51 @@
     openRecipeForm(link);
   }
   $("quickLinkBtn").onclick = quickImport;
+
+  // Zurück von der Rezeptseite (Rezeptseiten-Kacheln, «Rezept suchen»): den dort kopierten Link gleich ins Feld setzen,
+  // dann nur noch «Holen» antippen. Darf das Handy die Zwischenablage nicht ungefragt lesen (iPhone), steht ein Knopf
+  // «Kopierten Link einfügen & holen» bereit (ein Tipp: einfügen + holen).
+  let awaitingLink = false, lastClip = "";
+  const isSiteStart = link => [...DEFAULT_SITES.map(([, u]) => u), ...state.mySites.map(x => x.url)].some(u => CORE.sameLink(u, link));
+  function showClipLink(link) {
+    if (!$("addDialog").open) { renderSites(); $("addDialog").showModal(); }
+    $("quickLink").value = link;
+    $("quickPasteBtn").hidden = true;
+    $("quickLinkHint").hidden = false;
+    $("quickLinkHint").textContent = "Link von der Rezeptseite eingefügt ✓ – jetzt «Holen» antippen";
+    $("quickLinkBtn").classList.add("pulse");
+  }
+  async function readClipLink() {
+    const text = await navigator.clipboard.readText();
+    const link = linkIn(text);
+    return link && !isSiteStart(link) ? link : "";
+  }
+  async function backFromSite() {
+    if (!awaitingLink || document.visibilityState !== "visible") return;
+    awaitingLink = false;
+    try {
+      const link = await readClipLink();
+      if (link && link !== lastClip) { lastClip = link; return showClipLink(link); }
+      if (link) return;
+    } catch (e) { /* Zwischenablage nur nach Antippen (iPhone) */ }
+    if (!$("addDialog").open) { renderSites(); $("addDialog").showModal(); }
+    $("quickPasteBtn").hidden = false;
+  }
+  document.addEventListener("click", e => {
+    if (e.target.closest("#recipeSites a, #recipeSearchGo, .websearch a")) { awaitingLink = true; $("quickLinkHint").hidden = true; }
+  });
+  document.addEventListener("visibilitychange", () => setTimeout(backFromSite, 300));
+  window.addEventListener("focus", () => setTimeout(backFromSite, 300));
+  $("quickPasteBtn").onclick = async () => {
+    let link = "";
+    try { link = await readClipLink(); } catch (e) { /* abgelehnt */ }
+    if (!link) return toast("Kein Rezept-Link kopiert – auf der Rezeptseite «Teilen» → «Link kopieren»");
+    lastClip = link;
+    $("quickLink").value = link;
+    $("quickPasteBtn").hidden = true;
+    quickImport();
+  };
+  $("addDialog").addEventListener("close", () => { $("quickPasteBtn").hidden = true; $("quickLinkHint").hidden = true; $("quickLinkBtn").classList.remove("pulse"); });
   $("quickLink").addEventListener("paste", () => setTimeout(() => { if (linkIn($("quickLink").value)) quickImport(); }, 0));
   $("myRecipeNewBtn").onclick = () => { state.catalogMode = "save"; openRecipeForm(); };
   function renderMyRecipes() {

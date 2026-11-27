@@ -53,6 +53,23 @@ if (!check(lists.length === 1 && LISTS.some(n => n.toLowerCase().replace(/[^a-z0
 const cors = await fetch(SERVER + "/health", { headers: { Origin: ORIGIN } });
 check(cors.headers.get("access-control-allow-origin") === ORIGIN, "CORS erlaubt die Test-Seite");
 
+// «Holen» (Rezept-Link importieren) vom Server aus: manche Seiten sperren Cloudflare – hier sieht man, welche
+const RECIPE_LINKS = [
+  "https://www.swissmilk.ch/de/rezepte-kochideen/rezepte/SM2019_CHDO_14/auberginenrollen-mit-quinoa-frischkaese-fuellung/",
+  "https://fooby.ch/de/rezepte/14040/blaue-kartoffel-pizza",
+  "https://www.bettybossi.ch/de/rezepte/rezept/cervelats-deluxe-10002191/",
+  "https://migusto.migros.ch/de/rezepte/eintopf-mit-fleisch-und-getrockneten-fruechten/22761",
+  "https://www.chefkoch.de/rezepte/1167771223127808/Kartoffelgratin.html",
+];
+let recipeOk = 0;
+for (const u of RECIPE_LINKS) {
+  try { const r = await api(`/recipe?url=${encodeURIComponent(u)}`); recipeOk++; console.log(`INFO  Holen ${new URL(u).hostname}: ${r.title} (${(r.ingredients || []).length} Zutaten)`); }
+  catch (e) { console.log(`INFO  Holen ${new URL(u).hostname}: ✗ ${e.message}`); }
+}
+check(recipeOk > 0, `«Holen» klappt vom Server aus (${recipeOk}/${RECIPE_LINKS.length} Seiten)`);
+const shared = await api("/recipes/shared").catch(() => ({ recipes: [] }));
+console.log(`INFO  Rezepte anderer WGs in der Test-App: ${shared.recipes.length}`);
+
 // Reste eines früheren Laufs wegräumen (nur was der Bot selbst gesetzt hat)
 const old = await removeMine();
 if (old) console.log(`(aufgeräumt: ${old} Artikel aus einem früheren Lauf)`);

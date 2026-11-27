@@ -1026,6 +1026,19 @@ await step(A, "Rezepte ordnen: Hauptgemüse, Schnell, gemerkt; «+ Einfügen» m
   expect((await A.page.$$eval("#addDialog #recipeSites a.btile", a => a.length)) >= 4, "Rezeptseiten fehlen im Einfügen-Blatt");
   await dialogNoHScroll(A, "addDialog");
   await shot(A, "10d-einfuegen");
+  // Zurück von der Rezeptseite: kopierter Link steht schon im Feld, nur noch «Holen» (Joshua 27.11.)
+  const backFrom = (clipText, fail) => A.page.evaluate((t, f) => {
+    navigator.clipboard.readText = async () => { if (f) throw new Error("NotAllowed"); return t; };
+    const a = document.querySelector("#recipeSites a.btile");
+    a.addEventListener("click", e => e.preventDefault(), { once: true }); // nicht wirklich wegnavigieren
+    a.click();
+    window.dispatchEvent(new Event("focus"));
+  }, clipText, fail);
+  await backFrom("Schau mal https://www.bettybossi.ch/de/rezepte/rezept/kuerbis-lasagne-10001234/ 😋");
+  await until(A, () => document.getElementById("quickLink").value === "https://www.bettybossi.ch/de/rezepte/rezept/kuerbis-lasagne-10001234/" && !document.getElementById("quickLinkHint").hidden, "kopierter Link nicht ins Feld übernommen");
+  await A.page.evaluate(() => { document.getElementById("quickLink").value = ""; });
+  await backFrom("", true); // iPhone: Lesen nur nach Antippen → Knopf «Kopierten Link einfügen & holen»
+  await until(A, () => !document.getElementById("quickPasteBtn").hidden, "Knopf «Kopierten Link einfügen» fehlt, wenn das Handy nicht lesen darf");
   await tap(A, "#addHandBtn");
   await until(A, () => document.getElementById("recipeDialog").open && !document.getElementById("addDialog").open, "Von Hand öffnet das Formular nicht");
   await closeDialog(A, "recipeDialog");
