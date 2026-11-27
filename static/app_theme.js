@@ -161,12 +161,32 @@
     };
     pick("accentPick", "accent", ACCENTS, true);
     pick("bgPick", "bg", BGS, false);
+    // echte Akzentfarbe als Code (Standard = Hellgrün), eintippbar
+    const hex = theme.accent || ACCENTS[0][2];
+    $("accentHexDot").style.background = hex;
+    if (document.activeElement !== $("accentHex")) $("accentHex").value = hex;
   }
   function setTheme(key, value) {
     theme = { ...theme, [key]: value };
     save(THEME_KEY, theme);
     applyTheme();
   }
+  // Eigene Akzentfarbe (Farbwahl oder eingetippter Code): bei Bedarf aufhellen, Ergebnis mit Code melden
+  function setCustomAccent(raw) {
+    const v = brightAccent(raw.toLowerCase());
+    setTheme("accent", ACCENTS.some(([k]) => k === v) ? v : v === ACCENTS[0][2] ? "" : v);
+    $("accentHex").value = v;
+    toast(v !== raw.toLowerCase() ? `Aufgehellt auf ${v}, damit alles lesbar bleibt` : `Akzentfarbe ${v} ✓`);
+  }
+  $("accentHexForm").addEventListener("submit", e => {
+    e.preventDefault();
+    let t = $("accentHex").value.trim().toLowerCase();
+    if (!t.startsWith("#")) t = "#" + t;
+    if (/^#[0-9a-f]{3}$/.test(t)) t = "#" + [...t.slice(1)].map(x => x + x).join(""); // #8ce → #88ccee
+    if (!/^#[0-9a-f]{6}$/.test(t)) return toast("Farbcode wie #64d8d8 eingeben");
+    $("accentHex").blur();
+    setCustomAccent(t);
+  });
   for (const id of ["accentPick", "bgPick"]) {
     $(id).addEventListener("click", e => {
       const b = e.target.closest("button.swatch");
@@ -177,9 +197,7 @@
     $(id).addEventListener("change", e => {
       const c = e.target.closest("[data-custom]");
       if (!c || c.dataset.custom !== "accent" || !/^#[0-9a-f]{6}$/i.test(c.value)) return;
-      const v = brightAccent(c.value);
-      setTheme("accent", v);
-      if (v !== c.value.toLowerCase()) toast("Etwas aufgehellt, damit alles lesbar bleibt");
+      setCustomAccent(c.value);
     });
   }
   applyTheme();

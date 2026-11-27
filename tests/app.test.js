@@ -198,7 +198,7 @@ check(d.querySelectorAll("#days .prow")[0].querySelectorAll(".av").length === 5,
 // 8. Einstellungen: Bring!-Liste + Mitbewohner oben, Rest unter «Mehr»
 check(!d.getElementById("syncUrl"), "keine Server-Adresse mehr in den Einstellungen");
 check(d.getElementById("setMore").open && d.getElementById("setMore").contains(d.getElementById("syncPin")), "ohne Verbindung: «Mehr» offen, PIN dort");
-check(d.getElementById("setMore").contains(d.getElementById("attendance")), "Wer isst wann / Gäste unter «Mehr»");
+check(!d.getElementById("setMore").contains(d.getElementById("attendance")) && !d.getElementById("setMore").contains(d.getElementById("meSelect")) && d.getElementById("setMore").contains(d.getElementById("members")) && d.getElementById("setMore").contains(d.getElementById("updateBtn")), "Einstellungen: direkt nur «Du bist» und «Wer isst wann?», alles andere unter «Mehr» (Joshua 27.11.)");
 const osBefore = d.getElementById("setOsBtn").textContent;
 d.getElementById("setOsBtn").click();
 check(d.getElementById("setOsBtn").textContent !== osBefore, "Stil in den Einstellungen umschaltbar");
@@ -212,6 +212,10 @@ check(rootStyle().getPropertyValue("--bg").startsWith("hsl(") && JSON.parse(w.lo
 const cust = d.querySelector('#accentPick [data-custom="accent"]');
 cust.value = "#1f7a7a"; cust.dispatchEvent(new w.Event("change", { bubbles: true }));
 check(JSON.parse(w.localStorage.getItem("bf-theme")).accent === "#64d8d8", `eigene dunkle Akzentfarbe wird auf die Mindest-Helle aufgehellt (${JSON.parse(w.localStorage.getItem("bf-theme")).accent})`);
+check(d.getElementById("accentHex").value === "#64d8d8" && /100|64|d8/i.test(d.getElementById("accentHexDot").style.background), "echte Akzentfarbe als Code sichtbar (nach dem Aufhellen)");
+d.getElementById("accentHex").value = "8ecae6";
+d.getElementById("accentHexForm").dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
+check(JSON.parse(w.localStorage.getItem("bf-theme")).accent === "#8ecae6", "Farbcode eintippen (ohne #) setzt die Akzentfarbe");
 d.querySelector('#accentPick [data-accent=""]').click();
 d.querySelector('#bgPick [data-bg=""]').click();
 check(!rootStyle().getPropertyValue("--primary") && !rootStyle().getPropertyValue("--bg"), "Standard: wieder die Farben der Vorgabe");

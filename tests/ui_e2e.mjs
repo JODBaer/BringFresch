@@ -345,7 +345,11 @@ const dayTitle = (P, i) => text(P, `.prow[data-i="${i}"] .t`);
 // offener Tag ohne Menü öffnet das Blatt gleich
 async function openMenu(P, i) {
   const row = `.prow[data-i="${i}"]`;
-  if (!(await P.page.$eval(row, r => r.classList.contains("open") || r.classList.contains("unplanned")))) await tap(P, `${row} .t`);
+  // aufklappen; ein Tipp direkt nach dem Scrollen zählt als Scrollen (Schutz in der App) – dann nochmals, wie ein Mensch
+  for (let k = 0; k < 3 && !(await P.page.$eval(row, r => r.classList.contains("open") || r.classList.contains("unplanned"))); k++) {
+    await tap(P, `${row} .pday`);
+    await sleep(250);
+  }
   if (await P.page.$eval(row, r => r.classList.contains("unplanned"))) { if (!(await P.page.evaluate(() => document.getElementById("msheet").classList.contains("show")))) await tap(P, `${row} .t`); return; }
   await until(P, r => document.querySelector(r).classList.contains("open"), "Tag klappt beim Antippen des Gerichts nicht auf", row);
   await tap(P, `${row} .links [data-pick]`);
@@ -360,6 +364,11 @@ async function shot(P, name) { if (SHOTS) { await settle(P); await P.page.screen
 async function goTab(P, tab) {
   await tap(P, `.bnav [data-tab="${tab}"]`);
   await until(P, t => !document.getElementById(`tab-${t}`).hidden && [...document.querySelectorAll(".tab")].filter(s => !s.hidden).length === 1, `Tab ${tab} erscheint nicht`, tab);
+  // Einstellungen: direkt nur «Du bist» + «Wer isst wann?» (Joshua 27.11.) – für alles andere «Mehr» aufklappen wie ein Mensch
+  if (tab === "wg" && !(await P.page.$eval("#setMore", d => d.open))) {
+    await tap(P, "#setMore > summary");
+    await until(P, () => document.getElementById("setMore").open, "«Mehr» geht nicht auf");
+  }
 }
 async function noHScroll(P, tag) {
   const w = await P.page.evaluate(() => ({ doc: document.documentElement.scrollWidth, main: document.getElementById("scroller").scrollWidth, mainW: document.getElementById("scroller").clientWidth, vw: innerWidth }));
@@ -503,9 +512,14 @@ await step(A, "Menü wechseln: Blatt öffnen, suchen, Gericht wählen, «Rückg�
   pickedTitle = first;
 });
 
-await step(A, "Menü-Blatt schliessen: mit ✕ und durch Tippen daneben", async () => {
+await step(A, "Menü-Blatt schliessen: mit ✕ und durch Tippen daneben; scrollen = ganzer Bildschirm", async () => {
   await openMenu(A, 3);
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
+  // Joshua 27.11.: halbe Höhe, sobald man in der Liste scrollt = ganzer Bildschirm
+  expect(await A.page.$eval("#msheet", m => !m.classList.contains("tall") && m.getBoundingClientRect().height < innerHeight * 0.6), "Blatt öffnet nicht auf halber Höhe");
+  // mit dem Finger in der Liste scrollen (touchmove direkt an der Liste – puppeteer-Wischen landet je nach Lage im Blatt daneben)
+  await A.page.$eval("#mlist", l => { const t = new Touch({ identifier: 1, target: l, clientX: 195, clientY: 600 }); l.dispatchEvent(new TouchEvent("touchmove", { bubbles: true, touches: [t], changedTouches: [t] })); });
+  await until(A, () => document.getElementById("msheet").getBoundingClientRect().height > innerHeight * 0.85, "Scrollen in der Liste macht das Blatt nicht ganz hoch");
   await tap(A, "#msheetClose");
   await until(A, () => !document.getElementById("msheet").classList.contains("show"), "✕ schliesst nicht");
   await openMenu(A, 3);
@@ -1016,14 +1030,22 @@ await step(A, "Rezepte bleiben Rezepte: Grundrezept = eine Karte, Add-on Saison 
   await toastIs(A, new RegExp(`^Mo: Hörnli & Ghacktes mit ${veg}`));
   expect(await A.page.evaluate(v => { const d = window.BF_APP.state.plan[0]; return d.id === "b-hoernli" && d.season_label === v; }, veg), "Montag nicht mit dem Gemüse eingeplant");
   await goTab(A, "plan");
-  await openMenu(A, 0);
-  await until(A, () => !document.getElementById("mseason").hidden, "Gemüse-Wahl im Menü-Blatt fehlt");
-  const other = await A.page.$eval('#mseason [aria-pressed="false"]', b => b.dataset.season);
+  // Joshua 27.11.: Gemüse direkt im aufgeklappten Plan-Tag, mehrere zugleich («Rüebli noch drauf tun»)
+  if (!(await A.page.$eval('.prow[data-i="0"]', r => r.classList.contains("open")))) await tap(A, '.prow[data-i="0"] .pday');
+  await until(A, () => document.querySelectorAll('.prow[data-i="0"] .vegpick [data-veg]').length > 1, "Gemüse-Wahl im Plan-Tag fehlt");
+  const cur = await A.page.evaluate(() => window.BF_APP.state.plan[0].season_key);
+  const other = await A.page.$eval('.prow[data-i="0"] .vegpick [aria-pressed="false"]', b => b.dataset.veg);
   await clearToasts(A);
-  await tap(A, `#mseason [data-season="${other}"]`);
-  await until(A, k => window.BF_APP.state.plan[0].season_key === k && window.BF_APP.state.plan[0].id === "b-hoernli", "Gemüse im Plan nicht gewechselt", other);
+  await tap(A, `.prow[data-i="0"] .vegpick [data-veg="${other}"]`);
+  await until(A, k => { const d = window.BF_APP.state.plan[0]; return d.season_key === k && d.id === "b-hoernli" && / & /.test(d.title); }, "zweites Gemüse nicht dazugekommen", `${cur}+${other}`);
+  expect(await A.page.$eval('.prow[data-i="0"]', r => r.querySelectorAll('.vegpick [aria-pressed="true"]').length === 2 && r.querySelectorAll(".ing li").length >= 8), "beide Gemüse in den Zutaten des Tages");
   await tap(A, ".toast button");
   await until(A, v => window.BF_APP.state.plan[0].season_label === v, "Rückgängig (Gemüse) klappt nicht", veg);
+  // im Menü-Blatt dieselbe Wahl
+  await openMenu(A, 0);
+  await until(A, () => !document.getElementById("mseason").hidden, "Gemüse-Wahl im Menü-Blatt fehlt");
+  await tap(A, "#msheetClose");
+  await until(A, () => !document.getElementById("msheet").classList.contains("show"), "Menü-Blatt schliesst nicht");
   await A.page.evaluate(d => { const app = window.BF_APP; app.state.plan[0] = JSON.parse(d); app.savePlan(); app.refresh(); }, day0);
 });
 
@@ -1052,6 +1074,12 @@ await step(A, "Rezepte ordnen: Hauptgemüse, Schnell, gemerkt; «+ Einfügen» m
   await shot(A, "10e-rezepte-filter");
   await tap(A, "#recipeFilters [data-reset]");
   await until(A, n => parseInt(document.getElementById("allCount").textContent, 10) === n && !document.querySelector("#recipeFilters [data-reset]") && !document.querySelector(".rz-veg.on"), "Filter lassen sich nicht ausschalten", n0);
+  // «+ Einfügen» angeheftet (Joshua 27.11.): auch weit unten sichtbar
+  await A.page.evaluate(() => { document.querySelector("main").scrollTop = 99999; });
+  await sleep(200);
+  expect(await A.page.$eval("#addRecipeBtn", b => { const r = b.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && getComputedStyle(b).position === "fixed"; }), "«+ Einfügen» nicht angeheftet");
+  expect(await A.page.$eval(".all-sub", b => { const r = b.getBoundingClientRect(), m = document.querySelector("main").getBoundingClientRect(); return r.bottom > m.top && r.top < m.top + 200; }), "Woche (KW) bleibt beim Scrollen nicht oben");
+  await A.page.evaluate(() => { document.querySelector("main").scrollTop = 0; });
   await tap(A, "#addRecipeBtn");
   await until(A, () => document.getElementById("addDialog").open, "«+ Einfügen» geht nicht auf");
   expect(await A.page.$eval("#addDialog #quickLink", e => !!e.offsetParent), "Link-Feld fehlt im Einfügen-Blatt");
@@ -1212,6 +1240,7 @@ await step(A, "Stil umschalten: iPhone ↔ Android", async () => {
   await tap(A, "#setOsBtn");
   await until(A, () => document.documentElement.classList.contains("m3") && document.getElementById("setOsBtn").textContent === "Android", "kein Android-Stil");
   await shot(A, "12-android-stil");
+  await sleep(400); // Stilwechsel baut die Seite um (Rundungen, Abstände): erst tippen, wenn sie stillsteht
   await tap(A, "#setOsBtn");
   await until(A, () => document.documentElement.classList.contains("glass") && localStorage.getItem("bf-os") === "glass", "nicht zurück auf iPhone");
 });
@@ -1236,6 +1265,13 @@ await step(A, "Akzentfarbe: Pistazie, Himmelblau, eigene Farbe, «Hellgrün» = 
   const blue = await prim();
   await pickNative(A, '#accentPick input[type="color"]', "#ff8800");
   await until(A, b => document.querySelector("#accentPick .custom").getAttribute("aria-pressed") === "true" && document.documentElement.style.getPropertyValue("--primary") !== b, "eigene Akzentfarbe wirkt nicht", blue);
+  // Code sichtbar und eintippbar (Joshua 27.11.): dunkler Code wird aufgehellt, der echte Code steht im Feld
+  expect(/^#[0-9a-f]{6}$/.test(await A.page.$eval("#accentHex", i => i.value)), "Farbcode der Akzentfarbe nicht sichtbar");
+  await A.page.$eval("#accentHex", i => { i.value = ""; });
+  await typeInto(A, "#accentHex", "#203040");
+  await A.page.$eval("#accentHexForm", f => f.requestSubmit());
+  await until(A, () => { const v = JSON.parse(localStorage.getItem("bf-theme")).accent; return v !== "#203040" && /^#[0-9a-f]{6}$/.test(v) && document.getElementById("accentHex").value === v; }, "eingetippter dunkler Code nicht aufgehellt / nicht angezeigt");
+  await toastIs(A, /Aufgehellt auf #/);
   await shot(A, "13-akzent-eigen");
   await tap(A, '#accentPick button[data-accent=""]');
   await until(A, () => !document.documentElement.style.getPropertyValue("--primary") && document.querySelector('#accentPick button[data-accent=""]').getAttribute("aria-pressed") === "true", "Standard-Akzent nicht zurück");
@@ -1540,7 +1576,7 @@ await step(B, "Benachrichtigungen: Einschalten (pro Handy), Markt/Hof suchen (Or
     const pm = { getSubscription: async () => has, subscribe: async o => { if (!o.applicationServerKey || o.applicationServerKey.length !== 65) throw new Error("Schlüssel fehlt"); has = fake; return fake; } };
     Object.defineProperty(navigator.serviceWorker, "ready", { get: () => Promise.resolve({ pushManager: pm }), configurable: true });
   }, sub);
-  await tap(B, '.bnav [data-tab="wg"]');
+  await goTab(B, "wg"); // Benachrichtigungen liegen unter «Mehr»
   await until(B, () => !document.getElementById("tab-wg").hidden && document.getElementById("pushToggle").textContent === "Einschalten", "Karte Benachrichtigungen fehlt");
   await tap(B, "#pushToggle");
   await until(B, () => document.getElementById("pushState").textContent === "an · für dich", "nicht eingeschaltet");

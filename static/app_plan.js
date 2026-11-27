@@ -196,11 +196,38 @@
         </div>
       </div>
       <div class="more"><div><div class="inner">
-        <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
+        <ul class="ing">${vegChips(day, idx)}${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
         ${nutriLine(day)}
         <div class="links">${recipeHref(day) ? `<a href="${esc(recipeHref(day))}" target="_blank" rel="noopener">${day.source_url ? "Zum Rezept ↗" : esc(recipeLinkLabel(day))}</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button>${day.empty ? "" : `<input class="tm" type="time" data-time="${idx}" value="${esc(day.time || load(DINNER_KEY, "18:30"))}" aria-label="Znacht-Zeit am ${DAYS[idx]} (gilt für alle)">`}</div>
       </div></div></div>
     </div>`;
+  }
+
+  // Grundrezept aufgeklappt: Gemüse direkt im Plan wählen (Joshua 27.11.), mehrere zugleich – antippen = dazu / weg
+  function vegChips(day, idx) {
+    if (day.empty || !day.base_id) return "";
+    const base = allRecipes().find(r => r.base_id === day.base_id && r.addons);
+    const choices = base ? app.CORE.seasonChoices(base, currentMonth()) : [];
+    if (choices.length < 2) return "";
+    const on = String(day.season_key || "").split("+");
+    // erste Zeile der Zutaten (scrollt mit ihnen, damit auch mit offenem Tag alle 7 Tage sichtbar bleiben)
+    return `<li class="vegpick" role="group" aria-label="Gemüse am ${DAYS[idx]}"><span>🥬</span>${choices.map(o =>
+      `<button type="button" class="mswap-d" data-veg="${esc(o.key)}" data-day="${idx}" aria-pressed="${on.includes(o.key)}">${esc(o.label)}</button>`).join("")}</li>`;
+  }
+  // Gemüse an/aus (Plan-Tag oder Menü-Blatt): Rezept, Esser, Gäste bleiben
+  function setVeg(idx, key) {
+    const previous = state.plan[idx];
+    const base = allRecipes().find(r => r.base_id === previous.base_id && r.addons);
+    if (!base) return;
+    const next = app.CORE.toggleSeasonKey(previous.season_key, key);
+    if (next === previous.season_key) return toast("Mindestens ein Gemüse");
+    state.plan[idx] = makeDay(app.CORE.withSeason(base, next, currentMonth()), idx, previous);
+    savePlan();
+    refresh();
+    toast(`${DAYS[idx].slice(0, 2)}: ${state.plan[idx].title}`, {
+      label: "Rückgängig",
+      run: () => { state.plan[idx] = previous; savePlan(); refresh(); toast("Rückgängig gemacht"); }
+    });
   }
 
   function renderDays() {
@@ -255,6 +282,8 @@
     const chip = e.target.closest("[data-member]");
     if (chip) return toggleEater(idx, chip.dataset.member);
     if (e.target.closest("[data-inc]")) return setBuffer(idx, ((state.plan[idx].leftover_buffer || 0) + 1) % 7);
+    const veg = e.target.closest("[data-veg]");
+    if (veg) return setVeg(idx, veg.dataset.veg);
     if (e.target.closest("[data-pick]")) return openMenuSheet(idx, e.target.closest("button"));
   });
 
@@ -405,16 +434,36 @@
     const choices = base ? app.CORE.seasonChoices(base, currentMonth()) : [];
     $("mseason").hidden = choices.length < 2;
     $("mseason").innerHTML = choices.length < 2 ? "" : `<span class="mswap-l">🥬 Gemüse</span>` + choices.map(o =>
-      `<button type="button" class="mswap-d mseason-d" data-season="${esc(o.key)}" aria-pressed="${o.key === day.season_key}">${esc(o.label)}</button>`).join("");
+      `<button type="button" class="mswap-d mseason-d" data-season="${esc(o.key)}" aria-pressed="${String(day.season_key || "").split("+").includes(o.key)}">${esc(o.label)}</button>`).join("");
     $("msearch").value = "";
     sheetOptions();
     $("mlist").scrollTop = 0;
+    $("msheet").classList.remove("tall");
     $("msheet").classList.add("show");
     $("mscrim").classList.add("show");
     // Auf dem Handy die Tastatur nicht ungefragt öffnen (sie würde die Liste verdecken)
     if (!coarse) setTimeout(() => $("msearch").focus(), 60);
     else { const first = $("mlist").querySelector(".opt"); if (first) first.focus({ preventScroll: true }); }
   }
+  // Menü-Blatt: zuerst halbe Höhe; sobald man sucht, in der Liste scrollt oder oben nach oben wischt = ganzer Bildschirm
+  // (Joshua 27.11.). Oben nach unten wischen: zuerst wieder halb, dann zu.
+  const tall = on => $("msheet").classList.toggle("tall", on);
+  // nur wenn der Mensch scrollt (Finger/Mausrad) – nicht wenn die Liste selbst etwas ins Bild rückt
+  $("mlist").addEventListener("touchmove", () => tall(true), { passive: true });
+  $("mlist").addEventListener("wheel", () => tall(true), { passive: true });
+  $("msearch").addEventListener("input", () => tall(true));
+  (function sheetSwipe() {
+    let y0 = null;
+    const top = $("msheet");
+    top.addEventListener("touchstart", e => { y0 = e.touches.length === 1 && e.target.closest(".grip, header") ? e.touches[0].clientY : null; }, { passive: true });
+    top.addEventListener("touchend", e => {
+      if (y0 === null) return;
+      const dy = e.changedTouches[0].clientY - y0;
+      y0 = null;
+      if (dy < -30) tall(true);
+      else if (dy > 50) { if (top.classList.contains("tall")) tall(false); else closeMenuSheet(); }
+    }, { passive: true });
+  })();
   function closeMenuSheet() {
     $("msearch").blur();
     $("msheet").classList.remove("show");
@@ -536,17 +585,9 @@
   $("mseason").addEventListener("click", e => {
     const b = e.target.closest("[data-season]");
     if (!b) return;
-    const idx = sheetDay, previous = state.plan[idx];
-    const base = allRecipes().find(r => r.base_id === previous.base_id && r.addons);
-    if (!base) return;
-    state.plan[idx] = makeDay(app.CORE.withSeason(base, b.dataset.season, currentMonth()), idx, previous);
-    savePlan();
-    refresh();
+    const idx = sheetDay;
     closeMenuSheet();
-    toast(`${DAYS[idx].slice(0, 2)}: ${state.plan[idx].title}`, {
-      label: "Rückgängig",
-      run: () => { state.plan[idx] = previous; savePlan(); refresh(); toast("Rückgängig gemacht"); }
-    });
+    setVeg(idx, b.dataset.season); // dazu / weg wie im Plan-Tag
   });
   $("msearch").addEventListener("input", sheetOptions);
   trackTaps($("mlist"), () => $("mlist").scrollTop);

@@ -61,10 +61,13 @@
   // ---------------------------------------------------------------------------
   // Einkaufsliste (R2: Basis + individuelle Proteine + Beilage, R3: Reste-Puffer, R6: Grundvorrat)
   // ---------------------------------------------------------------------------
-  const COUNT_UNITS = /^(stk|stück|bund|glas|dose|kopf|rolle|tranchen|portion|becher|pck|packung|el|tl|prise|zehe|zehen)$/i;
+  const COUNT_UNITS = /^(stk|stück|bund|glas|dose|kopf|stange|stangen|knolle|rolle|tranchen|portion|becher|pck|packung|el|tl|prise|zehe|zehen)$/i;
 
   function formatAmount(amount, unit) {
     const u = (unit || "").trim();
+    // ohne Einheit = «nach Bedarf» (Rezeptseite ohne Menge, z.B. «Butter zum Dämpfen»; Import setzt dann 1 ohne Einheit):
+    // keine Zahl zeigen statt «2.5» (Joshua 27.11.)
+    if (!u) return "";
     const lu = u.toLowerCase();
     if (lu === "g" || lu === "ml") {
       if (amount >= 1000) {
@@ -84,6 +87,7 @@
   const TO_TASTE = /^(salz|pfeffer|salz und pfeffer|salz, pfeffer|muskat|einige|etwas|wenig|nach belieben|wenige|1 prise)\b/i;
   function formatCookAmount(amount, unit, name, scale) {
     const u = (unit || "").trim();
+    if (!u) return ""; // nach Bedarf (siehe formatAmount)
     if (!COUNT_UNITS.test(u.toLowerCase())) return formatAmount(amount, u);
     if (name && TO_TASTE.test(String(name).trim()) && scale > 0) amount = amount / scale; // Rezeptmenge lassen
     const q = Math.max(0.5, Math.round(amount * 2) / 2);
@@ -231,7 +235,7 @@
     }
     return [...groups.values()].map(g => {
       const parts = [...g.amounts].map(([u, a]) =>
-        u === "g" && a >= 1000 ? formatAmount(a / 1000, "kg") : u === "dl" && a >= 10 ? formatAmount(a / 10, "l") : formatAmount(a, u));
+        u === "g" && a >= 1000 ? formatAmount(a / 1000, "kg") : u === "dl" && a >= 10 ? formatAmount(a / 10, "l") : formatAmount(a, u)).filter(Boolean); // ohne Einheit = nach Bedarf, keine Zahl
       return { name: g.name, spec: [parts.join(" + "), ...g.extra].filter(Boolean).join(", "), from: [...g.from] };
     });
   }
@@ -705,19 +709,31 @@
     const base = recipe && BASES.get(recipe.base_id);
     return base ? seasonOf(recipe, base.opts, month).map(o => ({ key: o.key, label: o.label })) : [];
   }
-  // Rezept mit dem Gemüse «key» (sonst das erste, das im Monat Saison hat, sonst das erste überhaupt)
+  // Rezept mit dem Gemüse «key» (sonst das erste, das im Monat Saison hat, sonst das erste überhaupt).
+  // Mehrere Gemüse zugleich (Joshua 27.11.: «Rüebli einfach noch drauf tun», nicht entweder-oder): key = «lauch+ruebli»;
+  // dann je etwas weniger pro Gemüse (zusammen 1½-mal so viel Gemüse wie mit einem), Titel «… mit Lauch & Rüebli».
   function withSeason(recipe, key, month) {
     const base = recipe && BASES.get(recipe.base_id);
     if (!base) return recipe;
     const { b, opts } = base;
-    const v = opts.find(o => o.key === key) || seasonOf(recipe, opts, month)[0] || opts[0];
-    const fill = t => String(t || "").replace(/\{v\}/g, v.label);
+    const picked = [...new Set(String(key || "").split("+"))].map(k => opts.find(o => o.key === k)).filter(Boolean);
+    const vs = picked.length ? picked : [seasonOf(recipe, opts, month)[0] || opts[0]];
+    const label = vs.length > 1 ? vs.slice(0, -1).map(v => v.label).join(", ") + " & " + vs[vs.length - 1].label : vs[0].label;
+    const f = vs.length > 1 ? 1.5 / vs.length : 1;
+    const scaled = x => { const a = parseFloat(x.amount); return f === 1 || !Number.isFinite(a) ? { ...x } : { ...x, amount: String(Math.round(a * f * 100) / 100) }; };
+    const fill = t => String(t || "").replace(/\{v\}/g, label);
     const { addons, ...rest } = recipe;
     return {
-      ...rest, title: fill(b.title), diet: v.diet || b.diet, season_key: v.key, season_label: v.label,
-      ingredients: (b.ingredients || []).flatMap(i => (i === "VEG" ? v.items : [i]).map(x => ({ ...x }))),
+      ...rest, title: fill(b.title), diet: vs[0].diet || b.diet, season_key: vs.map(v => v.key).join("+"), season_label: label,
+      ingredients: (b.ingredients || []).flatMap(i => (i === "VEG" ? vs.flatMap(v => v.items).map(scaled) : [{ ...i }])),
       instructions: fill(b.instructions)
     };
+  }
+  // Gemüse an/aus (mehrere möglich, mindestens eins): «lauch» + «ruebli» → «lauch+ruebli»; letztes bleibt
+  function toggleSeasonKey(cur, key) {
+    const set = String(cur || "").split("+").filter(Boolean);
+    const next = set.includes(key) ? set.filter(k => k !== key) : [...set, key];
+    return (next.length ? next : set).join("+");
   }
   // alte Ids aus Schritt 0 («b-hoernli-lauch», noch in Wochenwahl/Plan): → { id: "b-hoernli", key: "lauch" }
   function legacyBaseId(id) {
@@ -1483,7 +1499,9 @@
 
   // Einladungslink (Schritt 1): `…/#join=<wg>.<code>`; erste WG ohne Namen = `#join=.<code>`. Code = base64url, mind. 16 Zeichen
   function inviteLink(pageUrl, wg, code) {
-    return String(pageUrl).replace(/#.*$/, "") + "#join=" + encodeURIComponent(wg || "") + "." + code;
+    // kurz (Joshua 27.11.): ohne «static/index.html» und ohne ?…; die Startseite leitet mit dem #join weiter (index.html)
+    const base = String(pageUrl).replace(/#.*$/, "").replace(/\?.*$/, "").replace(/static\/(index\.html)?$/, "").replace(/index\.html$/, "");
+    return base + "#join=" + encodeURIComponent(wg || "") + "." + code;
   }
   function parseJoin(hash) {
     const m = /^#join=([^.#]*)\.([A-Za-z0-9_-]{16,64})$/.exec(String(hash || ""));
@@ -1500,7 +1518,7 @@
     swapDishes, groupByDish, groupByCategory, popularity, byPopularity, recipeSource, groupBySource,
     normName, bringSuggest, vUnit, vPack, vQty, knappAb, isKnapp, setQty, boughtStaple, stapleUse, isBooked, bookWeek, unbookWeek, weeksBetween,
     emptyWeeks, oftLeer, monthsSince, isOld, qtyText, packText, qtyLevels,
-    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, expandBases, baseMonths, baseVariants, seasonChoices, withSeason, legacyBaseId, RECIPE_SORTS, recipeGroups, RECIPE_FILTERS, recipeFilter, mainVeg, isSimple, activeMin, totalMin, timeBadge, timeText, ingredientCount, rankDays, moveDay, dayReason, carryOver,
+    effectiveDiet, fitsDiet, inSeason, dietGroup, pickRecipe, backupRecipe, pickCandidates, cleanCandidates, dishKey, sameDish, canonicalUrl, sameLink, uniqueRecipes, SEARCH_SITES, searchSite, searchHref, webSearchLinks, recipeMatches, foldText, votersOf, ranking, assignDays, expandBases, baseMonths, baseVariants, seasonChoices, withSeason, toggleSeasonKey, legacyBaseId, RECIPE_SORTS, recipeGroups, RECIPE_FILTERS, recipeFilter, mainVeg, isSimple, activeMin, totalMin, timeBadge, timeText, ingredientCount, rankDays, moveDay, dayReason, carryOver,
     DEFAULT_SERVINGS, isoWeek, weekKey, plusWeek, mondayOf, weekAfter, portionsFor,
     formatAmount, formatCookAmount, cleanIngredient, hasWord, inStaples, bringLookup, bringItemId, bringPayload, shoppingList,
     nutrientOf, nutritionFor, cleanNutrition, nutritionTag, nutritionText, GOAL_LABEL, GOAL_WORD, goalsOf, toggleGoal
