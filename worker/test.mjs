@@ -83,6 +83,14 @@ globalThis.fetch = async (url, init = {}) => {
       <tr itemprop="recipeIngredient" class="Ingredient"><td class="Ingredient--amount"><span>2</span></td><td class="Ingredient--text">Auberginen</td></tr></table><span itemprop="recipeYield">4 Personen</span>
       <div itemprop="nutrition" itemscope><span itemprop="calories">450 kcal</span><span itemprop="proteinContent">17 g</span></div></body></html>`);
   }
+  if (url.startsWith("https://www.gemuese.ch/rezepte/")) { // gemuese.ch: keine schema.org-Daten, Zutaten nur im HTML (Ausschnitt der echten Seite)
+    return new Response(`<html><head><meta property="og:title" content="Gem&#xFC;se-Risotto" /></head><body><div class="time__global"><span class="time__time">
+      40 Min</span></div><div class="c-recipe-ingredients--default"><h2 class="recipe-ingredients__title">Zutatenliste f&#xFC;r 4 Personen</h2><ul>
+      <li class="list__ingredient"><span class="ingredient__quantity">2 EL</span><span class="ingredient__product">Butter</span></li>
+      <li class="list__ingredient"><span class="ingredient__quantity">1</span><span class="ingredient__product">
+        Zwiebel, fein gehackt <span class="brush">Saison</span></span></li>
+      <li class="list__ingredient"><span class="ingredient__quantity"></span><span class="ingredient__product">Salz, Pfeffer</span></li></ul></div></body></html>`);
+  }
   if (url.startsWith("https://blog.example.ch/")) {
     return new Response(`<html><script type="application/ld+json">{"@graph":[{"@type":"WebPage"},{"@type":["Recipe"],"name":"Omas R&#246;sti","recipeYield":["2"],"recipeIngredient":["800 g Kartoffeln","2 EL Butter"]}]}</script></html>`);
   }
@@ -337,6 +345,9 @@ r = await call("/recipe?url=" + encodeURIComponent("Schau mal: https://blog.exam
 const bl = await r.json();
 check(bl.title === "Omas Rösti" && bl.servings === 2 && bl.ingredients.length === 2, "jede Rezeptseite geht, Link aus geteiltem Text, &#246; wird ö");
 check(bl.nutrition === null, "Seite ohne Nährwerte: nutrition = null (die App schätzt dann aus den Zutaten)");
+r = await call("/recipe?url=" + encodeURIComponent("https://www.gemuese.ch/rezepte/gemuese-risotto"));
+const gm = await r.json();
+check(r.status === 200 && gm.title === "Gemüse-Risotto" && gm.servings === 4 && gm.minutes === 40 && gm.ingredients.join("|") === "2 EL Butter|1 Zwiebel, fein gehackt|Salz, Pfeffer", `gemuese.ch: Zutaten aus dem HTML, ohne «Saison»-Vermerk (${gm.title}: ${gm.ingredients})`);
 r = await call("/recipe?url=" + encodeURIComponent("http://localhost:8787/x"));
 check(r.status === 400, "interne Adressen werden abgelehnt");
 r = await call("/recipe?url=" + encodeURIComponent("nur Text ohne Link"));
@@ -412,6 +423,14 @@ r = await call("/settings", { method: "PUT", body: { settings: { members: smem, 
 check(!(await (await sh("/recipes/shared")).json()).recipes.some(x => x.title === "Mamas Lauchgratin"), "gelöschtes Rezept verschwindet auch bei den anderen");
 r = await call("/recipes/shared", { pin: "0000" });
 check(r.status === 401, "geteilte Rezepte nur mit PIN");
+// Test-Server: liest die geteilten Rezepte des WG-Servers mit (SHARED_SRC), schreibt nie hinein
+const src = new Map([["shared:index", JSON.stringify(["allmen", "sonnenhof"])], ["shared:allmen", JSON.stringify({ name: "Allmen", recipes: [srec("custom-9", "Allmen-Rösti")] })]]);
+const srcPuts = [];
+env.SHARED_SRC = { async get(k, t) { const v = src.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; }, async put(k) { srcPuts.push(k); } };
+const viaSrc = (await (await call("/recipes/shared")).json()).recipes;
+delete env.SHARED_SRC;
+check(viaSrc.some(x => x.title === "Allmen-Rösti" && x.id === "x-allmen-custom-9" && x.shared_from) && viaSrc.filter(x => x.title === "Sonnenhof-Curry").length === 1 && !srcPuts.length,
+  "Test-Server zeigt auch die geteilten Rezepte des WG-Servers (ohne Doppelte, ohne zu schreiben)");
 }
 // 7c. Einladungslink: Box (verschlüsselter PIN) nur mit PIN ablegen, ohne PIN abholen; 7 Tage, falsche id = 404
 {

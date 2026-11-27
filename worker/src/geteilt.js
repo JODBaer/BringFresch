@@ -59,6 +59,12 @@ export async function getShared(env) {
   }
   const others = index.filter(s => s !== wg.slug);
   const entries = await Promise.all(others.map(async s => [s, await env.RAW.get(`shared:${s}`, "json")]));
+  // Test-Server (Issue #28): liest zusätzlich die geteilten Rezepte des WG-Servers – nur lesen, nie schreiben
+  // (Binding SHARED_SRC in wrangler.toml [env.stage]; auf dem WG-Server fehlt es)
+  if (env.SHARED_SRC) {
+    const ext = ((await env.SHARED_SRC.get("shared:index", "json").catch(() => null)) || []).filter(s => !index.includes(s));
+    entries.push(...await Promise.all(ext.map(async s => [s, await env.SHARED_SRC.get(`shared:${s}`, "json").catch(() => null)])));
+  }
   const recipes = [];
   for (const [s, e] of entries) {
     if (!e || !Array.isArray(e.recipes)) continue;

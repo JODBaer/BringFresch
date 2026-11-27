@@ -157,14 +157,18 @@ export async function importRecipe(link) {
     if (!ingredients.length) {
       ingredients = [...html.matchAll(/<(li|span|div|p)[^>]*itemprop="recipeIngredient"[^>]*>([\s\S]*?)<\/\1>/g)].map(m => text(m[2])).filter(Boolean);
     }
-    if (!ingredients.length) throw httpError(422, "Keine Rezeptdaten auf der Seite gefunden – Zutaten von Hand einfügen");
-    const og = (html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]*)"/) || [])[1];
-    const title = og ? og.replace(/\s*[-|–].*$/, "") : (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/) || [])[1] || "";
-    const yieldText = (html.match(/itemprop="recipeYield"[^>]*>([^<]*)/) || [])[1] || "";
-    // Nährwerte als Microdata (itemprop="calories" …), z.B. Swissmilk
-    const micro = p => { const m = html.match(new RegExp(`itemprop="${p}"[^>]*?(?:content="([^"]*)"[^>]*>|>([\\s\\S]*?)<\\/)`)); return m ? text(m[1] || m[2] || "") : ""; };
-    const nutrition = { calories: micro("calories"), proteinContent: micro("proteinContent"), fatContent: micro("fatContent"), carbohydrateContent: micro("carbohydrateContent") };
-    recipe = { name: title.replace(/<[^>]+>/g, "").trim(), recipeIngredient: ingredients, recipeYield: yieldText, nutrition };
+    // gemuese.ch: keine schema.org-Daten, Zutaten nur im HTML (gleiche Regel wie tools/import_recipes.py)
+    if (!ingredients.length) recipe = recipeFromGemuese(html);
+    if (!ingredients.length && !recipe) throw httpError(422, "Keine Rezeptdaten auf der Seite gefunden – Zutaten von Hand einfügen");
+    if (!recipe) {
+      const og = (html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]*)"/) || [])[1];
+      const title = og ? og.replace(/\s*[-|–].*$/, "") : (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/) || [])[1] || "";
+      const yieldText = (html.match(/itemprop="recipeYield"[^>]*>([^<]*)/) || [])[1] || "";
+      // Nährwerte als Microdata (itemprop="calories" …), z.B. Swissmilk
+      const micro = p => { const m = html.match(new RegExp(`itemprop="${p}"[^>]*?(?:content="([^"]*)"[^>]*>|>([\\s\\S]*?)<\\/)`)); return m ? text(m[1] || m[2] || "") : ""; };
+      const nutrition = { calories: micro("calories"), proteinContent: micro("proteinContent"), fatContent: micro("fatContent"), carbohydrateContent: micro("carbohydrateContent") };
+      recipe = { name: title.replace(/<[^>]+>/g, "").trim(), recipeIngredient: ingredients, recipeYield: yieldText, nutrition };
+    }
   }
   const yieldText = [].concat(recipe.recipeYield || "").join(" ");
   const servings = parseInt((yieldText.match(/\d+/) || ["4"])[0], 10);
@@ -179,6 +183,24 @@ export async function importRecipe(link) {
     // schema.org NutritionInformation gilt pro Portion (servingSize); nur Zahlen, nur wenn plausibel – sonst schätzt die App
     nutrition: cleanNutrition([].concat(recipe.nutrition || [])[0]),
   };
+}
+
+// gemuese.ch (VSGP): <li class="list__ingredient"> mit Menge + Produkt, «Zutatenliste für 4 Personen», Zeit in .time__time
+export function recipeFromGemuese(html) {
+  if (!html.includes("c-recipe-ingredients")) return null;
+  const strip = x => decodeEntities(x.replace(/<span class="brush">[\s\S]*?<\/span>/g, "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  const lines = [];
+  for (const [, li] of html.matchAll(/<li class="list__ingredient">([\s\S]*?)<\/li>/g)) {
+    const q = li.match(/ingredient__quantity">([\s\S]*?)<\/span>/);
+    const p = li.indexOf('ingredient__product">');
+    const name = p < 0 ? "" : strip(li.slice(p + 'ingredient__product">'.length));
+    if (name) lines.push(`${q ? strip(q[1]) : ""} ${name}`.trim());
+  }
+  if (!lines.length) return null;
+  const n = html.match(/Zutatenliste f(?:&#xFC;|ü)r (\d+) Personen/i);
+  const t = html.match(/<meta property="og:title" content="([^"]+)"/) || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+  const min = html.match(/time__global">\s*<span class="time__time">\s*(\d+)\s*Min/);
+  return { name: t ? strip(t[1]).split(" | ")[0].replace(/\s+Rezept$/, "") : "", recipeYield: n ? `${n[1]} Personen` : "", recipeIngredient: lines, totalTime: min ? `PT${min[1]}M` : "" };
 }
 
 export function decodeEntities(s) {

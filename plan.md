@@ -44,6 +44,14 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – Obsonare baut 
 - [ ] **Bot vergisst eben gesetzte Artikel**, wenn Bring! kurz noch den alten Stand liefert → kann sie nicht mehr wegnehmen (Rückgängig, Live-Test-Reste). Lösung muss «gekauft» (Bring! «recently») von «noch alt gelesen» unterscheiden (erster Versuch zurückgenommen, brach «gekauft und von jemand anderem neu eingetragen»)
 - [ ] Bring!-Batch: ob Mengen ändern im Batch allein wirkt, ist offen (Live-Test zeigt «mixed», Ergebnis stimmt dank Nachschicken). Live-Beweis in `stage_live.mjs` eingebaut (16.11.): 60 Artikel in einem Durchgang + Zeile «INFO Batch-Mengen: wirkt allein / braucht Nachschicken» im Log von `stage.yml`. Ergebnis Live-Lauf 16.11. (stage.yml, grün): 60 Artikel in einem Batch gesetzt (ok, Modus batch); Mengen per Batch ändern braucht Nachschicken (mixed, Endergebnis stimmt); Wegnehmen von 60: erster Aufruf nur 45, Rest im zweiten Aufruf
 
+## Rückmeldungen Joshua 27.11.2026 (Test-App)
+
+- [x] Ordnen/Filter im Reiter Rezepte unübersichtlich → eine umbrechende Chip-Reihe, «✕ Filter aus» (#27)
+- [x] Rezepte anderer WGs fehlen in der Test-App → Test-Server liest die geteilten Rezepte des WG-Servers mit, nur lesend (#28)
+- [x] «Holen» bei gemuese.ch → Worker liest Zutaten, Personen und Zeit aus dem HTML (wie der Import)
+- [x] Zurück von der Rezeptseite: kopierter Link steht schon im Feld, nur noch «Holen» (iPhone: ein Knopf «Kopierten Link einfügen & holen»)
+- [ ] **«KI-App öffnen» und «Bring! öffnen» gehen noch nicht** – im Plan platzieren (Joshua 27.11.): Lieblings-KI ist wählbar, aber noch nichts öffnet sie (kommt mit Schritt 5 «Foto mit KI» / Reste-Rezept); «Bring! öffnen» führt auf die Webseite statt in die App. Beides als Knopf im Plan, am ehesten in der «Nächster Schritt»-Karte (Schritt 2): nach «Bring! füllen» → «Bring! öffnen», am Kochtag / bei Resten → «Mit KI kochen». Vorher prüfen, ob Bring! eine App-Adresse hat, die auf iPhone und Android die App öffnet.
+
 ## UX: einfach von Anfang an (Plan 25.11.2026, Joshua)
 
 **Auf einen Blick** (kurz, Bild: `docs/design/obsonare-einfach-ueberblick.html`) – 8 Änderungen, eine nach der anderen:

@@ -401,6 +401,9 @@
             <input type="text" inputmode="url" autocomplete="off" id="quickLink" placeholder="https://… einfügen" aria-label="Rezept-Link">
             <button class="btn dark" type="button" id="quickLinkBtn">Holen</button>
           </div>
+          <!-- Zurück von der Rezeptseite: kopierter Link steht schon im Feld, sonst ein Tipp = einfügen + holen -->
+          <button class="btn add-paste" type="button" id="quickPasteBtn" hidden>📋 Kopierten Link einfügen &amp; holen</button>
+          <p class="hint add-clip" id="quickLinkHint" style="padding:0" hidden></p>
           <p class="hint" style="padding:0">Auf der Rezeptseite oder in Instagram «Teilen» → «Link kopieren» → hier einfügen. Obsonare holt Titel, Zutaten und Zeit.</p>
           <p class="label" style="padding:0">Rezept suchen bei <small>öffnet die Seite, dort Link kopieren</small></p>
           <div class="btiles" id="recipeSites"></div>

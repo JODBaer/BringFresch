@@ -42,3 +42,9 @@ assets = { directory = "../dist-stage" }
 [[env.stage.kv_namespaces]]
 binding = "WG"
 id = "48eef0faf2ce4bd3bb74fed8f4cfe31f"
+
+# Geteilte Rezepte der echten WGs auch in der Test-App sehen (Issue #28): Speicher des WG-Servers, der Test-Server
+# liest daraus nur shared:index und shared:<wg> (worker/src/geteilt.js), schreibt nie hinein.
+[[env.stage.kv_namespaces]]
+binding = "SHARED_SRC"
+id = "477e6573755e423fba0e3e8410fbb8cc"
