@@ -61,7 +61,7 @@
   // ---------------------------------------------------------------------------
   // Einkaufsliste (R2: Basis + individuelle Proteine + Beilage, R3: Reste-Puffer, R6: Grundvorrat)
   // ---------------------------------------------------------------------------
-  const COUNT_UNITS = /^(stk|stück|bund|glas|dose|kopf|rolle|tranchen|portion|becher|pck|packung|el|tl|prise|zehe|zehen)$/i;
+  const COUNT_UNITS = /^(stk|stück|bund|glas|dose|kopf|stange|stangen|knolle|rolle|tranchen|portion|becher|pck|packung|el|tl|prise|zehe|zehen)$/i;
 
   function formatAmount(amount, unit) {
     const u = (unit || "").trim();
@@ -1483,7 +1483,9 @@
 
   // Einladungslink (Schritt 1): `…/#join=<wg>.<code>`; erste WG ohne Namen = `#join=.<code>`. Code = base64url, mind. 16 Zeichen
   function inviteLink(pageUrl, wg, code) {
-    return String(pageUrl).replace(/#.*$/, "") + "#join=" + encodeURIComponent(wg || "") + "." + code;
+    // kurz (Joshua 27.11.): ohne «static/index.html» und ohne ?…; die Startseite leitet mit dem #join weiter (index.html)
+    const base = String(pageUrl).replace(/#.*$/, "").replace(/\?.*$/, "").replace(/static\/(index\.html)?$/, "").replace(/index\.html$/, "");
+    return base + "#join=" + encodeURIComponent(wg || "") + "." + code;
   }
   function parseJoin(hash) {
     const m = /^#join=([^.#]*)\.([A-Za-z0-9_-]{16,64})$/.exec(String(hash || ""));

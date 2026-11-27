@@ -409,12 +409,32 @@
     $("msearch").value = "";
     sheetOptions();
     $("mlist").scrollTop = 0;
+    $("msheet").classList.remove("tall");
     $("msheet").classList.add("show");
     $("mscrim").classList.add("show");
     // Auf dem Handy die Tastatur nicht ungefragt öffnen (sie würde die Liste verdecken)
     if (!coarse) setTimeout(() => $("msearch").focus(), 60);
     else { const first = $("mlist").querySelector(".opt"); if (first) first.focus({ preventScroll: true }); }
   }
+  // Menü-Blatt: zuerst halbe Höhe; sobald man sucht, in der Liste scrollt oder oben nach oben wischt = ganzer Bildschirm
+  // (Joshua 27.11.). Oben nach unten wischen: zuerst wieder halb, dann zu.
+  const tall = on => $("msheet").classList.toggle("tall", on);
+  // nur wenn der Mensch scrollt (Finger/Mausrad) – nicht wenn die Liste selbst etwas ins Bild rückt
+  $("mlist").addEventListener("touchmove", () => tall(true), { passive: true });
+  $("mlist").addEventListener("wheel", () => tall(true), { passive: true });
+  $("msearch").addEventListener("input", () => tall(true));
+  (function sheetSwipe() {
+    let y0 = null;
+    const top = $("msheet");
+    top.addEventListener("touchstart", e => { y0 = e.touches.length === 1 && e.target.closest(".grip, header") ? e.touches[0].clientY : null; }, { passive: true });
+    top.addEventListener("touchend", e => {
+      if (y0 === null) return;
+      const dy = e.changedTouches[0].clientY - y0;
+      y0 = null;
+      if (dy < -30) tall(true);
+      else if (dy > 50) { if (top.classList.contains("tall")) tall(false); else closeMenuSheet(); }
+    }, { passive: true });
+  })();
   function closeMenuSheet() {
     $("msearch").blur();
     $("msheet").classList.remove("show");

@@ -176,9 +176,10 @@ html, body { overscroll-behavior-y: contain; } /* eigenes «Herunterziehen» sta
 .set-hero { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .set-top { display: flex; align-items: center; gap: 12px; }
 .set-top b { font-size: 16px; }
-.set-top small, .set-more small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
+.set-top small, .set-more summary small, #tab-wg .set-line small, #tab-wg .set-sub small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
 .set-logo { width: 42px; height: 42px; border-radius: 12px; background: var(--pist); color: var(--on-pist); display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: 0 0 auto; }
 .set-status { font-size: 12.5px; font-weight: 600; }
+.set-all > summary { margin: 14px 0 4px; }
 .set-more summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 14px; }
 .set-more summary::-webkit-details-marker { display: none; }
 .set-more summary::after { content: "\203A"; color: var(--muted); font-size: 20px; transition: transform .2s; }
@@ -201,6 +202,10 @@ html, body { overscroll-behavior-y: contain; } /* eigenes «Herunterziehen» sta
 .myrec small { display: block; color: var(--muted); font-size: 12px; }
 .myrec .btn { padding: 7px 10px; font-size: 13px; flex: 0 0 auto; }
 .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.hexrow { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.hexrow i { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.hexrow input { flex: 1 1 auto; min-width: 0; max-width: 140px; font-family: var(--mono); text-transform: lowercase; }
+.hexrow .btn { flex: 0 0 auto; width: auto; margin: 0; }
 .swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; padding: 0; font-size: 11.5px; color: var(--muted); cursor: pointer; width: 62px; }
 .swatch i { width: 40px; height: 40px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); display: grid; place-items: center; font-style: normal; font-size: 18px; color: #1d301d; position: relative; overflow: hidden; }
 .swatch[aria-pressed="true"] { color: var(--fg); font-weight: 700; }
@@ -605,7 +610,10 @@ html.dark.glass .bnav button[aria-current="page"] { background: rgba(255,255,255
 }
 @keyframes entry { 0% { transform: scale(0) rotate(-30deg); } }
 .ic-cart { clip-path: inset(-6px 0 -2px 0); }
-.anim .ic-cart .item { animation: drop .9s ease-in both; }
+/* Einkauf (Joshua 27.11.): zuerst ein Artikel, gleich danach zwei miteinander in den Wagen – gesamt etwa gleich lang wie vorher (≈ 0.9 s) */
+.anim .ic-cart .item { animation: drop .55s ease-in both; }
+.anim .ic-cart .item.i2, .anim .ic-cart .item.i3 { animation: drop2 .6s ease-in .3s both; }
+@keyframes drop2 { 0% { opacity: 0; transform: translateY(-9px); } 8% { opacity: 1; } 40% { opacity: 1; transform: translateY(0); } 45%, 100% { opacity: 1; transform: translateY(0) scaleY(.85); } }
 @keyframes drop { 0% { opacity: 1; transform: translateY(-9px); } 35% { opacity: 1; transform: translateY(0); } 40%, 100% { opacity: 1; transform: translateY(0) scaleY(.85); } }
 .ic-cart .ground { opacity: 0; }
 .anim .ic-cart .ground { animation: ground 1.2s linear .3s; }
@@ -651,7 +659,8 @@ html.dark.glass .bnav button[aria-current="page"] { background: rgba(255,255,255
 .msheet { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 31; max-width: 640px; margin: 0 auto; max-height: min(50vh, calc(var(--vvh, 100vh) - 20px)); display: flex; flex-direction: column; border-radius: 30px 30px 0 0; transform: translateY(110%); transition: transform .5s var(--spring); padding-bottom: var(--sab); color: var(--fg); }
 .msheet.show { transform: none; }
 .msheet:not(.show) { visibility: hidden; transition: transform .3s, visibility 0s .3s; }
-.msheet:has(input:focus) { max-height: calc(var(--vvh, 100vh) - 20px); }
+.msheet:has(input:focus), .msheet.tall { max-height: calc(var(--vvh, 100vh) - 20px); }
+.msheet.show { transition: transform .5s var(--spring), max-height .35s var(--emph, ease); }
 .m3 .msheet { background: var(--s1); }
 .msheet .grip { width: 36px; height: 4px; border-radius: 2px; margin: 10px auto 2px; background: var(--outline); flex: 0 0 auto; }
 .msheet header { padding: 6px 8px 4px 22px; display: flex; align-items: center; gap: 8px; }
@@ -931,6 +940,7 @@ html[data-tab="shop"] #syncBtn { display: none; }
 .shopfab .icon { width: 20px; height: 20px; fill: currentColor; }
 .shopfab b { background: var(--on-accent); color: var(--accent); border-radius: 999px; padding: 1px 8px; font-size: 13px; }
 .shopfab.undoing { background: var(--fg); color: var(--bg); }
+.rz-fab > span[aria-hidden] { font-size: 20px; line-height: 1; }
 #tab-shop { padding-bottom: 72px; }
 
 /* Einkauf: Hinweis unten über dem Bring!-Knopf, damit er ihn nicht verdeckt */
@@ -1085,7 +1095,9 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .add-clip { color: var(--fg); font-weight: 700; }
 #quickLinkBtn.pulse { animation: pop .6s var(--spring) 2; }
 .rz-filters .rz-reset { border-style: dashed; color: var(--muted); padding: 0 10px; }
-.all-sub { display: flex; align-items: center; gap: 8px; }
+/* Woche (KW 48 / KW 49) bleibt beim Scrollen oben stehen, der Titel darf wegscrollen (Joshua 27.11.) */
+.all-sub { display: flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 6; padding: 8px 0;
+  background: color-mix(in srgb, var(--bg) 90%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 .all-sub .hint { flex: 1; padding: 0; margin: 0; }
 #tab-season .agrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .asec { border-top: 1px solid var(--line); }

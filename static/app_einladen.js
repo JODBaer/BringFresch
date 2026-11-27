@@ -34,7 +34,7 @@
   // ---------------------------------------------------------------------------
   let inviteUrl = "";
   async function createInvite() {
-    const code = b64u(crypto.getRandomValues(new Uint8Array(16)));
+    const code = b64u(crypto.getRandomValues(new Uint8Array(12))); // 16 Zeichen (96 bit) – reicht für 7 Tage, Link bleibt kurz
     const { key, id } = await keysFor(code);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const box = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(JSON.stringify({ pin: state.sync.pin })));
