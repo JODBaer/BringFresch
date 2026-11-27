@@ -196,8 +196,7 @@
         </div>
       </div>
       <div class="more"><div><div class="inner">
-        ${vegChips(day, idx)}
-        <ul class="ing">${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
+        <ul class="ing">${vegChips(day, idx)}${ings.length ? ings.map(x => `<li>${x.amt ? `<b>${esc(x.amt)}</b> ` : ""}${esc(x.name)}</li>`).join("") : `<li class="none">${day.empty ? "Noch kein Menü – Gericht antippen oder Wochenwahl starten" : day.is_leftovers ? "Was im Kühlschrank ist – nichts einkaufen" : "Keine Zutaten hinterlegt"}</li>`}</ul>
         ${nutriLine(day)}
         <div class="links">${recipeHref(day) ? `<a href="${esc(recipeHref(day))}" target="_blank" rel="noopener">${day.source_url ? "Zum Rezept ↗" : esc(recipeLinkLabel(day))}</a>` : ""}<button type="button" class="sw" data-pick="${idx}">Wechseln</button>${day.empty ? "" : `<input class="tm" type="time" data-time="${idx}" value="${esc(day.time || load(DINNER_KEY, "18:30"))}" aria-label="Znacht-Zeit am ${DAYS[idx]} (gilt für alle)">`}</div>
       </div></div></div>
@@ -211,8 +210,9 @@
     const choices = base ? app.CORE.seasonChoices(base, currentMonth()) : [];
     if (choices.length < 2) return "";
     const on = String(day.season_key || "").split("+");
-    return `<div class="vegpick" role="group" aria-label="Gemüse am ${DAYS[idx]}"><span>🥬</span>${choices.map(o =>
-      `<button type="button" class="mswap-d" data-veg="${esc(o.key)}" data-day="${idx}" aria-pressed="${on.includes(o.key)}">${esc(o.label)}</button>`).join("")}</div>`;
+    // erste Zeile der Zutaten (scrollt mit ihnen, damit auch mit offenem Tag alle 7 Tage sichtbar bleiben)
+    return `<li class="vegpick" role="group" aria-label="Gemüse am ${DAYS[idx]}"><span>🥬</span>${choices.map(o =>
+      `<button type="button" class="mswap-d" data-veg="${esc(o.key)}" data-day="${idx}" aria-pressed="${on.includes(o.key)}">${esc(o.label)}</button>`).join("")}</li>`;
   }
   // Gemüse an/aus (Plan-Tag oder Menü-Blatt): Rezept, Esser, Gäste bleiben
   function setVeg(idx, key) {

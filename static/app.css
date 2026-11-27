@@ -1094,7 +1094,8 @@ html[data-tab="shop"] .toast { bottom: calc(var(--bottom-pad) + var(--sab) + 78p
 .add-paste { width: 100%; margin: 2px 0 0; border: 1.5px dashed var(--accent); }
 .add-clip { color: var(--fg); font-weight: 700; }
 #quickLinkBtn.pulse { animation: pop .6s var(--spring) 2; }
-.vegpick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 8px; }
+.ing li.vegpick { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; text-overflow: clip; }
+.ing li.vegpick .mswap-d { flex: 0 0 auto; }
 .vegpick > span { font-size: 16px; }
 .rz-filters .rz-reset { border-style: dashed; color: var(--muted); padding: 0 10px; }
 /* Woche (KW 48 / KW 49) bleibt beim Scrollen oben stehen, der Titel darf wegscrollen (Joshua 27.11.) */
