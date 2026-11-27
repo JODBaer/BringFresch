@@ -72,6 +72,7 @@
     }
     const mode = sortMode();
     $("recipeSort").innerHTML = CORE.RECIPE_SORTS.map(([k, l]) => `<option value="${k}"${k === mode ? " selected" : ""}>${l}</option>`).join("");
+    $("recipeSortLabel").textContent = (CORE.RECIPE_SORTS.find(([k]) => k === mode) || [, ""])[1];
     const q = query.trim();
     const found = allRecipes().filter(r => CORE.recipeMatches(r, q)); // gleiche Suchregel wie Menü-Blatt und Katalog
     const diet = (app.meMember() || {}).diet;
@@ -82,7 +83,8 @@
     const vegs = [...vegCount].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "de")).slice(0, 30).map(([v]) => v);
     if (filter.veg && !vegs.includes(filter.veg)) vegs.unshift(filter.veg);
     $("recipeFilters").innerHTML = CORE.RECIPE_FILTERS.map(([k, l]) => `<button type="button" data-filter="${k}" aria-pressed="${!!filter[k]}">${esc(l)}</button>`).join("")
-      + `<label class="rz-veg${filter.veg ? " on" : ""}"><select id="recipeVeg" aria-label="Hauptgemüse"><option value="">🥬 Gemüse</option>${vegs.map(v => `<option value="${esc(v)}"${v === filter.veg ? " selected" : ""}>🥬 ${esc(v)}</option>`).join("")}</select></label>`;
+      + `<label class="rz-veg rz-dd${filter.veg ? " on" : ""}"><span aria-hidden="true">🥬 ${esc(filter.veg || "Gemüse")} ▾</span><select id="recipeVeg" aria-label="Hauptgemüse"><option value="">🥬 Gemüse</option>${vegs.map(v => `<option value="${esc(v)}"${v === filter.veg ? " selected" : ""}>🥬 ${esc(v)}</option>`).join("")}</select></label>`
+      + (Object.values(filter).some(Boolean) ? `<button type="button" class="rz-reset" data-reset="1" aria-label="Alle Filter aus">✕ Filter aus</button>` : "");
     const month = currentMonth();
     const groups = CORE.recipeGroups(list, mode, month, vegName);
     $("allCount").textContent = `${list.length} Rezepte`;
@@ -98,7 +100,10 @@
           <button type="button" class="asec-h" data-sec="${esc(g.key)}" aria-expanded="${isOpen}">${esc(label)} <small>${g.recipes.length}</small><i aria-hidden="true">›</i></button>
           ${isOpen ? `<div class="agrid">${shown.map(r => card(r, month)).join("")}${shown.length < g.recipes.length ? `<button type="button" class="amore" data-more="${esc(g.key)}">Alle ${g.recipes.length} zeigen</button>` : ""}</div>` : ""}
         </section>`;
-      }).join("");
+      }).join("")
+      // Andere WGs (Issue #28): ohne geteilte Rezepte sagen, warum der Abschnitt fehlt
+      + (mode === "herkunft" && !q && !Object.values(filter).some(Boolean) && app.connected && app.connected() && !groups.some(g => g.key === "geteilt")
+        ? `<p class="hint asrc-none">Andere WGs: noch keine geteilten Rezepte. Teilt eine andere WG ein eigenes Rezept, steht es hier.</p>` : "");
     app.watchImages($("allList"), null); // Bilder erst laden, wenn die Karte sichtbar wird
   }
 
@@ -110,6 +115,7 @@
   $("allSearch").oninput = () => { query = $("allSearch").value; open = null; render(); };
   $("recipeSort").onchange = () => { save(STORE.KEYS.RECIPE_SORT_KEY, $("recipeSort").value); open = null; closed.clear(); more.clear(); render(); };
   $("recipeFilters").addEventListener("click", e => {
+    if (e.target.closest("[data-reset]")) { Object.keys(filter).forEach(k => delete filter[k]); open = null; return render(); }
     const b = e.target.closest("[data-filter]");
     if (!b) return;
     filter[b.dataset.filter] = !filter[b.dataset.filter];

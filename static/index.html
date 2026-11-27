@@ -76,9 +76,12 @@
       <div class="rz-head"><h2>Rezepte</h2><button class="btn dark rz-add" type="button" id="addRecipeBtn">+ Einfügen</button></div>
       <div class="all-bar">
         <input type="search" id="allSearch" placeholder="Suchen: Titel oder Zutat" autocomplete="off" aria-label="Rezepte durchsuchen">
-        <label class="rz-sort" title="Ordnen"><span aria-hidden="true">⇅</span><select id="recipeSort" aria-label="Ordnen nach"></select></label>
       </div>
-      <div class="rz-filters" id="recipeFilters" role="group" aria-label="Filter"></div>
+      <!-- Ordnen + Filter in einer Reihe Chips, die umbricht statt seitlich zu scrollen (Issue #27): alles sichtbar -->
+      <div class="rz-tools">
+        <label class="rz-sort rz-dd" title="Ordnen"><span aria-hidden="true">⇅ <span id="recipeSortLabel">Herkunft</span> ▾</span><select id="recipeSort" aria-label="Ordnen nach"></select></label>
+        <div class="rz-filters" id="recipeFilters" role="group" aria-label="Filter"></div>
+      </div>
       <div class="websearch" data-ws="allSearch" hidden></div>
       <div class="all-sub"><p class="hint" id="allSubtitle"></p><span class="seg all-weeks" id="allWeeks" role="group" aria-label="Woche" hidden></span></div>
       <div id="allList"></div>
