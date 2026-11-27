@@ -1014,10 +1014,12 @@ await step(A, "Rezepte ordnen: Hauptgemüse, Schnell, gemerkt; «+ Einfügen» m
   const veg = await A.page.$eval("#recipeVeg option:nth-child(2)", o => o.value);
   await choose(A, "#recipeVeg", veg);
   await until(A, () => document.querySelector(".rz-veg").classList.contains("on") && parseInt(document.getElementById("allCount").textContent, 10) > 0, "Gemüse-Filter wirkt nicht");
+  // Issue #27: Ordnen + Filter brechen um statt seitlich zu scrollen, Chips zeigen die Wahl, «✕ Filter aus» schaltet alles aus
+  expect(await A.page.evaluate(v => document.querySelector(".rz-veg").textContent.includes(v) && document.getElementById("recipeSortLabel").textContent === "Herkunft"
+    && [...document.querySelectorAll(".rz-tools .rz-sort, #recipeFilters > *")].every(c => { const r = c.getBoundingClientRect(); return r.width > 0 && r.right <= innerWidth + 1; }), veg), "Ordnen/Filter: Chip abgeschnitten oder Wahl nicht sichtbar");
   await shot(A, "10e-rezepte-filter");
-  await choose(A, "#recipeVeg", "");
-  await tap(A, '#recipeFilters [data-filter="vegi"]');
-  await until(A, n => parseInt(document.getElementById("allCount").textContent, 10) === n, "Filter lassen sich nicht ausschalten", n0);
+  await tap(A, "#recipeFilters [data-reset]");
+  await until(A, n => parseInt(document.getElementById("allCount").textContent, 10) === n && !document.querySelector("#recipeFilters [data-reset]") && !document.querySelector(".rz-veg.on"), "Filter lassen sich nicht ausschalten", n0);
   await tap(A, "#addRecipeBtn");
   await until(A, () => document.getElementById("addDialog").open, "«+ Einfügen» geht nicht auf");
   expect(await A.page.$eval("#addDialog #quickLink", e => !!e.offsetParent), "Link-Feld fehlt im Einfügen-Blatt");
