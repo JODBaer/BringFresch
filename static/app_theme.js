@@ -42,7 +42,7 @@
   $("setOsBtn").onclick = () => setOs(currentOs() === "glass" ? "m3" : "glass");
 
   // ---------------------------------------------------------------------------
-  // Farben: Akzent und Hintergrund pro Handy wählbar (je 3 Vorgaben + eigene Farbe).
+  // Farben: Akzent (3 Vorgaben + eigene, mindestens so hell wie MIN_L) und Hintergrund (3 Vorgaben) pro Handy.
   // «Standard» = die Farben aus index.html; sonst werden die Tokens aus der Wahl berechnet.
   // ---------------------------------------------------------------------------
   const ACCENTS = [["", "Hellgrün", "#90ee90"], ["#93c572", "Pistazie", "#93c572"], ["#8ecae6", "Himmelblau", "#8ecae6"]];
@@ -62,6 +62,19 @@
     return [(h + 360) % 360, s * 100, l * 100];
   }
   const hsl = (h, s, l) => `hsl(${Math.round((h + 360) % 360)} ${Math.round(Math.max(0, Math.min(100, s)))}% ${Math.round(Math.max(0, Math.min(100, l)))}%)`;
+
+  // Eigene Akzentfarbe (Issue 27.11.): mindestens so hell wie die Vorgaben, sonst wird sie aufgehellt – dunkle Farben
+  // machen Knöpfe und Schrift unlesbar. Hintergrund nur noch aus den 3 Vorgaben (eigene Wahl entfernt).
+  const MIN_L = 62;
+  function hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+    const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
+    return "#" + [f(0), f(8), f(4)].map(x => x.toString(16).padStart(2, "0")).join("");
+  }
+  const brightAccent = hex => { const [h, s, l] = hexToHsl(hex); return l >= MIN_L ? hex.toLowerCase() : hslToHex(h, s, MIN_L); };
+  if (theme.accent && !ACCENTS.some(([v]) => v === theme.accent)) theme.accent = /^#[0-9a-f]{6}$/i.test(theme.accent) ? brightAccent(theme.accent) : "";
+  if (theme.bg && !BGS.some(([v]) => v === theme.bg)) theme.bg = "";
 
   // Tokens aus der Akzentfarbe (gleiche Rollen wie die Vorgabe: Hellgrün → Pistazie → dunkles Grün)
   function accentVars(hex, dark, os) {
@@ -141,13 +154,13 @@
   };
 
   function renderThemePick() {
-    const pick = (id, key, list) => {
+    const pick = (id, key, list, own) => {
       const cur = theme[key], custom = cur && !list.some(([v]) => v === cur);
       $(id).innerHTML = list.map(([v, name, show]) => `<button type="button" class="swatch" data-${key}="${v}" aria-pressed="${cur === v}"><i style="background:${show}"></i>${name}</button>`).join("")
-        + `<label class="swatch custom" aria-pressed="${!!custom}"><i${custom ? ` style="background:${esc(cur)}"` : ""}>＋<input type="color" data-custom="${key}" value="${custom ? esc(cur) : list[0][2]}" aria-label="Eigene Farbe"></i>Eigene</label>`;
+        + (own ? `<label class="swatch custom" aria-pressed="${!!custom}"><i${custom ? ` style="background:${esc(cur)}"` : ""}>＋<input type="color" data-custom="${key}" value="${custom ? esc(cur) : list[0][2]}" aria-label="Eigene Farbe (wird bei Bedarf aufgehellt)"></i>Eigene</label>` : "");
     };
-    pick("accentPick", "accent", ACCENTS);
-    pick("bgPick", "bg", BGS);
+    pick("accentPick", "accent", ACCENTS, true);
+    pick("bgPick", "bg", BGS, false);
   }
   function setTheme(key, value) {
     theme = { ...theme, [key]: value };
@@ -163,7 +176,10 @@
     });
     $(id).addEventListener("change", e => {
       const c = e.target.closest("[data-custom]");
-      if (c && /^#[0-9a-f]{6}$/i.test(c.value)) setTheme(c.dataset.custom, c.value.toLowerCase());
+      if (!c || c.dataset.custom !== "accent" || !/^#[0-9a-f]{6}$/i.test(c.value)) return;
+      const v = brightAccent(c.value);
+      setTheme("accent", v);
+      if (v !== c.value.toLowerCase()) toast("Etwas aufgehellt, damit alles lesbar bleibt");
     });
   }
   applyTheme();

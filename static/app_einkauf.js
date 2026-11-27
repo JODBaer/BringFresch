@@ -48,7 +48,7 @@
     $("shopList").innerHTML = (extra ? `<h3 class="vplan">Aus dem Plan</h3>` : "") + groups.map(g => `
       <div class="aisle dish">
         <h3>${g.several || g.cat || g.title === "Sonstiges" ? esc(g.title) : `<span class="dd-day">${esc(daysOf(g.title))}</span> ${esc(g.title)}`}</h3>
-        ${g.items.map(it => { const mk = state.shopFilter === "toBuy" && marked.has(bringName(it)); return `<button type="button" class="item tap-item${it.isOnBring ? " on" : ""}${mk ? " marked" : ""}" data-shop="${esc(it.name)}" aria-pressed="${it.isOnBring || mk}"><span>${esc(it.name)}${g.several ? `<small class="from">${esc((it.from || []).length)} Gerichte</small>` : ""}</span><span class="amt">${esc(it.spec)}</span></button>`; }).join("")}
+        ${g.items.map(it => { const mk = state.shopFilter === "toBuy" && marked.has(it.name); return `<button type="button" class="item tap-item${it.isOnBring ? " on" : ""}${mk ? " marked" : ""}" data-shop="${esc(it.name)}" aria-pressed="${it.isOnBring || mk}"><span>${esc(it.name)}${g.several ? `<small class="from">${esc((it.from || []).length)} Gerichte</small>` : ""}</span><span class="amt">${esc(it.spec)}</span></button>`; }).join("")}
       </div>`).join("") + extra;
   }
 
@@ -97,7 +97,8 @@
     const it = state.shopping.find(x => x.name === b.dataset.shop);
     if (!it) return;
     if (state.shopFilter === "toBuy") { // vormerken statt sofort senden
-      const k = bringName(it);
+      // pro Zeile vormerken (nicht pro Bring!-Name: Grillkäse und Gruyère sind auf Bring! beide «Käse», Issue 27.11.)
+      const k = it.name;
       if (marked.has(k)) marked.delete(k); else marked.add(k);
       toast(marked.has(k) ? `${it.name}: vorgemerkt – mit «Auf Bring!» unten rechts senden` : `${it.name}: nicht mehr vorgemerkt`);
       return renderShop();
@@ -143,5 +144,7 @@
     setTimeout(() => { location.href = "bring://"; }, 300);
   };
 
-  Object.assign(app, { shopMarked: marked, renderShop, openHandoff });
+  // Bring!-Namen der vorgemerkten Zeilen (für den Bring!-Knopf und die Gegenüberstellung)
+  const markedBring = () => new Set(state.shopping.filter(it => marked.has(it.name)).map(bringName));
+  Object.assign(app, { shopMarked: marked, markedBring, renderShop, openHandoff });
 })();

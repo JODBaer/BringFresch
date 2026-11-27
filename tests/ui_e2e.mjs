@@ -341,6 +341,15 @@ async function toastIs(P, re, timeout = 6000) {
   return P.page.evaluate(() => [...document.querySelectorAll(".toast")].map(t => t.textContent).join(" | "));
 }
 const dayTitle = (P, i) => text(P, `.prow[data-i="${i}"] .t`);
+// Menü-Blatt eines Tages öffnen wie ein Mensch (Issue #29): Gericht antippen = aufklappen, dann «Wechseln»;
+// offener Tag ohne Menü öffnet das Blatt gleich
+async function openMenu(P, i) {
+  const row = `.prow[data-i="${i}"]`;
+  if (!(await P.page.$eval(row, r => r.classList.contains("open") || r.classList.contains("unplanned")))) await tap(P, `${row} .t`);
+  if (await P.page.$eval(row, r => r.classList.contains("unplanned"))) { if (!(await P.page.evaluate(() => document.getElementById("msheet").classList.contains("show")))) await tap(P, `${row} .t`); return; }
+  await until(P, r => document.querySelector(r).classList.contains("open"), "Tag klappt beim Antippen des Gerichts nicht auf", row);
+  await tap(P, `${row} .links [data-pick]`);
+}
 const dayNum = async (P, i) => +(await text(P, `.prow[data-i="${i}"] .num`));
 const titles = P => P.page.$$eval("#days .prow .t", l => l.map(e => e.textContent));
 const ctaCount = async P => parseInt((await text(P, "#ctaCount")).replace(/\D/g, "") || "0", 10);
@@ -461,7 +470,12 @@ await step(A, "Plan: Reste-Puffer per Auswahl (+5) und per Antippen der Zahl (+6
 let pickedTitle = "";
 await step(A, "Menü wechseln: Blatt öffnen, suchen, Gericht wählen, «Rückgängig»", async () => {
   const before = await dayTitle(A, 2);
+  // Issue #29: Gericht antippen klappt auf (wie der Wochentag) und schlägt nichts Neues vor
   await tap(A, '.prow[data-i="2"] .t');
+  await until(A, () => document.querySelector('.prow[data-i="2"]').classList.contains("open"), "Gericht antippen klappt nicht auf");
+  await sleep(300);
+  expect(!(await A.page.evaluate(() => document.getElementById("msheet").classList.contains("show"))) && (await dayTitle(A, 2)) === before, "Gericht antippen öffnet das Blatt oder ändert das Menü");
+  await openMenu(A, 2);
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   expect((await text(A, "#msheetTitle")).startsWith("Mi: Menü wechseln"), "Titel des Blatts");
   expect((await A.page.$$eval("#mlist .msec", l => l.map(e => e.textContent))).includes("Weitere"), "Abschnitt «Weitere» fehlt");
@@ -481,7 +495,7 @@ await step(A, "Menü wechseln: Blatt öffnen, suchen, Gericht wählen, «Rückg�
   await tap(A, ".toast button");
   await until(A, t => document.querySelector('.prow[data-i="2"] .t').textContent === t, "«Rückgängig» stellt nicht wieder her", before);
   // nochmals wählen und behalten
-  await tap(A, '.prow[data-i="2"] .t');
+  await openMenu(A, 2);
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   const first = await A.page.$eval("#mlist .opt[data-id] .n", e => e.textContent);
   await tap(A, "#mlist .opt[data-id]");
@@ -490,11 +504,11 @@ await step(A, "Menü wechseln: Blatt öffnen, suchen, Gericht wählen, «Rückg�
 });
 
 await step(A, "Menü-Blatt schliessen: mit ✕ und durch Tippen daneben", async () => {
-  await tap(A, '.prow[data-i="3"] .t');
+  await openMenu(A, 3);
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   await tap(A, "#msheetClose");
   await until(A, () => !document.getElementById("msheet").classList.contains("show"), "✕ schliesst nicht");
-  await tap(A, '.prow[data-i="3"] .t');
+  await openMenu(A, 3);
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   await settle(A);
   await A.page.touchscreen.tap(195, 40); // oben neben das Blatt
@@ -502,7 +516,7 @@ await step(A, "Menü-Blatt schliessen: mit ✕ und durch Tippen daneben", async 
 });
 
 await step(A, "Eigenes Menü eintippen («… eintragen»)", async () => {
-  await tap(A, '.prow[data-i="3"] .t');
+  await openMenu(A, 3);
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   await typeInto(A, "#msearch", "Omas Testsuppe");
   await until(A, () => document.querySelector("#mlist [data-new]"), "«eintragen» fehlt");
@@ -512,7 +526,7 @@ await step(A, "Eigenes Menü eintippen («… eintragen»)", async () => {
 
 let allCount = 0;
 await step(A, "Rezept-Katalog: über das Blatt öffnen, Filter Alle/Vegi/Fleisch/Saison/Eigene, Suche", async () => {
-  await tap(A, '.prow[data-i="4"] .t');
+  await openMenu(A, 4);
   await until(A, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   await tap(A, "#mlist [data-catalog]");
   await until(A, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
@@ -544,21 +558,21 @@ await step(A, "Rezept-Katalog: Gericht einplanen, «Zufällig», mit ✕ schlies
   await tap(A, "#catalogList [data-assign]");
   await until(A, t => !document.getElementById("catalogDialog").open && document.querySelector('.prow[data-i="4"] .t').textContent === t, "Einplanen klappt nicht", t);
   await toastIs(A, /^Freitag: /);
-  await tap(A, '.prow[data-i="4"] .t');
+  await openMenu(A, 4);
   await tap(A, "#mlist [data-catalog]");
   await until(A, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await clearToasts(A);
   await tap(A, "#randomPickBtn");
   await until(A, t => !document.getElementById("catalogDialog").open && document.querySelector('.prow[data-i="4"] .t').textContent !== t, "Zufällig klappt nicht", t);
   await toastIs(A, /^Freitag: /);
-  await tap(A, '.prow[data-i="4"] .t');
+  await openMenu(A, 4);
   await tap(A, "#mlist [data-catalog]");
   await until(A, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await closeDialog(A, "catalogDialog");
 });
 
 await step(A, "Eigenes Rezept direkt aus dem Menü-Blatt («＋ Neues Rezept»): Titel aus Link, Formular, Speichern & einplanen, Mengen umgerechnet", async () => {
-  await tap(A, '.prow[data-i="5"] .t');
+  await openMenu(A, 5);
   await until(A, () => document.querySelector("#mlist .opt") && document.querySelector("#mlist .opt").dataset.recipeNew === "1", "«＋ Neues Rezept» steht nicht zuoberst im Menü-Blatt");
   await tap(A, "#mlist [data-recipe-new]");
   await until(A, () => document.getElementById("recipeDialog").open && !document.getElementById("msheet").classList.contains("show"), "Rezept-Formular geht nicht auf");
@@ -584,7 +598,7 @@ await step(A, "Eigenes Rezept direkt aus dem Menü-Blatt («＋ Neues Rezept»):
 });
 
 await step(A, "Eigenes Rezept löschen (Katalog → Eigene → Löschen → Wirklich?)", async () => {
-  await tap(A, '.prow[data-i="6"] .t');
+  await openMenu(A, 6);
   await tap(A, "#mlist [data-catalog]");
   await until(A, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(A, '#catalogFilters [data-filter="custom"]');
@@ -720,6 +734,22 @@ await step(A, "Kaufen: Zeile antippen = vorgemerkt (durchgestrichen, bleibt steh
   expect(+(await text(A, "#shopFabN")) >= 1, "Knopf zählt die Vorgemerkte nicht");
   await tap(A, `#shopList [data-shop="${rowName}"]`);
   await until(A, n => !document.querySelector(`#shopList [data-shop="${n}"]`).classList.contains("marked"), "Vormerkung lässt sich nicht aufheben", rowName);
+  // Zwei Zeilen mit demselben Bring!-Namen (z.B. Grillkäse + Gruyère = «Käse»): antippen merkt nur die eine vor (Joshua 27.11.)
+  const pair = await A.page.evaluate(() => {
+    const C = window.BF_CORE, by = new Map();
+    for (const it of window.BF_APP.state.shopping.filter(x => !x.isStaple && document.querySelector(`#shopList [data-shop="${CSS.escape(x.name)}"]`))) {
+      const k = C.bringPayload([it])[0].name, l = by.get(k) || by.set(k, []).get(k);
+      if (!l.includes(it.name)) l.push(it.name); // gleiche Zeile kann unter mehreren Gerichten stehen
+    }
+    return [...by.values()].find(l => l.length > 1) || null;
+  });
+  if (pair) {
+    await tap(A, `#shopList [data-shop="${pair[0]}"]`);
+    await until(A, n => document.querySelector(`#shopList [data-shop="${n}"]`).classList.contains("marked"), "Zeile nicht vorgemerkt", pair[0]);
+    expect(!(await A.page.$eval(`#shopList [data-shop="${pair[1]}"]`, b => b.classList.contains("marked"))), `«${pair[0]}» merkt auch «${pair[1]}» vor (gleicher Bring!-Name)`);
+    await tap(A, `#shopList [data-shop="${pair[0]}"]`);
+    await until(A, n => !document.querySelector(`#shopList [data-shop="${n}"]`).classList.contains("marked"), "Vormerkung lässt sich nicht aufheben", pair[0]);
+  }
 });
 
 // Der Bring!-Knopf ist nach dem Senden 10 s lang «Rückgängig» – zum Öffnen der Gegenüberstellung das abwarten
@@ -986,7 +1016,7 @@ await step(A, "Rezepte bleiben Rezepte: Grundrezept = eine Karte, Add-on Saison 
   await toastIs(A, new RegExp(`^Mo: Hörnli & Ghacktes mit ${veg}`));
   expect(await A.page.evaluate(v => { const d = window.BF_APP.state.plan[0]; return d.id === "b-hoernli" && d.season_label === v; }, veg), "Montag nicht mit dem Gemüse eingeplant");
   await goTab(A, "plan");
-  await tap(A, '.prow[data-i="0"] .t');
+  await openMenu(A, 0);
   await until(A, () => !document.getElementById("mseason").hidden, "Gemüse-Wahl im Menü-Blatt fehlt");
   const other = await A.page.$eval('#mseason [aria-pressed="false"]', b => b.dataset.season);
   await clearToasts(A);
@@ -1007,6 +1037,8 @@ await step(A, "Rezepte ordnen: Hauptgemüse, Schnell, gemerkt; «+ Einfügen» m
   await shot(A, "10c-rezepte-gemuese");
   await choose(A, "#recipeSort", "herkunft");
   await until(A, () => document.querySelector("#allList .asec-h")?.firstChild.textContent.trim() === "Einfach im November", "zurück zu Herkunft klappt nicht");
+  // Rezept ohne eigenen Link (Grundrezept): «Rezept» sucht den Titel direkt bei Google (Joshua 27.11.)
+  expect(/^https:\/\/www\.google\.com\/search\?q=H%C3%B6rnli/.test(await A.page.$eval('#allList .acard[data-id="b-hoernli"] .ab-go', a => a.href)), "Rezept ohne Link sucht nicht bei Google");
   // feiner filtern: «vegi» + Hauptgemüse, mit jeder Ordnung kombinierbar
   const n0 = parseInt(await text(A, "#allCount"), 10);
   await tap(A, '#recipeFilters [data-filter="vegi"]');
@@ -1209,13 +1241,12 @@ await step(A, "Akzentfarbe: Pistazie, Himmelblau, eigene Farbe, «Hellgrün» = 
   await until(A, () => !document.documentElement.style.getPropertyValue("--primary") && document.querySelector('#accentPick button[data-accent=""]').getAttribute("aria-pressed") === "true", "Standard-Akzent nicht zurück");
 });
 
-await step(A, "Hintergrund: Weiss, Sand, eigene Farbe, «Standard» setzt zurück", async () => {
+await step(A, "Hintergrund: Weiss, Sand (keine eigene Farbe), «Standard» setzt zurück", async () => {
   for (const v of ["#f7f7f5", "#f4ede1"]) {
     await tap(A, `#bgPick button[data-bg="${v}"]`);
     await until(A, v => document.querySelector(`#bgPick button[data-bg="${v}"]`).getAttribute("aria-pressed") === "true" && document.documentElement.style.getPropertyValue("--bg"), `Hintergrund ${v} wirkt nicht`, v);
   }
-  await pickNative(A, '#bgPick input[type="color"]', "#e8f0ff");
-  await until(A, () => document.querySelector("#bgPick .custom").getAttribute("aria-pressed") === "true", "eigener Hintergrund wirkt nicht");
+  expect(!(await A.page.$('#bgPick input[type="color"]')), "Hintergrund hat noch eine eigene Farbe (entfernt, Issue 27.11.)");
   await tap(A, '#bgPick button[data-bg=""]');
   await until(A, () => !document.documentElement.style.getPropertyValue("--bg") && JSON.parse(localStorage.getItem("bf-theme")).bg === "", "Standard-Hintergrund nicht zurück");
 });
@@ -1764,7 +1795,7 @@ await step(B, "WG-Server nicht erreichbar: «Bring! füllen» zeigt Fehler und d
 });
 
 await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten), einplanen, löschen", async () => {
-  await tap(B, '.prow[data-i="5"] .t');
+  await openMenu(B, 5);
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, "#newRecipeBtn");
@@ -1790,7 +1821,7 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   await tap(B, '#recipeForm button[type="submit"]');
   await until(B, () => document.querySelector('.prow[data-i="5"] .t').textContent === "Kürbis-Lasagne", "nicht eingeplant");
   // Seite ohne Rezeptdaten: WG-Server meldet es, Titel kommt aus dem Link
-  await tap(B, '.prow[data-i="4"] .t');
+  await openMenu(B, 4);
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, "#newRecipeBtn");
@@ -1803,7 +1834,7 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   B.allow.pop();
   await closeDialog(B, "recipeDialog");
   // Link direkt ins Suchfeld des Menüs einfügen (wie aus dem Teilen-Menü: Text + Link) -> «Rezept von diesem Link holen»
-  await tap(B, '.prow[data-i="6"] .t');
+  await openMenu(B, 6);
   await typeInto(B, "#msearch", `Schau mal: ${RECIPE_URL}?utm_source=whatsapp 😋`); // gleicher Link als Variante (Teilen aus einer App)
   await until(B, () => !!document.querySelector("#mlist [data-link]"), "Link-Option in der Menü-Suche fehlt");
   await clearToasts(B);
@@ -1813,7 +1844,7 @@ await step(B, "Rezept-Link importieren (WG-Server holt Titel, Portionen, Zutaten
   expect((await B.page.$eval("#recipeUrl", e => e.value)).startsWith(RECIPE_URL), "Link nicht aus dem Text gelöst");
   await tap(B, '#recipeForm button[type="submit"]');
   await until(B, () => document.querySelector('.prow[data-i="6"] .t').textContent === "Kürbis-Lasagne", "Link-Rezept nicht am Sonntag eingeplant");
-  await tap(B, '.prow[data-i="4"] .t');
+  await openMenu(B, 4);
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, '#catalogFilters [data-filter="custom"]');
@@ -1866,7 +1897,7 @@ await step(B, "Rezepte-Tab: Link einfügen → Zutaten geholt, Personen anpassen
   await until(B, () => /für 4 Personen/.test(document.getElementById("myRecipes").textContent), "Meine Rezepte: Personen falsch");
   // einplanen, dann Personen ändern -> Plan und Einkaufsliste rechnen neu
   await goTab(B, "plan");
-  await tap(B, '.prow[data-i="3"] .t');
+  await openMenu(B, 3);
   await typeInto(B, "#msearch", "Kürbis-Lasagne");
   await until(B, () => !!document.querySelector("#mlist [data-id^='custom-']"), "eigenes Rezept nicht in der Suche");
   await tap(B, "#mlist [data-id^='custom-']");
@@ -1892,7 +1923,7 @@ await step(B, "Rezepte-Tab: Link einfügen → Zutaten geholt, Personen anpassen
 });
 
 await step(B, "Katalog: «Anpassen» macht eine eigene Kopie (z.B. andere Personenzahl)", async () => {
-  await tap(B, '.prow[data-i="2"] .t');
+  await openMenu(B, 2);
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, '#catalogFilters [data-filter="all"]');
@@ -1921,7 +1952,7 @@ await step(B, "Geteilte Rezepte: eigene gehen standardmässig an alle WGs, Rezep
   await tap(B, "#syncNowBtn");
   await until(B, () => (JSON.parse(localStorage.getItem("bringfrisch_shared_recipes") || "[]")).some(r => r.title === "Sonnenhof-Curry"), "geteiltes Rezept nicht abgeholt");
   await goTab(B, "plan");
-  await tap(B, '.prow[data-i="3"] .t');
+  await openMenu(B, 3);
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, '#catalogFilters [data-filter="shared"]');
@@ -1930,7 +1961,7 @@ await step(B, "Geteilte Rezepte: eigene gehen standardmässig an alle WGs, Rezep
   await tap(B, "#catalogList [data-assign]");
   await until(B, () => document.querySelector('.prow[data-i="3"] .t').textContent === "Sonnenhof-Curry", "Rezept der anderen WG nicht eingeplant");
   // neues eigenes Rezept: «Mit allen WGs teilen» ist vorgewählt
-  await tap(B, '.prow[data-i="3"] .t');
+  await openMenu(B, 3);
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, '#catalogFilters [data-filter="all"]');
@@ -1955,6 +1986,8 @@ await step(B, "Plan verschieben: Gericht lange drücken (hebt sich, wackelt), au
   for (let k = 1; k <= 10; k++) { await t.touchMove(x1 + (x2 - x1) * k / 10, y1 + (y2 - y1) * k / 10); await sleep(15); }
   expect(await B.page.$eval('.prow[data-i="4"]', r => r.classList.contains("over")), "Ziel-Tag nicht markiert");
   await t.touchEnd();
+  // Issue #29: nach unten ziehen ist hier kein «Herunterziehen = aktualisieren»
+  expect(!(await B.page.$eval("#ptr", p => p.classList.contains("spin") || +(p.style.opacity || 0) > 0.05)), "Ziehen nach unten löst Aktualisieren aus");
   await until(B, ([a, b]) => document.querySelector('.prow[data-i="2"] .t').textContent.trim() === b && document.querySelector('.prow[data-i="4"] .t').textContent.trim() === a && !document.querySelector("#days .lift, #days .over"), "Mi ↔ Fr nicht getauscht", [t2, t4]);
   expect(!(await B.page.$eval("#msheet", m => m.classList.contains("show"))), "Menü-Blatt nach dem Ziehen offen");
   expect((await eaters()) === e0, "Esser sind mitgewandert");
@@ -1968,12 +2001,22 @@ await step(B, "Plan verschieben: Gericht lange drücken (hebt sich, wackelt), au
   await t.touchEnd();
   await sleep(150);
   expect((await text(B, '.prow[data-i="2"] .t')) === t2, "Loslassen daneben hat etwas geändert");
+  // Issue #29: aufgeklappten Tag nach links wischen = Menü wechseln
+  if (!(await B.page.$eval('.prow[data-i="3"]', r => r.classList.contains("open")))) await tap(B, '.prow[data-i="3"] .pday');
+  await until(B, () => document.querySelector('.prow[data-i="3"]').classList.contains("open"), "Tag 3 geht nicht auf");
+  const [x3, y3] = await box('.prow[data-i="3"] .t');
+  await t.touchStart(x3 + 60, y3);
+  for (let k = 1; k <= 6; k++) { await t.touchMove(x3 + 60 - k * 25, y3 + 2); await sleep(15); }
+  await t.touchEnd();
+  await until(B, () => document.getElementById("msheet").classList.contains("show") && /^Do: Menü wechseln/.test(document.getElementById("msheetTitle").textContent), "nach links wischen öffnet «Menü wechseln» nicht");
+  await tap(B, "#msheetClose");
+  await until(B, () => !document.getElementById("msheet").classList.contains("show"), "✕ schliesst nicht");
 });
 
 await step(B, "Menü tauschen (Blatt «Tauschen mit»), Einkauf nach Gericht, Katalog nach Beliebtheit", async () => {
   await goTab(B, "plan");
   const t0 = await text(B, '.prow[data-i="0"] .t'), t1 = await text(B, '.prow[data-i="1"] .t');
-  await tap(B, '.prow[data-i="0"] .t');
+  await openMenu(B, 0);
   await until(B, () => document.getElementById("msheet").classList.contains("show") && document.querySelectorAll("#mswap [data-swap]").length === 6, "«Tauschen mit» fehlt im Blatt");
   await tap(B, '#mswap [data-swap="1"]');
   await until(B, ([a, b]) => document.querySelector('.prow[data-i="0"] .t').textContent.trim() === b && document.querySelector('.prow[data-i="1"] .t').textContent.trim() === a, "Mo ↔ Di nicht getauscht", [t0, t1]);
@@ -1988,7 +2031,7 @@ await step(B, "Menü tauschen (Blatt «Tauschen mit»), Einkauf nach Gericht, Ka
   // Beliebtheit: Stimmen der Wochenwahl dieser WG (vom WG-Server) sortieren den Katalog
   const pop = await B.page.evaluate(() => JSON.parse(localStorage.getItem("bringfrisch_popular") || "null"));
   expect(pop && Object.keys(pop.weeks || {}).length > 0, `Beliebtheit nicht vom WG-Server geholt: ${JSON.stringify(pop)}`);
-  await tap(B, '.prow[data-i="2"] .t');
+  await openMenu(B, 2);
   await tap(B, "#mlist [data-catalog]");
   await until(B, () => document.getElementById("catalogDialog").open, "Katalog geht nicht auf");
   await tap(B, '#catalogFilters [data-filter="all"]');
@@ -2052,7 +2095,7 @@ await step(C, "Chip → nächste Woche: 7 Tage «noch offen», nichts einzukaufe
 });
 
 await step(C, "Offenen Tag planen: Gericht wählen, Plan der KW 47 beim WG-Server, Kalender nur für geplante Tage", async () => {
-  await tap(C, '.prow[data-i="0"] .t');
+  await openMenu(C, 0);
   await until(C, () => document.getElementById("msheet").classList.contains("show"), "Blatt geht nicht auf");
   const t = await C.page.$eval("#mlist .opt[data-id] .n", e => e.textContent);
   await tap(C, "#mlist .opt[data-id]");

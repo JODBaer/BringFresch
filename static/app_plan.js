@@ -183,7 +183,7 @@
       <div class="phead">
         <button type="button" class="pday" aria-expanded="${idx === openIdx}" aria-label="${DAYS[idx]}: ganzes Menü zeigen">${DAYS[idx].slice(0, 2)}</button>
         <div class="dish">
-          <button type="button" class="t" data-pick="${idx}" aria-label="${DAYS[idx]}: ${esc(day.title)} – wechseln">${esc(day.title)}</button>
+          <button type="button" class="t"${day.empty ? ` data-pick="${idx}"` : ""} aria-expanded="${idx === openIdx}" aria-label="${DAYS[idx]}: ${esc(day.title)} – ${day.empty ? "Gericht wählen" : "ganzes Menü zeigen"}">${esc(day.title)}</button>
           <span class="meta">${esc(dayMeta(day))}${mnut(day)}${day.time ? ` · <span class="by">🕖 ${esc(day.time)}${day.time_by ? ` (${esc(day.time_by)})` : ""}</span>` : ""}</span>
         </div>
         <div class="who${many ? " many" : ""}"${many ? ` style="--cols:${cols}"` : ""}>${state.members.map((m, k) => {
@@ -214,7 +214,7 @@
     openIdx = i;
     [...$("days").children].forEach((row, k) => {
       row.classList.toggle("open", k === i);
-      row.querySelector(".pday").setAttribute("aria-expanded", String(k === i));
+      row.querySelectorAll(".pday, .t[aria-expanded]").forEach(b => b.setAttribute("aria-expanded", String(k === i)));
     });
   }
 
@@ -249,7 +249,9 @@
     if (wasScroll(() => scroller.scrollTop)) { e.preventDefault(); return; }
     if (e.target.closest("a")) return; // «Zum Rezept» normal öffnen
     const idx = +row.dataset.i;
-    if (e.target.closest(".pday")) return setOpen(openIdx === idx ? -1 : idx);
+    // Wochentag oder Gericht antippen = aufklappen (Issue #29); wechseln erst aufgeklappt mit «Wechseln» oder nach links wischen.
+    // Offener Tag ohne Menü: gleich das Blatt zum Wählen (es gibt nichts zu ersetzen).
+    if (e.target.closest(".pday") || e.target.closest(".t:not([data-pick])")) return setOpen(openIdx === idx ? -1 : idx);
     const chip = e.target.closest("[data-member]");
     if (chip) return toggleEater(idx, chip.dataset.member);
     if (e.target.closest("[data-inc]")) return setBuffer(idx, ((state.plan[idx].leftover_buffer || 0) + 1) % 7);
@@ -597,8 +599,11 @@
   $("weekChip").onclick = () => setWeekView(!state.viewNext);
   (function weekSwipe() {
     let sx = null, sy = 0;
+    let startRow = -1;
     $("days").addEventListener("touchstart", e => {
-      sx = canPlanNext() && e.touches.length === 1 ? e.touches[0].clientX : null;
+      const row = e.touches.length === 1 && e.target.closest && e.target.closest(".prow");
+      startRow = row ? +row.dataset.i : -1;
+      sx = (canPlanNext() || startRow === openIdx) && e.touches.length === 1 ? e.touches[0].clientX : null;
       sy = sx === null ? 0 : e.touches[0].clientY;
     }, { passive: true });
     $("days").addEventListener("touchend", e => {
@@ -607,7 +612,10 @@
       const t = e.changedTouches[0];
       const dx = t.clientX - sx, dy = t.clientY - sy;
       sx = null;
-      if (Math.abs(dx) > 70 && Math.abs(dy) < 40) setWeekView(dx < 0);
+      if (!(Math.abs(dx) > 70 && Math.abs(dy) < 40)) return;
+      // aufgeklappter Tag nach links wischen = Menü wechseln (Issue #29), sonst Woche wechseln
+      if (dx < 0 && startRow >= 0 && startRow === openIdx && !state.plan[startRow].empty) return openMenuSheet(startRow);
+      if (canPlanNext()) setWeekView(dx < 0);
     }, { passive: true });
   })();
 
