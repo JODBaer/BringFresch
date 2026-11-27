@@ -51,6 +51,8 @@ Grundsatz: **Bring! ist die Wahrheit** für die Einkaufsliste – Obsonare baut 
 - [x] «Holen» bei gemuese.ch → Worker liest Zutaten, Personen und Zeit aus dem HTML (wie der Import)
 - [x] Zurück von der Rezeptseite: kopierter Link steht schon im Feld, nur noch «Holen» (iPhone: ein Knopf «Kopierten Link einfügen & holen»)
 - [ ] **«KI-App öffnen» und «Bring! öffnen» gehen noch nicht** – im Plan platzieren (Joshua 27.11.): Lieblings-KI ist wählbar, aber noch nichts öffnet sie (kommt mit Schritt 5 «Foto mit KI» / Reste-Rezept); «Bring! öffnen» führt auf die Webseite statt in die App. Beides als Knopf im Plan, am ehesten in der «Nächster Schritt»-Karte (Schritt 2): nach «Bring! füllen» → «Bring! öffnen», am Kochtag / bei Resten → «Mit KI kochen». Vorher prüfen, ob Bring! eine App-Adresse hat, die auf iPhone und Android die App öffnet.
+- [x] Plan (#29): Gericht antippen = aufklappen, wechseln nur aufgeklappt («Wechseln» / nach links wischen), Verschieben löst kein Aktualisieren aus · Rezepte ohne Link = Google-Suche · Vormerken pro Zeile (Käse) · Farben (#32)
+- [ ] **Eigene Rezepte müssen anpassbar sein** (Joshua 27.11.): überall, wo ein eigenes Rezept erscheint (Karte im Reiter Rezepte, Menü-Blatt, Plan-Tag aufgeklappt, Wochenwahl-Rückseite), ein Knopf «✏️ Anpassen» → Formular mit allem (Titel, Personen, Zutaten, Zeit, Zubereitung, Ernährung, «Mit allen WGs teilen»). Änderungen gelten sofort im Plan und in der Einkaufsliste (wie heute unter «Meine Rezepte → Bearbeiten», das ganz unten versteckt ist). Rezepte anderer WGs und aus dem Katalog: «Anpassen» = eigene Kopie (gibt es schon im Katalog). Teil von Schritt 3 «Rezept-Seite»; vorher als HTML-Entwurf zeigen.
 
 ## UX: einfach von Anfang an (Plan 25.11.2026, Joshua)
 
